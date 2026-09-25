@@ -575,3 +575,31 @@
 @media (min-width: 1024px) { .trust-list { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 .trust-list li { padding: 20px 24px; background: var(--surface); color: var(--text-muted); font-size: 15px; line-height: 1.5; }
 .trust-list strong { display: block; margin-bottom: 4px; color: var(--text); font-weight: 700; }
+
+/* ================================================================ the Cleave §23.1 */
+.cleave { position: relative; }
+.cleave-cover { display: none; }
+.cleave[data-armed] { overflow: hidden; }
+@media (min-width: 768px) {
+  .cleave[data-armed] { min-height: 100svh; display: grid; align-content: center; }   /* one full frame while pinned */
+}
+.cleave[data-armed] .cleave-cover { display: block; position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+.cleave-half { position: absolute; inset: 0; will-change: transform; }
+.cleave-half[data-cleave="l"] { clip-path: inset(0 62% 0 0); transform-origin: 38% 100%; }   /* cut at 38 %, not centre */
+.cleave-half[data-cleave="r"] { clip-path: inset(0 0 0 38%); transform-origin: 38% 0%; }
+.cleave-seam {
+  position: absolute; inset-block: 0; left: 38%; width: 2px; margin-left: -1px; opacity: 0;
+  background: var(--heat-hi); box-shadow: 0 0 48px 8px var(--heat-hi), 0 0 12px 2px var(--heat-hi);
+}
+
+/* the plate that splits: brushed steel, one line of the story */
+.plate-steel {
+  position: absolute; inset: 0; display: grid; place-items: center; padding: 24px;
+  background:
+    repeating-linear-gradient(90deg, rgb(255 255 255 / .025) 0 1px, transparent 1px 3px),
+    linear-gradient(160deg, var(--surface-2), var(--bg) 70%);
+  border-block: 1px solid var(--line);
+}
+.plate-steel p { margin: 0; max-width: 14ch; text-align: center; }
+.plate-steel .type-display { color: var(--text); }
+.plate-steel span { display: block; margin-top: 20px; font-size: 14px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--heat-color); }

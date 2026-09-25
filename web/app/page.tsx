@@ -3,6 +3,7 @@ import { HeroLog } from '@/components/hero/hero-log';
 import { HeroStatus } from '@/components/hero/hero-status';
 import { HeatDirector } from '@/components/motion/heat-director';
 import { TrustStrip } from '@/components/sections/trust-strip';
+import { Cleave } from '@/components/motion/cleave';
 import { Services } from '@/components/sections/services';
 import { Quotation } from '@/components/sections/quotation';
 import { Compare } from '@/components/sections/compare';
@@ -73,7 +74,9 @@ export default function Home() {
         </p>
       </section>
 
-      <TrustStrip />
+      <Cleave cover={<div className="plate-steel"><p className="type-display">Now, everything behind it.<span>Scroll to open it up</span></p></div>}>
+        <TrustStrip />
+      </Cleave>
       <Services />
       <Quotation />
       <Compare />
