@@ -17,6 +17,7 @@ import { ReactLenis, useLenis } from 'lenis/react';
 import 'lenis/dist/lenis.css';
 import { loadGsap, type Gs } from '@/lib/gsap';
 import { useMotionEnabled } from './motion-provider';
+import { energy, writeEnergyVar } from './energy';
 
 export function SmoothScroll() {
   const motionOn = useMotionEnabled();
@@ -31,18 +32,29 @@ export function SmoothScroll() {
   );
 }
 
-/** Drives Lenis from GSAP's ticker so Lenis and ScrollTrigger never disagree by a frame. */
+/** Drives Lenis from GSAP's ticker so Lenis and ScrollTrigger never disagree by a frame.
+ *  The same scroll event feeds scroll energy (§23.3). */
 function GsapSync({ gs: { gsap, ScrollTrigger } }: { gs: Gs }) {
-  const lenis = useLenis(ScrollTrigger.update);
+  const lenis = useLenis((l) => {
+    ScrollTrigger.update();
+    energy.target = Math.max(energy.target, Math.min(1, Math.abs(l.velocity) / 40));
+  });
 
   useEffect(() => {
     if (!lenis) return;
-    const tick = (time: number) => lenis.raf(time * 1000);
+    const tick = (time: number) => {
+      lenis.raf(time * 1000);
+      energy.value += (energy.target - energy.value) * 0.08;   // ease toward the target...
+      energy.target *= 0.92;                                     // ...which decays to calm
+      writeEnergyVar();
+    };
     gsap.ticker.add(tick);
     gsap.ticker.lagSmoothing(0);
     return () => {
       gsap.ticker.remove(tick);
       gsap.ticker.lagSmoothing(500, 33);             // GSAP's default, restored with motion off
+      energy.value = energy.target = 0;
+      writeEnergyVar();
     };
   }, [lenis, gsap]);
 

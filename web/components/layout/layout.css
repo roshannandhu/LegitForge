@@ -51,6 +51,7 @@
 .heat-rod {
   position: absolute; left: 0; bottom: -1px; width: 100%; height: 2px;
   background: var(--heat-color); transform: scaleX(var(--progress, 0)); transform-origin: left;
+  filter: brightness(calc(1 + var(--scroll-energy, 0) * .7));   /* glows hotter at speed (§23.3) */
 }
 
 /* phone + tablet menu: a sibling of the header, sitting just under it */

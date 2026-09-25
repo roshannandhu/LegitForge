@@ -1,11 +1,13 @@
 'use client';
 
 /** Ember background for Forge Night (PLAN §5.6.4, animation #1).
- *  One fixed canvas behind everything. Count and speed follow `heat.value`.
+ *  One fixed canvas behind everything. Count and speed follow `heat.value`; scroll energy
+ *  (§23.3) works the bellows: scroll fast and more, faster, brighter sparks fly.
  *  Stops in Workshop Day, in hidden tabs, and when motion is off (one still frame). */
 
 import { useEffect, useRef } from 'react';
 import { heat } from '@/components/motion/heat-director';
+import { energy } from '@/components/motion/energy';
 import { useMotionEnabled } from '@/components/motion/motion-provider';
 
 type Ember = { x: number; y: number; vx: number; vy: number; age: number; ttl: number; r: number };
@@ -52,18 +54,21 @@ export function ForgeCanvas() {
     const frame = (now: number) => {
       const dt = Math.min((now - last) / 1000, 0.05);
       last = now;
-      const t = heat.value;
+      const en = energy.value;
+      const t = Math.min(1, heat.value + en * 0.45);            // the bellows heat the forge
+      const speed = 1 + en * 1.6;
       ctx.clearRect(0, 0, w, h);
       ctx.globalCompositeOperation = 'lighter';
       const target = Math.round(cap * (0.25 + 0.75 * t) * (t < 0.1 ? 0.1 : 1));
-      if (embers.length < target && Math.random() < 0.6) spawn();
+      if (embers.length < target && Math.random() < 0.6 + en * 0.4) spawn();
+      if (en > 0.3 && embers.length < target) spawn();            // a second spark per frame at speed
       for (let i = embers.length - 1; i >= 0; i--) {
         const e = embers[i];
         e.age += dt;
         const dx = e.x - pointer.x, dy = e.y - pointer.y;
         if (dx * dx + dy * dy < 14400) { e.vx += dx * 0.25 * dt; e.vy += dy * 0.25 * dt; }
         e.x += e.vx * dt * (0.6 + t);
-        e.y += e.vy * dt * (0.6 + t);
+        e.y += e.vy * dt * (0.6 + t) * speed;
         if (e.age >= e.ttl || e.y < -10) { embers.splice(i, 1); continue; }
         paint(e, t);
       }
