@@ -14,9 +14,12 @@
 
 import { useEffect, useRef } from 'react';
 import Image from 'next/image';
+import { useLenis } from 'lenis/react';
 import {
-  PLATES, LAYOUTS, OPENING_MESSAGE, STORY, actIndex, actLabel, type Layout, type PlateId,
+  PLATES, LAYOUTS, STORIES, STORY_EVENT, DEFAULT_STORY, actIndex, actLabel, isStoryId,
+  type Layout, type StoryId,
 } from '@/lib/hero-layout';
+import { AnvilMark } from '@/components/ui/icons';
 import { useMotionEnabled } from '@/components/motion/motion-provider';
 import { useGsap, type Gs } from '@/lib/gsap';
 
@@ -59,6 +62,8 @@ const SPARKS = [[-34, -18], [-22, -30], [4, -34], [26, -24], [34, -6], [-30, 4]]
 
 export interface Showcase { image: string; alt: string }
 
+let introPlayed = false;   // the brand intro plays once per page load, not per breakpoint change
+
 export default function Machine({ showcase = null }: { showcase?: Showcase | null }) {
   const motionOn = useMotionEnabled();   // OS reduced-motion OR the footer switch (§5.5)
   const root = useRef<HTMLDivElement>(null);
@@ -66,6 +71,10 @@ export default function Machine({ showcase = null }: { showcase?: Showcase | nul
   const rig = useRef<HTMLDivElement>(null);
   const wires = useRef<SVGSVGElement>(null);
   const trigger = useRef<Gs['ScrollTrigger']>(undefined);   // set once GSAP has loaded
+  const story = useRef<StoryId>(DEFAULT_STORY);             // which job the machine is doing
+  const lenis = useLenis();
+  const lenisRef = useRef(lenis);
+  lenisRef.current = lenis;
 
   // Scale the fixed design space to its box. Plain DOM, so it runs at hydration.
   useEffect(() => {
@@ -99,6 +108,14 @@ export default function Machine({ showcase = null }: { showcase?: Showcase | nul
     const chipText = chip.querySelector('span')!;
     const SVGNS = 'http://www.w3.org/2000/svg';
     const reduced = !motionOn;
+    const params = new URLSearchParams(location.search);
+    const first = heroSection.dataset.story ?? params.get('story');   // StoryChips may have set it already
+    if (isStoryId(first)) story.current = first;
+    const setStoryAttrs = () => {
+      screen.dataset.story = story.current;
+      if (hud) hud.dataset.story = story.current;
+    };
+    setStoryAttrs();
 
     const mm = gsap.matchMedia();
     mm.add(
@@ -184,16 +201,15 @@ export default function Machine({ showcase = null }: { showcase?: Showcase | nul
             if (parked) {
               const last = lastOf(L);
               gsap.set(chip, { x: last.x, y: last.y - 58 });
-              label = STORY[ids[ids.length - 1]].chip;
+              label = STORIES[story.current].steps[ids[ids.length - 1]].chip;
             }
           } else {
             const l = legs[leg];
             const t = (p - l.t0) / (l.t1 - l.t0);
             const pt = l.path.getPointAtLength((l.reverse ? 1 - t : t) * lens[leg]);
             gsap.set(chip, { autoAlpha: 1, x: pt.x, y: pt.y });
-            label = leg === 0 ? OPENING_MESSAGE
-              : leg === legs.length - 1 ? STORY.wa.chip
-              : STORY[ids[leg - 1]].chip;
+            const S = STORIES[story.current];
+            label = leg === 0 ? S.opening : leg === legs.length - 1 ? S.home : S.steps[ids[leg - 1]].chip;
           }
           if (label && label !== lastRender.chip) { chipText.textContent = label; lastRender.chip = label; }
 
@@ -203,15 +219,19 @@ export default function Machine({ showcase = null }: { showcase?: Showcase | nul
           if (n !== lastRender.lines && logLines.length) {
             lastRender.lines = n;
             const visible = new Set<string>([...ids.slice(0, reached), ...(p >= W.out[1] ? ['done'] : []), ...(reached ? [] : ['wait'])]);
-            logLines.forEach((li) => { li.hidden = !visible.has(li.dataset.step!); });
+            logLines.forEach((li) => {
+              const own = !li.dataset.story || li.dataset.story === story.current;
+              li.hidden = !own || !visible.has(li.dataset.step!);
+            });
           }
 
           // act rail
           const act = actIndex(p) + 1;
           if (act !== lastRender.act && hud) { hud.dataset.act = String(act); lastRender.act = act; }
 
-          // screen (#2): the site -> the customer's question -> the reply -> a real project
-          const state = p < 0.2 ? 'site' : p < W.out[1] + 0.03 ? 'ask' : showcase && p > 0.95 ? 'show' : 'reply';
+          // screen (#2): our brand -> the story's screen -> its request -> its result -> a real project
+          const state = p < 0.08 ? 'brand' : p < W.in[0] ? 'start' : p < W.out[1] + 0.03 ? 'ask'
+            : showcase && p > 0.95 ? 'show' : 'reply';
           if (state !== lastRender.screen) { screen.dataset.state = state; lastRender.screen = state; }
         };
 
@@ -296,20 +316,49 @@ export default function Machine({ showcase = null }: { showcase?: Showcase | nul
         /* Motion off: the act-3 hold, fully told — plates stamped, wires lit, the message parked
            on the last plate, the whole log, the reply on screen. Deliberate exception to
            "default = last frame": the last frame is a closed phone, which says nothing. */
-        const qaParam = new URLSearchParams(location.search).get('qa');
+        const qaParam = params.get('qa');
         const qa = qaParam === null ? NaN : Number(qaParam);
-        if (reduced) {
+        const stillFrame = () => {
           tl.progress(0.78);
+          renderStory(0.78);                  // same position as before a story swap: GSAP skips onUpdate
           gsap.set(machineEl, { rotationY: 0, rotationX: 0, scale: 1 });
-          logLines.forEach((li) => { li.hidden = li.dataset.step === 'wait'; });
+          logLines.forEach((li) => { li.hidden = li.dataset.step === 'wait' || li.dataset.story !== story.current; });
           screen.dataset.state = showcase ? 'show' : 'reply';
+        };
+        let st: ReturnType<typeof ScrollTrigger.create> | undefined;
+
+        /* A story chip was picked (StoryChips): re-label everything, then glide the page through
+           the story so the visitor watches it run. Motion off: just swap the still frame. */
+        const onStory = (e: Event) => {
+          const { id, replay } = (e as CustomEvent<{ id: StoryId; replay: boolean }>).detail;
+          if (!isStoryId(id)) return;
+          story.current = id;
+          setStoryAttrs();
+          Object.assign(lastRender, { chip: '', lines: -1, act: -1, screen: '' });
+          if (reduced) { stillFrame(); return; }
+          renderStory(tl.progress());
+          if (!replay || !st) return;
+          const target = st.start + 0.62 * (st.end - st.start);
+          const l = lenisRef.current;
+          if (l) {
+            l.scrollTo(st.start, { immediate: true, force: true });
+            l.scrollTo(target, { duration: 3.2, force: true, easing: (t: number) => (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2) });
+          } else {
+            window.scrollTo({ top: st.start });
+            window.scrollTo({ top: target, behavior: 'smooth' });
+          }
+        };
+        window.addEventListener(STORY_EVENT, onStory);
+
+        if (reduced) {
+          stillFrame();
         } else if (Number.isFinite(qa)) {
           // ?qa=<0..1> freezes the hero at one moment for review. Read in the browser so the
           // page itself stays static and CDN-cached.
           tl.progress(Math.min(1, Math.max(0, qa)));
         } else {
           renderStory(0);
-          ScrollTrigger.create({
+          st = ScrollTrigger.create({
             trigger: heroSection, start: 'top top', end: L.end,
             pin: L.pin, scrub: 0.8, invalidateOnRefresh: true, animation: tl,
             onUpdate: (st) => {
@@ -318,7 +367,24 @@ export default function Machine({ showcase = null }: { showcase?: Showcase | nul
             },
           });
         }
-        return () => offPointer();
+        /* Brand intro (Part A0): once per page load, by time, while the phone still shows the brand. */
+        if (!reduced && !introPlayed && !Number.isFinite(qa) && tl.progress() < 0.08) {
+          introPlayed = true;
+          const q = gsap.utils.selector(screen);
+          gsap.timeline({ defaults: { ease: 'power2.out' } })
+            // children only: the layer itself belongs to the CSS screen states (an inline opacity
+            // there would pin the brand over every story)
+            .from(q('.brand-glow'), { opacity: 0, scale: 0.6, duration: 0.6 }, 0.1)
+            .from(q('.brand-mark'), { y: -28, opacity: 0, duration: 0.45, ease: 'back.out(3)' }, 0.15)
+            .fromTo(q('.brand-sparks .spark'), { opacity: 1, x: 0, y: 0 }, {
+              opacity: 0, duration: 0.5, ease: 'power2.out', immediateRender: false,
+              x: (i: number) => [-30, -18, 4, 22, 30, -26][i % 6], y: (i: number) => [-16, -28, -32, -22, -4, 6][i % 6],
+            }, 0.5)
+            .fromTo(q('.brand-word'), { clipPath: 'inset(0 100% 0 0)' }, { clipPath: 'inset(0 0% 0 0)', duration: 0.5, ease: 'power3.inOut' }, 0.55)
+            .from(q('.brand-line'), { opacity: 0, y: 6, duration: 0.35 }, 0.95);
+        }
+
+        return () => { offPointer(); window.removeEventListener(STORY_EVENT, onStory); };
       },
     );
   }, { scope: root, dependencies: [motionOn, showcase] });
@@ -352,7 +418,7 @@ export default function Machine({ showcase = null }: { showcase?: Showcase | nul
             </ul>
 
             <div className="packet" style={CHIP_VARS} aria-hidden="true">
-              <span>{STORY[lastOf(LAYOUTS.desktop).id as PlateId].chip}</span>
+              <span>{STORIES[DEFAULT_STORY].steps[lastOf(LAYOUTS.desktop).id].chip}</span>
             </div>
 
             <div className="phone">
@@ -364,19 +430,47 @@ export default function Machine({ showcase = null }: { showcase?: Showcase | nul
                 priority
                 sizes="(max-width: 767px) 62vw, 34vw"
               />
-              <div className="screen" data-state={showcase ? 'show' : 'reply'} aria-hidden="true">
-                <div className="scr scr-site">
+              <div className="screen" data-state={showcase ? 'show' : 'reply'} data-story={DEFAULT_STORY} aria-hidden="true">
+                {/* first screen: our brand (Part A0) */}
+                <div className="scr scr-brand">
+                  <i className="brand-glow" />
+                  <span className="brand-mark"><AnvilMark /><span className="brand-sparks">{[0, 1, 2, 3, 4, 5].map((k) => <i className="spark" key={k} />)}</span></span>
+                  <span className="brand-word">Legit Forge</span>
+                  <span className="brand-line">We build the thing.</span>
+                </div>
+                {/* one screen per story: start frame, then .on-ask, then .on-reply */}
+                <div className="scr scr-site" data-for="web">
                   <div className="s-hero" />
                   <div className="s-row w80" />
                   <div className="s-row w60" />
                   <div className="s-grid"><div className="s-card" /><div className="s-card" /></div>
-                  <div className="s-row w40" />
                   <div className="s-bar" />
+                  <span className="s-speed on-ask"><b>99</b>speed</span>
+                  <span className="s-toast on-reply">Enquiry sent ✓</span>
                 </div>
-                <div className="scr scr-chat">
+                <div className="scr scr-app" data-for="app">
+                  <p className="app-head">Book a table <span>Sat</span></p>
+                  <p className="app-sub">Party of 4</p>
+                  <div className="app-slots">
+                    <span>6:30</span><span>7:00</span><span className="slot-pick on-ask">7:30</span><span>8:00</span>
+                    <span>8:30</span><span>9:00</span>
+                  </div>
+                  <span className="app-cta">Confirm booking</span>
+                  <span className="scr-stamp on-reply">Booked ✓</span>
+                </div>
+                <div className="scr scr-quote" data-for="quote">
+                  <p className="q-head">Quote Q-2041</p>
+                  <p className="q-row"><span>Split AC × 2</span><b>₹38,500</b></p>
+                  <p className="q-row"><span>Copper kit</span><b>₹4,200</b></p>
+                  <p className="q-row"><span>Stabiliser</span><b>₹3,100</b></p>
+                  <p className="q-total"><span>Total</span><b>₹45,800</b></p>
+                  <p className="q-status on-ask">Sent · opened 2×</p>
+                  <span className="scr-stamp on-reply">Accepted</span>
+                </div>
+                <div className="scr scr-chat" data-for="wa">
                   <p className="chat-head"><i />Sweet Crumbs <span>online</span></p>
-                  <p className="bub bub-out">Is my cake ready?</p>
-                  <p className="bub bub-in">Yes! Ready at 5 pm. Order #214 <b>✓✓</b></p>
+                  <p className="bub bub-out on-ask">Is my cake ready?</p>
+                  <p className="bub bub-in on-reply">Yes! Ready at 5 pm. Order #214 <b>✓✓</b></p>
                 </div>
                 {showcase && (
                   <div className="scr scr-show">

@@ -340,7 +340,19 @@
     linear-gradient(90deg, color-mix(in oklab, var(--quench) 40%, transparent) 1px, transparent 1px) 0 0 / 24px 24px;
 }
 .cover-initials { position: relative; font-size: 56px; font-weight: 800; font-stretch: 112%; color: color-mix(in oklab, var(--quench) 70%, var(--text)); }
-.project-cover .stamp { position: absolute; top: 16px; right: 16px; }
+.project-cover .stamp { position: absolute; top: 16px; right: 16px; z-index: 1; }
+/* cooling (§6.7 #17): the cover enters heat-tinted and cools to full colour */
+.project { --card-heat: 0; }
+.project-cover::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: var(--heat-color); mix-blend-mode: color; opacity: calc(var(--card-heat) * .6);
+}
+:root:not(.dark) .project-cover::after { background: var(--quench); mix-blend-mode: multiply; opacity: calc(var(--card-heat) * .35); }
+/* four or more projects on desktop: one sideways row the section pins and scrolls */
+@media (min-width: 1024px) {
+  .projects[data-track] { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 400px; position: relative; }
+  #work:has(.projects[data-track]) { overflow-x: clip; }   /* the row runs past the wrap, never the page */
+}
 .project-body { display: flex; flex: 1; flex-direction: column; gap: 6px; padding: 20px; }
 .project-title { margin: 0; font-size: var(--step-h3); font-weight: 600; line-height: 1.2; }
 .project-client { margin: 0; font-size: 14px; color: var(--text-muted); }
@@ -605,3 +617,31 @@
 @media (min-width: 1024px) { .trust-list { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 .trust-list li { padding: 20px 24px; background: var(--surface); color: var(--text-muted); font-size: 15px; line-height: 1.5; }
 .trust-list strong { display: block; margin-bottom: 4px; color: var(--text); font-weight: 700; }
+
+/* ================================================================ the Cleave §23.1 */
+.cleave { position: relative; }
+.cleave-cover { display: none; }
+.cleave[data-armed] { overflow: hidden; }
+@media (min-width: 768px) {
+  .cleave[data-armed] { min-height: 100svh; display: grid; align-content: center; }   /* one full frame while pinned */
+}
+.cleave[data-armed] .cleave-cover { display: block; position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+.cleave-half { position: absolute; inset: 0; will-change: transform; }
+.cleave-half[data-cleave="l"] { clip-path: inset(0 62% 0 0); transform-origin: 38% 100%; }   /* cut at 38 %, not centre */
+.cleave-half[data-cleave="r"] { clip-path: inset(0 0 0 38%); transform-origin: 38% 0%; }
+.cleave-seam {
+  position: absolute; inset-block: 0; left: 38%; width: 2px; margin-left: -1px; opacity: 0;
+  background: var(--heat-hi); box-shadow: 0 0 48px 8px var(--heat-hi), 0 0 12px 2px var(--heat-hi);
+}
+
+/* the plate that splits: brushed steel, one line of the story */
+.plate-steel {
+  position: absolute; inset: 0; display: grid; place-items: center; padding: 24px;
+  background:
+    repeating-linear-gradient(90deg, rgb(255 255 255 / .025) 0 1px, transparent 1px 3px),
+    linear-gradient(160deg, var(--surface-2), var(--bg) 70%);
+  border-block: 1px solid var(--line);
+}
+.plate-steel p { margin: 0; max-width: 14ch; text-align: center; }
+.plate-steel .type-display { color: var(--text); }
+.plate-steel span { display: block; margin-top: 20px; font-size: 14px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--heat-color); }
