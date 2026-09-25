@@ -1,5 +1,8 @@
 /** Quotation and warranty system (PLAN §6.3b). Our own product, and the plainest proof
- *  that we ship real software. Deliberately still: it sits between two animated sections. */
+ *  that we ship real software. The mock plays as a working flow when it comes into view
+ *  (demos.ts "quote"): the markup is its finished frame. */
+
+import { DemoPlayer } from './demo-player';
 
 const POINTS = [
   { h: 'Quote', p: 'Build a quote from saved line items, send it as a link or PDF, and see when it was opened. Accepted quotes are timestamped and stored.' },
@@ -25,6 +28,7 @@ export function Quotation() {
           </p>
         </div>
 
+        <DemoPlayer kind="quote">
         <div className="quote-mock" aria-hidden="true">
           <div className="qm qm-quote">
             <div className="qm-head"><span className="qm-kicker num">Quote Q-2041</span><span className="stamp stamp-ok">Accepted</span></div>
@@ -48,9 +52,12 @@ export function Quotation() {
               <div><dt>Until</dt><dd className="num">14 Sep 2027</dd></div>
             </dl>
             <span className="qm-claim">Claim on WhatsApp</span>
+            <i className="qm-scan" />
           </div>
-          <p className="sr-only">Example: an accepted quote for an AC installation, and the customer's warranty check showing it is valid until September 2027.</p>
+          <span className="qm-remind">Expiry reminder set on WhatsApp <b>✓✓</b></span>
         </div>
+        </DemoPlayer>
+        <p className="sr-only">Example: a quote for an AC installation is sent, opened and accepted; the customer scans the warranty code and sees it is valid until September 2027; an expiry reminder is set on WhatsApp.</p>
       </div>
     </section>
   );
