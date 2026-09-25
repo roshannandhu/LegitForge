@@ -1,4 +1,5 @@
 import Machine from '@/components/hero/machine';
+import { HeroLog } from '@/components/hero/hero-log';
 import { HeroStatus } from '@/components/hero/hero-status';
 import { HeatDirector } from '@/components/motion/heat-director';
 import { TrustStrip } from '@/components/sections/trust-strip';
@@ -12,7 +13,7 @@ import { Team } from '@/components/sections/team';
 import { Hallmarks } from '@/components/sections/hallmarks';
 import { PricingFaq } from '@/components/sections/pricing-faq';
 import { Quench } from '@/components/sections/quench';
-import { PROCESS, SERVICES, TEAM } from '@/lib/content';
+import { HERO_SHOWCASE, PROCESS, SERVICES, TEAM } from '@/lib/content';
 import { SITE, waLink } from '@/lib/site';
 import '@/components/hero/hero.css';
 import '@/components/sections/sections.css';
@@ -62,11 +63,13 @@ export default function Home() {
             </div>
             <HeroStatus />
           </div>
-          <Machine />
+          <Machine showcase={HERO_SHOWCASE} />
+          <HeroLog />
         </div>
         <p className="sr-only">
           Diagram: a phone opening into the systems we build — website, app, API, database,
-          automation, WhatsApp and AI — then closing again.
+          automation, WhatsApp and AI. A customer’s question travels through every part, and the
+          phone receives the answer on WhatsApp in about a second.
         </p>
       </section>
 

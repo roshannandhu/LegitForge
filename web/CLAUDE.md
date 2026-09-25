@@ -20,7 +20,8 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
 - npx tsc --noEmit         typecheck
 - npm run check            headless-Chrome gate: §4.8 audit at 375/768/1440 + the team layers.
                            BASE=http://localhost:3300 for a `next start` build. Screenshots: .check/
-- Hero review: /?qa=0.22 (act 1) /?qa=0.45 (act 2) /?qa=0.72 (act 3) /?qa=0.97 (act 4)
+- Hero review: /?qa=0.15 (explode) /?qa=0.42 (wire: message on the wires) /?qa=0.7 (become: stamps)
+                           /?qa=0.83 (ship: reply rides home) /?qa=0.97 (reply on the phone)
 - npm run db:migrate:local apply migrations/ to the local D1 (needed once before dev/preview)
 - npm run preview          the real Worker (worker.ts + bindings) at http://localhost:8787
 - npm run cf-typegen       regenerate cloudflare-env.d.ts after changing wrangler.jsonc
