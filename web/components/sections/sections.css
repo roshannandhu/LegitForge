@@ -615,3 +615,51 @@
 .plate-steel p { margin: 0; max-width: 14ch; text-align: center; }
 .plate-steel .type-display { color: var(--text); }
 .plate-steel span { display: block; margin-top: 20px; font-size: 14px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--heat-color); }
+
+/* ============================================= working-flow demos (demos.ts) */
+.demo-player { position: relative; display: grid; gap: 8px; }
+.demo-replay {
+  justify-self: end; min-height: 44px; padding: 0 16px; visibility: visible;
+  border: 1px solid var(--line); border-radius: 10px; background: transparent; color: var(--text);
+  font: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
+}
+.demo-replay[hidden] { display: block; visibility: hidden; }   /* keep its row: no shift when it appears */
+.demo-replay:hover { border-color: var(--text-muted); }
+[data-motion="off"] .demo-replay { display: none; }            /* motion off never replays: no empty row */
+
+/* website: live tag, badge, cursor, click ripple */
+.demo-tag { margin-left: auto; padding: 2px 8px; border-radius: 999px; background: color-mix(in oklab, var(--heat-color) 22%, transparent); color: var(--text); font-size: 11px; font-weight: 700; }
+.bp-img { position: relative; }
+.bp-badge { position: absolute; left: 8px; bottom: 8px; padding: 3px 8px; border-radius: 999px; background: var(--bg); color: var(--text); font-size: 10px; font-weight: 700; white-space: nowrap; }
+.bp-btn { position: relative; overflow: visible; }
+.demo-ripple { position: absolute; left: 50%; top: 50%; width: 24px; height: 24px; margin: -12px; border-radius: 50%; background: var(--accent); opacity: 0; pointer-events: none; }
+.demo-cursor { position: absolute; left: 22%; top: 62%; width: 20px; height: 20px; fill: var(--text); stroke: var(--bg); stroke-width: 1.5; pointer-events: none; }
+
+/* dashboard: the toast */
+.dash { position: relative; }
+.dash-toast {
+  position: absolute; right: 12px; top: 12px; display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px;
+  border: 1px solid var(--line); border-radius: 999px; background: var(--bg); color: var(--text); font-size: 11px; font-weight: 600;
+}
+
+/* WhatsApp: typing dots, read ticks */
+.wa-typing { display: none; align-self: flex-start; gap: 3px; margin: 0; padding: 8px 10px; border-radius: 10px; background: var(--surface); border: 1px solid var(--line); }
+.wa-typing i { width: 5px; height: 5px; border-radius: 50%; background: var(--text-muted); }
+.wa-ticks { margin-left: 4px; color: var(--text-muted); font-weight: 700; }
+.wa-ticks.read { color: #53B7F0; }
+
+/* n8n: the travelling packet and each node's output */
+.flow-packet {
+  position: absolute; left: 10%; top: 22px; z-index: 2; width: 14px; height: 14px; margin: -7px;
+  border-radius: 50%; background: var(--heat-hi); box-shadow: 0 0 12px 3px var(--heat-hi); opacity: 0; pointer-events: none;
+}
+.flow-out { font-size: 11px; font-weight: 600; color: var(--heat-color); white-space: nowrap; }
+
+/* quotation: the QR scan line and the WhatsApp reminder */
+.qm-warranty { position: relative; overflow: hidden; }
+.qm-scan { position: absolute; left: 0; right: 0; top: 0; height: 2px; background: var(--success); box-shadow: 0 0 10px 2px var(--success); opacity: 0; pointer-events: none; }
+.qm-remind {
+  margin-top: 12px; display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px;
+  border-radius: 999px; background: color-mix(in oklab, var(--success) 18%, var(--surface)); color: var(--text); font-size: 14px; font-weight: 600;
+}
+.qm-remind b { color: #53B7F0; }
