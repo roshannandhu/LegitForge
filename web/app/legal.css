@@ -1,0 +1,17 @@
+/* Legal pages: plain, readable prose (65ch measure, §4.3). */
+.legal { max-width: calc(65ch + 48px); padding-top: 136px; padding-bottom: 96px; }
+@media (max-width: 767px) { .legal { padding-top: 104px; } }
+.legal h1 { margin: 0 0 16px; }
+.legal .type-lead { margin: 0 0 40px; }
+.legal h2 { margin: 40px 0 12px; font-size: var(--step-h3); font-weight: 600; line-height: 1.2; }
+.legal p, .legal li { max-width: 65ch; }
+.legal ul { display: grid; gap: 10px; padding-left: 1.2em; }
+.legal a { color: var(--accent); text-underline-offset: 3px; }
+.legal-draft {
+  display: inline-block; margin: 0 0 24px; padding: 6px 12px; border-radius: 8px;
+  border: 1px dashed var(--danger); color: var(--danger); font-size: 14px; font-weight: 600;
+}
+.legal-table { width: 100%; border-collapse: collapse; font-size: 15px; }
+.legal-table th, .legal-table td { padding: 12px 0; text-align: left; vertical-align: top; border-bottom: 1px solid var(--line); }
+.legal-table thead th { font-size: 13px; color: var(--text-muted); font-weight: 600; }
+.legal-table tbody th { padding-right: 24px; font-weight: 600; }

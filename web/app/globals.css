@@ -1,0 +1,125 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ============================================================ tokens §4.1 */
+:root {
+  /* Workshop Day (light) */
+  --bg: #E8ECEF; --surface: #F7F9FA; --surface-2: #DDE3E8; --line: #C3CCD4;
+  --text: #1B2129; --text-muted: #56606B;
+  --accent: #2A58A0; --accent-ink: #FFFFFF;
+  --heat-lo: #D9B45A; --heat-mid: #9A5B22; --heat-hi: #6B4796;
+  --quench: #2D6CB5; --focus: #6B4796; --success: #1B6E45; --danger: #B3261E;
+
+  --heat: .35;                                    /* set live by the Heat Director */
+  --heat-color: color-mix(in oklab, var(--heat-hi) calc(var(--heat) * 100%), var(--heat-lo));
+
+  --section-y: clamp(4.5rem, 3rem + 5vw, 8rem);
+  --ease-forge: cubic-bezier(.16, 1, .3, 1);
+
+  /* one z-index scale — never z-index: 9999 (§1.6) */
+  --z-header: 50; --z-overlay: 45; --z-dialog: 70; --z-toast: 80;
+
+  /* fluid type §4.3 (375 → 1440) */
+  --step-display: clamp(2.5rem, 1.4rem + 3.4vw, 4.5rem);
+  --step-h2:      clamp(2rem, 1.38rem + 2.63vw, 3.75rem);
+  --step-h3:      clamp(1.3125rem, 1.2rem + .47vw, 1.625rem);
+  --step-lead:    clamp(1.125rem, 1.06rem + .28vw, 1.3125rem);
+  --step-body:    clamp(1rem, .96rem + .19vw, 1.125rem);
+}
+
+.dark {
+  /* Forge Night (dark) */
+  --bg: #151A20; --surface: #1D242C; --surface-2: #26303A; --line: #33404C;
+  --text: #EDE6DA; --text-muted: #9AA3AB;
+  --accent: #F0701E; --accent-ink: #151A20;
+  --heat-lo: #C8321E; --heat-mid: #F0701E; --heat-hi: #FFC24A;
+  --quench: #5FA8C9; --focus: #FFC24A; --success: #5CC08A; --danger: #FF7A6B;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-line: var(--line);
+  --color-text: var(--text);
+  --color-muted: var(--text-muted);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-heat: var(--heat-color);
+  --color-quench: var(--quench);
+  --font-sans: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* ======================================================= base + craft §1.6 */
+html {
+  background: var(--bg); color: var(--text);
+  color-scheme: light; scrollbar-gutter: stable; -webkit-text-size-adjust: 100%;
+}
+html.dark { color-scheme: dark; }            /* native scrollbars and form controls follow the theme */
+body {
+  margin: 0; font-family: var(--font-sans); font-size: var(--step-body); line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3 { text-wrap: balance; }           /* no lonely last word in a heading */
+p, li { text-wrap: pretty; }                 /* no orphans in paragraphs */
+::selection { background: var(--accent); color: var(--accent-ink); }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+section[id] { scroll-margin-top: 88px; }
+img, svg, video { max-width: 100%; }
+a { color: inherit; }
+
+/* Type scale §4.3 */
+.type-display { font-size: var(--step-display); font-weight: 800; font-stretch: 112%; line-height: .95; letter-spacing: -.02em; }
+.type-h2      { font-size: var(--step-h2); font-weight: 700; font-stretch: 106%; line-height: 1; letter-spacing: -.015em; }
+.type-h3      { font-size: var(--step-h3); font-weight: 600; line-height: 1.2; letter-spacing: -.005em; }
+.type-lead    { font-size: var(--step-lead); line-height: 1.55; color: var(--text-muted); }
+.type-label   { font-size: .875rem; font-weight: 500; font-stretch: 88%; letter-spacing: .01em; }
+.num          { font-variant-numeric: tabular-nums; }
+
+/* Layout §4.4 / §4.8 */
+.wrap { max-width: 1240px; margin: 0 auto; padding: 0 24px; }
+@media (max-width: 767px) { .wrap { padding: 0 16px; } }
+
+/* =============================================================== buttons */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 48px; padding: 0 22px; border-radius: 10px; border: 1px solid transparent;
+  font: inherit; font-size: 16px; font-weight: 600; text-decoration: none; cursor: pointer; white-space: nowrap;
+  transition: transform 120ms var(--ease-forge), background-color 200ms, border-color 200ms, color 200ms;
+}
+.btn-sm { min-height: 44px; padding: 0 16px; font-size: 15px; }
+.btn-icon { width: 18px; height: 18px; flex: none; }
+.btn-primary { background: var(--accent); color: var(--accent-ink); position: relative; overflow: hidden; isolation: isolate; }
+/* heat fills upward on hover (#7): transform only */
+.btn-primary::before {
+  content: ""; position: absolute; inset: 0; z-index: -1; background: var(--heat-hi);
+  transform: scaleY(0); transform-origin: bottom; transition: transform 200ms var(--ease-forge);
+}
+@media (hover: hover) and (pointer: fine) { .btn-primary:hover::before { transform: scaleY(1); } }
+.btn-primary:hover { color: var(--accent-ink); }
+.btn-ghost { border-color: var(--line); color: var(--text); background: transparent; }
+@media (hover: hover) and (pointer: fine) { .btn-ghost:hover { border-color: var(--text-muted); } }
+.btn:active { transform: scale(.98); }
+[data-motion="off"] .btn, [data-motion="off"] .btn-primary::before { transition: none; }
+
+/* ============================================================ backgrounds */
+.forge-canvas { position: fixed; inset: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; }
+
+/* Workshop Day: blueprint grid, no JavaScript (§5.6.4) */
+html:not(.dark) body::before {
+  content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none; opacity: .35;
+  background-image:
+    linear-gradient(var(--line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--line) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+/* theme lever reveal: our clip-path animation replaces the default cross-fade */
+::view-transition-old(root),
+::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
+
+/* ============================================================ utilities */
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden;
+  clip-path: inset(50%); white-space: nowrap; border: 0;
+}

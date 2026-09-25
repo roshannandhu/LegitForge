@@ -1,0 +1,83 @@
+/* The Phone Becomes the Machine — PLAN §6.2a
+   Only transform, opacity, filter and custom properties are animated (§5.1).
+   No backdrop-filter and no drop-shadow: both are expensive to composite and
+   contradict the machined-edge rule in §1.6. */
+
+.hero {
+  min-height: 100svh; display: grid; align-items: center; position: relative; overflow: hidden;
+  padding-block: 88px 40px;              /* clears the fixed 72px header when content outgrows the screen */
+}
+@media (max-width: 767px) { .hero { padding-top: 84px; } }   /* 60px phone header + 24 */
+.hero-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 32px; align-items: center; }
+@media (min-width: 1024px) { .hero-grid { grid-template-columns: minmax(0, 9fr) minmax(0, 11fr); gap: 40px; } }
+
+.hero h1 { margin: 0 0 20px; max-width: 16ch; }
+.hero .lead { font-size: var(--step-lead); color: var(--text-muted); margin: 0 0 28px; max-width: 52ch; }
+.ctas { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+.note { font-size: 14px; color: var(--text-muted); margin: 0; min-height: 1.5em; } /* reserved: status fills in after hydration */
+.note b { color: var(--text); font-weight: 600; }
+
+/* stage: a fixed design space, scaled to fit, taken out of layout so it can
+   never widen the page (§4.8) */
+.stage-fit { position: relative; min-height: 70svh; overflow: hidden; }
+@media (min-width: 1024px) { .stage-fit { min-height: 78svh; overflow: visible; } }
+.stage {
+  position: absolute; left: 50%; top: 50%; width: 780px; height: 760px;
+  transform: translate(-50%, -50%) scale(var(--fit, 1)); transform-origin: center center;
+  perspective: 1500px;
+}
+.machine { position: absolute; inset: 0; transform-style: preserve-3d; }
+
+.wires { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+.wires .wire { fill: none; stroke: var(--line); stroke-width: 1.5; opacity: 0; }
+.wires .wire-hot { fill: none; stroke: var(--heat-color); stroke-width: 2; }
+.wires .pulse { fill: none; stroke: var(--heat-hi); stroke-width: 3.5; stroke-linecap: round; opacity: 0; }
+.wires .leader { fill: none; stroke: var(--line); stroke-width: 1; opacity: .45; stroke-dasharray: 3 4; }
+
+.plates { list-style: none; margin: 0; padding: 0; }
+.plate {
+  --plate-heat: 0;
+  position: absolute; left: 50%; top: 50%; width: 204px; margin: -44px 0 0 -102px;
+  padding: 12px 14px; border-radius: 12px; background: var(--surface);
+  border: 1px solid color-mix(in oklab, var(--heat-color) calc(var(--plate-heat) * 75%), var(--line));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .07);        /* machined edge, not a soft shadow */
+  transform-style: preserve-3d; will-change: transform, opacity;
+  /* No-JS / pre-hydration default = act 3 (§6.2a). GSAP overrides on mount. */
+  opacity: 1;
+  transform: translate3d(calc(var(--dx, 0) * 1px), calc(var(--dy, 0) * 1px), calc(var(--dz, 0) * 1px));
+  border-color: var(--heat-color);
+}
+.plate .num {
+  display: block; margin-bottom: 2px; font-size: 11px; font-weight: 600;
+  font-stretch: 88%; letter-spacing: .08em; color: var(--text-muted); font-variant-numeric: tabular-nums;
+}
+.plate .labels { display: grid; align-items: start; min-height: 39px; }  /* 2 lines: all plates identical (§1.6) */
+.plate .l { grid-area: 1/1; font-weight: 600; font-size: 15px; line-height: 1.3; text-wrap: balance; }
+.plate .l-tech { color: var(--text); opacity: 0; }
+.plate .l-service { color: var(--text); opacity: 1; }
+.plate .bar { display: block; height: 2px; margin-top: 10px; border-radius: 2px; background: var(--line); overflow: hidden; }
+.plate .bar i { display: block; height: 100%; width: 100%; background: var(--heat-color); transform: scaleX(var(--plate-heat)); transform-origin: left; }
+
+/* Phone: the 380-wide space only has room for 140px plates (centres at 78 / 302) */
+@media (max-width: 767px) {
+  .plate { width: 150px; margin-left: -75px; padding: 9px 10px; border-radius: 10px;
+           transform: translate3d(calc(var(--mx, 0) * 1px), calc(var(--my, 0) * 1px), calc(var(--mz, 0) * 1px)); }
+  .plate[data-on-phone="0"] { display: none; }
+  .plate .l { font-size: 14px; line-height: 1.25; }
+  .plate .labels { min-height: 35px; }
+  .plate .num { font-size: 10px; }
+}
+
+.phone { position: absolute; left: 50%; top: 50%; width: 300px; transform-style: preserve-3d; }
+.phone img { display: block; width: 100%; height: auto; }
+.screen {
+  position: absolute; left: 36.28%; top: 2.02%; width: 53.46%; height: 83.04%;
+  border-radius: 16px; overflow: hidden; background: #0E1319;
+  display: flex; flex-direction: column; gap: 7px; padding: 12px 10px;
+}
+.screen .s-row { background: var(--surface-2); border-radius: 5px; height: 11px; opacity: .8; }
+.screen .w60 { width: 60%; } .screen .w80 { width: 80%; } .screen .w40 { width: 40%; }
+.screen .s-hero { background: linear-gradient(135deg, var(--heat-mid), var(--heat-lo)); border-radius: 7px; height: 74px; margin-bottom: 3px; opacity: .9; }
+.screen .s-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-top: 3px; }
+.screen .s-card { background: var(--surface-2); border-radius: 6px; height: 46px; opacity: .7; }
+.screen .s-bar { margin-top: auto; height: 26px; border-radius: 6px; background: var(--accent); opacity: .9; }
