@@ -70,6 +70,7 @@ export default function TeamLanyards({ people, flipped, onToggleFlip, highlighte
         onCreated={({ gl }) => gl.setClearColor(new THREE.Color(0x000000), 0)}
       >
         <ambientLight intensity={Math.PI} />
+        <CameraAdjuster />
         <Physics gravity={[0, -40, 0]} timeStep={1 / 60} paused={!visible}>
           {art && (
             <Suspense fallback={null}>
@@ -89,6 +90,20 @@ export default function TeamLanyards({ people, flipped, onToggleFlip, highlighte
       </Suspense>
     </div>
   );
+}
+
+/** Adjusts camera distance when the canvas has a narrower aspect ratio so all 3 cards fit nicely */
+function CameraAdjuster() {
+  const { camera, size } = useThree();
+  useFrame(() => {
+    const aspect = size.width / Math.max(size.height, 1);
+    const targetZ = CAMERA_Z * Math.max(1, 1.45 / Math.max(aspect, 0.45));
+    if (Math.abs(camera.position.z - targetZ) > 0.02) {
+      camera.position.z = THREE.MathUtils.lerp(camera.position.z, targetZ, 0.1);
+      camera.updateProjectionMatrix();
+    }
+  });
+  return null;
 }
 
 /** Tells the page the first frame with cards is on screen, so it can cross-fade the 2D cards out. */

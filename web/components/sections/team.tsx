@@ -32,7 +32,7 @@ const VISITOR: CardPerson = {
 function canRun3d() {
   const nav = navigator as Navigator & { connection?: { saveData?: boolean } };
   if (nav.connection?.saveData) return false;
-  if (!matchMedia('(pointer: fine)').matches || innerWidth < 1024) return false;
+  if (!matchMedia('(pointer: fine)').matches || innerWidth < 480) return false;
   if ((nav.hardwareConcurrency ?? 4) < 4) return false;
   const gl = document.createElement('canvas').getContext('webgl2');
   if (!gl) return false;
@@ -99,8 +99,12 @@ export function Team({ team }: { team: typeof TEAM }) {
   const onReady = useCallback(() => setSceneReady(true), []);
 
   useEffect(() => {
-    setCapable(canRun3d());
-    setFine(matchMedia('(pointer: fine)').matches);
+    const update = () => {
+      setCapable(canRun3d());
+      setFine(matchMedia('(pointer: fine)').matches);
+    };
+    update();
+    window.addEventListener('resize', update);
     const el = sectionRef.current!;
     const nearIO = new IntersectionObserver(([e]) => {
       if (e.isIntersecting) { setNear(true); nearIO.disconnect(); }
@@ -108,7 +112,11 @@ export function Team({ team }: { team: typeof TEAM }) {
     const visIO = new IntersectionObserver(([e]) => setVisible(e.isIntersecting));
     nearIO.observe(el);
     visIO.observe(el);
-    return () => { nearIO.disconnect(); visIO.disconnect(); };
+    return () => {
+      window.removeEventListener('resize', update);
+      nearIO.disconnect();
+      visIO.disconnect();
+    };
   }, []);
 
   const use3d = near && capable && motionOn;
