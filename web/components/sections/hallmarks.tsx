@@ -1,8 +1,9 @@
 import { MAKERS_PROMISE, TESTIMONIALS, WONT_DO } from '@/lib/content';
 import { SITE } from '@/lib/site';
+import { SnapToGrid } from '@/components/motion/snap-to-grid';
 
-/** Proof wall "Hallmarks" (PLAN §6.9). No signature motion, on purpose (#23): after all the
- *  motion above, stillness reads as confidence.
+/** Proof wall "Hallmarks" (PLAN §6.9). Only the quietest motion here, C8 snap to grid (§23.4):
+ *  after all the motion above, near-stillness reads as confidence.
  *  Testimonials render only once a client has given written permission; until then the
  *  heading promises only what we can back — our own commitments. */
 export function Hallmarks() {
@@ -18,7 +19,7 @@ export function Hallmarks() {
         {hasTestimonials && (
           <ul className="testimonials">
             {TESTIMONIALS.map((t) => (
-              <li key={t.name}>
+              <li key={t.name} data-snap>
                 <blockquote><p>{t.quote}</p></blockquote>
                 <p className="t-by"><strong>{t.name}</strong>, {t.role}, {t.company}</p>
               </li>
@@ -27,11 +28,11 @@ export function Hallmarks() {
         )}
 
         <div className="engraved-grid">
-          <div className="engraved">
+          <div className="engraved" data-snap>
             <h3 className="engraved-h">Maker’s promise</h3>
             <ul className="engraved-list">{MAKERS_PROMISE.map((l) => <li key={l}>{l}</li>)}</ul>
           </div>
-          <div className="engraved">
+          <div className="engraved" data-snap>
             <h3 className="engraved-h">What we won’t do</h3>
             <ul className="engraved-list">{WONT_DO.map((l) => <li key={l}>{l}</li>)}</ul>
           </div>
@@ -44,6 +45,7 @@ export function Hallmarks() {
           </a>.
         </p>
       </div>
+      <SnapToGrid />
     </section>
   );
 }
