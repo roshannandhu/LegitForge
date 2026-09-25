@@ -20,6 +20,8 @@ export interface CardPerson {
   skills: string[];
   shipped: string;
   favorite: string;
+  /** path under /public, e.g. /team/member-one.jpg; empty = monogram */
+  photo?: string;
   visitor?: boolean;
 }
 
@@ -59,6 +61,18 @@ export async function loadCardFonts() {
     document.fonts.load(`500 44px ${f.sans}`),
     document.fonts.load(`700 56px ${f.stencil}`),
   ]).catch(() => {});
+}
+
+/** Decoded photos, one per person (null = none or failed: the card falls back to the
+ *  monogram). Same-origin files only, so the canvas never becomes tainted. */
+export function loadCardPhotos(people: CardPerson[]) {
+  return Promise.all(people.map((p) => {
+    if (!p.photo) return null;
+    const img = new Image();
+    img.decoding = 'async';
+    img.src = p.photo;
+    return img.decode().then(() => img, () => null);
+  }));
 }
 
 /* ------------------------------------------------------------------ helpers */
@@ -102,7 +116,7 @@ function mark(ctx: CanvasRenderingContext2D, x: number, y: number, size: number,
 }
 
 /* ------------------------------------------------------------------ faces */
-function drawFront(ctx: CanvasRenderingContext2D, r: typeof FRONT, p: CardPerson, t: Tokens, f: Fonts) {
+function drawFront(ctx: CanvasRenderingContext2D, r: typeof FRONT, p: CardPerson, t: Tokens, f: Fonts, photo: HTMLImageElement | null) {
   const pad = 80;
   const x0 = r.x + pad;
   const inner = r.w - pad * 2;
@@ -121,27 +135,40 @@ function drawFront(ctx: CanvasRenderingContext2D, r: typeof FRONT, p: CardPerson
   ctx.fillText(p.idCode, r.x + r.w - pad, 212);
   ctx.textAlign = 'left';
 
-  // photo frame (monogram until real photos exist)
+  // photo frame: the photo, cover-fit, or a monogram until one exists
   const py = 300, ph = 640;
   roundRect(ctx, x0, py, inner, ph, 40);
-  if (p.visitor) {
-    ctx.setLineDash([26, 18]);
-    ctx.lineWidth = 6;
-    ctx.strokeStyle = t.line;
-    ctx.stroke();
-    ctx.setLineDash([]);
-  } else {
-    ctx.fillStyle = t.surface2;
-    ctx.fill();
+  if (photo) {
+    const s = Math.max(inner / photo.naturalWidth, ph / photo.naturalHeight);
+    const w = photo.naturalWidth * s, h = photo.naturalHeight * s;
+    ctx.save();
+    ctx.clip();
+    ctx.drawImage(photo, x0 + (inner - w) / 2, py + (ph - h) / 2, w, h);
+    ctx.restore();
+    roundRect(ctx, x0, py, inner, ph, 40);
     ctx.lineWidth = 3;
     ctx.strokeStyle = t.line;
     ctx.stroke();
+  } else {
+    if (p.visitor) {
+      ctx.setLineDash([26, 18]);
+      ctx.lineWidth = 6;
+      ctx.strokeStyle = t.line;
+      ctx.stroke();
+      ctx.setLineDash([]);
+    } else {
+      ctx.fillStyle = t.surface2;
+      ctx.fill();
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = t.line;
+      ctx.stroke();
+    }
+    ctx.fillStyle = p.visitor ? t.muted : t.quench;
+    ctx.textAlign = 'center';
+    setFont(ctx, 800, 300, f.sans, 'semi-expanded');
+    ctx.fillText(p.initials, r.x + r.w / 2, py + ph / 2 + 8);
+    ctx.textAlign = 'left';
   }
-  ctx.fillStyle = p.visitor ? t.muted : t.quench;
-  ctx.textAlign = 'center';
-  setFont(ctx, 800, 300, f.sans, 'semi-expanded');
-  ctx.fillText(p.initials, r.x + r.w / 2, py + ph / 2 + 8);
-  ctx.textAlign = 'left';
 
   // name + role
   ctx.fillStyle = t.text;
@@ -235,7 +262,7 @@ function drawBack(ctx: CanvasRenderingContext2D, r: typeof BACK, p: CardPerson, 
 }
 
 /** One 2048² atlas per card: steel edges, our front on the left, our back on the right. */
-export function drawCardAtlas(p: CardPerson) {
+export function drawCardAtlas(p: CardPerson, photo: HTMLImageElement | null = null) {
   const canvas = document.createElement('canvas');
   canvas.width = canvas.height = ATLAS;
   const ctx = canvas.getContext('2d')!;
@@ -243,7 +270,7 @@ export function drawCardAtlas(p: CardPerson) {
   const f = fonts();
   ctx.fillStyle = t.surface2;                     // the card's thin edges map to the rest
   ctx.fillRect(0, 0, ATLAS, ATLAS);
-  drawFront(ctx, FRONT, p, t, f);
+  drawFront(ctx, FRONT, p, t, f, photo);
   drawBack(ctx, BACK, p, t, f);
 
   const tex = new CanvasTexture(canvas);

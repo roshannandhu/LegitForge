@@ -16,7 +16,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType } from 'react';
 import { useTheme } from 'next-themes';
 import { useMotionEnabled } from '@/components/motion/motion-provider';
-import { AnvilMark } from '@/components/ui/icons';
+import { CardBack, CardFront } from '@/components/team/card-faces';
 import type { CardPerson } from '@/lib/card-art';
 import type { TEAM } from '@/lib/content';
 import { SITE } from '@/lib/site';
@@ -71,12 +71,13 @@ interface SceneProps {
   onReady: () => void;
 }
 
-export function Team({ team }: { team: typeof TEAM }) {
+/** `head={false}` on /team, where the page header already carries this heading and lead. */
+export function Team({ team, head = true }: { team: typeof TEAM; head?: boolean }) {
   // stable identity: the 3D scene repaints its textures when this changes
   const people = useMemo<CardPerson[]>(() => [
     ...team.map((m) => ({
       id: m.slug, idCode: m.idCode, name: m.name, role: m.role, initials: m.initials,
-      skills: m.skills, shipped: m.shipped, favorite: m.favorite,
+      skills: m.skills, shipped: m.shipped, favorite: m.favorite, photo: m.photo,
     })),
     VISITOR,
   ], [team]);
@@ -141,14 +142,16 @@ export function Team({ team }: { team: typeof TEAM }) {
   return (
     <section id="team" data-heat="0.7" className="section" ref={sectionRef}>
       <div className="wrap">
-        <header className="section-head">
-          <h2 className="type-h2">Two people. Both of us build.</h2>
-          <p className="type-lead">
-            No account managers, no juniors, no handoffs. The person who answers your first WhatsApp
-            message is the person writing your code. We take {SITE.projectsAtATime} projects at a time,
-            which is why we can tell you exactly what you’ll get and when.
-          </p>
-        </header>
+        {head && (
+          <header className="section-head">
+            <h2 className="type-h2">Two people. Both of us build.</h2>
+            <p className="type-lead">
+              No account managers, no juniors, no handoffs. The person who answers your first WhatsApp
+              message is the person writing your code. We take {SITE.projectsAtATime} projects at a time,
+              which is why we can tell you exactly what you’ll get and when.
+            </p>
+          </header>
+        )}
 
         <div className="team-stage" data-mode={mode} data-3d-ready={mode === '3d' && sceneReady ? 'true' : undefined}>
           <ul className="lanyards">
@@ -207,9 +210,12 @@ export function Team({ team }: { team: typeof TEAM }) {
                     <>
                       <p className="name-tag-name">{p.name}</p>
                       <p className="name-tag-role">{p.role}</p>
-                      <button type="button" className="flip-btn" aria-pressed={!!flipped[p.id]} onClick={() => toggle(p.id)}>
-                        Flip {p.name}’s card
-                      </button>
+                      <div className="name-tag-actions">
+                        <button type="button" className="flip-btn" aria-pressed={!!flipped[p.id]} onClick={() => toggle(p.id)}>
+                          Flip {p.name}’s card
+                        </button>
+                        <a className="text-link" href={`/team/${p.id}`}>Open {p.name}’s portfolio</a>
+                      </div>
                     </>
                   )}
                 </div>
@@ -231,37 +237,5 @@ export function Team({ team }: { team: typeof TEAM }) {
         </div>
       </div>
     </section>
-  );
-}
-
-/* ------------------------------------------------ card faces (2D layers) */
-function CardFront({ p }: { p: CardPerson }) {
-  return (
-    <div className="id-face-inner">
-      <div className="id-top"><AnvilMark className="id-mark" /><span className="id-code num">{p.idCode}</span></div>
-      <div className={`id-photo${p.visitor ? ' id-photo-empty' : ''}`}><span>{p.initials}</span></div>
-      <p className="id-name">{p.name}</p>
-      <p className="id-role">{p.role}</p>
-      <span className="id-seal">Legit</span>
-    </div>
-  );
-}
-
-function CardBack({ p }: { p: CardPerson }) {
-  if (p.visitor) {
-    return (
-      <div className="id-face-inner id-back-inner id-back-you">
-        <p className="id-you-line">Every project starts as a blank card.</p>
-        <p className="id-you-sub">Tell us what you’re building.</p>
-      </div>
-    );
-  }
-  return (
-    <div className="id-face-inner id-back-inner">
-      <p className="id-back-h">Skills</p>
-      <ul className="id-skills">{p.skills.map((s) => <li key={s}>{s}</li>)}</ul>
-      <p className="id-stat"><span>Projects shipped</span><strong className="num">{p.shipped}</strong></p>
-      <p className="id-stat"><span>Favourite build</span><strong>{p.favorite}</strong></p>
-    </div>
   );
 }

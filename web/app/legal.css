@@ -13,7 +13,7 @@
 }
 .legal-table { width: 100%; border-collapse: collapse; font-size: 15px; }
 .legal-table th, .legal-table td { padding: 12px 0; text-align: left; vertical-align: top; border-bottom: 1px solid var(--line); }
-.legal-table thead th { font-size: 13px; color: var(--text-muted); font-weight: 600; }
+.legal-table thead th { font-size: 14px; color: var(--text-muted); font-weight: 600; }
 .legal-table tbody th { padding-right: 24px; font-weight: 600; }
 
 /* 404 (§7.7) */

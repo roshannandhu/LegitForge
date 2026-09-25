@@ -1233,6 +1233,72 @@ Preparation either way:
 
 **Done when:** 60 fps at 4× CPU throttle on a mid-range Android; CLS 0; LCP ≤ 2.0 s; all seven service names present in view-source; and with motion off you get one clear, readable, wired diagram.
 
+### 6.2b Hero upgrades: ten ideas for the exploded view
+
+*Added 26 September 2026, after the first build of §6.2a.* The built hero works: plates explode, wires draw, labels become services, everything collapses. What it does not yet do is make a visitor **lean in**. Right now it shows boxes with words on them. The ideas below turn it into a small story that a visitor watches to the end, understands without reading, and remembers.
+
+**What is missing today (the gap these ideas close):**
+
+- The plates are labels, not proof. Nothing on them *works*.
+- There is no story. The pulse is abstract, so there is nothing to follow and nothing to wait for.
+- The depth is flat. The stage never moves, so the CSS 3D reads as a 2D diagram.
+- The ending pays nothing off. The phone shows the same wireframe from start to finish, not a finished product (§6.2a promised a finished screen).
+- It is 2.6 screens of pinned scroll with no sign of progress, so people do not know there is more to see.
+
+**Rules every idea keeps:** no WebGL in the hero (§6.2a). Every plate stays real text for search and screen readers. With motion off, show a single meaningful still frame. On phones: 4 plates, no pin (§4.8). And each idea must say something about the business, not just decorate.
+
+| # | Idea | What the visitor sees | What it says about us | Effort |
+|---|---|---|---|---|
+| 1 | **Follow one message** | A single customer message ("Is my cake ready?") leaves the phone as a glowing chip and travels the wires. Its label changes at each plate: *form → request → row #214 → workflow → reply*. At the end a WhatsApp reply pops onto the phone screen. | We build the whole chain, and it really works end to end | M |
+| 2 | **Finished-product payoff** | In act 4 the phone lands showing a **real client project** with a *Live* hallmark stamp and "Built by Legit Forge — [client]". It rotates per visit and links to the case study. | This is not a mock-up; it ships | S |
+| 3 | **Camera move and depth of field** | The whole machine turns about 8° on Y as it explodes, the camera dollies in, and far plates blur. On desktop at rest, it follows the pointer by 2–3°. | Real 3D craft, the portfolio claim of §6.2a | S |
+| 4 | **Live plates** | Each plate is a working miniature, not a label: the site renders, JSON lines scroll on the API, rows tick in the database, n8n nodes light up, WhatsApp bubbles appear, the AI plate types. Tiny HTML/SVG, reused from the service demos. | Every part is something we can show working | M |
+| 5 | **Hallmark stamp** | In act 3 each service name is *struck* onto its plate: scale 1.12 → 1, six embers burst, the edge flashes hot and keeps a stamped border. | The forge brand, at the frame that sells | S |
+| 6 | **Screen X-ray** | Before the plates fly, the phone's screen peels into its own design layers in Z (background, cards, buttons, text), each with a hairline label. Those layers keep travelling back and *become* the system plates. | The link between what you see and what runs behind it | M |
+| 7 | **Build-log HUD and act rail** | A small monospace log synced to scroll: `› page rendered 0.9 s`, `› POST /api/orders 201`, `› n8n: new-order ran (4 steps)`, `› WhatsApp: delivered ✓✓`. Beside it, a thin rail with *Explode · Wire · Become · Ship*. | Real engineering, plus "there's more — keep scrolling" | S |
+| 8 | **The machine breathes** | Scroll fast and the wires glow hotter and the chip speeds up (§23.3 `--scroll-energy`). Stop and the plates idle-float ±2 px while a slow pulse keeps circulating. | Alive, not a scrubbed video | S |
+| 9 | **Open a plate** | At the act-3 hold, plates become real buttons. Hover or tap lifts one toward the camera (+80 Z) and shows one line — *"Answers customers at 2 a.m."* — with *See an example* linking to the right service page. | Watch becomes explore; the hero is also navigation | S–M |
+| 10 | **Pick your business** | Four chips under the hero: *Shop · Clinic · Restaurant · Dealer*. The choice re-labels the plates with that industry's outcomes, changes the travelling message ("Can I book for 5 p.m.?") and pre-fills the WhatsApp CTA. | We understand *your* business, not businesses in general | M |
+
+#### How they combine: the new four acts
+
+The upgrade keeps the §6.2a structure and gives each act a job the visitor can feel.
+
+| Act | Scroll | Now | With the upgrades |
+|---|---|---|---|
+| 0 — Arrive | load | Static phone | The HUD rail appears; the phone's screen shows the visitor's industry (#10, default *Shop*) |
+| 1 — Explode | 0 → 0.30 | Plates fly out | The screen peels into layers (#6); the camera turns and dollies in, with blur on far plates (#3); plates arrive as live miniatures (#4) |
+| 2 — Wire | 0.30 → 0.55 | Wires draw, abstract pulse | The **message chip** rides the wires, changing label per plate (#1); the HUD logs each step (#7); speed follows the scroll (#8) |
+| 3 — Become | 0.55 → 0.80 | Labels cross-fade | Service names are **stamped** (#5); plates become clickable (#9); the camera holds still — this is the frame that sells |
+| 4 — Ship | 0.80 → 1.0 | Collapse, same wireframe | Plates collapse; the WhatsApp reply lands on the screen (#1), then a real project with its *Live* stamp (#2); one heat flash |
+
+Shorten the desktop pin from 260 % to **about 180 %**. With a story to follow, a shorter scroll feels richer, and the §6.2a limit was one screen height.
+
+#### Build order (stop wherever time runs out; each step is shippable)
+
+1. **#2 Finished-product payoff, #3 Camera and depth of field, #5 Hallmark stamp.** Small changes with the largest change to what people remember. About 2 days.
+2. **#1 Follow one message, #7 Build-log HUD.** Together they turn the hero into a story with a payoff. This is the step that makes people scroll to the end. About 3 days.
+3. **#4 Live plates, #8 The machine breathes.** The richness layer. About 3 days.
+4. **#9 Open a plate, #10 Pick your business.** Interaction and relevance; measure these (below) before making them permanent. About 3 days.
+5. **#6 Screen X-ray.** The most cinematic idea and the most delicate to time. Prototype it last, and ship it only if it beats step 1 in review.
+
+#### Phones, motion-off and weight
+
+- **Phones (no pin):** #1 plays once when the machine enters view, on a four-plate route *Website → n8n → WhatsApp → AI* and back to the phone, with a Replay button. #2, #5 and #7 carry over. #3 becomes a small tilt from the device's scroll. #6 is skipped. #9 and #10 work by tap.
+- **Motion off:** the still act-3 frame gains the chip parked on the WhatsApp plate, a static route drawn with numbered steps, and the finished project on the screen. It tells the whole story in one image.
+- **Weight:** everything here is DOM, SVG and the GSAP already on the page, so no new library. Budget about 6 KB of JavaScript; the only new image is the project screenshot (≤ 30 KB AVIF, loaded after hydration).
+
+#### How we will know it works
+
+Track with first-party events (§14):
+
+- the share of visitors who reach act 4 (goal: over 60 % on desktop)
+- clicks on plates (#9)
+- industry chip use (#10)
+- WhatsApp clicks from the hero, before and after the upgrade
+
+Keep what moves those numbers, and cut what doesn't.
+
 ### 6.3 Services "Four fires"
 
 **Goal:** show, don't tell. Each service proves itself with a tiny demo.
@@ -4288,7 +4354,7 @@ So the plan is three releases, and **we launch at the first one**.
 
 **Ship the scripted demo first.** The live test must degrade to the scripted fake-chat demo if Meta verification is late — label it honestly as a demo — and swap in the real bot when the number is approved. Verification is the only item here with a queue we do not control, so **start it in week 0** (§9.1).
 
-### 22.3 Build status (26 September 2026)
+### 22.3 Build status (updated 26 September 2026)
 
 | Area | State |
 |---|---|
@@ -4299,7 +4365,10 @@ So the plan is three releases, and **we launch at the first one**.
 | D1 schema (§8.8) | Done: `web/migrations/0001_init.sql` |
 | Contact form → D1 → n8n alert, 5 per hour per hashed IP | Done. The alert runs only once `N8N_LEAD_WEBHOOK_URL` is set |
 | Security headers (CSP report-only), 404 page (§7.7) | Done |
-| **Left for R1** | Create the Cloudflare account resources and deploy (web/README.md) · real domain, WhatsApp number and business details (every `[bracket]`) · Turnstile on the form (§13.3) · inner pages (§7.1 to §7.5) |
+| Inner pages: services (3 + overview), work + case studies, team + portfolios, contact (§7.1–7.5) | Done. Checked at 375, 768 and 1440 by `npm run check` |
+| Trust strip under the hero (§18.6) | Done |
+| **Left for R1** | Create the Cloudflare account resources and deploy (web/README.md) · real domain, WhatsApp number, business details, photos, bios and projects (every `[bracket]`) · Turnstile on the form (§13.3) |
+| **Next (R2)** | Hero upgrades §6.2b, build order step 1 then 2 · the Cleave (§23.1) · admin and project uploads (§7.8) · blog (§7.4) |
 
 ---
 

@@ -1,6 +1,7 @@
 import Machine from '@/components/hero/machine';
 import { HeroStatus } from '@/components/hero/hero-status';
 import { HeatDirector } from '@/components/motion/heat-director';
+import { TrustStrip } from '@/components/sections/trust-strip';
 import { Services } from '@/components/sections/services';
 import { Quotation } from '@/components/sections/quotation';
 import { Compare } from '@/components/sections/compare';
@@ -69,6 +70,7 @@ export default function Home() {
         </p>
       </section>
 
+      <TrustStrip />
       <Services />
       <Quotation />
       <Compare />

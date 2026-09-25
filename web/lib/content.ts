@@ -11,30 +11,42 @@ export const SERVICES: {
     id: 'website', name: 'Static websites',
     line: 'A fast site that loads in about a second and is easy to update.',
     audience: 'Local businesses, portfolios, launches',
-    price: 'From [price]', link: 'See website packages', href: '#pricing',
+    price: 'From [price]', link: 'See website packages', href: '/services/website-development',
     demoLabel: 'Demo: a wireframe becomes a finished page, and its speed score reads 99.',
   },
   {
     id: 'app', name: 'Web apps',
     line: 'Bookings, dashboards, member areas and internal tools: software that works with your data.',
     audience: 'Growing businesses',
-    price: 'From [price]', link: 'See web app examples', href: '#work',
+    price: 'From [price]', link: 'See web app examples', href: '/work?service=dynamic',
     demoLabel: 'Demo: a dashboard with a sales chart, three totals and a new booking arriving.',
   },
   {
     id: 'whatsapp', name: 'WhatsApp automation',
     line: 'Answer customers instantly, send order updates and collect leads on WhatsApp.',
     audience: 'Shops, clinics, restaurants, service businesses',
-    price: 'From [price]', link: 'See WhatsApp automation', href: '#live-test',
+    price: 'From [price]', link: 'See WhatsApp automation', href: '/services/whatsapp-automation',
     demoLabel: 'Demo: a WhatsApp bot answers a delivery question and takes an order.',
   },
   {
     id: 'n8n', name: 'n8n workflows',
     line: 'Connect your apps so data moves by itself: forms, sheets, CRM, invoices.',
     audience: 'Teams stuck copying and pasting',
-    price: 'From [price]', link: 'See n8n workflows', href: '#process',
+    price: 'From [price]', link: 'See n8n workflows', href: '/services/n8n-automation',
     demoLabel: 'Demo: a form entry travels through a sheet, an AI step, WhatsApp and a team alert.',
   },
+];
+
+/* ------------------------------------------------------- trust strip §18.6
+   Directly under the hero. Same wording as the Maker's promise (§6.9): repeated
+   word for word, a promise reads as policy rather than a sales line. */
+export const TRUST_INTRO =
+  'Websites, apps, quotation and warranty systems, WhatsApp automation and n8n workflows — built by the two people you talk to.';
+export const TRUST_LINES = [
+  { k: 'Fixed price before we start', v: 'No surprise invoices.' },
+  { k: 'A preview link every week', v: 'You watch it being built.' },
+  { k: 'You own everything', v: 'Code, domain, WhatsApp number and workflows.' },
+  { k: '30 days of free fixes', v: 'After launch, in writing.' },
 ];
 
 /* ------------------------------------------------------------- process §6.6 */
@@ -59,10 +71,13 @@ export const PROJECTS: {
 ];
 
 /* ---------------------------------------------------------------- team §6.8 */
-export const TEAM = [
-  { slug: 'member-one', idCode: 'LF-001', name: '[Name]', role: '[Role]', initials: 'N1',
+/** photo: a square-ish portrait in public/team/, e.g. '/team/member-one.jpg' (about 800px,
+ *  same origin). Empty shows the monogram. It appears on every card layer (2D, flip, 3D). */
+export const TEAM: { slug: string; idCode: string; name: string; role: string; initials: string;
+  photo: string; skills: string[]; shipped: string; favorite: string }[] = [
+  { slug: 'member-one', idCode: 'LF-001', name: '[Name]', role: '[Role]', initials: 'N1', photo: '',
     skills: ['Next.js', 'Cloudflare', 'Design systems'], shipped: '[N]', favorite: '[Favourite build]' },
-  { slug: 'member-two', idCode: 'LF-002', name: '[Name]', role: '[Role]', initials: 'N2',
+  { slug: 'member-two', idCode: 'LF-002', name: '[Name]', role: '[Role]', initials: 'N2', photo: '',
     skills: ['n8n', 'WhatsApp Cloud API', 'Databases'], shipped: '[N]', favorite: '[Favourite build]' },
 ];
 

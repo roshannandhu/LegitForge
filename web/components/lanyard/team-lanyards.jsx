@@ -23,7 +23,7 @@ import { useGLTF, Environment, Lightformer } from '@react-three/drei';
 import { BallCollider, CuboidCollider, Physics, RigidBody, useRopeJoint, useSphericalJoint } from '@react-three/rapier';
 import { MeshLineGeometry, MeshLineMaterial } from 'meshline';
 import * as THREE from 'three';
-import { drawBand, drawCardAtlas, loadCardFonts } from '@/lib/card-art';
+import { drawBand, drawCardAtlas, loadCardFonts, loadCardPhotos } from '@/lib/card-art';
 
 extend({ MeshLineGeometry, MeshLineMaterial });
 
@@ -35,16 +35,16 @@ const TOP = 0.25;         // anchors sit this far below the canvas top (world un
 export default function TeamLanyards({ people, flipped, onToggleFlip, highlighted, theme, visible, onReady }) {
   const [art, setArt] = useState(null);
 
-  // Paint card atlases + band once fonts are ready, and again when the theme changes.
+  // Paint card atlases + band once fonts and photos are ready, and again when the theme changes.
   // Wait one frame first: next-themes swaps the html class in its own effect, which runs
   // AFTER this child effect, so reading tokens immediately would paint the old theme.
   useEffect(() => {
     let alive = true;
     let raf = 0;
-    loadCardFonts().then(() => {
+    Promise.all([loadCardPhotos(people), loadCardFonts()]).then(([photos]) => {
       raf = requestAnimationFrame(() => {
         if (!alive) return;
-        const next = { atlases: people.map(drawCardAtlas), band: drawBand() };
+        const next = { atlases: people.map((p, i) => drawCardAtlas(p, photos[i])), band: drawBand() };
         setArt((prev) => {
           prev?.atlases.forEach((t) => t.dispose());
           prev?.band.dispose();

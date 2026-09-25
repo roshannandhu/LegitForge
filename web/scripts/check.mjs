@@ -8,6 +8,7 @@
  *    CHROME="/path/to/chrome" npm run check         if Chrome lives elsewhere
  *    ONLY=laptop-dark npm run check                  one scenario (substring match)
  *    SETTLE=5000 npm run check                       longer wait after a 3D flip, in ms
+ *    SKIP_PAGES=1 npm run check                      home only, skip the inner-page audit
  *
  *  Screenshots go to .check/. Exits 1 on any failure. */
 
@@ -151,6 +152,38 @@ for (const run of RUNS.filter((r) => !only || r.name.includes(only))) {
   await stage.screenshot({ path: `${OUT}/${run.name}-team-flipped.png` });
 
   errors.length ? fail(run.name, `console errors:\n     ${errors.join('\n     ')}`) : pass('no console errors');
+  await ctx.close();
+}
+
+// Inner pages (PLAN §7): the same §4.8 audit at every viewport, both themes on phone
+const PAGES = ['/services', '/services/website-development', '/services/whatsapp-automation', '/services/n8n-automation',
+  '/work', '/work/project-one', '/team', '/team/member-one', '/contact', '/privacy', '/terms'];
+const PAGE_RUNS = RUNS.filter((r) => r.audit || r.name === 'phone-light');
+if (!process.env.SKIP_PAGES) for (const run of PAGE_RUNS.filter((r) => !only || r.name.includes(only))) {
+  console.log(`\npages · ${run.name}`);
+  const ctx = await browser.newContext({
+    viewport: { width: run.viewport[0], height: run.viewport[1] },
+    isMobile: run.touch, hasTouch: run.touch, colorScheme: run.scheme, reducedMotion: run.motion, deviceScaleFactor: 1,
+  });
+  const page = await ctx.newPage();
+  for (const path of PAGES) {
+    const errors = [];
+    const onErr = (m) => { if (m.type() === 'error') errors.push(m.text().slice(0, 160)); };
+    page.on('console', onErr);
+    const res = await page.goto(BASE + path, { waitUntil: 'networkidle' });
+    const a = await page.evaluate(audit);
+    const bad = [
+      res.status() !== 200 && `status ${res.status()}`,
+      a.overflow && `overflow ${a.overflow}px`,
+      a.escapees.length && `escapes: ${a.escapees.join(', ')}`,
+      a.small.length && `text under 14px: ${a.small.join(', ')}`,
+      a.tiny.length && `targets under 44px: ${a.tiny.join(', ')}`,
+      errors.length && `console: ${errors.join(' | ')}`,
+    ].filter(Boolean);
+    bad.length ? fail(`${run.name} ${path}`, `${path}: ${bad.join('; ')}`) : pass(path);
+    await page.screenshot({ path: `${OUT}/page-${run.name}${path.replaceAll('/', '_')}.png`, fullPage: true });
+    page.off('console', onErr);
+  }
   await ctx.close();
 }
 

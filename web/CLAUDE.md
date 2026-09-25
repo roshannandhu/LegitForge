@@ -43,8 +43,11 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
 - Never edit an applied migration; add migrations/000N_*.sql.
 - A lead is stored before anything else happens to it. Alerts (n8n) run in ctx.waitUntil
   after the response, so an outage there never loses a lead.
-- Copy lives in lib/content.ts; app/page.tsx passes it to client components as props.
+- Copy lives in lib/content.ts (home) and lib/pages.ts (inner pages: services, case studies,
+  member bios); pages pass it to client components as props.
   Importing content.ts into a 'use client' file ships all of it to the browser.
+- Inner pages: app/pages.css + components/pages (PageHead with breadcrumbs, CtaBand, JsonLd).
+  Blocks use .page-block on a .wrap: set padding-top only, or you erase .wrap's side padding.
 - Team cards: public/lanyard/card.glb is the React Bits card with its branded texture
   stripped; the art is drawn at runtime by lib/card-art.ts. Don't ship React Bits' lanyard.png.
 
