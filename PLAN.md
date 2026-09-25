@@ -1006,6 +1006,37 @@ export function IntroSpark({ titleRef, sparkRef }: Props) {
 
 **Done when:** LCP is unchanged with the intro on vs. off; CLS is 0; it never runs twice; it never runs with motion off.
 
+### 6.1b The Hallmark Strike: loading and landing moment (replaces 6.1)
+
+*Added 26 September 2026 at the founders' request, from their "hot-stamping tool" and "Titan coin" reference sheets.* A cinematic first-visit moment. A forging press strikes a blank coin, "LEGIT FORGE" is stamped into it, the coin is tossed, flips in 3D, and lands face-up as our hallmark. Then it flies into the header logo and the page is there.
+
+**Why a coin.** "Legit" is a promise. A hallmark stamped into metal is the oldest way of proving something is genuine. The coin carries our name the way the Maker's promise (§6.9) carries our commitments.
+
+**Sequence (1.8 s; phones 1.4 s):**
+
+| Time | What happens |
+|---|---|
+| 0.00 | The page is already painted underneath. A dark veil holds it, low smoke drifts across the floor, and embers rise |
+| 0.10 | The press drops from the top: a knurled knob, a spring, a steel ram and a brass "LEGIT FORGE" plate. It is layered SVG with metal gradients, not a photo |
+| 0.45 | **Strike.** A white flash, a shockwave ring, 16 sparks, a 3 px screen shake, and smoke puffing outward |
+| 0.60 | The ram lifts. The coin is revealed glowing orange-hot, with the embossed LEGIT FORGE ring text and a bold centre wordmark |
+| 0.75 | **The toss.** The coin rises, flips 3½ turns in real 3D (CSS 3D, with both faces and a stacked rim so the edge shows mid-flip), and motion blur stretches it at speed |
+| 1.35 | It lands face-up with two small wobbles, and cools from orange to gold and steel |
+| 1.55 | It shrinks and flies to the header logo (a FLIP transition to `.logo-mark`) while the veil lifts and the hero's phone brand screen continues |
+
+**Build:** real 3D without WebGL, because a loading screen cannot itself wait to load.
+- **Coin:** CSS 3D. Two faces, 12 rim layers (`translateZ` steps) for thickness, and radial and conic gradients for machined gold with a steel ring. Embossed text is SVG `textPath` with a highlight and shadow pair.
+- **Press:** layered SVG. **Smoke:** a 2D canvas of soft sprite puffs (about 40 particles), started after the first frame.
+- **Weight and runtime:** about 8 KB of inline CSS and SVG plus about 3 KB of JS. It runs on pure CSS keyframes, so if JavaScript fails the veil still lifts on its own at 1.8 s.
+- **Optional realism upgrade:** photoreal coin-face and press textures rendered once (≤ 40 KB AVIF each), used as the CSS face images.
+
+**Rules:**
+- First visit per browser only (`localStorage['lf-intro-seen']`, try/catch), only with motion on, only when the page loads at the top. Decided by the inline boot script before first paint, so returning visitors never see a flash of it.
+- Any key, click, touch or wheel skips straight to the end (the coin jumps to the logo).
+- The hero is painted underneath from the first frame, so LCP is unaffected: the veil sits over content, it never replaces it.
+- Motion off, no JS, or a repeat visit: no veil at all.
+- Reuse the coin as our hallmark elsewhere: the team card seal, the project "Live" stamps and the favicon.
+
 ### 6.2 Hero "Ignite"
 
 **Goal:** within 5 seconds, a visitor knows what we do, who it's for, and how to reach us.
@@ -1298,6 +1329,39 @@ Track with first-party events (§14):
 - WhatsApp clicks from the hero, before and after the upgrade
 
 Keep what moves those numbers, and cut what doesn't.
+
+### 6.2c The Teardown: the phone in the hand, exploded (replaces the ring of boxes)
+
+*Added 26 September 2026 at the founders' request.* The ring of labelled boxes around the phone read as a diagram. They asked instead for the **phone and hand themselves** to come apart, like a real exploded product drawing. The hand and phone stay photographic. What explodes out of the screen are **five glass layers, each a live, working screen**.
+
+| Layer | What it shows while it plays | Flow |
+|---|---|---|
+| 01 Static website | The page builds, a visitor taps "Book", the speed ring counts to 99 | A tap sends an enquiry down to layer 02 |
+| 02 WhatsApp | The enquiry arrives as a chat; the bot types and answers; ticks turn blue | The conversation hands off to 03 |
+| 03 n8n automation | The workflow runs node by node: sheet row, AI intent, alert | It creates the quote in 04 |
+| 04 Quotation | Line items add up, the total counts, and an ACCEPTED stamp strikes | Acceptance issues the warranty in 05 |
+| 05 Warranty | A QR scan sweeps, a VALID stamp lands, a reminder is scheduled | Done: back into the phone |
+
+**Look: a technical data sheet** (from the founders' reference sheets).
+- The layers stand in an isometric exploded stack (rotateX 55°, rotateZ −40°) above and behind the phone. Each is a real 3D slab: tinted glass with a thin lit edge (a stacked-rim technique, as for the coin), a specular sweep, and a soft contact shadow on the layer below.
+- Thin leader lines run from each layer to a callout in blueprint type: "01 — STATIC WEBSITE · 0.9 s load". There are dimension ticks, and a faint grid floor under the stack.
+- A small orange data pulse drops from layer to layer, down the stack, as each hand-off happens. It is the customer's journey, not a decoration.
+
+**Scroll story** (desktop pinned about 2 screens; phones not pinned, see below):
+1. **Teardown (0–0.25):** the screen glass lifts out of the phone, and the layers separate one by one up the diagonal, rising and rotating into the isometric stack. Parallax: nearer layers move faster.
+2. **Run (0.25–0.85):** each layer in turn swings forward (it flattens toward the camera and scales about 1.35×) and plays its flow. The others dim and blur slightly. The pulse carries the result down to the next layer.
+3. **Reassemble (0.85–1):** the layers fall back into the phone in order with a satisfying snap, and the phone screen shows the result of the current story.
+
+**Stories** (the chips stay and keep rotating per visit, as chosen): the chip picks **which layer leads**. The phone opens on it, it plays first, and the pulse starts there.
+- WhatsApp remains one of the four and is always visible as layer 02.
+
+**Phone screen before any scroll:** only the wordmark "Legit Forge", animated letter by letter (no logo mark), then the story's start screen.
+
+**Phones (< 768 px):** no pin. The phone sits at the top of the section, and the five layers follow as a vertical exploded column under it, each at a gentle isometric tilt. Each plays its flow when half on screen, and the pulse runs down the column between them.
+
+**Motion off / no JS:** the finished isometric stack, every layer in its final frame, the callouts, and the phone showing the WhatsApp reply. One image that explains everything.
+
+**Performance:** DOM, SVG and CSS 3D only, reusing the demo timelines (`components/sections/demos.ts`) at mini scale. There is no new library.
 
 ### 6.3 Services "Four fires"
 
