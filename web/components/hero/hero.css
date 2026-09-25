@@ -1,7 +1,6 @@
-/* The Phone Becomes the Machine — PLAN §6.2a
-   Only transform, opacity, filter and custom properties are animated (§5.1).
-   No backdrop-filter and no drop-shadow: both are expensive to composite and
-   contradict the machined-edge rule in §1.6. */
+/* Hero: the Teardown (PLAN §6.2c).
+   Only transform, opacity, filter and custom properties are animated (§5.1). No
+   backdrop-filter. Layer depth comes from CSS 3D and a stacked edge, not WebGL. */
 
 .hero {
   min-height: 100svh; display: grid; align-items: center; position: relative; overflow: hidden;
@@ -12,8 +11,9 @@
 @media (min-width: 1024px) {
   .hero-grid { grid-template-columns: minmax(0, 9fr) minmax(0, 11fr); column-gap: 40px; row-gap: 0; }
   .hero-grid > .copy { grid-column: 1; grid-row: 1; align-self: end; }
-  .hero-grid > .stage-fit { grid-column: 2; grid-row: 1 / span 2; }
-  .hero-grid > .hud { grid-row: 2; align-self: start; }
+  .hero-grid > .story-chips { grid-column: 1; grid-row: 2; margin-top: 20px; }
+  .hero-grid > .hud { grid-column: 1; grid-row: 3; align-self: start; }
+  .hero-grid > .stage-fit { grid-column: 2; grid-row: 1 / span 3; }
 }
 
 .hero h1 { margin: 0 0 20px; max-width: 16ch; }
@@ -23,183 +23,179 @@
 @media (max-width: 767px) { .note { min-height: 2lh; } }   /* it wraps to two lines there */
 .note b { color: var(--text); font-weight: 600; }
 
-/* stage: a fixed design space, scaled to fit, taken out of layout so it can
-   never widen the page (§4.8) */
+/* ------------------------------------------------------------------ stage
+   A fixed 780 × 760 design space, scaled to fit (--fit), taken out of layout so it can
+   never widen the page (§4.8). Phones do not use it: see the phone block at the end. */
 .stage-fit { position: relative; min-height: 70svh; overflow: hidden; }
 @media (min-width: 1024px) { .stage-fit { min-height: 78svh; overflow: visible; } }
+/* tablets: copy and chips sit above the stage in one column, and the hero pins; the stage
+   takes exactly the height left, so the whole teardown is on screen while pinned */
+@media (min-width: 768px) and (max-width: 1023px) { .stage-fit { min-height: max(420px, calc(100svh - 580px)); } }
 .stage {
-  position: absolute; left: 50%; top: 50%; width: var(--dw); height: var(--dh);   /* sizes: STAGE_VARS */
-  transform: translate(-50%, -50%) scale(var(--fit, 1)); transform-origin: center center;
-  perspective: 1500px;
-}
-.rig, .machine { position: absolute; inset: 0; transform-style: preserve-3d; }
-.machine { transform-origin: 50% 47%; }   /* the camera (§6.2b #3) turns around the phone */
-
-.wires { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
-.wires .wire { fill: none; stroke: var(--line); stroke-width: 1.5; opacity: 0; }
-.wires .wire-hot { fill: none; stroke: var(--heat-color); stroke-width: 2; }
-.wires .pulse { fill: none; stroke: var(--heat-hi); stroke-width: 3.5; stroke-linecap: round; opacity: 0; }
-.wires .leader { fill: none; stroke: var(--line); stroke-width: 1; opacity: .45; }   /* dash set by JS: drawn with its plate */
-
-.plates { list-style: none; margin: 0; padding: 0; }
-.plate {
-  --plate-heat: 0;
-  --stamp: 1;                                               /* hallmark border (§6.2b #5); act 3 = stamped */
-  position: absolute; left: 50%; top: 50%; width: 204px; margin: -44px 0 0 -102px;
-  padding: 12px 14px; border-radius: 12px; background: var(--surface);
-  border: 1px solid color-mix(in oklab, var(--heat-color) calc(var(--plate-heat) * 75%), var(--line));
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / .07);        /* machined edge, not a soft shadow */
-  transform-style: preserve-3d; will-change: transform, opacity, filter;
-  /* No-JS and motion-off default = act 3 (§6.2a). JS with motion on starts at act 0 (below). */
-  opacity: 1;
-  transform: translate3d(calc(var(--dx, 0) * 1px), calc(var(--dy, 0) * 1px), calc(var(--dz, 0) * 1px));
-  border-color: var(--heat-color);
-}
-.plate .num {
-  display: block; margin-bottom: 2px; font-size: 11px; font-weight: 600;
-  font-stretch: 88%; letter-spacing: .08em; color: var(--text-muted); font-variant-numeric: tabular-nums;
-}
-.plate .labels { display: grid; align-items: start; min-height: 39px; }  /* 2 lines: all plates identical (§1.6) */
-.plate .l { grid-area: 1/1; font-weight: 600; font-size: 15px; line-height: 1.3; text-wrap: balance; }
-.plate .l-tech { color: var(--text); opacity: 0; }
-.plate .l-service { color: var(--text); opacity: 1; }
-.plate .bar { display: block; height: 2px; margin-top: 10px; border-radius: 2px; background: var(--line); overflow: hidden; }
-.plate .bar i { display: block; height: 100%; width: 100%; background: var(--heat-color); transform: scaleX(var(--plate-heat)); transform-origin: left; }
-.plate .l-service { transform-origin: left center; }
-/* the stamped edge: an inner hairline, like the rim of a hallmark punch */
-.plate::after {
-  content: ""; position: absolute; inset: 4px; border-radius: 9px; pointer-events: none;
-  border: 1px dashed color-mix(in oklab, var(--heat-color) 70%, transparent); opacity: calc(var(--stamp) * .8);
-}
-.sparks { position: absolute; left: 22px; top: 36px; pointer-events: none; }
-.spark {
-  position: absolute; width: 4px; height: 4px; margin: -2px; border-radius: 50%;
-  background: var(--heat-hi); opacity: 0;
+  position: absolute; left: 50%; top: 50%; width: var(--dw); height: var(--dh);
+  transform: translate(-50%, -50%) scale(var(--fit, .8)); transform-origin: center center;   /* .8: the no-JS fallback for the fit script */
 }
 
-/* JS with motion on starts at act 0, the closed phone. GSAP loads after hydration
-   (lib/gsap.ts), so without this, act 3 would show and then collapse. Its inline styles win. */
-[data-motion="on"] .plate { opacity: 0; transform: scale(.55); --stamp: 0; }
-[data-motion="on"] .plate .l-tech { opacity: 1; }
-[data-motion="on"] .plate .l-service { opacity: 0; }
+/* technical drawing: leader lines and callouts */
+.td-leaders { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+.td-leaders path { fill: none; stroke: var(--line); stroke-width: 1; stroke-dasharray: 3 4; }
+.td-callouts { position: absolute; inset: 0; margin: 0; padding: 0; list-style: none; pointer-events: none; }
+.td-callouts li {
+  position: absolute; left: var(--cx); top: var(--cy); display: grid; grid-template-columns: auto 1fr; column-gap: 8px;
+  width: var(--cw); font-size: 15px; line-height: 1.3; color: var(--text-muted); text-align: right;
+  transition: color 200ms var(--ease-forge);
+}
+.td-callouts li { grid-template-columns: 1fr auto; }
+.td-callouts .num { grid-column: 2; grid-row: 1 / span 2; color: var(--heat-color); font-weight: 700; }
+.td-callouts strong, .td-callouts em { grid-column: 1; }
+.td-callouts strong { color: var(--text); font-weight: 600; }
+.td-callouts em { font-style: normal; }
+.td-callouts li[data-active] strong { color: var(--heat-color); }
 
-/* Phone: the 380-wide space only has room for 140px plates (centres at 78 / 302) */
-/* the travelling message (§6.2b #1). Parked above the last plate with no JS / motion off. */
-.packet {
-  position: absolute; left: 0; top: 0; z-index: 2; pointer-events: none;
-  transform: translate(calc(var(--cx) * 1px), calc(var(--cy) * 1px)) translate(-50%, -50%);
-  padding: 6px 12px; border-radius: 999px; white-space: nowrap;
-  background: var(--heat-color); color: #151A20; font-size: 14px; font-weight: 700; line-height: 1.2;
-  box-shadow: 0 0 0 4px color-mix(in oklab, var(--heat-color) 25%, transparent);
-}
-[data-motion="on"] .packet { opacity: 0; }
-@media (max-width: 767px) {
-  .packet { transform: translate(calc(var(--cmx) * 1px), calc(var(--cmy) * 1px)) translate(-50%, -50%); }
-}
-
-@media (max-width: 767px) {
-  .plate { width: 150px; margin-left: -75px; padding: 9px 10px; border-radius: 10px;
-           transform: translate3d(calc(var(--mx, 0) * 1px), calc(var(--my, 0) * 1px), calc(var(--mz, 0) * 1px)); }
-  .plate[data-on-phone="0"] { display: none; }
-  .plate .l { font-size: 14px; line-height: 1.25; }
-  .plate .labels { min-height: 35px; }
-  .plate .num { font-size: 10px; }
-}
-
-.phone { position: absolute; left: 50%; top: 50%; width: var(--dphone); translate: -50% -50%; transform-style: preserve-3d; }
-@media (max-width: 767px) {
-  .stage { width: var(--mw); height: var(--mh); }
-  .phone { width: var(--mphone); }
-}
-.phone img { display: block; width: 100%; height: auto; }
-.screen {
+/* the hand and phone: photographic anchor */
+.td-phone { position: absolute; left: var(--phone-x); top: var(--phone-y); width: var(--phone-w); translate: -50% -50%; }
+.td-phone img { display: block; width: 100%; height: auto; }
+.td-screen {
   position: absolute; left: 36.28%; top: 2.02%; width: 53.46%; height: 83.04%;
-  border-radius: 16px; overflow: hidden; background: #0E1319;
-  container-type: inline-size;   /* the chat below scales with the phone, at any layout size */
+  border-radius: 16px; overflow: hidden; background: #0B0F14; container-type: inline-size;
 }
-.scr { position: absolute; inset: 0; opacity: 0; transition: opacity 300ms var(--ease-forge); }
-/* brand first, then the active story's screen (data-for), then a real project */
-.screen[data-state="brand"] .scr-brand, .screen[data-state="show"] .scr-show { opacity: 1; }
-.screen:is([data-state="start"], [data-state="ask"], [data-state="reply"])[data-story="web"] .scr[data-for="web"],
-.screen:is([data-state="start"], [data-state="ask"], [data-state="reply"])[data-story="app"] .scr[data-for="app"],
-.screen:is([data-state="start"], [data-state="ask"], [data-state="reply"])[data-story="quote"] .scr[data-for="quote"],
-.screen:is([data-state="start"], [data-state="ask"], [data-state="reply"])[data-story="wa"] .scr[data-for="wa"] { opacity: 1; }
-/* beats inside a story screen: the request (ask), then the result (reply) */
-.on-ask, .on-reply { opacity: 0; transform: translateY(.5em); transition: opacity 300ms var(--ease-forge), transform 300ms var(--ease-forge); }
-.screen:is([data-state="ask"], [data-state="reply"]) .on-ask, .screen[data-state="reply"] .on-reply { opacity: 1; transform: none; }
-[data-motion="off"] :is(.on-ask, .on-reply) { transition: none; }
-[data-motion="off"] .scr { transition: none; }
-
-.scr-site { display: flex; flex-direction: column; gap: 7px; padding: 12px 10px; }
-.s-speed {
-  position: absolute; right: 7cqw; top: 26cqw; display: grid; place-items: center; width: 22cqw; height: 22cqw;
-  border-radius: 50%; border: 1.6cqw solid #3FBF7F; background: #0E1319; color: #E9EDF1; font-size: 4.5cqw; line-height: 1;
+.td-word {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; margin: 0;
+  color: #F3EDE2; font-size: 13cqw; font-weight: 800; font-stretch: 112%; letter-spacing: -.01em; white-space: pre;
+  opacity: 0; transition: opacity 300ms var(--ease-forge);
 }
-.s-speed b { font-size: 8cqw; }
-.s-toast, .scr-stamp { position: absolute; left: 50%; translate: -50% 0; white-space: nowrap; font-size: 7cqw; font-weight: 700; }
-.s-toast { bottom: 22cqw; padding: 2.5cqw 5cqw; border-radius: 99px; background: #1F4D3A; color: #E9EDF1; }
-.scr-stamp {
-  bottom: 9cqw; padding: 2cqw 5cqw; border: .8cqw solid var(--heat-color); border-radius: 2cqw; color: var(--heat-color);
-  font-family: var(--font-stencil), var(--font-sans); letter-spacing: .08em; text-transform: uppercase; rotate: -6deg;
+.td-word span { display: inline-block; }
+.td-final { position: absolute; inset: 0; opacity: 0; transition: opacity 300ms var(--ease-forge); container-type: inline-size; }
+.td-screen[data-state="brand"] .td-word { opacity: 1; }
+.td-screen[data-state="final"][data-lead="web"] .td-final[data-for="web"],
+.td-screen[data-state="final"][data-lead="wa"] .td-final[data-for="wa"],
+.td-screen[data-state="final"][data-lead="n8n"] .td-final[data-for="n8n"],
+.td-screen[data-state="final"][data-lead="quote"] .td-final[data-for="quote"],
+.td-screen[data-state="final"][data-lead="warranty"] .td-final[data-for="warranty"] { opacity: 1; }
+[data-motion="off"] :is(.td-word, .td-final) { transition: none; }
+/* the glass has lifted out: a dark screen with a faint circuit grid */
+.td-screen[data-state="dark"] {
+  background:
+    linear-gradient(rgb(255 255 255 / .04) 1px, transparent 1px) 0 0 / 10cqw 10cqw,
+    linear-gradient(90deg, rgb(255 255 255 / .04) 1px, transparent 1px) 0 0 / 10cqw 10cqw, #0B0F14;
 }
-.screen[data-state="reply"] .scr-stamp { transform: none; }
 
-/* the booking app */
-.scr-app { display: flex; flex-direction: column; gap: 3cqw; padding: 7.5cqw 6cqw; background: #0E1319; color: #E9EDF1; font-size: 7cqw; }
-.app-head { display: flex; margin: 0; font-weight: 700; } .app-head span { margin-left: auto; color: #8B98A5; font-weight: 500; }
-.app-sub { margin: 0 0 2cqw; color: #8B98A5; font-size: 6cqw; }
-.app-slots { display: grid; grid-template-columns: 1fr 1fr; gap: 3cqw; }
-.app-slots span { padding: 3cqw 0; border: 1px solid #22303B; border-radius: 2.5cqw; text-align: center; font-size: 6.5cqw; }
-.app-slots .slot-pick { border-color: var(--heat-color); background: color-mix(in oklab, var(--heat-color) 30%, #0E1319); }
-.app-cta { margin-top: 3cqw; padding: 3.5cqw 0; border-radius: 2.5cqw; background: var(--accent); color: var(--accent-ink); text-align: center; font-weight: 700; font-size: 6.5cqw; }
-
-/* the quote */
-.scr-quote { display: flex; flex-direction: column; gap: 2.5cqw; padding: 7.5cqw 6cqw; background: #0E1319; color: #E9EDF1; font-size: 6.5cqw; }
-.q-head { margin: 0 0 2cqw; font-weight: 700; font-size: 7.5cqw; }
-.q-row, .q-total { display: flex; justify-content: space-between; margin: 0; }
-.q-row span { color: #8B98A5; }
-.q-total { margin-top: 2cqw; padding-top: 3cqw; border-top: 1px solid #22303B; font-weight: 700; font-size: 7.5cqw; }
-.q-status { margin: 1cqw 0 0; color: #53B7F0; font-size: 6cqw; }
-
-/* our brand: the phone's first screen (Part A0) */
-.scr-brand {
-  display: grid; place-content: center; justify-items: center; gap: 3cqw; text-align: center;
-  background: radial-gradient(circle at 50% 42%, #1B2530, #0B0F14 70%); color: #F3EDE2;
+/* the five layers: position, tilt and scale are custom properties GSAP animates.
+   Default (no JS, motion off) = the finished isometric stack. */
+.td-layers { position: absolute; inset: 0; margin: 0; padding: 0; list-style: none; perspective: 1400px; perspective-origin: 30% 40%; }
+.td-layer {
+  --x: var(--sx); --y: var(--sy); --tilt: 1; --s: var(--iso-s); --dim: 1;
+  position: absolute; left: 0; top: 0; width: var(--scr-w); height: var(--scr-h);
+  transform:
+    translate(calc(var(--x) * 1px), calc(var(--y) * 1px)) translate(-50%, -50%)
+    rotateX(calc(var(--tilt) * 58deg)) rotateZ(calc(var(--tilt) * -38deg)) scale(var(--s));
+  filter: brightness(var(--dim)) saturate(var(--dim));
+  will-change: transform, opacity;
 }
-.brand-glow {
-  position: absolute; left: 15cqw; top: calc(40% - 35cqw); width: 70cqw; height: 70cqw; border-radius: 50%;   /* no translate: GSAP scales it */
-  background: radial-gradient(circle, color-mix(in oklab, var(--heat-color) 45%, transparent), transparent 65%);
+.td-glass {
+  position: absolute; inset: 0; overflow: hidden; border-radius: 14px; background: #0E1319;
+  container-type: inline-size;   /* the screen inside is sized in cqw of the glass */
+  border: 1px solid rgb(255 255 255 / .16);
+  /* a real slab: a stacked edge gives thickness once tilted, then a soft contact shadow */
+  box-shadow:
+    0 1px 0 #2B3642, 0 2px 0 #27313C, 0 3px 0 #232C36, 0 4px 0 #1F2730, 0 5px 0 #1B222A,
+    0 22px 30px -10px rgb(0 0 0 / .55);
 }
-[data-motion="on"] .brand-glow { animation: brand-breathe 3.2s ease-in-out infinite; }
-@keyframes brand-breathe { 50% { opacity: .55; transform: scale(.92); } }
-.brand-mark { position: relative; width: 30cqw; height: 30cqw; color: var(--heat-color); }
-.brand-mark svg { width: 100%; height: 100%; }
-.brand-sparks { position: absolute; left: 62%; top: 12%; }
-.brand-word { position: relative; font-size: 11cqw; font-weight: 800; font-stretch: 112%; letter-spacing: -.01em; }
-.brand-line { position: relative; color: #9AA6B2; font-size: 6cqw; }
-.screen .s-row { background: var(--surface-2); border-radius: 5px; height: 11px; opacity: .8; }
-.screen .w60 { width: 60%; } .screen .w80 { width: 80%; } .screen .w40 { width: 40%; }
-.screen .s-hero { background: linear-gradient(135deg, var(--heat-mid), var(--heat-lo)); border-radius: 7px; height: 74px; margin-bottom: 3px; opacity: .9; }
-.screen .s-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-top: 3px; }
-.screen .s-card { background: var(--surface-2); border-radius: 6px; height: 46px; opacity: .7; }
-.screen .s-bar { margin-top: auto; height: 26px; border-radius: 6px; background: var(--accent); opacity: .9; }
+.td-glass::after {   /* specular sheen across the glass */
+  content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
+  background: linear-gradient(115deg, rgb(255 255 255 / .12), transparent 38%, transparent 70%, rgb(255 255 255 / .05));
+}
+.td-cap { display: none; }
+.td-pulse {
+  --px: 0; --py: 0;
+  position: absolute; left: 0; top: 0; z-index: 20; width: 14px; height: 14px; margin: -7px; border-radius: 50%;
+  transform: translate(calc(var(--px) * 1px), calc(var(--py) * 1px));
+  background: var(--heat-hi); box-shadow: 0 0 16px 4px var(--heat-hi); opacity: 0; pointer-events: none;
+}
 
-/* the conversation: the question, then the answer the machine produced (§6.2b #1, #2) */
-.scr-chat { display: flex; flex-direction: column; gap: 5cqw; padding: 7.5cqw 6cqw; background: #0E1319; color: #E9EDF1; font-size: 7.5cqw; }
-.chat-head { display: flex; align-items: center; gap: .5em; margin: 0 0 .5em; padding-bottom: .67em; border-bottom: 1px solid #22303B; font-size: 1em; font-weight: 700; white-space: nowrap; }
-.chat-head i { flex: none; width: 1.5em; height: 1.5em; border-radius: 50%; background: var(--heat-color); }
-.chat-head span { margin-left: auto; font-weight: 500; color: #3FBF7F; }
-.bub { max-width: 86%; margin: 0; padding: .58em .75em; border-radius: .83em; font-size: 1em; line-height: 1.35; }
-.bub-out { align-self: flex-end; background: #1F4D3A; border-bottom-right-radius: .25em; }
-.bub-in { align-self: flex-start; background: #1C2731; border-bottom-left-radius: .25em; }
-.bub-in b { color: #53B7F0; font-weight: 700; }
+/* motion on, before GSAP has loaded (lib/gsap.ts): the phone is whole and shows the
+   wordmark; nothing flashes. The Teardown marks [data-live] once it drives the screen. */
+@media (min-width: 768px) { [data-motion="on"] .td-layer { opacity: 0; } }
+[data-motion="on"] .td-screen:not([data-live]) .td-final { opacity: 0; }
+[data-motion="on"] .td-screen:not([data-live]) .td-word { opacity: 1; }
 
+/* ------------------------------------------------------------------ phones
+   No pin and no scaled stage: the phone, then the layers as a swipe row, each at a slight
+   3D angle, each playing its flow when it is in view. */
+@media (max-width: 767px) {
+  .stage-fit.td { min-height: 0; overflow: visible; }
+  .td-stage { position: relative; left: auto; top: auto; width: auto; height: auto; transform: none; }
+  .td-leaders, .td-callouts, .td-pulse { display: none; }
+  .td-phone { position: relative; left: auto; top: auto; width: 62%; margin: 0 auto; translate: none; }
+  .td-layers {
+    position: static; display: grid; grid-auto-flow: column; grid-auto-columns: 56%; gap: 16px;
+    margin: 24px -16px 0; padding: 12px 16px 16px; overflow-x: auto; scroll-snap-type: x mandatory;
+    scrollbar-width: none; perspective: 900px;
+  }
+  .td-layers::-webkit-scrollbar { display: none; }
+  .td-layer {
+    position: relative; left: auto; top: auto; width: auto; height: auto; display: grid; gap: 10px;
+    transform: none; filter: none; scroll-snap-align: center;
+  }
+  .td-glass { position: relative; inset: auto; aspect-ratio: 15 / 32; transform: rotateY(-10deg); }
+  .td-cap { display: block; margin: 0; font-size: 14px; font-weight: 600; }
+  .td-cap .num { color: var(--heat-color); margin-right: 4px; }
+}
 
-/* a real project, when lib/content.ts sets HERO_SHOWCASE (§6.2b #2) */
-.scr-show img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; }
-.scr-show .stamp { position: absolute; top: 10px; right: 10px; }
+/* ------------------------------------------------------------------ the live screens
+   Sized in container units: the same markup fits a glass layer, a phone card or the phone. */
+.ls {
+  position: absolute; inset: 0; display: flex; flex-direction: column; gap: 5.5cqw; padding: 9cqw 7.5cqw;
+  color: #E9EDF1; font-size: 8.4cqw; line-height: 1.3;   /* cqw of the glass or the phone screen */
+}
+.ls p { margin: 0; }
+.ls-title { font-weight: 700; font-size: 9.4cqw; margin-bottom: 2cqw !important; }
+.ls-bar { display: flex; align-items: baseline; gap: 2cqw; font-size: 8cqw; } .ls-bar span { color: #8B98A5; font-size: 6cqw; }
+.ls-hero { position: relative; display: flex; align-items: flex-end; min-height: 60cqw; padding: 4cqw; border-radius: 3cqw; background: linear-gradient(140deg, #3FA7D6, #1D4E89); }
+.ls-hero-h { font-weight: 800; font-size: 10cqw; line-height: 1.1; }
+.ls-line { height: 3cqw; border-radius: 2cqw; background: #2A3440; } .ls-line.short { width: 60%; }
+.ls-btn { position: relative; align-self: flex-start; margin-top: 2cqw; padding: 3cqw 5cqw; border-radius: 2.5cqw; background: var(--accent); color: var(--accent-ink); font-weight: 700; overflow: visible; }
+.ls-ripple { position: absolute; left: 50%; top: 50%; width: 10cqw; height: 10cqw; margin: -5cqw; border-radius: 50%; background: #fff; opacity: 0; pointer-events: none; }
+.ls-speed { position: absolute; right: 7cqw; top: 50%; display: grid; place-items: center; width: 24cqw; height: 24cqw; border-radius: 50%; border: 1.6cqw solid #3FBF7F; background: #0E1319; font-size: 5cqw; line-height: 1; }
+.ls-speed b { font-size: 9cqw; }
+.ls-toast, .ls-remind { align-self: center; margin-top: auto; padding: 2.5cqw 5cqw; border-radius: 99px; background: #1F4D3A; font-weight: 700; white-space: nowrap; }
 
-/* ------------------------------------------------------ build log (§6.2b #7) */
+.ls-chat-head { display: flex; align-items: center; gap: 2.5cqw; padding-bottom: 3cqw; border-bottom: 1px solid #22303B; font-weight: 700; }
+.ls-chat-head i { width: 8cqw; height: 8cqw; border-radius: 50%; background: #3FA7D6; }
+.ls-chat-head span { margin-left: auto; color: #3FBF7F; font-weight: 500; font-size: 6cqw; }
+.ls-bub { max-width: 86%; padding: 2.5cqw 3.5cqw; border-radius: 3.5cqw; }
+.ls-bub.out { align-self: flex-start; background: #1C2731; border-bottom-left-radius: 1cqw; }
+.ls-bub.in { align-self: flex-end; background: #1F4D3A; border-bottom-right-radius: 1cqw; }
+.ls-typing { display: none; align-self: flex-start; gap: 1.5cqw; padding: 3cqw 4cqw; border-radius: 3.5cqw; background: #1C2731; }
+.ls-typing i { width: 2.2cqw; height: 2.2cqw; border-radius: 50%; background: #8B98A5; }
+.ls-ticks { color: #8B98A5; } .ls-ticks.read { color: #53B7F0; }
+
+.ls-flow { position: relative; display: grid; gap: 9cqw; margin: 0; padding: 0; list-style: none; }
+.ls-flow::before { content: ""; position: absolute; left: 3cqw; top: 3cqw; bottom: 3cqw; width: 1px; background: var(--heat-color); }
+.ls-flow li { position: relative; display: grid; grid-template-columns: 6cqw 1fr; column-gap: 3cqw; }
+.ls-node-dot { grid-row: span 2; width: 6cqw; height: 6cqw; border-radius: 50%; border: .8cqw solid var(--heat-color); background: #0E1319; }
+.ls-node-name { font-weight: 700; }
+.ls-node-out { color: var(--heat-color); font-size: 6.2cqw; }
+.ls-packet { position: absolute; left: calc(7cqw + 3cqw - 3cqw); top: calc(8cqw + 12cqw); width: 6cqw; height: 6cqw; border-radius: 50%; background: var(--heat-hi); box-shadow: 0 0 3cqw 1cqw var(--heat-hi); opacity: 0; }
+
+.ls-row, .ls-total { display: flex; justify-content: space-between; gap: 3cqw; }
+.ls-row span { color: #8B98A5; }
+.ls-total { margin-top: 2cqw; padding-top: 3cqw; border-top: 1px solid #22303B; font-weight: 700; font-size: 8cqw; }
+.ls-status { color: #53B7F0; font-size: 6.2cqw; }
+.ls-stamp {
+  align-self: center; margin-top: auto; padding: 2cqw 5cqw; border: .8cqw solid #3FBF7F; border-radius: 2cqw; color: #3FBF7F; rotate: -6deg;
+  font-family: var(--font-stencil), var(--font-sans); font-size: 8cqw; letter-spacing: .08em; text-transform: uppercase;
+}
+.ls-qr {
+  position: relative; align-self: center; width: 56cqw; aspect-ratio: 1; overflow: hidden; border-radius: 2cqw; background:
+    conic-gradient(#E9EDF1 25%, #0E1319 0 50%, #E9EDF1 0 75%, #0E1319 0) 0 0 / 11cqw 11cqw;
+  outline: 2cqw solid #E9EDF1;
+}
+.ls-scan { position: absolute; left: 0; right: 0; top: 0; height: 2px; background: #3FBF7F; box-shadow: 0 0 3cqw 1cqw #3FBF7F; opacity: 0; }
+.ls-warranty .ls-stamp { margin-top: 2cqw; }
+.ls-remind { margin-top: 2cqw; }
+
+/* ------------------------------------------------------------------ build log (§6.2b #7) */
 .hud { display: none; }
 @media (min-width: 1024px), (max-width: 767px) {
   .hud {
@@ -208,7 +204,7 @@
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 14px;
   }
 }
-@media (min-width: 1024px) { .hud { grid-column: 1; margin-top: 16px; } }
+@media (min-width: 1024px) { .hud { margin-top: 16px; } }
 /* shorter laptops: the pinned hero must fit one screen, so the log gives way before the chips */
 @media (min-width: 1024px) and (max-height: 899px) { .hud-rail { display: none; } }
 @media (min-width: 1024px) and (max-height: 859px) { .hero-grid > .hud { display: none; } }
@@ -218,10 +214,8 @@
   font-family: var(--font-sans); font-size: 14px; font-weight: 600;
   transition: border-color 200ms var(--ease-forge), color 200ms var(--ease-forge);
 }
-.hud[data-act="1"] li[data-a="1"], .hud[data-act="2"] li:is([data-a="1"], [data-a="2"]),
-.hud[data-act="3"] li:is([data-a="1"], [data-a="2"], [data-a="3"]), .hud[data-act="4"] li { border-color: var(--heat-color); }
-.hud[data-act="1"] li[data-a="1"], .hud[data-act="2"] li[data-a="2"],
-.hud[data-act="3"] li[data-a="3"], .hud[data-act="4"] li[data-a="4"] { color: var(--text); }
+.hud[data-act="1"] li[data-a="1"], .hud[data-act="2"] li:is([data-a="1"], [data-a="2"]), .hud[data-act="3"] li { border-color: var(--heat-color); }
+.hud[data-act="1"] li[data-a="1"], .hud[data-act="2"] li[data-a="2"], .hud[data-act="3"] li[data-a="3"] { color: var(--text); }
 .hud-log {
   display: flex; flex-direction: column; justify-content: flex-end; gap: 4px;
   height: calc(3 * 1.5em + 2 * 4px); overflow: hidden; margin: 0; padding: 0; list-style: none; line-height: 1.5;
@@ -230,33 +224,20 @@
 .hud-log li::before { content: "› "; color: var(--heat-color); }
 .hud-log li:last-child { color: var(--text); }
 .hud-log li[hidden] { display: none; }
-.hud[data-story="web"] li[data-story]:not([data-story="web"]), .hud[data-story="app"] li[data-story]:not([data-story="app"]),
-.hud[data-story="quote"] li[data-story]:not([data-story="quote"]), .hud[data-story="wa"] li[data-story]:not([data-story="wa"]) { display: none; }
-@media (max-width: 767px) { .hud-log li[data-on-phone="0"] { display: none; } }
 @keyframes log-in { from { opacity: 0; transform: translateY(4px); } }
 [data-motion="off"] .hud-log li, [data-motion="off"] .hud-rail li { animation: none; transition: none; }
-
-/* Motion on, before GSAP has loaded (lib/gsap.ts): start from the closed story, not the
-   finished one, so nothing flashes. Machine marks both [data-live] once it drives them. */
-[data-motion="on"] .screen:not([data-live]) .scr { opacity: 0; }
-[data-motion="on"] .screen:not([data-live]) .scr-brand { opacity: 1; }
 [data-motion="on"] .hud:not([data-live]) .hud-log li { display: none; }
-[data-motion="on"] .hud:not([data-live]) .hud-rail li { border-color: var(--line); color: var(--text-muted); }
 [data-motion="on"] .hud:not([data-live]) .hud-log li[data-step="wait"] { display: block; }
+[data-motion="on"] .hud:not([data-live]) .hud-rail li { border-color: var(--line); color: var(--text-muted); }
 
-/* story chips: "Watch it handle:" (§6.2b #10, by story) */
+/* ------------------------------------------------------------------ story chips */
 .story-chips { display: grid; gap: 8px; }
 .story-label { margin: 0; font-size: 14px; font-weight: 600; color: var(--text-muted); }
 .story-chips ul { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
 .story-chip {
-  min-height: 44px; padding: 0 16px; border: 1px solid var(--line); border-radius: 999px;
+  min-height: 44px; padding: 0 14px; border: 1px solid var(--line); border-radius: 999px;
   background: transparent; color: var(--text); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
   transition: border-color 200ms var(--ease-forge), background-color 200ms var(--ease-forge);
 }
 .story-chip:hover { border-color: var(--text-muted); }
 .story-chip[aria-pressed="true"] { border-color: var(--heat-color); background: color-mix(in oklab, var(--heat-color) 16%, transparent); }
-@media (min-width: 1024px) {
-  .hero-grid > .story-chips { grid-column: 1; grid-row: 2; margin-top: 20px; }
-  .hero-grid > .hud { grid-row: 3; }
-  .hero-grid > .stage-fit { grid-row: 1 / span 3; }
-}
