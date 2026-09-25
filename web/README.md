@@ -33,6 +33,7 @@ npm run db:migrate:remote
 npx wrangler secret put HASH_SALT                  # any long random string
 npx wrangler secret put N8N_LEAD_WEBHOOK_URL       # optional until n8n WF-2 exists
 npx wrangler secret put N8N_SHARED_KEY             # optional until n8n WF-2 exists
+npx wrangler secret put TURNSTILE_SECRET_KEY       # from the Turnstile widget (dashboard → Turnstile)
 
 npm run deploy
 ```
@@ -42,6 +43,8 @@ Then, in the Cloudflare dashboard:
 1. Add your domain to the Worker.
 2. Set the same domain in `lib/site.ts` (`SITE.url`) and in `wrangler.jsonc` (`vars.SITE_URL`).
 3. Connect the GitHub repo with **Workers Builds**, with the deploy command `npm run deploy`, so every push to `main` deploys.
+   Add the build variable `NEXT_PUBLIC_TURNSTILE_SITE_KEY` (the widget's site key). Set it together with the
+   `TURNSTILE_SECRET_KEY` secret, never one without the other: with only the secret, every form submission fails.
 
 ## Database changes
 

@@ -3,10 +3,11 @@
  *  Never silently drop a lead: with no database binding this returns 503 in production,
  *  so the visitor sees the error and the WhatsApp fallback instead of a false "Sent".
  *  The lead is stored first; the n8n alert (WF-2) runs after the response and can fail
- *  without losing it. Turnstile verification (§13.3) plugs in where marked once the widget exists. */
+ *  without losing it. Turnstile (§13.3) is enforced whenever TURNSTILE_SECRET_KEY is set. */
 
 import { getCloudflareContext, type CloudflareContext } from '@opennextjs/cloudflare';
 import { HONEYPOT, validateLead } from '@/lib/lead';
+import { TURNSTILE_FIELD, verifyTurnstile } from '@/lib/turnstile';
 
 async function getContext(): Promise<CloudflareContext | null> {
   try {
@@ -38,11 +39,17 @@ export async function POST(req: Request) {
   const { errors, lead } = validateLead(form);
   if (Object.keys(errors).length) return json({ errors }, 422);
 
-  // TODO(§13.3): verify the Turnstile token here before touching the database.
-
   const cf = await getContext();
   // secrets are typed as strings by cf-typegen, but may be unset: every use has a fallback
   const env = cf?.env;
+  const ip = req.headers.get('cf-connecting-ip') ?? 'unknown';
+
+  // Turnstile (§13.3): enforced as soon as the secret exists, before anything is stored
+  if (env?.TURNSTILE_SECRET_KEY) {
+    const ok = await verifyTurnstile(env.TURNSTILE_SECRET_KEY, String(form.get(TURNSTILE_FIELD) ?? ''), ip);
+    if (!ok) return json({ error: 'verification_failed' }, 400);
+  }
+
   const db = env?.DB;
   if (!db) {
     if (process.env.NODE_ENV === 'production') return json({ error: 'not-configured' }, 503);
@@ -51,7 +58,6 @@ export async function POST(req: Request) {
   }
 
   // rate limit: 5 submissions per IP per hour (rate_events, §8.8). The IP is hashed, never stored.
-  const ip = req.headers.get('cf-connecting-ip') ?? 'unknown';
   const key = `lead:${await sha256Hex(ip + (env.HASH_SALT ?? ''))}`;
   const now = Date.now();
   const recent = await db.prepare('SELECT COUNT(*) AS n FROM rate_events WHERE key = ? AND at > ?')
