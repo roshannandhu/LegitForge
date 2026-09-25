@@ -340,7 +340,19 @@
     linear-gradient(90deg, color-mix(in oklab, var(--quench) 40%, transparent) 1px, transparent 1px) 0 0 / 24px 24px;
 }
 .cover-initials { position: relative; font-size: 56px; font-weight: 800; font-stretch: 112%; color: color-mix(in oklab, var(--quench) 70%, var(--text)); }
-.project-cover .stamp { position: absolute; top: 16px; right: 16px; }
+.project-cover .stamp { position: absolute; top: 16px; right: 16px; z-index: 1; }
+/* cooling (§6.7 #17): the cover enters heat-tinted and cools to full colour */
+.project { --card-heat: 0; }
+.project-cover::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: var(--heat-color); mix-blend-mode: color; opacity: calc(var(--card-heat) * .6);
+}
+:root:not(.dark) .project-cover::after { background: var(--quench); mix-blend-mode: multiply; opacity: calc(var(--card-heat) * .35); }
+/* four or more projects on desktop: one sideways row the section pins and scrolls */
+@media (min-width: 1024px) {
+  .projects[data-track] { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 400px; position: relative; }
+  #work:has(.projects[data-track]) { overflow-x: clip; }   /* the row runs past the wrap, never the page */
+}
 .project-body { display: flex; flex: 1; flex-direction: column; gap: 6px; padding: 20px; }
 .project-title { margin: 0; font-size: var(--step-h3); font-weight: 600; line-height: 1.2; }
 .project-client { margin: 0; font-size: 14px; color: var(--text-muted); }

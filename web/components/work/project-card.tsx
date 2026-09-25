@@ -11,12 +11,12 @@ export function ProjectCard({ p, as: Tag = 'li', headingLevel = 3 }: {
 }) {
   const H = headingLevel === 2 ? 'h2' : 'h3';
   return (
-    <Tag className="project">
+    <Tag className="project" data-project-card>
       <div className="project-cover">
         <span className="cover-grid" aria-hidden="true" />
         <span className="cover-initials" aria-hidden="true">{p.initials}</span>
         {p.stamp !== 'none' && (
-          <span className="stamp stamp-hallmark">{p.stamp === 'live' ? 'Live' : 'In use'}</span>
+          <span className="stamp stamp-hallmark" data-stamp>{p.stamp === 'live' ? 'Live' : 'In use'}</span>
         )}
       </div>
       <div className="project-body">
