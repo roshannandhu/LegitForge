@@ -30,11 +30,11 @@ export function Footer() {
         <div>
           <h2 className="footer-h">Site</h2>
           <ul className="footer-list">
-            <li><a href="/#services">Services</a></li>
-            <li><a href="/#work">Work</a></li>
-            <li><a href="/#team">Team</a></li>
+            <li><a href="/services">Services</a></li>
+            <li><a href="/work">Work</a></li>
+            <li><a href="/team">Team</a></li>
             <li><a href="/#pricing">Pricing</a></li>
-            <li><a href="/#contact">Contact</a></li>
+            <li><a href="/contact">Contact</a></li>
           </ul>
         </div>
 

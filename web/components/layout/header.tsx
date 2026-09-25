@@ -15,9 +15,9 @@ import { SITE, waLink } from '@/lib/site';
 
 // Blog replaces Pricing here once /blog exists (§7.4); a nav link must never 404.
 const NAV = [
-  { href: '/#services', label: 'Services' },
-  { href: '/#work', label: 'Work' },
-  { href: '/#team', label: 'Team' },
+  { href: '/services', label: 'Services' },
+  { href: '/work', label: 'Work' },
+  { href: '/team', label: 'Team' },
   { href: '/#process', label: 'Process' },
   { href: '/#pricing', label: 'Pricing' },
 ];
