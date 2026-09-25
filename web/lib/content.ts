@@ -117,10 +117,5 @@ export const FAQ = [
     a: 'Yes, for some routine code, the same way we use any tool. Every line is read, tested and owned by one of us, and nothing ships that we could not explain to you.' },
 ];
 
-/* -------------------------------------------------------------- quench §6.11 */
-export const NEEDS = [
-  'Website (static)', 'Website (dynamic)', 'Web app', 'Quotation or warranty system',
-  'WhatsApp automation', 'n8n workflow', 'Not sure yet',
-] as const;
-
-export const BUDGETS = ['[range 1]', '[range 2]', '[range 3]', 'Not sure yet'] as const;
+/* quench §6.11: the form options (NEEDS, BUDGETS) live in lib/lead.ts, next to their
+   validator, because the form ships them to the browser and this file must not. */

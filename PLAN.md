@@ -1199,7 +1199,7 @@ Seven plates at 375 px is unreadable — four is the honest maximum. The story s
 
 Everywhere else the HTML default is the *finished* frame (§5.1). Here the finished frame is a collapsed phone, which communicates nothing.
 
-**So the HTML default is act 3** — plates spread, wired, labelled with service names. JavaScript collapses them to act 1 on mount when motion is on. This means: no layout shift, and if JavaScript never runs, the visitor sees the full labelled machine, which is the most informative state on the page. Reduced motion gets the same static act 3.
+**So the HTML default is act 3** — plates spread, wired, labelled with service names. If JavaScript never runs, the visitor sees the full labelled machine, which is the most informative state on the page. Reduced motion gets the same static act 3. With JavaScript and motion on, the boot script's `html[data-motion="on"]` switches the CSS to the collapsed start (plates hidden) before first paint, so nothing collapses in front of the visitor while GSAP loads; stage and phone sizes are server-rendered CSS variables and the fit-to-box scale is set by an inline script during parsing, so the first paint already has final geometry (no layout shift).
 
 #### SEO and accessibility
 
@@ -3684,6 +3684,7 @@ Cadence: 2 posts a month. Each post links to one service page and one project, a
 - The hero is text-first: the H1 is the LCP element; no hero image is required.
 - The intro never hides content and animates only paint properties.
 - Sections below the fold are client "islands"; SplitText and DrawSVG load with their sections.
+- GSAP and ScrollTrigger load right after hydration (`web/lib/gsap.ts`), never with the page. Next.js + React alone are ~127 KB of the 180 KB budget; GSAP is ~44 KB. Measured by `npm run check` against a production build.
 - 3D loads through `dynamic(() => import(...), { ssr: false })` when near, on capable devices only, and cross-fades over already-rendered 2D cards.
 - The ember canvas caps DPR and particle count, and stops in Workshop Day, in hidden tabs and when motion is off.
 - `next/image` with correct `sizes`; `priority` only for above-the-fold images.

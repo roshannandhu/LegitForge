@@ -10,13 +10,11 @@
  *  seven service names ship in the HTML.
  */
 
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import Image from 'next/image';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { useGSAP } from '@gsap/react';
 import { PLATES, LAYOUTS, actLabel, type Layout } from '@/lib/hero-layout';
 import { useMotionEnabled } from '@/components/motion/motion-provider';
+import { useGsap, type Gs } from '@/lib/gsap';
 
 /** Act-3 offsets, server-rendered as CSS vars so the machine is correct with no
  *  JS at all (PLAN §6.2a: the HTML default is act 3, not the last frame). */
@@ -31,23 +29,49 @@ function plateVars(id: string) {
   return v;
 }
 
-gsap.registerPlugin(ScrollTrigger, useGSAP);
+/** Stage and phone sizes, server-rendered like plateVars so the first paint already has the
+ *  right geometry. Only the scale (--fit) waits for hydration, and nothing waits for GSAP. */
+const STAGE_VARS = {
+  '--dw': `${LAYOUTS.desktop.w}px`, '--dh': `${LAYOUTS.desktop.h}px`, '--dphone': `${LAYOUTS.desktop.phone}px`,
+  '--mw': `${LAYOUTS.phone.w}px`, '--mh': `${LAYOUTS.phone.h}px`, '--mphone': `${LAYOUTS.phone.phone}px`,
+} as React.CSSProperties;
 
-const PHONE_ASPECT = 1.3775; // 1200 x 1653 source
+/** Sets --fit during parsing, before first paint, so the stage never visibly rescales at
+ *  hydration. The effect in Machine keeps it right on resize — same formula, keep in step. */
+const FIT_NOW = `(function(s){var b=s.parentElement.getBoundingClientRect(),p=matchMedia('(max-width: 767px)').matches,` +
+  `w=p?${LAYOUTS.phone.w}:${LAYOUTS.desktop.w},h=p?${LAYOUTS.phone.h}:${LAYOUTS.desktop.h};` +
+  `if(b.width)s.style.setProperty('--fit',Math.min((b.width-(w<500?0:28))/w,b.height/h,1.25).toFixed(3))})` +
+  `(document.currentScript.previousElementSibling)`;
 
 export default function Machine() {
   const motionOn = useMotionEnabled();   // OS reduced-motion OR the footer switch (§5.5)
   const root = useRef<HTMLDivElement>(null);
   const stage = useRef<HTMLDivElement>(null);
   const wires = useRef<SVGSVGElement>(null);
-  const phone = useRef<HTMLDivElement>(null);
+  const trigger = useRef<Gs['ScrollTrigger']>(undefined);   // set once GSAP has loaded
 
-  useGSAP(() => {
+  // Scale the fixed design space to its box. Plain DOM, so it runs at hydration.
+  useEffect(() => {
     const stageEl = stage.current!;
+    const box = stageEl.parentElement!;
+    const phoneMq = matchMedia('(max-width: 767px)');
+    const ro = new ResizeObserver(() => {
+      const L = phoneMq.matches ? LAYOUTS.phone : LAYOUTS.desktop;
+      const r = box.getBoundingClientRect();
+      if (!r.width) return;
+      const margin = L.w < 500 ? 0 : 28;   // desktop fan needs air; the phone grid is flush
+      stageEl.style.setProperty('--fit', Math.min((r.width - margin) / L.w, r.height / L.h, 1.25).toFixed(3));
+      trigger.current?.refresh();
+    });
+    ro.observe(box);
+    return () => ro.disconnect();
+  }, []);
+
+  useGsap(({ gsap, ScrollTrigger }) => {
+    trigger.current = ScrollTrigger;
     const wiresEl = wires.current!;
-    const phoneEl = phone.current!;
     const host = root.current!;
-    // useGSAP's scope makes selector strings resolve INSIDE the machine, so the hero
+    // useGsap's scope makes selector strings resolve INSIDE the machine, so the hero
     // section (an ancestor) must be passed as an element, never as an id selector.
     const heroSection = host.closest('section') as HTMLElement;
     const SVGNS = 'http://www.w3.org/2000/svg';
@@ -61,12 +85,7 @@ export default function Machine() {
         const O = L.origin;
         const use = new Set(L.positions.map((p) => p.id));
 
-        stageEl.style.width = `${L.w}px`;
-        stageEl.style.height = `${L.h}px`;
         wiresEl.setAttribute('viewBox', `0 0 ${L.w} ${L.h}`);
-        phoneEl.style.width = `${L.phone}px`;
-        phoneEl.style.marginLeft = `${-L.phone / 2}px`;
-        phoneEl.style.marginTop = `${-(L.phone * PHONE_ASPECT) / 2}px`;
 
         // a layout hides the plates it does not use; it never deletes them
         host.querySelectorAll<HTMLElement>('[data-plate]').forEach((el) => {
@@ -108,7 +127,7 @@ export default function Machine() {
 
         [...hots, ...leads].forEach((p) => {
           const len = p.getTotalLength();
-          gsap.set(p, { strokeDasharray: len, strokeDashoffset: len });
+          gsap.set(p, { strokeDasharray: `${len} ${len}`, strokeDashoffset: len });   // both values: a lone one leaves CSS's second
         });
         // One 46-unit dash with a gap longer than the path. Offset 46 parks it just before the
         // start, -len just past the end, so it is invisible at rest in BOTH scrub directions.
@@ -117,20 +136,6 @@ export default function Machine() {
           const len = p.getTotalLength();
           gsap.set(p, { strokeDasharray: `46 ${len + 100}`, strokeDashoffset: 46, opacity: 1 });
         });
-
-        const fit = () => {
-          const box = stageEl.parentElement!.getBoundingClientRect();
-          if (!box.width) return;
-          const margin = L.w < 500 ? 0 : 28;   // desktop fan needs air; the phone grid is flush
-          const s = Math.min((box.width - margin) / L.w, box.height / L.h, 1.25);
-          stageEl.style.setProperty('--fit', s.toFixed(3));
-        };
-        fit();
-        const ro = new ResizeObserver(() => {
-          fit();
-          ScrollTrigger.refresh();
-        });
-        ro.observe(stageEl.parentElement!);
 
         /* Motion off shows act 3 — plates spread, wired, labelled with services.
            Deliberate exception to "default = last frame": the last frame is a
@@ -146,7 +151,7 @@ export default function Machine() {
           gsap.set('.l-service', { opacity: 1 });
           gsap.set('.wire', { opacity: 0.45 });
           gsap.set([...hots, ...leads], { strokeDashoffset: 0 });
-          return () => ro.disconnect();
+          return;
         }
 
         const tl = gsap.timeline({ defaults: { ease: 'none' }, paused: true });
@@ -211,15 +216,14 @@ export default function Machine() {
             },
           });
         }
-
-        return () => ro.disconnect();
       },
     );
-  }, { scope: root, dependencies: [motionOn], revertOnUpdate: true });
+  }, { scope: root, dependencies: [motionOn] });
 
   return (
     <div className="stage-fit" ref={root}>
-      <div className="stage" ref={stage}>
+      {/* suppressHydrationWarning: FIT_NOW adds --fit to this style before React hydrates */}
+      <div className="stage" ref={stage} style={STAGE_VARS} suppressHydrationWarning>
         <div className="machine">
           <svg className="wires" ref={wires} viewBox="0 0 780 760" aria-hidden="true" />
 
@@ -242,7 +246,7 @@ export default function Machine() {
             ))}
           </ul>
 
-          <div className="phone" ref={phone}>
+          <div className="phone">
             <Image
               src="/hero/phone@2x.avif"
               alt=""
@@ -262,6 +266,7 @@ export default function Machine() {
           </div>
         </div>
       </div>
+      <script dangerouslySetInnerHTML={{ __html: FIT_NOW }} />
     </div>
   );
 }

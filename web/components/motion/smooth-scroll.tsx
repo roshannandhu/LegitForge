@@ -7,30 +7,32 @@
  *  between <ReactLenis> and a fragment changes the component type, which makes React
  *  unmount and rebuild the whole page (losing form input, flipped cards, demo state) every
  *  time the visitor toggles motion. In `root` mode Lenis publishes itself through a shared
- *  store, so useLenis() works anywhere without being wrapped. */
+ *  store, so useLenis() works anywhere without being wrapped.
+ *
+ *  Lenis mounts only after GSAP has loaded (lib/gsap.ts). It takes over the wheel, and with
+ *  no GSAP ticker driving it the page would not scroll at all. Until then, scrolling is native. */
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { ReactLenis, useLenis } from 'lenis/react';
 import 'lenis/dist/lenis.css';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { loadGsap, type Gs } from '@/lib/gsap';
 import { useMotionEnabled } from './motion-provider';
-
-gsap.registerPlugin(ScrollTrigger);
 
 export function SmoothScroll() {
   const motionOn = useMotionEnabled();
-  if (!motionOn) return null;
+  const [gs, setGs] = useState<Gs>();
+  useEffect(() => { if (motionOn) loadGsap().then(setGs); }, [motionOn]);
+  if (!motionOn || !gs) return null;
   return (
     <>
       <ReactLenis root options={{ autoRaf: false, lerp: 0.1, anchors: true }} />
-      <GsapSync />
+      <GsapSync gs={gs} />
     </>
   );
 }
 
 /** Drives Lenis from GSAP's ticker so Lenis and ScrollTrigger never disagree by a frame. */
-function GsapSync() {
+function GsapSync({ gs: { gsap, ScrollTrigger } }: { gs: Gs }) {
   const lenis = useLenis(ScrollTrigger.update);
 
   useEffect(() => {
@@ -42,7 +44,7 @@ function GsapSync() {
       gsap.ticker.remove(tick);
       gsap.ticker.lagSmoothing(500, 33);             // GSAP's default, restored with motion off
     };
-  }, [lenis]);
+  }, [lenis, gsap]);
 
   return null;
 }

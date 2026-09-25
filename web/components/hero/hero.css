@@ -14,7 +14,8 @@
 .hero h1 { margin: 0 0 20px; max-width: 16ch; }
 .hero .lead { font-size: var(--step-lead); color: var(--text-muted); margin: 0 0 28px; max-width: 52ch; }
 .ctas { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
-.note { font-size: 14px; color: var(--text-muted); margin: 0; min-height: 1.5em; } /* reserved: status fills in after hydration */
+.note { font-size: 14px; color: var(--text-muted); margin: 0; min-height: 1lh; }   /* reserved: status fills in after hydration */
+@media (max-width: 767px) { .note { min-height: 2lh; } }   /* it wraps to two lines there */
 .note b { color: var(--text); font-weight: 600; }
 
 /* stage: a fixed design space, scaled to fit, taken out of layout so it can
@@ -22,7 +23,7 @@
 .stage-fit { position: relative; min-height: 70svh; overflow: hidden; }
 @media (min-width: 1024px) { .stage-fit { min-height: 78svh; overflow: visible; } }
 .stage {
-  position: absolute; left: 50%; top: 50%; width: 780px; height: 760px;
+  position: absolute; left: 50%; top: 50%; width: var(--dw); height: var(--dh);   /* sizes: STAGE_VARS */
   transform: translate(-50%, -50%) scale(var(--fit, 1)); transform-origin: center center;
   perspective: 1500px;
 }
@@ -32,7 +33,7 @@
 .wires .wire { fill: none; stroke: var(--line); stroke-width: 1.5; opacity: 0; }
 .wires .wire-hot { fill: none; stroke: var(--heat-color); stroke-width: 2; }
 .wires .pulse { fill: none; stroke: var(--heat-hi); stroke-width: 3.5; stroke-linecap: round; opacity: 0; }
-.wires .leader { fill: none; stroke: var(--line); stroke-width: 1; opacity: .45; stroke-dasharray: 3 4; }
+.wires .leader { fill: none; stroke: var(--line); stroke-width: 1; opacity: .45; }   /* dash set by JS: drawn with its plate */
 
 .plates { list-style: none; margin: 0; padding: 0; }
 .plate {
@@ -42,7 +43,7 @@
   border: 1px solid color-mix(in oklab, var(--heat-color) calc(var(--plate-heat) * 75%), var(--line));
   box-shadow: inset 0 1px 0 rgb(255 255 255 / .07);        /* machined edge, not a soft shadow */
   transform-style: preserve-3d; will-change: transform, opacity;
-  /* No-JS / pre-hydration default = act 3 (§6.2a). GSAP overrides on mount. */
+  /* No-JS and motion-off default = act 3 (§6.2a). JS with motion on starts at act 0 (below). */
   opacity: 1;
   transform: translate3d(calc(var(--dx, 0) * 1px), calc(var(--dy, 0) * 1px), calc(var(--dz, 0) * 1px));
   border-color: var(--heat-color);
@@ -58,6 +59,12 @@
 .plate .bar { display: block; height: 2px; margin-top: 10px; border-radius: 2px; background: var(--line); overflow: hidden; }
 .plate .bar i { display: block; height: 100%; width: 100%; background: var(--heat-color); transform: scaleX(var(--plate-heat)); transform-origin: left; }
 
+/* JS with motion on starts at act 0, the closed phone. GSAP loads after hydration
+   (lib/gsap.ts), so without this, act 3 would show and then collapse. Its inline styles win. */
+[data-motion="on"] .plate { opacity: 0; transform: scale(.55); }
+[data-motion="on"] .plate .l-tech { opacity: 1; }
+[data-motion="on"] .plate .l-service { opacity: 0; }
+
 /* Phone: the 380-wide space only has room for 140px plates (centres at 78 / 302) */
 @media (max-width: 767px) {
   .plate { width: 150px; margin-left: -75px; padding: 9px 10px; border-radius: 10px;
@@ -68,7 +75,11 @@
   .plate .num { font-size: 10px; }
 }
 
-.phone { position: absolute; left: 50%; top: 50%; width: 300px; transform-style: preserve-3d; }
+.phone { position: absolute; left: 50%; top: 50%; width: var(--dphone); translate: -50% -50%; transform-style: preserve-3d; }
+@media (max-width: 767px) {
+  .stage { width: var(--mw); height: var(--mh); }
+  .phone { width: var(--mphone); }
+}
 .phone img { display: block; width: 100%; height: auto; }
 .screen {
   position: absolute; left: 36.28%; top: 2.02%; width: 53.46%; height: 83.04%;

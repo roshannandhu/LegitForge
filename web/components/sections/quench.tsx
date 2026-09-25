@@ -6,8 +6,7 @@
 
 import { useRef, useState } from 'react';
 import { CheckIcon } from '@/components/ui/icons';
-import { BUDGETS, NEEDS } from '@/lib/content';
-import { HONEYPOT, validateLead, type LeadErrors, type LeadField } from '@/lib/lead';
+import { BUDGETS, HONEYPOT, NEEDS, validateLead, type LeadErrors, type LeadField } from '@/lib/lead';
 import { SITE, waLink } from '@/lib/site';
 
 type State = 'idle' | 'sending' | 'sent' | 'error' | 'limited';

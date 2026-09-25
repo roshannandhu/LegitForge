@@ -3,12 +3,8 @@
 /** One global --heat (0..1) set from the section in view (PLAN §4.2, §5.6.3).
  *  Sections opt in with data-heat="0.55". The ember canvas reads `heat.value` every frame. */
 
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { useGSAP } from '@gsap/react';
+import { useGsap } from '@/lib/gsap';
 import { useMotionEnabled } from './motion-provider';
-
-gsap.registerPlugin(ScrollTrigger, useGSAP);
 
 export const heat = { value: 0.35 };
 
@@ -18,8 +14,8 @@ export const writeHeatVar = () =>
 export function HeatDirector() {
   const motionOn = useMotionEnabled();
 
-  useGSAP(
-    () => {
+  useGsap(
+    ({ gsap, ScrollTrigger }) => {
       gsap.utils.toArray<HTMLElement>('[data-heat]').forEach((section) => {
         ScrollTrigger.create({
           trigger: section,
@@ -38,7 +34,7 @@ export function HeatDirector() {
         });
       });
     },
-    { dependencies: [motionOn], revertOnUpdate: true },
+    { dependencies: [motionOn] },
   );
 
   return null;

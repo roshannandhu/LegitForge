@@ -7,19 +7,15 @@
  *  while GSAP has marked the section as animated. */
 
 import { useRef } from 'react';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { useGSAP } from '@gsap/react';
 import { useMotionEnabled } from '@/components/motion/motion-provider';
-import { PROCESS } from '@/lib/content';
+import { useGsap } from '@/lib/gsap';
+import type { PROCESS } from '@/lib/content';
 
-gsap.registerPlugin(ScrollTrigger, useGSAP);
-
-export function Process() {
+export function Process({ steps }: { steps: typeof PROCESS }) {
   const motionOn = useMotionEnabled();
   const ref = useRef<HTMLElement>(null);
 
-  useGSAP(() => {
+  useGsap(({ gsap, ScrollTrigger }) => {
     if (!motionOn) return;
     const section = ref.current!;
     const list = section.querySelector<HTMLElement>('.steps')!;
@@ -41,7 +37,7 @@ export function Process() {
     });
 
     return () => { delete section.dataset.animated; };
-  }, { dependencies: [motionOn], revertOnUpdate: true, scope: ref });
+  }, { dependencies: [motionOn], scope: ref });
 
   return (
     <section id="process" data-heat="0.9" className="section" ref={ref}>
@@ -52,7 +48,7 @@ export function Process() {
         </header>
 
         <ol className="steps">
-          {PROCESS.map((s) => (
+          {steps.map((s) => (
             <li key={s.n} className="step">
               <span className="step-node" aria-hidden="true"><span className="num">{s.n}</span></span>
               <div className="step-body">

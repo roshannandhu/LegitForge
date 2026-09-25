@@ -7,15 +7,11 @@
  *  - phone menu: full screen, focus trapped, Esc closes, scroll locked */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { useGSAP } from '@gsap/react';
 import { useLenis } from 'lenis/react';
 import { ForgeLever } from './forge-lever';
 import { AnvilMark, ChatIcon, CloseIcon, MenuIcon } from '@/components/ui/icons';
+import { useGsap } from '@/lib/gsap';
 import { SITE, waLink } from '@/lib/site';
-
-gsap.registerPlugin(ScrollTrigger, useGSAP);
 
 // Blog replaces Pricing here once /blog exists (§7.4); a nav link must never 404.
 const NAV = [
@@ -36,7 +32,7 @@ export function Header() {
   const lenis = useLenis();
   const wa = waLink();
 
-  useGSAP(() => {
+  useGsap(({ ScrollTrigger }) => {
     const header = headerRef.current!;
     ScrollTrigger.create({
       start: 80,

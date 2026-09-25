@@ -1,7 +1,14 @@
 /** Lead validation, shared by the form (instant feedback) and the API route (the real
  *  check — never trust the client). Messages are PLAN §6.11 verbatim. */
 
-import { NEEDS } from './content';
+/** Form options (placeholders in [brackets]). Kept here, not in content.ts: whatever the
+ *  form imports ships to the browser, and content.ts holds every page's copy. */
+export const NEEDS = [
+  'Website (static)', 'Website (dynamic)', 'Web app', 'Quotation or warranty system',
+  'WhatsApp automation', 'n8n workflow', 'Not sure yet',
+] as const;
+
+export const BUDGETS = ['[range 1]', '[range 2]', '[range 3]', 'Not sure yet'] as const;
 
 export type LeadField = 'name' | 'phone' | 'need' | 'message' | 'consent';
 export type LeadErrors = Partial<Record<LeadField, string>>;

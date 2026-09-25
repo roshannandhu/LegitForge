@@ -11,7 +11,7 @@ import { Team } from '@/components/sections/team';
 import { Hallmarks } from '@/components/sections/hallmarks';
 import { PricingFaq } from '@/components/sections/pricing-faq';
 import { Quench } from '@/components/sections/quench';
-import { SERVICES } from '@/lib/content';
+import { PROCESS, SERVICES, TEAM } from '@/lib/content';
 import { SITE, waLink } from '@/lib/site';
 import '@/components/hero/hero.css';
 import '@/components/sections/sections.css';
@@ -73,9 +73,9 @@ export default function Home() {
       <Quotation />
       <Compare />
       <LiveTest />
-      <Process />
+      <Process steps={PROCESS} />
       <Projects />
-      <Team />
+      <Team team={TEAM} />
       <Hallmarks />
       <PricingFaq />
       <Quench />
