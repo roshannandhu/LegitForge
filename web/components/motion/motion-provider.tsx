@@ -13,16 +13,33 @@ const REDUCED = '(prefers-reduced-motion: reduce)';
 
 export const MOTION_BOOT_SCRIPT =
   `try{var m=localStorage.getItem('lf-motion');var r=matchMedia('${REDUCED}').matches;` +
-  `document.documentElement.dataset.motion=(m==='off'||r)?'off':'on'}catch(e){}`;
+  `document.documentElement.dataset.motion=(m==='on')?'on':(m==='off'||r)?'off':'on'}catch(e){}`;
 
 export function MotionProvider({ children }: { children: React.ReactNode }) {
-  const [enabled, setState] = useState(
-    () => typeof document === 'undefined' || document.documentElement.dataset.motion !== 'off',
-  );
+  const [enabled, setState] = useState(() => {
+    if (typeof document === 'undefined') return true;
+    try {
+      const m = localStorage.getItem('lf-motion');
+      if (m === 'on') return true;
+      if (m === 'off') return false;
+      return !matchMedia(REDUCED).matches;
+    } catch {
+      return true;
+    }
+  });
 
   useEffect(() => {
     const mq = matchMedia(REDUCED);
-    const onChange = () => setState(!mq.matches && localStorage.getItem('lf-motion') !== 'off');
+    const onChange = () => {
+      try {
+        const m = localStorage.getItem('lf-motion');
+        if (m === 'on') setState(true);
+        else if (m === 'off') setState(false);
+        else setState(!mq.matches);
+      } catch {
+        setState(!mq.matches);
+      }
+    };
     mq.addEventListener('change', onChange);
     return () => mq.removeEventListener('change', onChange);
   }, []);
@@ -33,7 +50,7 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
 
   const setEnabled = (on: boolean) => {
     try { localStorage.setItem('lf-motion', on ? 'on' : 'off'); } catch {}
-    setState(on && !matchMedia(REDUCED).matches);
+    setState(on);
   };
 
   return <Ctx.Provider value={{ enabled, setEnabled }}>{children}</Ctx.Provider>;
