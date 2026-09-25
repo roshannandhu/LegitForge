@@ -325,6 +325,7 @@
 }
 @media (max-width: 767px) { .projects { grid-auto-columns: 85vw; margin-inline: -16px; padding-inline: 16px; scroll-padding-inline: 16px; } }
 .project {
+  position: relative;   /* contains the links' sr-only text: escaping the swipe row widens a phone's page */
   display: flex; flex-direction: column; overflow: hidden;
   background: var(--surface); border: 1px solid var(--line); border-radius: 16px;
   box-shadow: inset 0 1px 0 rgb(255 255 255 / .06);

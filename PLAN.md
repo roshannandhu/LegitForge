@@ -4436,7 +4436,9 @@ So the plan is three releases, and **we launch at the first one**.
 | **Left for R1** | Create the Cloudflare account resources and deploy (web/README.md) · real domain, WhatsApp number, business details, photos, bios and projects (every `[bracket]`) |
 | The Teardown hero (§6.2c): the phone in the hand explodes into five live layers (website, WhatsApp, n8n, quote, warranty) with callouts, a flowing customer journey, lead chips; wordmark-only brand screen | Done. Checked at 375, 768, 1024, 1440; motion off and no JS show the finished stack |
 | Working-flow demos for every service and the quotation system | Done |
-| **Next (R2)** | Hallmark Strike intro (§6.1b) · the Cleave (§23.1) · admin and project uploads (§7.8) · blog (§7.4) |
+| Hallmark Strike intro (§6.1b): the press strikes the coin, sparks and smoke, the coin flips and lands, then flies to the header logo | Done. Pure CSS, 1.8 s (1.4 s on phones). Plays once, on the first visit to the home page with motion on. Any key or tap skips it; motion off never shows it. `npm run check` asserts it plays and ends by itself |
+| Fixes found while building it | The motion boot script had never run: it was exported from a `'use client'` file, so the page got an error stub (now `lib/boot.ts`). The project cards' sr-only text escaped the swipe row and widened phones to 740 px. `npm run check` now fails if a phone's layout viewport grows past the device width |
+| **Next (R2)** | Cleave as a View Transition to case studies (§23.1) · Process sticky stack · admin and project uploads (§7.8) · blog (§7.4) |
 
 ---
 

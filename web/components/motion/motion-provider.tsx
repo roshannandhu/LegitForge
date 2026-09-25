@@ -5,15 +5,10 @@
  *  html[data-motion] before first paint, so there is never a flash. */
 
 import { createContext, useContext, useEffect, useState } from 'react';
+import { REDUCED } from '@/lib/boot';
 
 type MotionCtx = { enabled: boolean; setEnabled: (on: boolean) => void };
 const Ctx = createContext<MotionCtx>({ enabled: true, setEnabled: () => {} });
-
-const REDUCED = '(prefers-reduced-motion: reduce)';
-
-export const MOTION_BOOT_SCRIPT =
-  `try{var m=localStorage.getItem('lf-motion');var r=matchMedia('${REDUCED}').matches;` +
-  `document.documentElement.dataset.motion=(m==='off'||r)?'off':'on'}catch(e){}`;
 
 export function MotionProvider({ children }: { children: React.ReactNode }) {
   const [enabled, setState] = useState(

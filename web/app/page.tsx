@@ -15,6 +15,7 @@ import { Team } from '@/components/sections/team';
 import { Hallmarks } from '@/components/sections/hallmarks';
 import { PricingFaq } from '@/components/sections/pricing-faq';
 import { Quench } from '@/components/sections/quench';
+import { HallmarkStrike } from '@/components/intro/hallmark-strike';
 import { PROCESS, SERVICES, TEAM } from '@/lib/content';
 import { SITE, waLink } from '@/lib/site';
 import '@/components/hero/hero.css';
@@ -51,6 +52,7 @@ export default function Home() {
   const wa = waLink();
   return (
     <>
+      <HallmarkStrike />
       <section className="hero" id="top" data-heat="0.35">
         <div className="wrap hero-grid">
           <div className="copy">

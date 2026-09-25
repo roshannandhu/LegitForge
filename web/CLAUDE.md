@@ -15,6 +15,9 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
 - Hero (the Teardown, PLAN §6.2c): data lib/teardown.ts · component components/hero/teardown.tsx ·
   live screens components/hero/layer-screens.tsx · their flows components/hero/teardown-flows.ts
 
+- First-visit intro (the Hallmark Strike, PLAN §6.1b): components/intro, pure CSS. lib/boot.ts
+  decides it before first paint. Clear localStorage `lf-intro-seen` to see it again.
+
 ## Commands
 - npm run dev              local development (port 3000)
 - npm run build            production build
@@ -39,6 +42,8 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
 - Tablets and laptops pin the hero; phones never pin (swipe row). FIT_NOW sets the stage scale
   before first paint; keep its formula in step with the resize effect in teardown.tsx.
 - Services named in the hero (the callouts) must stay real text in the served HTML.
+- Inline <head> scripts live in lib/boot.ts. A string exported from a 'use client' file reaches
+  a Server Component as a client reference, not text.
 - Never add `export const runtime = 'edge'` (OpenNext uses the Node.js runtime).
 - Binding types: cf-typegen runs with --include-runtime=false. Wrangler's full runtime types
   redeclare fetch, Response and DOM Element and break the browser code. The binding types

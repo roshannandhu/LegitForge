@@ -86,10 +86,11 @@ export default function Teardown() {
     if (hud) hud.dataset.live = '1';
     screen.dataset.live = '1';
 
-    // the wordmark, letter by letter (once per page load)
+    // the wordmark, letter by letter (once per page load), after the Hallmark Strike if it plays
+    const introWait = document.documentElement.dataset.intro ? (innerWidth < 768 ? 1.3 : 1.65) : 0;
     if (!reduced && !introPlayed && window.scrollY < 40) {
       introPlayed = true;
-      gsap.from(screen.querySelectorAll('.td-word span'), { opacity: 0, y: 14, filter: 'blur(4px)', duration: 0.5, stagger: 0.06, ease: 'power3.out', delay: 0.15 });
+      gsap.from(screen.querySelectorAll('.td-word span'), { opacity: 0, y: 14, filter: 'blur(4px)', duration: 0.5, stagger: 0.06, ease: 'power3.out', delay: 0.15 + introWait });
     }
 
     const mm = gsap.matchMedia();
@@ -193,7 +194,7 @@ export default function Teardown() {
         return () => window.removeEventListener(LEAD_EVENT, onLead);
       }
       setScreen('brand');
-      const toFinal = gsap.delayedCall(2.2, () => setScreen('final'));
+      const toFinal = gsap.delayedCall(2.2 + introWait, () => setScreen('final'));
       const ran = new Set<string>(['wait']);
       showLog(ran); setAct(1);
       const flows = layers.map((el, i) => buildFlow(LAYERS[i].id, el, gsap).pause(0));

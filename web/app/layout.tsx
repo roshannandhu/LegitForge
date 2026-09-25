@@ -1,7 +1,8 @@
 import type { Metadata, Viewport } from 'next';
 import { Archivo, Big_Shoulders_Stencil } from 'next/font/google';
 import { ThemeProvider } from 'next-themes';
-import { MotionProvider, MOTION_BOOT_SCRIPT } from '@/components/motion/motion-provider';
+import { MotionProvider } from '@/components/motion/motion-provider';
+import { MOTION_BOOT_SCRIPT, INTRO_BOOT } from '@/lib/boot';
 import { SmoothScroll } from '@/components/motion/smooth-scroll';
 import { ForgeCanvas } from '@/components/background/forge-canvas';
 import { Header } from '@/components/layout/header';
@@ -65,7 +66,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={`${archivo.variable} ${stencil.variable}`} suppressHydrationWarning>
       <head>
         {/* sets html[data-motion] before first paint so motion-off visitors never see a flash (§5.5) */}
-        <script dangerouslySetInnerHTML={{ __html: MOTION_BOOT_SCRIPT }} />
+        <script dangerouslySetInnerHTML={{ __html: MOTION_BOOT_SCRIPT + INTRO_BOOT }} />
       </head>
       <body>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
