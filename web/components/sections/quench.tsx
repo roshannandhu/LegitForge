@@ -5,16 +5,21 @@
  *  every error sits under its field and is linked with aria-describedby. */
 
 import { useRef, useState } from 'react';
+import { useTheme } from 'next-themes';
 import { CheckIcon } from '@/components/ui/icons';
 import { BUDGETS, HONEYPOT, NEEDS, validateLead, type LeadErrors, type LeadField } from '@/lib/lead';
 import { SITE, waLink } from '@/lib/site';
+import { Turnstile, type TurnstileHandle } from './turnstile';
 
-type State = 'idle' | 'sending' | 'sent' | 'error' | 'limited';
+type State = 'idle' | 'sending' | 'sent' | 'error' | 'limited' | 'unverified';
 
 export function Quench() {
   const formRef = useRef<HTMLFormElement>(null);
   const [errors, setErrors] = useState<LeadErrors>({});
   const [state, setState] = useState<State>('idle');
+  const [armed, setArmed] = useState(false);          // Turnstile loads on the form's first focus
+  const turnstile = useRef<TurnstileHandle>(null);
+  const { resolvedTheme } = useTheme();
 
   async function onSubmit(ev: React.FormEvent<HTMLFormElement>) {
     ev.preventDefault();
@@ -31,7 +36,12 @@ export function Quench() {
     setState('sending');
     try {
       const res = await fetch('/api/leads', { method: 'POST', body: data });
+      turnstile.current?.reset();                     // tokens are single-use, whatever happened
       if (res.status === 429) { setState('limited'); return; }
+      if (res.status === 400 && ((await res.clone().json().catch(() => ({}))) as { error?: string }).error === 'verification_failed') {
+        setState('unverified');
+        return;
+      }
       if (res.status === 422) {                          // server is the real check
         const body = (await res.json()) as { errors?: LeadErrors };
         setState('idle');
@@ -65,7 +75,7 @@ export function Quench() {
             <a className="btn btn-ghost" href={waLink()}>Open WhatsApp now</a>
           </div>
         ) : (
-          <form ref={formRef} className="lead-form" onSubmit={onSubmit} noValidate>
+          <form ref={formRef} className="lead-form" onSubmit={onSubmit} onFocus={() => setArmed(true)} noValidate>
             {/* honeypot: hidden from people and assistive tech; bots fill it */}
             <div className="hp" aria-hidden="true">
               <label htmlFor={HONEYPOT}>Leave this empty</label>
@@ -116,6 +126,8 @@ export function Quench() {
               <Err f="consent" />
             </div>
 
+            <Turnstile ref={turnstile} armed={armed} theme={resolvedTheme} />
+
             <div className="field-wide form-actions">
               <button type="submit" className="btn btn-primary" data-sending={state === 'sending'}>
                 {state === 'sending' ? 'Sending…' : 'Send project details'}
@@ -126,6 +138,12 @@ export function Quench() {
             {state === 'error' && (
               <p className="form-alert" role="alert">
                 Your details didn’t send because our server didn’t respond. Try again, or{' '}
+                <a href={waLink()}>message us on WhatsApp</a>.
+              </p>
+            )}
+            {state === 'unverified' && (
+              <p className="form-alert" role="alert">
+                We couldn’t confirm you’re human. Refresh the page and try again, or{' '}
                 <a href={waLink()}>message us on WhatsApp</a>.
               </p>
             )}
