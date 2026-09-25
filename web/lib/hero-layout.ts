@@ -46,7 +46,7 @@ export interface Layout {
 
 export const LAYOUTS: Record<'desktop' | 'phone', Layout> = {
   desktop: {
-    w: 780, h: 760, origin: { x: 390, y: 360 }, phone: 300, pin: true, end: '+=260%',
+    w: 780, h: 760, origin: { x: 390, y: 360 }, phone: 300, pin: true, end: '+=180%',   // §6.2b: a story needs less scroll
     positions: [
       { id: 'web', x: 120, y: 250, z:  120 },
       { id: 'app', x: 190, y: 118, z:   60 },
@@ -70,8 +70,25 @@ export const LAYOUTS: Record<'desktop' | 'phone', Layout> = {
   },
 };
 
-/** Act boundaries on the 0..1 timeline. Act 3 holds longest: it is the frame that sells. */
-export const ACTS = { explode: 0, wire: 0.35, become: 0.6, collapse: 0.85 } as const;
+/** Act boundaries on the 0..1 timeline (§6.2b). Become holds longest: it is the frame that sells. */
+export const ACTS = { explode: 0, wire: 0.27, become: 0.58, ship: 0.8 } as const;
+export const ACT_NAMES = ['Explode', 'Wire', 'Become', 'Ship'] as const;
 
-export const actLabel = (p: number) =>
-  p < ACTS.wire ? '1 explode' : p < ACTS.become ? '2 wire' : p < ACTS.collapse ? '3 become' : '4 collapse';
+export const actIndex = (p: number) => (p < ACTS.wire ? 0 : p < ACTS.become ? 1 : p < ACTS.ship ? 2 : 3);
+export const actLabel = (p: number) => `${actIndex(p) + 1} ${ACT_NAMES[actIndex(p)].toLowerCase()}`;
+
+/** Follow one message (§6.2b #1): what the travelling chip says after each plate, and the
+ *  build-log line that plate writes (#7). The phone layout's shorter chain
+ *  (web → n8n → wa → ai) still reads as one story. */
+export const OPENING_MESSAGE = '“Is my cake ready?”';
+export const STORY: Record<PlateId, { chip: string; log: string }> = {
+  web: { chip: 'Form sent',       log: 'site: “Is my cake ready?”' },
+  app: { chip: 'Order #214',      log: 'app: matched order #214' },
+  api: { chip: 'GET /orders/214', log: 'api: GET /orders/214 → 200' },
+  db:  { chip: 'Ready at 5 pm',   log: 'db: status = ready, 5 pm' },
+  n8n: { chip: 'Workflow ran',    log: 'n8n: 4-step workflow ran' },
+  wa:  { chip: 'Reply ✓✓',        log: 'whatsapp: reply delivered ✓✓' },
+  ai:  { chip: 'Team summary',    log: 'ai: day summary sent to the team' },
+};
+export const LOG_WAIT = 'waiting for a customer…';
+export const LOG_DONE = 'done in 1.2 s. Zero typing.';   // ≤ 36 chars: one line on a 375px phone

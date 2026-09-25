@@ -4367,8 +4367,9 @@ So the plan is three releases, and **we launch at the first one**.
 | Security headers (CSP report-only), 404 page (§7.7) | Done |
 | Inner pages: services (3 + overview), work + case studies, team + portfolios, contact (§7.1–7.5) | Done. Checked at 375, 768 and 1440 by `npm run check` |
 | Trust strip under the hero (§18.6) | Done |
+| Hero upgrades §6.2b, build order steps 1–2: #1 follow one message, #2 payoff screen, #3 camera and depth of field, #5 hallmark stamp, #7 build log; pin shortened to 180 % | Done. The payoff screen ends on the WhatsApp reply until `HERO_SHOWCASE` in `lib/content.ts` names a real project |
 | **Left for R1** | Create the Cloudflare account resources and deploy (web/README.md) · real domain, WhatsApp number, business details, photos, bios and projects (every `[bracket]`) · Turnstile on the form (§13.3) |
-| **Next (R2)** | Hero upgrades §6.2b, build order step 1 then 2 · the Cleave (§23.1) · admin and project uploads (§7.8) · blog (§7.4) |
+| **Next (R2)** | Hero upgrades §6.2b steps 3–5 · the Cleave (§23.1) · admin and project uploads (§7.8) · blog (§7.4) |
 
 ---
 
