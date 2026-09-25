@@ -6,7 +6,7 @@
 .legal h2 { margin: 40px 0 12px; font-size: var(--step-h3); font-weight: 600; line-height: 1.2; }
 .legal p, .legal li { max-width: 65ch; }
 .legal ul { display: grid; gap: 10px; padding-left: 1.2em; }
-.legal a { color: var(--accent); text-underline-offset: 3px; }
+.legal a:not(.btn) { color: var(--accent); text-underline-offset: 3px; }
 .legal-draft {
   display: inline-block; margin: 0 0 24px; padding: 6px 12px; border-radius: 8px;
   border: 1px dashed var(--danger); color: var(--danger); font-size: 14px; font-weight: 600;
@@ -15,3 +15,8 @@
 .legal-table th, .legal-table td { padding: 12px 0; text-align: left; vertical-align: top; border-bottom: 1px solid var(--line); }
 .legal-table thead th { font-size: 13px; color: var(--text-muted); font-weight: 600; }
 .legal-table tbody th { padding-right: 24px; font-weight: 600; }
+
+/* 404 (§7.7) */
+.not-found { min-height: 70svh; }
+.not-found > .num:first-child { margin: 0 0 8px; color: var(--text-muted); }
+.not-found .ctas { display: flex; flex-wrap: wrap; gap: 12px; }

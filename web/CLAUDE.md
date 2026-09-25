@@ -21,6 +21,9 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
 - npm run check            headless-Chrome gate: §4.8 audit at 375/768/1440 + the team layers.
                            BASE=http://localhost:3300 for a `next start` build. Screenshots: .check/
 - Hero review: /?qa=0.22 (act 1) /?qa=0.45 (act 2) /?qa=0.72 (act 3) /?qa=0.97 (act 4)
+- npm run db:migrate:local apply migrations/ to the local D1 (needed once before dev/preview)
+- npm run preview          the real Worker (worker.ts + bindings) at http://localhost:8787
+- npm run cf-typegen       regenerate cloudflare-env.d.ts after changing wrangler.jsonc
 
 ## Rules that are easy to break
 - Animate only transform, opacity, filter, clip-path and CSS custom properties.
@@ -34,6 +37,12 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
   curl -s localhost:3000/ | grep -c "WhatsApp Bots"
 - 7 plates on desktop, 4 on phone, never a pin below 768px.
 - Never add `export const runtime = 'edge'` (OpenNext uses the Node.js runtime).
+- Binding types: cf-typegen runs with --include-runtime=false. Wrangler's full runtime types
+  redeclare fetch, Response and DOM Element and break the browser code. The binding types
+  come from cloudflare-bindings.d.ts instead; add a line there for any new binding kind.
+- Never edit an applied migration; add migrations/000N_*.sql.
+- A lead is stored before anything else happens to it. Alerts (n8n) run in ctx.waitUntil
+  after the response, so an outage there never loses a lead.
 - Copy lives in lib/content.ts; app/page.tsx passes it to client components as props.
   Importing content.ts into a 'use client' file ships all of it to the browser.
 - Team cards: public/lanyard/card.glb is the React Bits card with its branded texture

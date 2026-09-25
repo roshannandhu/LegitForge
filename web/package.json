@@ -6,7 +6,13 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "check": "node scripts/check.mjs"
+    "check": "node scripts/check.mjs",
+    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "upload": "opennextjs-cloudflare build && opennextjs-cloudflare upload",
+    "cf-typegen": "wrangler types --env-interface CloudflareEnv --include-runtime=false cloudflare-env.d.ts",
+    "db:migrate:local": "wrangler d1 migrations apply legitforge --local",
+    "db:migrate:remote": "wrangler d1 migrations apply legitforge --remote"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.9",
@@ -23,6 +29,7 @@
     "three": "^0.186.1"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260925.2",
     "@opennextjs/cloudflare": "^1.20.6",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",

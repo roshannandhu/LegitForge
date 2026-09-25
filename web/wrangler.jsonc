@@ -1,0 +1,32 @@
+/** Cloudflare Workers config (PLAN §8.3, §8.6), cut to what R1 ships (§22).
+ *  R3 adds the DemoRoom Durable Object, the /ws/demo route in worker.ts and the WhatsApp vars.
+ *  Setup and deploy steps: README.md. */
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "legitforge-web",
+  "main": "worker.ts",                         // our entry: OpenNext + the daily cron
+  "compatibility_date": "2026-09-25",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
+  "services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "legitforge-web" }],
+  "images": { "binding": "IMAGES" },
+  "d1_databases": [
+    // TODO: paste the id printed by `npx wrangler d1 create legitforge` into BOTH entries.
+    // Local development and `npm run preview` work without it.
+    { "binding": "DB", "database_name": "legitforge", "database_id": "00000000-0000-0000-0000-000000000000", "migrations_dir": "migrations" },
+    { "binding": "NEXT_TAG_CACHE_D1", "database_name": "legitforge", "database_id": "00000000-0000-0000-0000-000000000000" }
+  ],
+  "r2_buckets": [
+    { "binding": "MEDIA", "bucket_name": "legitforge-media" },
+    { "binding": "NEXT_INC_CACHE_R2_BUCKET", "bucket_name": "legitforge-next-cache" }
+  ],
+  "durable_objects": {
+    "bindings": [{ "name": "NEXT_CACHE_DO_QUEUE", "class_name": "DOQueueHandler" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["DOQueueHandler"] }],
+  "triggers": { "crons": ["0 3 * * *"] },     // daily cleanup at 03:00 UTC (worker.ts)
+  "vars": {
+    "SITE_URL": "https://legitforge.example"   // TODO: real domain, same as lib/site.ts
+  },
+  "observability": { "enabled": true }
+}

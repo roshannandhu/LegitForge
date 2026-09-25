@@ -4288,6 +4288,19 @@ So the plan is three releases, and **we launch at the first one**.
 
 **Ship the scripted demo first.** The live test must degrade to the scripted fake-chat demo if Meta verification is late — label it honestly as a demo — and swap in the real bot when the number is approved. Verification is the only item here with a queue we do not control, so **start it in week 0** (§9.1).
 
+### 22.3 Build status (26 September 2026)
+
+| Area | State |
+|---|---|
+| Home page: all 11 sections as real HTML, both themes, three viewports | Done. `npm run check` passes at 375, 768 and 1440 |
+| Hero: The Phone Becomes the Machine (§6.2a) | Done, with GSAP loaded after hydration (`lib/gsap.ts`) |
+| Team: 2D cards, FlipCard, 3D lanyards (§6.8) | Done, all three tiers |
+| Cloudflare deployment: `wrangler.jsonc`, `open-next.config.ts`, `worker.ts` with the daily cron | Done. Tested in the local Workers runtime (`npm run preview`) |
+| D1 schema (§8.8) | Done: `web/migrations/0001_init.sql` |
+| Contact form → D1 → n8n alert, 5 per hour per hashed IP | Done. The alert runs only once `N8N_LEAD_WEBHOOK_URL` is set |
+| Security headers (CSP report-only), 404 page (§7.7) | Done |
+| **Left for R1** | Create the Cloudflare account resources and deploy (web/README.md) · real domain, WhatsApp number and business details (every `[bracket]`) · Turnstile on the form (§13.3) · inner pages (§7.1 to §7.5) |
+
 ---
 
 ## 23. Scroll playbook: the curious layer

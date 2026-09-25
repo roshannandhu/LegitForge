@@ -1,0 +1,9 @@
+# Copy to .dev.vars for local secrets (`next dev` and `npm run preview` read it).
+# Production: `npx wrangler secret put NAME` for each. PLAN §8.7 lists them all.
+
+# Hashes IPs in the rate limiter so raw addresses are never stored (§13)
+HASH_SALT=change-me-to-a-long-random-string
+
+# n8n WF-2: new form lead -> WhatsApp/email alert to us (§9). Leave empty to skip the alert.
+N8N_LEAD_WEBHOOK_URL=
+N8N_SHARED_KEY=
