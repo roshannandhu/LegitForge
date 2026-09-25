@@ -118,12 +118,65 @@
   container-type: inline-size;   /* the chat below scales with the phone, at any layout size */
 }
 .scr { position: absolute; inset: 0; opacity: 0; transition: opacity 300ms var(--ease-forge); }
-.screen[data-state="site"] .scr-site,
-.screen[data-state="ask"] .scr-chat, .screen[data-state="reply"] .scr-chat,
-.screen[data-state="show"] .scr-show { opacity: 1; }
+/* brand first, then the active story's screen (data-for), then a real project */
+.screen[data-state="brand"] .scr-brand, .screen[data-state="show"] .scr-show { opacity: 1; }
+.screen:is([data-state="start"], [data-state="ask"], [data-state="reply"])[data-story="web"] .scr[data-for="web"],
+.screen:is([data-state="start"], [data-state="ask"], [data-state="reply"])[data-story="app"] .scr[data-for="app"],
+.screen:is([data-state="start"], [data-state="ask"], [data-state="reply"])[data-story="quote"] .scr[data-for="quote"],
+.screen:is([data-state="start"], [data-state="ask"], [data-state="reply"])[data-story="wa"] .scr[data-for="wa"] { opacity: 1; }
+/* beats inside a story screen: the request (ask), then the result (reply) */
+.on-ask, .on-reply { opacity: 0; transform: translateY(.5em); transition: opacity 300ms var(--ease-forge), transform 300ms var(--ease-forge); }
+.screen:is([data-state="ask"], [data-state="reply"]) .on-ask, .screen[data-state="reply"] .on-reply { opacity: 1; transform: none; }
+[data-motion="off"] :is(.on-ask, .on-reply) { transition: none; }
 [data-motion="off"] .scr { transition: none; }
 
 .scr-site { display: flex; flex-direction: column; gap: 7px; padding: 12px 10px; }
+.s-speed {
+  position: absolute; right: 7cqw; top: 26cqw; display: grid; place-items: center; width: 22cqw; height: 22cqw;
+  border-radius: 50%; border: 1.6cqw solid #3FBF7F; background: #0E1319; color: #E9EDF1; font-size: 4.5cqw; line-height: 1;
+}
+.s-speed b { font-size: 8cqw; }
+.s-toast, .scr-stamp { position: absolute; left: 50%; translate: -50% 0; white-space: nowrap; font-size: 7cqw; font-weight: 700; }
+.s-toast { bottom: 22cqw; padding: 2.5cqw 5cqw; border-radius: 99px; background: #1F4D3A; color: #E9EDF1; }
+.scr-stamp {
+  bottom: 9cqw; padding: 2cqw 5cqw; border: .8cqw solid var(--heat-color); border-radius: 2cqw; color: var(--heat-color);
+  font-family: var(--font-stencil), var(--font-sans); letter-spacing: .08em; text-transform: uppercase; rotate: -6deg;
+}
+.screen[data-state="reply"] .scr-stamp { transform: none; }
+
+/* the booking app */
+.scr-app { display: flex; flex-direction: column; gap: 3cqw; padding: 7.5cqw 6cqw; background: #0E1319; color: #E9EDF1; font-size: 7cqw; }
+.app-head { display: flex; margin: 0; font-weight: 700; } .app-head span { margin-left: auto; color: #8B98A5; font-weight: 500; }
+.app-sub { margin: 0 0 2cqw; color: #8B98A5; font-size: 6cqw; }
+.app-slots { display: grid; grid-template-columns: 1fr 1fr; gap: 3cqw; }
+.app-slots span { padding: 3cqw 0; border: 1px solid #22303B; border-radius: 2.5cqw; text-align: center; font-size: 6.5cqw; }
+.app-slots .slot-pick { border-color: var(--heat-color); background: color-mix(in oklab, var(--heat-color) 30%, #0E1319); }
+.app-cta { margin-top: 3cqw; padding: 3.5cqw 0; border-radius: 2.5cqw; background: var(--accent); color: var(--accent-ink); text-align: center; font-weight: 700; font-size: 6.5cqw; }
+
+/* the quote */
+.scr-quote { display: flex; flex-direction: column; gap: 2.5cqw; padding: 7.5cqw 6cqw; background: #0E1319; color: #E9EDF1; font-size: 6.5cqw; }
+.q-head { margin: 0 0 2cqw; font-weight: 700; font-size: 7.5cqw; }
+.q-row, .q-total { display: flex; justify-content: space-between; margin: 0; }
+.q-row span { color: #8B98A5; }
+.q-total { margin-top: 2cqw; padding-top: 3cqw; border-top: 1px solid #22303B; font-weight: 700; font-size: 7.5cqw; }
+.q-status { margin: 1cqw 0 0; color: #53B7F0; font-size: 6cqw; }
+
+/* our brand: the phone's first screen (Part A0) */
+.scr-brand {
+  display: grid; place-content: center; justify-items: center; gap: 3cqw; text-align: center;
+  background: radial-gradient(circle at 50% 42%, #1B2530, #0B0F14 70%); color: #F3EDE2;
+}
+.brand-glow {
+  position: absolute; left: 15cqw; top: calc(40% - 35cqw); width: 70cqw; height: 70cqw; border-radius: 50%;   /* no translate: GSAP scales it */
+  background: radial-gradient(circle, color-mix(in oklab, var(--heat-color) 45%, transparent), transparent 65%);
+}
+[data-motion="on"] .brand-glow { animation: brand-breathe 3.2s ease-in-out infinite; }
+@keyframes brand-breathe { 50% { opacity: .55; transform: scale(.92); } }
+.brand-mark { position: relative; width: 30cqw; height: 30cqw; color: var(--heat-color); }
+.brand-mark svg { width: 100%; height: 100%; }
+.brand-sparks { position: absolute; left: 62%; top: 12%; }
+.brand-word { position: relative; font-size: 11cqw; font-weight: 800; font-stretch: 112%; letter-spacing: -.01em; }
+.brand-line { position: relative; color: #9AA6B2; font-size: 6cqw; }
 .screen .s-row { background: var(--surface-2); border-radius: 5px; height: 11px; opacity: .8; }
 .screen .w60 { width: 60%; } .screen .w80 { width: 80%; } .screen .w40 { width: 40%; }
 .screen .s-hero { background: linear-gradient(135deg, var(--heat-mid), var(--heat-lo)); border-radius: 7px; height: 74px; margin-bottom: 3px; opacity: .9; }
@@ -138,10 +191,9 @@
 .chat-head span { margin-left: auto; font-weight: 500; color: #3FBF7F; }
 .bub { max-width: 86%; margin: 0; padding: .58em .75em; border-radius: .83em; font-size: 1em; line-height: 1.35; }
 .bub-out { align-self: flex-end; background: #1F4D3A; border-bottom-right-radius: .25em; }
-.bub-in { align-self: flex-start; background: #1C2731; border-bottom-left-radius: .25em; opacity: 0; transform: translateY(.5em); transition: opacity 300ms var(--ease-forge), transform 300ms var(--ease-forge); }
+.bub-in { align-self: flex-start; background: #1C2731; border-bottom-left-radius: .25em; }
 .bub-in b { color: #53B7F0; font-weight: 700; }
-.screen[data-state="reply"] .bub-in { opacity: 1; transform: none; }
-[data-motion="off"] .bub-in { transition: none; }
+
 
 /* a real project, when lib/content.ts sets HERO_SHOWCASE (§6.2b #2) */
 .scr-show img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; }
@@ -156,8 +208,10 @@
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 14px;
   }
 }
-@media (min-width: 1024px) { .hud { grid-column: 1; margin-top: 28px; } }
-@media (min-width: 1024px) and (max-height: 760px) { .hud-log { display: none; } }   /* short laptops: rail only */
+@media (min-width: 1024px) { .hud { grid-column: 1; margin-top: 16px; } }
+/* shorter laptops: the pinned hero must fit one screen, so the log gives way before the chips */
+@media (min-width: 1024px) and (max-height: 899px) { .hud-rail { display: none; } }
+@media (min-width: 1024px) and (max-height: 859px) { .hero-grid > .hud { display: none; } }
 .hud-rail { display: flex; gap: 6px; margin: 0; padding: 0; list-style: none; }
 .hud-rail li {
   flex: 1; padding-top: 8px; border-top: 2px solid var(--line); color: var(--text-muted);
@@ -176,6 +230,8 @@
 .hud-log li::before { content: "› "; color: var(--heat-color); }
 .hud-log li:last-child { color: var(--text); }
 .hud-log li[hidden] { display: none; }
+.hud[data-story="web"] li[data-story]:not([data-story="web"]), .hud[data-story="app"] li[data-story]:not([data-story="app"]),
+.hud[data-story="quote"] li[data-story]:not([data-story="quote"]), .hud[data-story="wa"] li[data-story]:not([data-story="wa"]) { display: none; }
 @media (max-width: 767px) { .hud-log li[data-on-phone="0"] { display: none; } }
 @keyframes log-in { from { opacity: 0; transform: translateY(4px); } }
 [data-motion="off"] .hud-log li, [data-motion="off"] .hud-rail li { animation: none; transition: none; }
@@ -183,7 +239,24 @@
 /* Motion on, before GSAP has loaded (lib/gsap.ts): start from the closed story, not the
    finished one, so nothing flashes. Machine marks both [data-live] once it drives them. */
 [data-motion="on"] .screen:not([data-live]) .scr { opacity: 0; }
-[data-motion="on"] .screen:not([data-live]) .scr-site { opacity: 1; }
+[data-motion="on"] .screen:not([data-live]) .scr-brand { opacity: 1; }
 [data-motion="on"] .hud:not([data-live]) .hud-log li { display: none; }
 [data-motion="on"] .hud:not([data-live]) .hud-rail li { border-color: var(--line); color: var(--text-muted); }
 [data-motion="on"] .hud:not([data-live]) .hud-log li[data-step="wait"] { display: block; }
+
+/* story chips: "Watch it handle:" (§6.2b #10, by story) */
+.story-chips { display: grid; gap: 8px; }
+.story-label { margin: 0; font-size: 14px; font-weight: 600; color: var(--text-muted); }
+.story-chips ul { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.story-chip {
+  min-height: 44px; padding: 0 16px; border: 1px solid var(--line); border-radius: 999px;
+  background: transparent; color: var(--text); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
+  transition: border-color 200ms var(--ease-forge), background-color 200ms var(--ease-forge);
+}
+.story-chip:hover { border-color: var(--text-muted); }
+.story-chip[aria-pressed="true"] { border-color: var(--heat-color); background: color-mix(in oklab, var(--heat-color) 16%, transparent); }
+@media (min-width: 1024px) {
+  .hero-grid > .story-chips { grid-column: 1; grid-row: 2; margin-top: 20px; }
+  .hero-grid > .hud { grid-row: 3; }
+  .hero-grid > .stage-fit { grid-row: 1 / span 3; }
+}

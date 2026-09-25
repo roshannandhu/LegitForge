@@ -77,18 +77,80 @@ export const ACT_NAMES = ['Explode', 'Wire', 'Become', 'Ship'] as const;
 export const actIndex = (p: number) => (p < ACTS.wire ? 0 : p < ACTS.become ? 1 : p < ACTS.ship ? 2 : 3);
 export const actLabel = (p: number) => `${actIndex(p) + 1} ${ACT_NAMES[actIndex(p)].toLowerCase()}`;
 
-/** Follow one message (§6.2b #1): what the travelling chip says after each plate, and the
- *  build-log line that plate writes (#7). The phone layout's shorter chain
- *  (web → n8n → wa → ai) still reads as one story. */
-export const OPENING_MESSAGE = '“Is my cake ready?”';
-export const STORY: Record<PlateId, { chip: string; log: string }> = {
-  web: { chip: 'Form sent',       log: 'site: “Is my cake ready?”' },
-  app: { chip: 'Order #214',      log: 'app: matched order #214' },
-  api: { chip: 'GET /orders/214', log: 'api: GET /orders/214 → 200' },
-  db:  { chip: 'Ready at 5 pm',   log: 'db: status = ready, 5 pm' },
-  n8n: { chip: 'Workflow ran',    log: 'n8n: 4-step workflow ran' },
-  wa:  { chip: 'Reply ✓✓',        log: 'whatsapp: reply delivered ✓✓' },
-  ai:  { chip: 'Team summary',    log: 'ai: day summary sent to the team' },
+/** Follow one message (§6.2b #1), four ways: one story per thing we build. Each says what the
+ *  travelling chip reads after every plate and the build-log line that plate writes (#7).
+ *  The phone layout's shorter chain (web -> n8n -> wa -> ai) must still read as one story,
+ *  and log lines stay <= 36 characters (one line on a 375 px phone). */
+export type StoryId = 'web' | 'app' | 'quote' | 'wa';
+type Step = { chip: string; log: string };
+export interface Story {
+  label: string;        // the chip that picks it (accessible name)
+  short: string;        // what the chip shows: four fit on one row
+  opening: string;      // the chip leaving the phone
+  steps: Record<PlateId, Step>;
+  home: string;         // the chip riding home in act 4
+  done: string;         // the last log line
+}
+
+export const STORY_IDS: StoryId[] = ['web', 'app', 'quote', 'wa'];
+export const DEFAULT_STORY: StoryId = 'wa';
+
+export const STORIES: Record<StoryId, Story> = {
+  web: {
+    label: 'A website visit', short: 'Website', opening: 'Visitor on your site', home: 'Enquiry ✓',
+    steps: {
+      web: { chip: 'Page in 0.9 s',     log: 'site: page ready in 0.9 s' },
+      app: { chip: 'Menu loaded',       log: 'app: menu loaded for visitor' },
+      api: { chip: 'GET /menu 200',     log: 'api: GET /menu → 200' },
+      db:  { chip: 'Today’s specials',  log: 'db: today’s specials read' },
+      n8n: { chip: 'Lead saved',        log: 'n8n: enquiry saved as a lead' },
+      wa:  { chip: 'Follow-up sent ✓✓', log: 'whatsapp: follow-up sent ✓✓' },
+      ai:  { chip: 'Visit summary',     log: 'ai: visit summary to the team' },
+    },
+    done: 'done: a new lead in 1.1 s.',
+  },
+  app: {
+    label: 'A booking in an app', short: 'App booking', opening: 'Table for 4, 7:30', home: 'Booked ✓',
+    steps: {
+      web: { chip: 'Booking form',      log: 'site: booking form, 7:30 pm' },
+      app: { chip: 'Slot held',         log: 'app: table for 4 held' },
+      api: { chip: 'POST /bookings 201', log: 'api: POST /bookings → 201' },
+      db:  { chip: 'Booking #88',       log: 'db: booking #88 saved' },
+      n8n: { chip: 'Reminder set',      log: 'n8n: reminder set for 6:30 pm' },
+      wa:  { chip: 'Confirmation ✓✓',   log: 'whatsapp: confirmation ✓✓' },
+      ai:  { chip: 'Busy-night forecast', log: 'ai: busy-night forecast updated' },
+    },
+    done: 'done: booked in 0.8 s.',
+  },
+  quote: {
+    label: 'A quote', short: 'Quote', opening: 'Quote for 2 ACs', home: 'Accepted ✓',
+    steps: {
+      web: { chip: 'Line items',        log: 'site: 3 line items added' },
+      app: { chip: 'Total ₹45,800',     log: 'app: total ₹45,800 with GST' },
+      api: { chip: 'PDF generated',     log: 'api: quote PDF generated' },
+      db:  { chip: 'Quote Q-2041',      log: 'db: quote Q-2041 saved' },
+      n8n: { chip: 'Sent + tracked',    log: 'n8n: sent, opens tracked' },
+      wa:  { chip: 'Opened ✓✓',         log: 'whatsapp: opened by customer ✓✓' },
+      ai:  { chip: 'Follow-up drafted', log: 'ai: follow-up drafted' },
+    },
+    done: 'done: quote accepted.',
+  },
+  wa: {
+    label: 'A WhatsApp question', short: 'WhatsApp', opening: '“Is my cake ready?”', home: 'Reply ✓✓',
+    steps: {
+      web: { chip: 'Form sent',       log: 'site: “Is my cake ready?”' },
+      app: { chip: 'Order #214',      log: 'app: matched order #214' },
+      api: { chip: 'GET /orders/214', log: 'api: GET /orders/214 → 200' },
+      db:  { chip: 'Ready at 5 pm',   log: 'db: status = ready, 5 pm' },
+      n8n: { chip: 'Workflow ran',    log: 'n8n: 4-step workflow ran' },
+      wa:  { chip: 'Reply ✓✓',        log: 'whatsapp: reply delivered ✓✓' },
+      ai:  { chip: 'Team summary',    log: 'ai: day summary sent to the team' },
+    },
+    done: 'done in 1.2 s. Zero typing.',
+  },
 };
+
+export const isStoryId = (v: unknown): v is StoryId => STORY_IDS.includes(v as StoryId);
 export const LOG_WAIT = 'waiting for a customer…';
-export const LOG_DONE = 'done in 1.2 s. Zero typing.';   // ≤ 36 chars: one line on a 375px phone
+/** Fired on window by the story chips; Machine replays with the chosen story. */
+export const STORY_EVENT = 'lf:story';

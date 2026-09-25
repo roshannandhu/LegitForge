@@ -1,5 +1,6 @@
 import Machine from '@/components/hero/machine';
 import { HeroLog } from '@/components/hero/hero-log';
+import { StoryChips } from '@/components/hero/story-chips';
 import { HeroStatus } from '@/components/hero/hero-status';
 import { HeatDirector } from '@/components/motion/heat-director';
 import { TrustStrip } from '@/components/sections/trust-strip';
@@ -64,13 +65,15 @@ export default function Home() {
             </div>
             <HeroStatus />
           </div>
+          <StoryChips />
           <Machine showcase={HERO_SHOWCASE} />
           <HeroLog />
         </div>
         <p className="sr-only">
           Diagram: a phone opening into the systems we build — website, app, API, database,
-          automation, WhatsApp and AI. A customer’s question travels through every part, and the
-          phone receives the answer on WhatsApp in about a second.
+          automation, WhatsApp and AI. You can watch it handle a website visit, a table booking in an
+          app, a quote, or a WhatsApp question: each request travels through every part, and the
+          phone shows the result about a second later.
         </p>
       </section>
 
