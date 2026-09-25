@@ -82,8 +82,8 @@ function AppDemo() {
           <div className="row"><span /><span>Table for 2</span><span className="num">7:00 pm</span></div>
           <div className="row"><span /><span>Table for 6</span><span className="num">6:45 pm</span></div>
         </div>
+        <span className="dash-toast"><CheckIcon className="inline-icon" /> Booking from WhatsApp</span>
       </div>
-      <span className="dash-toast"><CheckIcon className="inline-icon" /> Booking from WhatsApp</span>
     </div>
   );
 }

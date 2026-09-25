@@ -40,7 +40,7 @@ export function DemoPlayer({ kind, children }: { kind: DemoId; children: React.R
       {children}
       {/* always rendered, so its row is reserved (no layout shift); shown once a play finishes */}
       <button
-        type="button" className="demo-replay" hidden={!(motionOn && played)}
+        type="button" className="demo-replay" data-shown={motionOn && played ? '' : undefined}
         onClick={() => { setPlayed(false); tl.current?.restart(); }}
       >
         Replay demo
