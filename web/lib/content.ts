@@ -59,10 +59,13 @@ export const PROJECTS: {
 ];
 
 /* ---------------------------------------------------------------- team §6.8 */
-export const TEAM = [
-  { slug: 'member-one', idCode: 'LF-001', name: '[Name]', role: '[Role]', initials: 'N1',
+/** photo: a square-ish portrait in public/team/, e.g. '/team/member-one.jpg' (about 800px,
+ *  same origin). Empty shows the monogram. It appears on every card layer (2D, flip, 3D). */
+export const TEAM: { slug: string; idCode: string; name: string; role: string; initials: string;
+  photo: string; skills: string[]; shipped: string; favorite: string }[] = [
+  { slug: 'member-one', idCode: 'LF-001', name: '[Name]', role: '[Role]', initials: 'N1', photo: '',
     skills: ['Next.js', 'Cloudflare', 'Design systems'], shipped: '[N]', favorite: '[Favourite build]' },
-  { slug: 'member-two', idCode: 'LF-002', name: '[Name]', role: '[Role]', initials: 'N2',
+  { slug: 'member-two', idCode: 'LF-002', name: '[Name]', role: '[Role]', initials: 'N2', photo: '',
     skills: ['n8n', 'WhatsApp Cloud API', 'Databases'], shipped: '[N]', favorite: '[Favourite build]' },
 ];
 

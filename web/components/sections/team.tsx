@@ -76,7 +76,7 @@ export function Team({ team }: { team: typeof TEAM }) {
   const people = useMemo<CardPerson[]>(() => [
     ...team.map((m) => ({
       id: m.slug, idCode: m.idCode, name: m.name, role: m.role, initials: m.initials,
-      skills: m.skills, shipped: m.shipped, favorite: m.favorite,
+      skills: m.skills, shipped: m.shipped, favorite: m.favorite, photo: m.photo,
     })),
     VISITOR,
   ], [team]);
@@ -231,7 +231,9 @@ function CardFront({ p }: { p: CardPerson }) {
   return (
     <div className="id-face-inner">
       <div className="id-top"><AnvilMark className="id-mark" /><span className="id-code num">{p.idCode}</span></div>
-      <div className={`id-photo${p.visitor ? ' id-photo-empty' : ''}`}><span>{p.initials}</span></div>
+      <div className={`id-photo${p.visitor ? ' id-photo-empty' : ''}`}>
+        {p.photo ? <img src={p.photo} alt="" loading="lazy" decoding="async" /> : <span>{p.initials}</span>}
+      </div>
       <p className="id-name">{p.name}</p>
       <p className="id-role">{p.role}</p>
       <span className="id-seal">Legit</span>
