@@ -89,10 +89,12 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
   Importing content.ts into a 'use client' file ships all of it to the browser.
 - Inner pages: app/pages.css + components/pages (PageHead with breadcrumbs, CtaBand, JsonLd).
   Blocks use .page-block on a .wrap: set padding-top only, or you erase .wrap's side padding.
-- Home #work is equal flip cards (components/work/work-gallery.tsx, sections.css "work flip"):
-  the front is the screenshot, pointing at it (tap / Enter on touch and keyboard) turns it to
-  the details on the back; leaving turns it back. Transform only. Cards keep data-project-card
-  + .project-cover for the Cleave transition.
+- Home #work is the React Bits Accordion Gallery (components/react-bits/accordion-gallery.jsx, a
+  reimplementation of its API: reactbits.dev is blocked from the sandbox; keep its `LF:` props)
+  shaped as portrait cards (sections.css "work: portrait cards"): nothing open until pointed at,
+  the open card gets a heat gradient and its details, a click opens the case study; phones get a
+  sideways row of portrait cards. Its flex-grow transition is the one allowed layout animation
+  (the row's box never changes size). Panels keep data-project-card + .project-cover (Cleave).
 - Team: any number of people (Admin → Team: add, reorder, remove). One full-bleed strip scrolls
   sideways in every layer. The 3D canvas is full width with headroom (sections.css
   .team-canvas, HEAD in team-lanyards.jsx: keep them equal), its camera follows the strip's
