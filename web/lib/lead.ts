@@ -5,7 +5,7 @@
  *  form imports ships to the browser, and content.ts holds every page's copy. */
 export const NEEDS = [
   'Website (static)', 'Website (dynamic)', 'Web app', 'Quotation or warranty system',
-  'WhatsApp automation', 'n8n workflow', 'Not sure yet',
+  'WhatsApp automation', 'n8n workflow', 'SEO', 'NFC cards or tags', 'Not sure yet',
 ] as const;
 
 export const BUDGETS = ['[range 1]', '[range 2]', '[range 3]', 'Not sure yet'] as const;

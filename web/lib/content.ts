@@ -2,7 +2,7 @@
  *  [Bracketed] text is a placeholder — the plan forbids launching with any of it. */
 
 /* ------------------------------------------------------------ services §6.3 */
-export type DemoKind = 'website' | 'app' | 'whatsapp' | 'n8n';
+export type DemoKind = 'website' | 'app' | 'whatsapp' | 'n8n' | 'seo' | 'nfc';
 
 export const SERVICES: {
   id: DemoKind; name: string; line: string; audience: string; price: string; time: string; link: string; href: string;
@@ -30,6 +30,18 @@ export const SERVICES: {
     line: 'Connect your apps so data moves by itself: forms, sheets, CRM, invoices.',
     audience: 'Teams stuck copying and pasting',
     price: 'From [price]', time: 'Often running in days', link: 'See n8n workflows', href: '/services/n8n-automation',
+  },
+  {
+    id: 'seo', name: 'SEO',
+    line: 'Get found on Google when people nearby search for what you sell, then turn the click into a call.',
+    audience: 'Local shops, clinics, service businesses',
+    price: 'From [price]/month', time: 'Results build over 2–3 months', link: 'See how we do SEO', href: '/services/seo',
+  },
+  {
+    id: 'nfc', name: 'NFC cards and tags',
+    line: 'One tap on a card or sticker opens your contact, your Google reviews, or a product’s warranty.',
+    audience: 'Sales teams, restaurants, product and service brands',
+    price: 'From [price]', time: 'Ready in about a week', link: 'See NFC cards and tags', href: '/services/nfc',
   },
 ];
 
@@ -102,6 +114,8 @@ export const PRICING = [
   { service: 'Web app', from: '[price]', time: '3–6 weeks', weeks: [3, 6], includes: 'Logins, database, admin panel' },
   { service: 'Quotation and warranty system', from: '[price]', time: '3–6 weeks', weeks: [3, 6], includes: 'Quotes as links or PDFs, warranty lookup by QR, CSV export any time' },
   { service: 'WhatsApp automation', from: '[price] setup + [price]/month', time: '1–2 weeks', weeks: [1, 2], includes: "Bot flows, lead capture, team alerts. Meta's message fees are billed at cost." },
+  { service: 'SEO', from: '[price]/month', time: 'Set up in 1–2 weeks', weeks: [1, 2], includes: 'Google Business Profile, on-page fixes, local pages, monthly report of calls and clicks' },
+  { service: 'NFC cards and tags', from: '[price]', time: 'About a week', weeks: [0.8, 1.2], includes: 'Programmed cards or stickers, the page they open, and edits any time without reprinting' },
   { service: 'n8n workflow', from: '[price] per workflow', time: '2–5 days', weeks: [0.4, 1], includes: 'Build, testing, documentation, 30 days of fixes' },
 ];
 

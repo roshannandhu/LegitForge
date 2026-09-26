@@ -42,6 +42,23 @@ export const DEMO_TRANSCRIPTS: Record<DemoId, { title: string; steps: string[] }
       'The team gets an alert, so a person follows up.',
     ],
   },
+  seo: {
+    title: 'How local SEO brings a business to the top of Google',
+    steps: [
+      'Someone nearby searches Google for “ac installation kochi”.',
+      'The results load, and CoolAir climbs from third place to the top result, with 4.9 stars from 212 reviews.',
+      'The clicks from Google this week count up to 148, and the calls from Google to 23.',
+    ],
+  },
+  nfc: {
+    title: 'How an NFC card or tag works with one tap',
+    steps: [
+      'A customer holds their phone near an NFC card or sticker.',
+      'The chip is read at once, with no app needed.',
+      'The phone opens the business’s page: here, a Google review form with five stars, ready to post.',
+      'The same tap can save a contact, open a menu, or show a product’s warranty, and the page can be changed without reprinting.',
+    ],
+  },
   quote: {
     title: 'How a quotation and warranty system works for an AC installation',
     steps: [

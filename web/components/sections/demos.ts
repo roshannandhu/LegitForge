@@ -7,7 +7,7 @@ import type { gsap as Gsap } from 'gsap';
 
 type G = typeof Gsap;
 type TL = ReturnType<G['timeline']>;
-export type DemoId = 'website' | 'app' | 'whatsapp' | 'n8n' | 'quote';
+export type DemoId = 'website' | 'app' | 'whatsapp' | 'n8n' | 'quote' | 'seo' | 'nfc';
 
 const $ = (root: Element, sel: string) => root.querySelector<HTMLElement>(sel);
 const $$ = (root: Element, sel: string) => [...root.querySelectorAll<HTMLElement>(sel)];
@@ -155,4 +155,33 @@ function quote(root: Element, gsap: G): TL {
   return tl;
 }
 
-export const DEMOS: Record<DemoId, (root: Element, gsap: G) => TL> = { website, app, whatsapp, n8n, quote };
+/* 6 — SEO: the query types, the business climbs from third to the top, clicks and calls count */
+function seo(root: Element, gsap: G): TL {
+  const tl = gsap.timeline({ defaults: { ease: 'power2.out' } });
+  const q = $(root, '.serp-q'), items = $$(root, '.serp-item'), you = items[0];
+  const text = q?.textContent ?? '';
+  const step = items[1] ? items[1].offsetTop - items[0].offsetTop : 0;
+  if (q) q.textContent = '';
+  const o = { n: 0 };
+  tl.to(o, { n: text.length, duration: 0.7, ease: 'none', onUpdate: () => { if (q) q.textContent = text.slice(0, Math.round(o.n)); } }, 0.1)
+    .call(() => { if (q) q.textContent = text; }, [], 0.8)
+    .from(items, { opacity: 0, y: 8, duration: 0.3, stagger: 0.08 }, 0.85)
+    .fromTo(you, { y: step * 2 }, { y: 0, duration: 0.8, ease: 'power3.inOut', immediateRender: true }, 1.3)
+    .fromTo(items.slice(1), { y: -step }, { y: 0, duration: 0.8, ease: 'power3.inOut', immediateRender: true }, 1.3)
+    .from($(root, '.serp-top'), { opacity: 0, scale: 0.6, duration: 0.3, ease: 'back.out(2)' }, 2.1);
+  countUp(tl, $(root, '.serp-clicks'), 2.2, 1.0);
+  countUp(tl, $(root, '.serp-calls'), 2.3, 1.0);
+  return tl;
+}
+
+/* 7 — NFC: the phone meets the card, waves ripple, the page slides up */
+function nfc(root: Element, gsap: G): TL {
+  const tl = gsap.timeline({ defaults: { ease: 'power2.out' } });
+  tl.from($(root, '.nfc-phone'), { y: 40, opacity: 0, duration: 0.6, ease: 'power3.out' }, 0.1)   // from below: never past the viewport edge
+    .fromTo($$(root, '.nfc-waves i'), { scale: 0.3, opacity: 0.9 }, { scale: 2.2, opacity: 0, duration: 0.8, stagger: 0.2, immediateRender: true }, 0.7)
+    .from($$(root, '.nfc-phone > *'), { opacity: 0, y: 10, duration: 0.3, stagger: 0.08 }, 1.2)
+    .from($(root, '.nfc-stars'), { scaleX: 0, transformOrigin: 'left center', duration: 0.4 }, 1.6);
+  return tl;
+}
+
+export const DEMOS: Record<DemoId, (root: Element, gsap: G) => TL> = { website, app, whatsapp, n8n, quote, seo, nfc };

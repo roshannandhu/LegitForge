@@ -6,7 +6,7 @@
 import type { DemoKind } from './content';
 
 /* ------------------------------------------------------------ services §7.1 */
-export type ServiceSlug = 'website-development' | 'whatsapp-automation' | 'n8n-automation';
+export type ServiceSlug = 'website-development' | 'whatsapp-automation' | 'n8n-automation' | 'seo' | 'nfc';
 export type WorkCategory = 'static' | 'dynamic' | 'whatsapp' | 'n8n';
 
 export interface ServicePage {
@@ -134,6 +134,78 @@ export const SERVICE_PAGES: ServicePage[] = [
       { q: 'Why n8n and not Zapier?', a: 'n8n can run on your own server for a flat cost, handles complex logic well, and keeps your data where you choose. For one or two simple steps, Zapier can be fine — we will say so.' },
       { q: 'What happens when a workflow breaks?', a: 'Every workflow sends an alert when a step fails, so it never fails silently. For 30 days after launch we fix it for free; after that, you can keep us on a small monthly care plan.' },
       { q: 'Do I need a server?', a: 'Either a small server in your name (a few dollars a month) or an n8n Cloud account. We set it up; you own it.' },
+    ],
+  },
+  {
+    slug: 'seo',
+    name: 'SEO',
+    topic: 'SEO',
+    demo: 'seo',
+    title: 'Local SEO: get found on Google, get the call',
+    description: 'Local SEO for small businesses: Google Business Profile, fast pages, local content and a monthly report of real calls and clicks. No fake promises of #1.',
+    h1: 'Get found on Google by the people near you',
+    lead: 'Most customers search before they call. We make sure your business shows up for the searches that matter near you, with a fast page that turns the click into a call or a WhatsApp message.',
+    problem: [
+      '“People nearby search for exactly what we do, and find our competitor.”',
+      '“Our Google listing has old hours and three reviews.”',
+      '“We paid for SEO once and got a report full of words, not calls.”',
+    ],
+    builds: [
+      { h: 'Google Business Profile', p: 'Correct hours, services, photos and categories, with posts and a simple way to ask happy customers for reviews. This is what shows on Maps and the local results.' },
+      { h: 'Pages that answer the search', p: 'A clear page for each service and area you serve, written the way customers search, fast on a phone, with a call and WhatsApp button at the top.' },
+      { h: 'The technical basics', p: 'Titles, descriptions, structured data, a sitemap, page speed and fixing what stops Google reading your site. The work nobody sees, done properly.' },
+      { h: 'A report of calls, not words', p: 'Each month: how many people found you, clicked, called or messaged, and what we will do next. In plain language, on one page.' },
+    ],
+    included: [
+      'An audit of your site, listing and competitors, before we start',
+      'Google Business Profile set up or cleaned up',
+      'Service and area pages, written with you',
+      'Review requests you can send by WhatsApp in one tap',
+      'A monthly one-page report with calls, clicks and next steps',
+    ],
+    price: 'From [price]/month · setup from [price]',
+    timeline: 'Set up in 1–2 weeks · results build over 2–3 months',
+    categories: ['static', 'dynamic'],
+    faq: [
+      { q: 'Can you guarantee the #1 spot on Google?', a: 'No, and nobody honest can. Google decides. What we can promise is the work that moves you up: a complete listing, pages that answer the search, reviews and a fast site, measured every month in calls and clicks.' },
+      { q: 'How long until I see results?', a: 'A cleaned-up Google listing often brings more calls within weeks. Pages and reviews build over two to three months. We show you the numbers each month, so you can see it working.' },
+      { q: 'Do I need a new website for SEO?', a: 'Not always. If your site is slow or hard to change, we will say so. Otherwise we improve what you have.' },
+    ],
+  },
+  {
+    slug: 'nfc',
+    name: 'NFC cards and tags',
+    topic: 'NFC cards and tags',
+    demo: 'nfc',
+    title: 'NFC business cards, review tags and warranty stickers',
+    description: 'NFC cards and tags that open your contact, your Google reviews or a product warranty with one tap. No app needed, and you can change where they point any time.',
+    h1: 'One tap: your contact, your reviews, or your warranty',
+    lead: 'A card or sticker with an NFC chip opens a page on any modern phone with one tap, no app. We make the cards and the pages they open, and you can change where they point without reprinting.',
+    problem: [
+      '“Our paper cards end up in a drawer, and nobody types the number in.”',
+      '“Happy customers say they will leave a review, and forget.”',
+      '“Customers lose the warranty card before they ever need it.”',
+    ],
+    builds: [
+      { h: 'NFC business cards', p: 'Tap to save your contact, open your WhatsApp or see your work. Update your number or title later without printing new cards.' },
+      { h: 'Review tags', p: 'A sticker or stand at the counter: one tap opens your Google review form. The easiest way to turn a good day into a five-star review.' },
+      { h: 'Warranty and service stickers', p: 'A tag on the product opens its warranty record and a “book a service” button. It works with our quotation and warranty system.' },
+      { h: 'Menus and product pages', p: 'Tap a table tag for today’s menu, or a shelf tag for the product page. Change the page any time.' },
+    ],
+    included: [
+      'Card or sticker design in your brand',
+      'Chips programmed and tested on iPhone and Android',
+      'The page each tag opens, fast and mobile-first',
+      'Change where a tag points any time, with no reprinting',
+      'A simple count of taps each month',
+    ],
+    price: 'From [price] · cards from [price] each',
+    timeline: 'About a week, including printing',
+    categories: ['dynamic'],
+    faq: [
+      { q: 'Does it work on every phone?', a: 'Almost every phone from the last few years reads NFC: iPhones from the XS on and nearly all Android phones. We add a small QR code as a backup for the rest.' },
+      { q: 'Do customers need an app?', a: 'No. The tap opens a normal web page in the phone’s browser.' },
+      { q: 'What if my details change?', a: 'The tag opens a link we control for you, so we change the page, not the card. No reprinting.' },
     ],
   },
 ];
