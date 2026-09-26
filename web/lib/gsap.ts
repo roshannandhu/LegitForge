@@ -20,6 +20,26 @@ export function loadGsap(): Promise<Gs> {
   }));
 }
 
+/** Every component's setup used to run in one microtask chain when GSAP arrived: one long
+ *  task that froze a budget phone for most of a second. Setups now queue and run one per
+ *  task, in the same order (so pins and triggers are created top to bottom as before), and
+ *  the browser can paint and answer taps between them. */
+const queue: (() => void)[] = [];
+let pumping = false;
+const yieldTask = () => new Promise<void>((r) => {
+  const s = (globalThis as { scheduler?: { yield?: () => Promise<void> } }).scheduler;
+  if (s?.yield) s.yield().then(r); else setTimeout(r, 0);
+});
+async function pump() {
+  pumping = true;
+  while (queue.length) { await yieldTask(); queue.shift()!(); }
+  pumping = false;
+}
+function schedule(fn: () => void) {
+  queue.push(fn);
+  if (!pumping) pump();
+}
+
 /** Selector strings inside `setup` resolve within `scope`. A function returned from `setup`
  *  runs on revert. */
 export function useGsap(
@@ -29,9 +49,9 @@ export function useGsap(
   useEffect(() => {
     let ctx: ReturnType<typeof Gsap.context> | undefined;
     let live = true;
-    loadGsap().then((g) => {
+    loadGsap().then((g) => schedule(() => {
       if (live) ctx = g.gsap.context(() => setup(g), scope?.current ?? undefined);
-    });
+    }));
     return () => { live = false; ctx?.revert(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- same contract as useGSAP's dependencies
   }, dependencies);

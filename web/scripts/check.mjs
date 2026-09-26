@@ -18,6 +18,10 @@ import { mkdir } from 'node:fs/promises';
 const BASE = process.env.BASE ?? 'http://localhost:3000';
 const CHROME = process.env.CHROME ?? 'C:/Program Files/Google/Chrome/Application/chrome.exe';
 const OUT = '.check';
+// Lite mode (lib/boot.ts) switches on for ≤4-core machines, like most CI runners: force it off
+// (or on, with LITE=1) so the check audits the intended experience on any machine
+const LITE = process.env.LITE === '1' ? '1' : '0';
+const LITE_INIT = (v) => { try { localStorage.setItem('lf-lite', v); } catch {} };
 
 // What the team section must render per device class (§6.8 tiers)
 const RUNS = [
@@ -106,6 +110,7 @@ for (const run of RUNS.filter((r) => !only || r.name.includes(only))) {
     isMobile: run.touch, hasTouch: run.touch, colorScheme: run.scheme, reducedMotion: run.motion,
     deviceScaleFactor: 1,
   });
+  await ctx.addInitScript(LITE_INIT, LITE);   // the full site; LITE=1 npm run check audits lite mode
   const page = await ctx.newPage();
   const errors = [];
   page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text().slice(0, 200)); });
@@ -115,7 +120,8 @@ for (const run of RUNS.filter((r) => !only || r.name.includes(only))) {
   // §6.1b: the Hallmark Strike plays on a first visit with motion on, never with motion off,
   // and always ends by itself (the overlay must be gone before anything is audited).
   const played = await page.evaluate(() => localStorage.getItem('lf-intro-seen') === '1');
-  (run.motion === 'reduce') === played ? fail(run.name, `intro ${played ? 'played with motion off' : 'did not play'}`) : pass(`intro ${played ? 'played' : 'skipped (motion off)'}`);
+  const expectIntro = run.motion !== 'reduce' && LITE === '0';   // lite mode never plays it
+  expectIntro !== played ? fail(run.name, `intro ${played ? 'played when it should not' : 'did not play'}`) : pass(`intro ${played ? 'played' : 'skipped (motion off or lite)'}`);
   const ended = await page.waitForFunction(() => !document.documentElement.dataset.intro, null, { timeout: 4000 }).then(() => true, () => false);
   ended ? pass('intro ended by itself') : fail(run.name, 'intro overlay still up after 4 s');
   await page.screenshot({ path: `${OUT}/${run.name}-hero.png` });
@@ -202,6 +208,7 @@ if (!only || only === 'flow') {
   console.log('\ndemo flows');
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
   await ctx.addInitScript(() => localStorage.setItem('lf-intro-seen', '1'));
+  await ctx.addInitScript(LITE_INIT, LITE);
   const page = await ctx.newPage();
   await page.goto(BASE + '/', { waitUntil: 'networkidle' });
   for (const kind of ['website', 'app', 'whatsapp', 'n8n', 'seo', 'nfc', 'quote']) {
@@ -257,6 +264,7 @@ if (!process.env.SKIP_PAGES) for (const run of PAGE_RUNS.filter((r) => !only || 
     viewport: { width: run.viewport[0], height: run.viewport[1] },
     isMobile: run.touch, hasTouch: run.touch, colorScheme: run.scheme, reducedMotion: run.motion, deviceScaleFactor: 1,
   });
+  await ctx.addInitScript(LITE_INIT, LITE);
   const page = await ctx.newPage();
   for (const path of PAGES) {
     const errors = [];
