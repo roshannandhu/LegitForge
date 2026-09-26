@@ -64,12 +64,26 @@ function audit() {
     overflow: Math.max(0, Math.round(document.documentElement.scrollWidth - vw)),
     missing: ids.filter((i) => !document.getElementById(i)),
     escapees: escapees.slice(0, 8),
+    // SEO basics (plan B): one h1, a canonical, and titles and descriptions search shows in full
+    seo: {
+      h1: document.querySelectorAll('h1').length,
+      canonical: !!document.querySelector('link[rel="canonical"]'),
+      title: document.title,
+      desc: document.querySelector('meta[name="description"]')?.getAttribute('content') ?? '',
+    },
     small: [...small].slice(0, 8),
     tiny: tiny.slice(0, 8),
   };
 }
 
 const failures = [];
+/** Titles up to 70 characters (the brand suffix may be cut), descriptions 50–160, one h1, a canonical. */
+const seoProblems = (s) => [
+  s.h1 !== 1 && `${s.h1} h1 elements`,
+  !s.canonical && 'no canonical link',
+  s.title.length > 70 && `title is ${s.title.length} characters: "${s.title}"`,
+  (s.desc.length < 50 || s.desc.length > 160) && `description is ${s.desc.length} characters`,
+].filter(Boolean);
 const fail = (run, msg) => { failures.push(`${run}: ${msg}`); console.log(`  ✗ ${msg}`); };
 const pass = (msg) => console.log(`  ✓ ${msg}`);
 let budgetChecked = false;
@@ -114,6 +128,8 @@ for (const run of RUNS.filter((r) => !only || r.name.includes(only))) {
     a.vw > run.viewport[0] ? fail(run.name, `layout viewport widened to ${a.vw}px`) : pass('layout viewport = device width');
     a.missing.length ? fail(run.name, `missing sections: ${a.missing}`) : pass('all 11 sections present');
     a.escapees.length ? fail(run.name, `elements outside viewport: ${a.escapees.join(', ')}`) : pass('nothing escapes the viewport');
+    const seoBad = seoProblems(a.seo);
+    seoBad.length ? fail(run.name, `SEO: ${seoBad.join('; ')}`) : pass(`SEO basics (h1, canonical, title ${a.seo.title.length}, description ${a.seo.desc.length})`);
     a.small.length ? fail(run.name, `text under 14px: ${a.small.join(', ')}`) : pass('no text under 14px');
     a.tiny.length ? fail(run.name, `targets under 44px: ${a.tiny.join(', ')}`) : pass('all targets ≥ 44px');
 
@@ -226,6 +242,7 @@ if (!process.env.SKIP_PAGES) for (const run of PAGE_RUNS.filter((r) => !only || 
       a.overflow && `overflow ${a.overflow}px`,
       a.vw > run.viewport[0] && `layout viewport widened to ${a.vw}px`,
       a.escapees.length && `escapes: ${a.escapees.join(', ')}`,
+      ...seoProblems(a.seo),
       a.small.length && `text under 14px: ${a.small.join(', ')}`,
       a.tiny.length && `targets under 44px: ${a.tiny.join(', ')}`,
       errors.length && `console: ${errors.join(' | ')}`,

@@ -25,7 +25,6 @@ export function Services() {
               </div>
               <div className="fire-stage">
                 <ServiceDemo kind={s.id} />
-                <p className="sr-only">{s.demoLabel}</p>
               </div>
             </li>
           ))}

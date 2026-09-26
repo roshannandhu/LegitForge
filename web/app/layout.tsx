@@ -35,12 +35,12 @@ const stencil = Big_Shoulders_Stencil({
 export const metadata: Metadata = {
   metadataBase: new URL(SITE.url),
   title: {
-    default: 'Legit Forge — websites, apps, WhatsApp automation and n8n workflows',
+    default: 'Legit Forge: websites, apps and WhatsApp automation',
     template: '%s · Legit Forge',
   },
   description:
-    'A two-person studio building fast websites and web apps, quotation and warranty systems, ' +
-    'WhatsApp automation and n8n workflows. Fixed quotes, weekly previews, and you own everything we make.',
+    'Two-person studio building fast websites, web apps, quotation and warranty systems, ' +
+    'WhatsApp automation and n8n workflows. Fixed quotes; you own everything.',
   alternates: { canonical: '/' },
   openGraph: {
     type: 'website',

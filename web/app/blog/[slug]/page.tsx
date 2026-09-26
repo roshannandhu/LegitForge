@@ -16,7 +16,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const p = findPost((await params).slug);
   if (!p) return {};
   return {
-    title: p.title,
+    title: p.seoTitle ?? p.title,
     description: p.description,
     alternates: { canonical: `/blog/${p.slug}` },
     openGraph: { type: 'article', publishedTime: p.date },
@@ -91,6 +91,7 @@ export default async function BlogPost({ params }: { params: Promise<{ slug: str
         description: p.description,
         datePublished: p.date,
         wordCount: stats.words,
+        image: `${SITE.url}/blog/${p.slug}/opengraph-image`,
         url: `${SITE.url}/blog/${p.slug}`,
         mainEntityOfPage: `${SITE.url}/blog/${p.slug}`,
         author: author ? { '@type': 'Person', name: author.name, url: `${SITE.url}/team/${author.slug}` } : undefined,

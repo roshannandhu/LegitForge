@@ -5,35 +5,31 @@
 export type DemoKind = 'website' | 'app' | 'whatsapp' | 'n8n';
 
 export const SERVICES: {
-  id: DemoKind; name: string; line: string; audience: string; price: string; link: string; href: string; demoLabel: string;
+  id: DemoKind; name: string; line: string; audience: string; price: string; link: string; href: string;
 }[] = [
   {
     id: 'website', name: 'Static websites',
     line: 'A fast site that loads in about a second and is easy to update.',
     audience: 'Local businesses, portfolios, launches',
     price: 'From [price]', link: 'See website packages', href: '/services/website-development',
-    demoLabel: 'Demo: a wireframe becomes a finished page, and its speed score reads 99.',
   },
   {
     id: 'app', name: 'Web apps',
     line: 'Bookings, dashboards, member areas and internal tools: software that works with your data.',
     audience: 'Growing businesses',
     price: 'From [price]', link: 'See web app examples', href: '/work?service=dynamic',
-    demoLabel: 'Demo: a dashboard with a sales chart, three totals and a new booking arriving.',
   },
   {
     id: 'whatsapp', name: 'WhatsApp automation',
     line: 'Answer customers instantly, send order updates and collect leads on WhatsApp.',
     audience: 'Shops, clinics, restaurants, service businesses',
     price: 'From [price]', link: 'See WhatsApp automation', href: '/services/whatsapp-automation',
-    demoLabel: 'Demo: a WhatsApp bot answers a delivery question and takes an order.',
   },
   {
     id: 'n8n', name: 'n8n workflows',
     line: 'Connect your apps so data moves by itself: forms, sheets, CRM, invoices.',
     audience: 'Teams stuck copying and pasting',
     price: 'From [price]', link: 'See n8n workflows', href: '/services/n8n-automation',
-    demoLabel: 'Demo: a form entry travels through a sheet, an AI step, WhatsApp and a team alert.',
   },
 ];
 

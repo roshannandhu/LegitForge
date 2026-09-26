@@ -99,6 +99,8 @@ export function CaseStudy({ p, next }: { p: WorkProject; next?: WorkProject }) {
         about: p.client,
         creator: { '@type': 'Organization', name: SITE.name, url: SITE.url },
         keywords: c.stack.join(', '),
+        image: p.cover ? `${SITE.url}${p.cover.src}` : `${SITE.url}/work/${p.slug}/opengraph-image`,
+        ...(c.results.length ? { abstract: c.results.map((r) => `${r.value} ${r.label}`).join('; ') } : {}),
       }} />
     </>
   );

@@ -3,6 +3,7 @@
  *  (demos.ts "quote"): the markup is its finished frame. */
 
 import { DemoPlayer } from './demo-player';
+import { DemoTranscript } from './demo-transcript';
 
 const POINTS = [
   { h: 'Quote', p: 'Build a quote from saved line items, send it as a link or PDF, and see when it was opened. Accepted quotes are timestamped and stored.' },
@@ -57,7 +58,7 @@ export function Quotation() {
           <span className="qm-remind">Expiry reminder set on WhatsApp <b>✓✓</b></span>
         </div>
         </DemoPlayer>
-        <p className="sr-only">Example: a quote for an AC installation is sent, opened and accepted; the customer scans the warranty code and sees it is valid until September 2027; an expiry reminder is set on WhatsApp.</p>
+        <DemoTranscript kind="quote" />
       </div>
     </section>
   );

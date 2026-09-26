@@ -8,6 +8,7 @@ import { BLOG_INDEX } from './blog-index.generated';
 export interface Post {
   slug: string;          // = content/blog/<slug>.mdx
   title: string;
+  seoTitle?: string;     // shorter title for search results (<= 55 characters + the brand)
   description: string;   // meta description and the index card, <= 160 characters
   date: string;          // ISO date it was published
   author: string;        // TEAM slug
@@ -19,12 +20,14 @@ const POSTS: Post[] = [
   {
     slug: 'what-a-whatsapp-bot-can-do',
     title: 'What a WhatsApp bot can (and can’t) do for a small business',
+    seoTitle: 'What a WhatsApp bot can do for a small business',
     description: 'The questions a bot answers well, when it should hand over to a person, and the WhatsApp rules that keep your number safe.',
     date: '2026-09-24', author: 'member-two', service: 'whatsapp-automation', draft: true,
   },
   {
     slug: 'static-or-dynamic-website',
     title: 'Static or dynamic website: which one does your business need?',
+    seoTitle: 'Static or dynamic website: which do you need?',
     description: 'One question tells you whether you need a fast static site or a web app, and why most businesses start static and add one moving part.',
     date: '2026-09-20', author: 'member-one', service: 'website-development', draft: true,
   },

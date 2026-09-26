@@ -2,22 +2,27 @@
  *  Built in HTML/SVG, not video: crisp, tiny, and they follow the theme.
  *  The markup IS the final frame: DemoPlayer plays each one from its start state when it
  *  comes into view (components/sections/demos.ts), so no JS and motion off still show the
- *  finished demo. Each is aria-hidden; the section supplies one visually hidden sentence. */
+ *  finished demo. Each is aria-hidden; its step-by-step text (lib/demo-transcripts.ts) sits
+ *  beside it, visually hidden, for screen readers and search engines. */
 
 import { CheckIcon } from '@/components/ui/icons';
 import type { DemoKind } from '@/lib/content';
 import { DemoPlayer } from './demo-player';
+import { DemoTranscript } from './demo-transcript';
 
 export function ServiceDemo({ kind }: { kind: DemoKind }) {
   return (
-    <DemoPlayer kind={kind}>
-      <div className={`demo demo-${kind}`} aria-hidden="true">
-        {kind === 'website' && <WebsiteDemo />}
-        {kind === 'app' && <AppDemo />}
-        {kind === 'whatsapp' && <WhatsAppDemo />}
-        {kind === 'n8n' && <N8nDemo />}
-      </div>
-    </DemoPlayer>
+    <>
+      <DemoPlayer kind={kind}>
+        <div className={`demo demo-${kind}`} aria-hidden="true">
+          {kind === 'website' && <WebsiteDemo />}
+          {kind === 'app' && <AppDemo />}
+          {kind === 'whatsapp' && <WhatsAppDemo />}
+          {kind === 'n8n' && <N8nDemo />}
+        </div>
+      </DemoPlayer>
+      <DemoTranscript kind={kind} />
+    </>
   );
 }
 
