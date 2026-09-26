@@ -36,12 +36,6 @@ const FIT_NOW = `(function(s){if(matchMedia('(max-width: 767px)').matches)return
   `(document.currentScript.previousElementSibling)`;
 
 const WORD = 'Legit Forge';
-/** The thread: the spine runs from above the top layer down through each slot's centre (revealed
- *  top to bottom); the tail curves up into the phone, so it appears on its own at the end. */
-const LAST = SLOTS[SLOTS.length - 1];
-const SPINE = [`M${SLOTS[0].x} ${SLOTS[0].y - 70}`, ...SLOTS.map((p) => `L${p.x} ${p.y}`)].join(' ');
-const TAIL = `M${LAST.x} ${LAST.y} C${LAST.x} ${LAST.y + 60} ${SCREEN_C.x - 120} ${SCREEN_C.y + 40} ${SCREEN_C.x} ${SCREEN_C.y}`;
-
 let introPlayed = false;
 
 export default function Teardown() {
@@ -121,13 +115,6 @@ export default function Teardown() {
           .to(el, { '--x': SLOTS[i].x, '--y': SLOTS[i].y, '--tilt': 1, '--s': ISO_SCALE, duration: 0.12, ease: 'power2.out' }, at);
       });
 
-      // the thread draws with the run: top of the stack at the first window, the phone at the last
-      const thread = host.querySelector<SVGElement>('.td-thread')!;
-      gsap.set(thread, { '--thread': 0, '--tail': 0, opacity: 1 });
-      tl.to(thread, { '--thread': 1, duration: win(LAYERS.length - 1) - win(0) + 0.02, ease: 'none' }, win(0))
-        .to(thread, { '--tail': 1, duration: 0.02 }, win(LAYERS.length) - 0.02)    // into the phone: done
-        .to(thread, { opacity: 0, duration: 0.03 }, 0.86);
-
       const drawing = [host.querySelector('.td-callouts'), host.querySelector('.td-leaders')];
       gsap.set(drawing, { opacity: 0 });
       tl.to(drawing, { opacity: 1, duration: 0.08 }, 0.12).to(drawing, { opacity: 0, duration: 0.04 }, 0.855);
@@ -164,7 +151,7 @@ export default function Teardown() {
         setScreen(p < 0.02 ? 'brand' : p < 0.95 ? 'dark' : 'final');
         const focus = LAYERS.findIndex((_, i) => p >= win(i) && p < win(i) + RUN.each);
         callouts.forEach((c, i) => c.toggleAttribute('data-active', i === focus));
-        layers.forEach((l, i) => l.toggleAttribute('data-lit', p >= win(i) && p < 0.86));   // the thread has reached it
+        layers.forEach((l, i) => l.toggleAttribute('data-lit', p >= win(i) && p < 0.86));   // the customer's request has reached it
         const ran = LAYERS.filter((_, i) => p >= win(i) + 0.03).map((l) => l.id);
         showLog(new Set([...ran, ...(p >= 0.95 ? ['done'] : []), ...(ran.length ? [] : ['wait'])]));
         setAct(actIndex(p) + 1);
@@ -253,12 +240,6 @@ export default function Teardown() {
             {LAYERS.map((l) => <div key={l.id} className="td-final" data-for={l.id}><LayerScreen id={l.id} /></div>)}
           </div>
         </div>
-
-        {/* the customer's thread: one line through every layer, drawn as her request travels */}
-        <svg className="td-thread" viewBox={`0 0 ${DESIGN.w} ${DESIGN.h}`} aria-hidden="true">
-          <path className="td-spine" d={SPINE} />
-          <path className="td-tail" d={TAIL} />
-        </svg>
 
         <ul className="td-layers" aria-label="What happens inside the phone">
           {LAYERS.map((l, i) => (
