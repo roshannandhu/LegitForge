@@ -464,7 +464,7 @@
 .id-face-inner { position: absolute; inset: 0; display: flex; flex-direction: column; padding: 20px; text-align: left; }
 @media (min-width: 1024px) { .id-face-inner { padding: 14px; } }
 .id-top { display: flex; align-items: center; justify-content: space-between; }
-.id-mark { width: 26px; height: 26px; color: var(--accent); }
+.id-mark { width: 28px; height: 28px; }
 .id-code { font-family: var(--font-stencil), var(--font-sans); font-size: 18px; font-weight: 700; letter-spacing: .08em; color: var(--text-muted); }
 .id-photo {
   display: grid; place-items: center; overflow: hidden; margin: 18px 0 16px; flex: 1 1 0; min-height: 0; border-radius: 12px;  /* fills what's left: the seal always fits */
@@ -483,7 +483,7 @@
 }
 @media (min-width: 1024px) {   /* 218px desktop card: same design, tighter */
   .id-top { gap: 8px; }
-  .id-mark { width: 20px; height: 20px; }
+  .id-mark { width: 24px; height: 24px; }
   .id-code { font-size: 14px; }
   .id-photo { margin: 10px 0; font-size: 36px; }
   .id-name { font-size: 17px; }

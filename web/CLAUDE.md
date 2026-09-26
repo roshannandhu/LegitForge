@@ -14,9 +14,11 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
   (components/react-bits). Nothing else may import them.
 - Hero (the Teardown, PLAN §6.2c): data lib/teardown.ts · component components/hero/teardown.tsx ·
   live screens components/hero/layer-screens.tsx · their flows components/hero/teardown-flows.ts
-
 - First-visit intro (the Hallmark Strike, PLAN §6.1b): components/intro, pure CSS. lib/boot.ts
   decides it before first paint. Clear localStorage `lf-intro-seen` to see it again.
+- Logo: the coin, CoinMark in components/ui/icons.tsx (also app/icon.svg and mark() in lib/card-art.ts;
+  keep all three in step). Its gold and steel are fixed hex in both themes, like a real coin: the
+  one allowed exception to the token rule.
 
 ## Commands
 - npm run dev              local development (port 3000)

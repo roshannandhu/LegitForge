@@ -1,14 +1,14 @@
 /** The 2D ID card faces (PLAN §6.8), shared by the team section's static and FlipCard
  *  layers and the member portfolio header (§7.3). No hooks: renders on the server too. */
 
-import { AnvilMark } from '@/components/ui/icons';
+import { CoinMark } from '@/components/ui/icons';
 import type { CardPerson } from '@/lib/card-art';
 
 /* ------------------------------------------------ card faces (2D layers) */
 export function CardFront({ p }: { p: CardPerson }) {
   return (
     <div className="id-face-inner">
-      <div className="id-top"><AnvilMark className="id-mark" /><span className="id-code num">{p.idCode}</span></div>
+      <div className="id-top"><CoinMark className="id-mark" /><span className="id-code num">{p.idCode}</span></div>
       <div className={`id-photo${p.visitor ? ' id-photo-empty' : ''}`}>
         {p.photo ? <img src={p.photo} alt="" loading="lazy" decoding="async" /> : <span>{p.initials}</span>}
       </div>

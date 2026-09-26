@@ -9,7 +9,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLenis } from 'lenis/react';
 import { ForgeLever } from './forge-lever';
-import { AnvilMark, ChatIcon, CloseIcon, MenuIcon } from '@/components/ui/icons';
+import { CoinMark, ChatIcon, CloseIcon, MenuIcon } from '@/components/ui/icons';
 import { useGsap } from '@/lib/gsap';
 import { SITE, waLink } from '@/lib/site';
 
@@ -91,7 +91,7 @@ export function Header() {
       <a className="skip-link" href="#main">Skip to content</a>
       <div className="wrap header-row">
         <a className="logo" href="/" aria-label={`${SITE.name}, home`}>
-          <AnvilMark className="logo-mark" />
+          <CoinMark className="logo-mark" />
           <span className="logo-word">Legit Forge</span>
         </a>
 

@@ -1,4 +1,4 @@
-import { AnvilMark } from '@/components/ui/icons';
+import { CoinMark } from '@/components/ui/icons';
 import { MotionSwitch } from './motion-switch';
 import { SITE, waLink } from '@/lib/site';
 
@@ -12,7 +12,7 @@ export function Footer() {
       <div className="wrap footer-grid">
         <div className="footer-brand">
           <a className="logo" href="/" aria-label={`${SITE.name}, home`}>
-            <AnvilMark className="logo-mark" />
+            <CoinMark className="logo-mark" />
             <span className="logo-word">Legit Forge</span>
           </a>
           <p>Websites, apps, quotation and warranty systems, WhatsApp automation and n8n workflows — built by two people in {SITE.city}.</p>

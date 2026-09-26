@@ -105,11 +105,23 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
   ctx.roundRect(x, y, w, h, r);
 }
 
-function mark(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, color: string) {
+/** The coin logo (CoinMark in components/ui/icons.tsx), same 32×32 geometry. */
+function mark(ctx: CanvasRenderingContext2D, x: number, y: number, size: number) {
   ctx.save();
   ctx.translate(x, y);
   ctx.scale(size / 32, size / 32);
-  ctx.fillStyle = color;
+  const gold = ctx.createRadialGradient(12, 10, 0, 12, 10, 24);
+  gold.addColorStop(0, '#FFE9A8'); gold.addColorStop(.45, '#E3B452'); gold.addColorStop(1, '#A87424');
+  const steel = ctx.createLinearGradient(0, 0, 32, 32);
+  steel.addColorStop(0, '#5C6B7A'); steel.addColorStop(.5, '#2E3945'); steel.addColorStop(1, '#1A222B');
+  const disc = (r: number, fill: CanvasGradient) => { ctx.beginPath(); ctx.arc(16, 16, r, 0, Math.PI * 2); ctx.fillStyle = fill; ctx.fill(); };
+  disc(15.6, gold);
+  disc(14.3, steel);
+  ctx.beginPath(); ctx.arc(16, 16, 12.4, 0, Math.PI * 2);
+  ctx.setLineDash([.9, 1.05]); ctx.lineWidth = 1.3; ctx.strokeStyle = 'rgb(201 210 219 / .55)'; ctx.stroke(); ctx.setLineDash([]);
+  disc(10.6, gold);
+  ctx.translate(16, 16.6); ctx.scale(.56, .56); ctx.translate(-15, -13.75);
+  ctx.fillStyle = '#6E4A12';
   ctx.fill(new Path2D(SPARK));
   ctx.fill(new Path2D(ANVIL));
   ctx.restore();
@@ -124,7 +136,7 @@ function drawFront(ctx: CanvasRenderingContext2D, r: typeof FRONT, p: CardPerson
   ctx.fillRect(r.x, r.y, r.w, r.h);
 
   // header: mark + wordmark, ID code in the stamp face. Top 150px stays clear for the clip.
-  mark(ctx, x0, 168, 76, t.accent);
+  mark(ctx, x0, 168, 76);
   ctx.fillStyle = t.text;
   ctx.textBaseline = 'middle';
   setFont(ctx, 800, 44, f.sans, 'semi-expanded');
@@ -214,7 +226,7 @@ function drawBack(ctx: CanvasRenderingContext2D, r: typeof BACK, p: CardPerson, 
     setFont(ctx, 500, 54, f.sans);
     wrap(ctx, 'Tell us what you’re building.', inner).forEach((l, i) =>
       ctx.fillText(l, x0, 440 + lines.length * 112 + 40 + i * 66));
-    mark(ctx, x0, r.h - pad - 120, 88, t.accent);
+    mark(ctx, x0, r.h - pad - 120, 88);
     return;
   }
 
@@ -255,7 +267,7 @@ function drawBack(ctx: CanvasRenderingContext2D, r: typeof BACK, p: CardPerson, 
   stat('Projects shipped', p.shipped, cy + 260);
   stat('Favourite build', p.favorite, cy + 400);
 
-  mark(ctx, x0, r.h - pad - 90, 64, t.accent);
+  mark(ctx, x0, r.h - pad - 90, 64);
   ctx.fillStyle = t.muted;
   setFont(ctx, 600, 40, f.sans);
   ctx.fillText('legitforge', x0 + 84, r.h - pad - 42);
@@ -304,7 +316,7 @@ export function drawBand() {
   ctx.fillRect(0, 18, 1024, 6);
   ctx.fillRect(0, 232, 1024, 6);
   ctx.globalAlpha = 1;
-  mark(ctx, 512 - 64, 64, 128, t.accentInk);
+  mark(ctx, 512 - 64, 64, 128);
 
   const tex = new CanvasTexture(canvas);
   tex.colorSpace = SRGBColorSpace;
