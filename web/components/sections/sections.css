@@ -167,7 +167,7 @@
 .quote-points p { margin: 0; max-width: 52ch; }
 .quote-trust { margin: 32px 0 0; padding: 16px 20px; max-width: 58ch; border-left: 2px solid var(--quench); color: var(--text-muted); font-size: 15px; }
 
-.quote-mock { display: grid; justify-items: center; }
+.quote-mock { display: grid; justify-items: center; overflow-x: clip; }   /* the seal drops in large: never widen a phone */
 /* the request, as a WhatsApp message (plan D #4) */
 .qm-bubble {
   justify-self: end; max-width: 280px; margin: 0 0 10px; padding: 8px 12px 6px; border-radius: 12px 12px 2px 12px;

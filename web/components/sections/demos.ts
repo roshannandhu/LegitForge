@@ -143,7 +143,7 @@ function quote(root: Element, gsap: G): TL {
     .call(() => { if (meta) meta.textContent = finalMeta; }, [], 2.7)
     .fromTo(accepted, { opacity: 0, scale: 1.5 }, { opacity: 1, scale: 1, duration: 0.3, ease: 'power4.in', immediateRender: true }, 2.7)
     // the seal is pressed: drops in large, lands with a small bounce, the paper takes the impression
-    .fromTo($(root, '.qm-seal'), { opacity: 0, scale: 2.4, rotate: -40 }, { opacity: 1, scale: 1, rotate: -12, duration: 0.32, ease: 'power4.in', immediateRender: true }, 2.7)
+    .fromTo($(root, '.qm-seal'), { opacity: 0, scale: 1.8, rotate: -40 }, { opacity: 1, scale: 1, rotate: -12, duration: 0.32, ease: 'power4.in', immediateRender: true }, 2.7)
     .fromTo($(root, '.qm-quote'), { y: 0 }, { y: 2, duration: 0.06, yoyo: true, repeat: 1, immediateRender: false }, 3.02)
     .from($(root, '.qm-link'), { scaleY: 0, transformOrigin: 'top center', duration: 0.4 }, 3.1)
     .from($(root, '.qm-warranty'), { opacity: 0, y: 14, duration: 0.4 }, 3.3)
