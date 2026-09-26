@@ -16,3 +16,20 @@ export const INTRO_BOOT =
   `&&!/[?&](qa|lead)=/.test(location.search)&&!localStorage.getItem('lf-intro-seen')){` +
   `localStorage.setItem('lf-intro-seen','1');d.dataset.intro='1';` +
   `setTimeout(function(){delete d.dataset.intro},2300)}}catch(e){}`;
+
+/** The Cleave as a page transition (PLAN §23.1): a project card opening its case study.
+ *  Cross-document View Transitions, so the links stay plain <a> and nothing ships to the
+ *  bundle; a browser without them simply navigates. Only card → case study animates (type
+ *  "cleave", styled in app/globals.css); every other navigation skips the transition.
+ *  Old page: the clicked card's cover is named project-cover, to morph into the case-study
+ *  cover, and the header is named so it stays put instead of splitting with the page. New page: the transition runs only with motion on. */
+export const CLEAVE_BOOT =
+  `try{var CS=/^\\/work\\/[^/]+\\/?$/,card=null;` +
+  `addEventListener('click',function(e){var a=e.target.closest&&e.target.closest('a');card=a&&a.closest('[data-project-card]')},true);` +
+  `addEventListener('pageswap',function(e){var v=e.viewTransition;if(!v)return;` +
+  `var to=e.activation&&e.activation.entry&&new URL(e.activation.entry.url);` +
+  `if(document.documentElement.dataset.motion==='on'&&card&&to&&to.origin===location.origin&&CS.test(to.pathname)){` +
+  `var c=card.querySelector('.project-cover'),h=document.querySelector('.site-header');if(c)c.style.viewTransitionName='project-cover';if(h)h.style.viewTransitionName='site-header'}else v.skipTransition()});` +
+  `addEventListener('pagereveal',function(e){var v=e.viewTransition;if(!v)return;` +
+  `if(document.documentElement.dataset.motion==='on'&&CS.test(location.pathname))v.types.add('cleave');else v.skipTransition()})` +
+  `}catch(e){}`;
