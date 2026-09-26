@@ -4,6 +4,7 @@
  *  the layer's callout carries the words. */
 
 import type { LayerId } from '@/lib/teardown';
+import { GoogleG } from '@/components/ui/icons';
 
 export function LayerScreen({ id }: { id: LayerId }) {
   return (
@@ -22,7 +23,7 @@ export function LayerScreen({ id }: { id: LayerId }) {
 function Seo() {
   return (
     <>
-      <p className="ls-search" data-f="search"><i className="ls-mag" /><span data-f="q">ac installation kochi</span></p>
+      <p className="ls-search" data-f="search"><GoogleG className="ls-mag" /><span data-f="q">ac installation kochi</span></p>
       <ol className="ls-results">
         <li className="ls-res is-top" data-f="top">
           <span className="ls-res-tag" data-f="tag">Top result</span>

@@ -36,22 +36,23 @@ export const DEMO_TRANSCRIPTS: Record<DemoId, { title: string; steps: string[] }
     ],
   },
   n8n: {
-    title: 'How an n8n automation moves one enquiry through five steps without copy-paste',
+    title: 'How an n8n automation moves each enquiry through its workflow without copy-paste',
     steps: [
-      'A customer fills in the website form: a new entry.',
-      'n8n saves it to a Google Sheet as row 214.',
-      'An AI step reads the message and tags the intent as an order.',
-      'A WhatsApp reply goes to the customer automatically.',
-      'The team gets an alert, so a person follows up.',
-      'Entries keep flowing through, from forms, messages and calls: each one is saved as the next row (215, 216 and on) and tagged as a booking, a question or an order.',
+      'The workflow is switched on (Active) in n8n, and its executions counter shows every run.',
+      'A customer fills in the website form: the Form trigger starts a new run.',
+      'n8n saves the entry to a Google Sheet as the next row (214, 215 and on).',
+      'An AI Agent step reads the message and tags its intent: an order or a question.',
+      'A Switch sends it down the right branch: an order gets an automatic WhatsApp reply, a question alerts the team so a person answers it.',
+      'Each node shows a green tick once it has run, and the wires the entry travelled light up, as in the real n8n editor.',
     ],
   },
+
   seo: {
     title: 'How local SEO brings a business to the top of Google',
     steps: [
       'Someone nearby searches Google for “ac installation kochi”.',
-      'The results load, and CoolAir climbs from third place to the top result, with 4.9 stars from 212 reviews.',
-      'The clicks from Google this week count up to 148, and the calls from Google to 23.',
+      'The Google Maps results load with a map and three local businesses, and CoolAir climbs from third place to the top listing, with 4.9 stars from 212 reviews; its pin lifts on the map.',
+      'Someone taps CoolAir\'s Call button. The clicks from Google this week count up to 148, and the calls from Google to 23.',
       'New searches keep coming (“split ac service near me”, “ac repair kochi open now”, “best ac installation kochi”), and each time CoolAir climbs back to the top while the clicks and calls keep adding up.',
     ],
   },

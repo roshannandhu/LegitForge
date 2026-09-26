@@ -101,27 +101,13 @@ function whatsapp(root: Element, gsap: G): TL {
   return tl;
 }
 
-/* 4 — n8n: one entry travels the workflow and every node reports what it did */
+/* 4 — n8n: the canvas assembles: nodes pop in along the workflow, then the wires */
 function n8n(root: Element, gsap: G): TL {
   const tl = gsap.timeline({ defaults: { ease: 'power2.out' } });
-  const flow = $(root, '.flow')!;
-  const checks = $$(root, '.flow-check'), outs = $$(root, '.flow-out');
-  const vertical = flow.offsetWidth < 480;                          // phones: top to bottom (sections.css)
-  const span = () => (vertical ? flow.offsetHeight - 44 : flow.offsetWidth * 0.8);   // along the wire
-  const hop = 0.55;
-  tl.from($(root, '.flow-wire'), vertical
-      ? { scaleY: 0, transformOrigin: 'center top', duration: hop * 4, ease: 'none' }
-      : { scaleX: 0, transformOrigin: 'left center', duration: hop * 4, ease: 'none' }, 0.35)
-    .set(checks, { scale: 0.7, opacity: 0.35 }, 0)                   // unlit until the packet arrives
-    .set(outs, { opacity: 0, y: -4 }, 0)
-    .fromTo($(root, '.flow-packet'), { x: 0, opacity: 0 }, { opacity: 1, duration: 0.2, immediateRender: true }, 0.15)
-    .to($(root, '.flow-packet'), { [vertical ? 'y' : 'x']: () => span(), duration: hop * 4, ease: 'none' }, 0.35)
-    .to($(root, '.flow-packet'), { opacity: 0, duration: 0.2 }, 0.35 + hop * 4);
-  checks.forEach((c, i) => {
-    const at = 0.3 + i * hop;
-    tl.to(c, { scale: 1, opacity: 1, duration: 0.3, ease: 'back.out(3)' }, at)
-      .to(outs[i], { opacity: 1, y: 0, duration: 0.25 }, at + 0.1);
-  });
+  tl.from($$(root, '.n8c-tile'), { opacity: 0, scale: 0.6, duration: 0.35, stagger: 0.12, ease: 'back.out(2)' }, 0)
+    .from($$(root, '.n8c-name, .n8c-out'), { opacity: 0, y: 4, duration: 0.3, stagger: 0.05 }, 0.2)
+    .from($$(root, '.n8c-wires'), { opacity: 0, duration: 0.5 }, 0.5)
+    .from($(root, '.n8c-bar'), { opacity: 0, y: -6, duration: 0.35 }, 0.9);
   return tl;
 }
 
@@ -142,6 +128,21 @@ function quote(root: Element, gsap: G): TL {
 }
 
 /* 6 — SEO: the query types, the business climbs from third to the top, clicks and calls count */
+/* SEO: a finger taps CoolAir's Call button (the touch point, then the button's ripple) */
+function tapCall(tl: TL, root: Element, at: number) {
+  const serp = $(root, '.serp'), call = $(root, '.serp-call'), tap = $(root, '.serp-tap');
+  if (!serp || !call || !tap) return;
+  const spot = () => {
+    const a = serp.getBoundingClientRect(), b = call.getBoundingClientRect();
+    return { x: b.left - a.left + b.width / 2, y: b.top - a.top + b.height / 2 };
+  };
+  tl.set(tap, { x: () => spot().x + 30, y: () => spot().y + 30, scale: 1.4, opacity: 0 }, at)
+    .to(tap, { x: () => spot().x, y: () => spot().y, opacity: 1, duration: 0.45, ease: 'power2.out' }, at)
+    .to(tap, { scale: 0.8, duration: 0.12, yoyo: true, repeat: 1 }, at + 0.45)
+    .fromTo(call, { backgroundColor: 'transparent' }, { backgroundColor: 'rgb(66 133 244 / .25)', duration: 0.15, yoyo: true, repeat: 1, immediateRender: false }, at + 0.5)
+    .to(tap, { opacity: 0, duration: 0.3 }, at + 0.8);
+}
+
 function seo(root: Element, gsap: G): TL {
   const tl = gsap.timeline({ defaults: { ease: 'power2.out' } });
   const q = $(root, '.serp-q'), items = $$(root, '.serp-item'), you = items[0];
@@ -154,9 +155,12 @@ function seo(root: Element, gsap: G): TL {
     .from(items, { opacity: 0, y: 8, duration: 0.3, stagger: 0.08 }, 0.85)
     .fromTo(you, { y: step * 2 }, { y: 0, duration: 0.8, ease: 'power3.inOut', immediateRender: true }, 1.3)
     .fromTo(items.slice(1), { y: -step }, { y: 0, duration: 0.8, ease: 'power3.inOut', immediateRender: true }, 1.3)
-    .from($(root, '.serp-top'), { opacity: 0, scale: 0.6, duration: 0.3, ease: 'back.out(2)' }, 2.1);
+    .from($(root, '.serp-top'), { opacity: 0, scale: 0.6, duration: 0.3, ease: 'back.out(2)' }, 2.1)
+    .from($$(root, '.serp-pin'), { opacity: 0, y: -14, duration: 0.35, stagger: 0.1, ease: 'bounce.out' }, 0.9)
+    .fromTo($(root, '.serp-pin.p-you'), { scale: 1 }, { scale: 1.35, duration: 0.2, yoyo: true, repeat: 1, immediateRender: false }, 2.1);
+  tapCall(tl, root, 2.5);
   countUp(tl, $(root, '.serp-clicks'), 2.2, 1.0);
-  countUp(tl, $(root, '.serp-calls'), 2.3, 1.0);
+  countUp(tl, $(root, '.serp-calls'), 2.9, 0.6);
   return tl;
 }
 
@@ -272,31 +276,65 @@ function whatsappFlow(root: Element, gsap: G): TL {
   return tl;
 }
 
-/* n8n: entries keep flowing; every node pulses as one passes and reports it */
+/* n8n: executions keep coming. Each run clears the last one's ticks (as n8n does), then one item
+   travels the wires; every node it reaches pulses, gets its tick and says what it did, and the
+   Switch sends it down its branch. Two runs per cycle, an order then a question, so both
+   branches show. The dot follows the visible layout's own path (getPointAtLength), moved with
+   transform only. */
 function n8nFlow(root: Element, gsap: G): TL {
   const tl = gsap.timeline({ repeat: -1, defaults: { ease: 'power2.out' } });
-  const flow = $(root, '.flow')!, packet = $(root, '.flow-packet');
-  const checks = $$(root, '.flow-check'), outs = $$(root, '.flow-out');
-  const vertical = flow.offsetWidth < 480;
-  const span = () => (vertical ? flow.offsetHeight - 44 : flow.offsetWidth * 0.8);
-  const axis = vertical ? 'y' : 'x';
-  const hop = 0.5;
-  const intents = ['intent: booking', 'intent: question', 'intent: order'];
-  const sources = ['new entry', 'new message', 'new call'];
-  let row = numOf(outs[1]), k = 0;
-  tl.fromTo(packet, { [axis]: 0, opacity: 0 }, { opacity: 1, duration: 0.15, immediateRender: false }, 0)
-    .to(packet, { [axis]: () => span(), duration: hop * 4, ease: 'none' }, 0.1)
-    .to(packet, { opacity: 0, duration: 0.15 }, 0.1 + hop * 4);
-  checks.forEach((c, j) => {
-    const at = 0.05 + j * hop;
-    tl.fromTo(c, { scale: 1 }, { scale: 1.22, duration: 0.14, yoyo: true, repeat: 1, ease: 'power1.out', immediateRender: false }, at)
-      .fromTo(outs[j], { opacity: 0.35 }, { opacity: 1, duration: 0.3, immediateRender: false }, at);
-    if (j === 0) tl.call(() => txt(outs[0], sources[k % sources.length]), [], at);
-    if (j === 1) tl.call(() => txt(outs[1], `row #${++row}`), [], at);
-    if (j === 2) tl.call(() => txt(outs[2], intents[k % intents.length]), [], at);
-    if (j === checks.length - 1) tl.call(() => { k++; }, [], at);
-  });
-  tl.to({}, { duration: 0.5 }, 0.1 + hop * 4 + 0.15);
+  const canvas = $(root, '.n8c')!, dot = $(root, '.n8c-dot')!;
+  const nodes = ['form', 'sheet', 'ai', 'switch', 'wa', 'team'].map((id) => $(root, `.n8c-${id}`)!);
+  const out = (i: number) => nodes[i].querySelector('.n8c-out');
+  const runs = $(root, '.n8c-runs');
+  const svgs = $$(root, '.n8c-wires') as unknown as SVGSVGElement[];
+  const wires = () => {
+    const svg = svgs.find((v) => getComputedStyle(v).display !== 'none') ?? svgs[0];
+    return { svg, paths: [...svg.querySelectorAll<SVGPathElement>('path')] };
+  };
+  const mark = (w: number, on: boolean) => $$(root, `[data-w="${w}"]`).forEach((el) => el.classList.toggle('ran', on));
+  const place = (w: number, t: number) => {
+    const { svg, paths } = wires(), path = paths[w];
+    const p = path.getPointAtLength(t * path.getTotalLength());
+    const k = canvas.clientWidth / svg.viewBox.baseVal.width;
+    dot.style.transform = `translate(${p.x * k}px, ${p.y * (canvas.clientHeight / svg.viewBox.baseVal.height)}px)`;
+  };
+  const sources = ['new entry', 'new message', 'new call', 'new entry'];
+  let row = numOf(out(1)), n = numOf(runs), k = 0;
+  const HOP = 0.55, AT = 0.45;                                        // a wire, then a beat at the node
+
+  const run = (start: number, branch: 'order' | 'question') => {
+    const last = branch === 'order' ? 4 : 5, wLast = branch === 'order' ? 3 : 4;
+    let t = start;
+    tl.call(() => {                                                    // a new execution: last run's ticks clear
+      nodes.forEach((el) => el.classList.remove('done'));
+      [0, 1, 2, 3, 4].forEach((w) => mark(w, false));
+      txt(out(5), 'waiting');
+    }, [], t);
+    const arrive = (i: number, at: number, say: () => string) => {
+      tl.call(() => { nodes[i].classList.add('done'); txt(out(i), say()); }, [], at)
+        .fromTo(nodes[i].querySelector('.n8c-tile'), { scale: 1 }, { scale: 1.12, duration: 0.14, yoyo: true, repeat: 1, immediateRender: false }, at);
+    };
+    arrive(0, t + 0.2, () => sources[k % sources.length]);
+    t += 0.2 + AT;
+    const hop = (w: number, to: number, say: () => string) => {
+      const o = { t: 0 };
+      tl.set(dot, { opacity: 1 }, t)
+        .fromTo(o, { t: 0 }, { t: 1, duration: HOP, ease: 'power1.inOut', immediateRender: false, onUpdate: () => place(w, o.t) }, t)
+        .call(() => mark(w, true), [], t + HOP)
+        .set(dot, { opacity: 0 }, t + HOP);
+      arrive(to, t + HOP, say);
+      t += HOP + AT;
+    };
+    hop(0, 1, () => `row #${++row}`);
+    hop(1, 2, () => `intent: ${branch}`);
+    hop(2, 3, () => `→ ${branch}`);
+    hop(wLast, last, () => (branch === 'order' ? 'sent ✓✓' : 'team pinged'));
+    tl.call(() => { txt(runs, (++n).toLocaleString('en-IN')); k++; }, [], t);
+    return t + 0.9;                                                    // the finished run rests a moment
+  };
+  const mid = run(0, 'question');
+  run(mid, 'order');                                                   // ends on the markup's own frame
   return tl;
 }
 
@@ -323,9 +361,13 @@ function seoFlow(root: Element, gsap: G): TL {
     .to(you, { y: 0, duration: 0.8, ease: 'power3.inOut' }, 2.8)
     .to(items.slice(1), { y: 0, duration: 0.8, ease: 'power3.inOut' }, 2.8)
     .fromTo($(root, '.serp-top'), { opacity: 0, scale: 0.6 }, { opacity: 1, scale: 1, duration: 0.3, ease: 'back.out(2)', immediateRender: false }, 3.6)
-    .call(() => { c += 3 + (i % 4); txt(clicks, String(c)); if (i % 2) txt(calls, String(++n)); }, [], 3.7)
-    .fromTo([clicks, calls], { scale: 1.2 }, { scale: 1, duration: 0.35, immediateRender: false }, 3.7)
-    .to({}, { duration: 1.2 }, 4.1);
+    .fromTo($(root, '.serp-pin.p-you'), { scale: 1 }, { scale: 1.35, duration: 0.2, yoyo: true, repeat: 1, immediateRender: false }, 3.6)
+    .call(() => { c += 3 + (i % 4); txt(clicks, String(c)); }, [], 3.7)
+    .fromTo(clicks, { scale: 1.2 }, { scale: 1, duration: 0.35, immediateRender: false }, 3.7);
+  tapCall(tl, root, 3.9);
+  tl.call(() => txt(calls, String(++n)), [], 4.45)
+    .fromTo(calls, { scale: 1.2 }, { scale: 1, duration: 0.35, immediateRender: false }, 4.45)
+    .to({}, { duration: 1.2 }, 4.8);
   return tl;
 }
 
