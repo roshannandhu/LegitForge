@@ -104,7 +104,14 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
 - No backdrop-filter on phones; no permanent will-change on unpinned layers.
 - useGsap setups run one per task (lib/gsap.ts queue). DemoPlayer and the phone hero flows build
   their timelines only when near the screen.
+- Lite phones keep hero cards 3–7 (≤767px) and every demo (≤479px) out of the first layout until
+  a plain IntersectionObserver sets data-near (teardown.tsx, demo-player.tsx; placeholder heights
+  in sections.css: re-measure them if a demo's phone height changes). Safety nets: motion off, and
+  data-lite-all 8 s after load if no observer ran (lib/boot.ts).
+- --heat on <html> changes in one step (heat-director.tsx); only heat.value eases, for the embers.
 - content-visibility was measured and rejected: it moved layout into scrolling on this page.
+- Team section rebuild (server markup + attached flip/drag) was measured and skipped: the whole
+  section costs ~240 ms on a lite phone, less than its risk to the flip and drag.
 
 ## Before saying a task is done
 - npm run build and npm run check pass (check covers 375, 768 and 1440, both themes, motion on and off).
