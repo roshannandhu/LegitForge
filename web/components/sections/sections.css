@@ -622,6 +622,26 @@
 }
 .faq-item[open] summary::after { rotate: -135deg; margin-top: -2px; }
 .faq-item p { margin: 0 0 20px; max-width: 65ch; color: var(--text-muted); }
+/* an answer opens with a short spark underline (plan D #11) */
+.faq-item p::before {
+  content: ""; display: block; width: 48px; height: 2px; margin-bottom: 12px; border-radius: 2px; transform-origin: left center;
+  background: linear-gradient(90deg, var(--heat-hi), var(--heat-mid)); box-shadow: 0 0 8px var(--heat-mid);
+}
+.faq-item[open] p::before { animation: faq-spark 420ms var(--ease-forge) both; }
+@keyframes faq-spark { from { transform: scaleX(0); opacity: 0; } to { transform: none; opacity: 1; } }
+[data-motion="off"] .faq-item p::before { animation: none; }
+
+/* pricing timeline bars (plan D #11): one shared scale; fill from --a to --b, drawn in once */
+.tl-bar { position: relative; display: block; height: 6px; margin-top: 8px; max-width: 160px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.tl-fill {
+  position: absolute; top: 0; bottom: 0; left: calc(var(--a) * 100%); width: calc((var(--b) - var(--a)) * 100%); min-width: 6px;
+  border-radius: 3px; background: linear-gradient(90deg, var(--heat-mid), var(--heat-hi)); transform-origin: left center;
+  transition: transform 700ms var(--ease-forge); transition-delay: calc(var(--i, 0) * 90ms);
+}
+[data-armed]:not([data-punched]) .tl-fill { transform: scaleX(0); }
+[data-motion="off"] .tl-fill { transition: none; }
+.price-scale { margin: 8px 0 0; font-size: 14px; color: var(--text-muted); }
+@media (max-width: 767px) { .tl-bar { max-width: 200px; } }
 [data-motion="off"] .faq-item summary::after { transition: none; }
 
 /* ================================================================= quench */

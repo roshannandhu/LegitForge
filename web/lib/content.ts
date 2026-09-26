@@ -98,11 +98,11 @@ export const TESTIMONIALS: { quote: string; name: string; role: string; company:
 
 /* ------------------------------------------------------------- pricing §6.10 */
 export const PRICING = [
-  { service: 'Static website', from: '[price]', time: '1–2 weeks', includes: 'Up to 5 pages, contact form, SEO setup, 30 days of fixes' },
-  { service: 'Web app', from: '[price]', time: '3–6 weeks', includes: 'Logins, database, admin panel' },
-  { service: 'Quotation and warranty system', from: '[price]', time: '3–6 weeks', includes: 'Quotes as links or PDFs, warranty lookup by QR, CSV export any time' },
-  { service: 'WhatsApp automation', from: '[price] setup + [price]/month', time: '1–2 weeks', includes: "Bot flows, lead capture, team alerts. Meta's message fees are billed at cost." },
-  { service: 'n8n workflow', from: '[price] per workflow', time: '2–5 days', includes: 'Build, testing, documentation, 30 days of fixes' },
+  { service: 'Static website', from: '[price]', time: '1–2 weeks', weeks: [1, 2], includes: 'Up to 5 pages, contact form, SEO setup, 30 days of fixes' },
+  { service: 'Web app', from: '[price]', time: '3–6 weeks', weeks: [3, 6], includes: 'Logins, database, admin panel' },
+  { service: 'Quotation and warranty system', from: '[price]', time: '3–6 weeks', weeks: [3, 6], includes: 'Quotes as links or PDFs, warranty lookup by QR, CSV export any time' },
+  { service: 'WhatsApp automation', from: '[price] setup + [price]/month', time: '1–2 weeks', weeks: [1, 2], includes: "Bot flows, lead capture, team alerts. Meta's message fees are billed at cost." },
+  { service: 'n8n workflow', from: '[price] per workflow', time: '2–5 days', weeks: [0.4, 1], includes: 'Build, testing, documentation, 30 days of fixes' },
 ];
 
 /* ----------------------------------------------------------------- FAQ §6.10 */
