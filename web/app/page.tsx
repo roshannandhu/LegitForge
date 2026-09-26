@@ -116,7 +116,10 @@ export default async function Home() {
       </Cleave>
       <Services />
       <Quotation />
-      <Compare />
+      <Compare facts={{
+        static: { price: SERVICES[0].price, time: SERVICES[0].time },
+        dynamic: { price: SERVICES[1].price, time: SERVICES[1].time },
+      }} />
       <LiveTest />
       <Process steps={PROCESS} />
       <Projects />
