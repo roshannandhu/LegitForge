@@ -5,31 +5,31 @@
 export type DemoKind = 'website' | 'app' | 'whatsapp' | 'n8n';
 
 export const SERVICES: {
-  id: DemoKind; name: string; line: string; audience: string; price: string; link: string; href: string;
+  id: DemoKind; name: string; line: string; audience: string; price: string; time: string; link: string; href: string;
 }[] = [
   {
     id: 'website', name: 'Static websites',
     line: 'A fast site that loads in about a second and is easy to update.',
     audience: 'Local businesses, portfolios, launches',
-    price: 'From [price]', link: 'See website packages', href: '/services/website-development',
+    price: 'From [price]', time: 'Live in about 2 weeks', link: 'See website packages', href: '/services/website-development',
   },
   {
     id: 'app', name: 'Web apps',
     line: 'Bookings, dashboards, member areas and internal tools: software that works with your data.',
     audience: 'Growing businesses',
-    price: 'From [price]', link: 'See web app examples', href: '/work?service=dynamic',
+    price: 'From [price]', time: 'Usually 3–6 weeks', link: 'See web app examples', href: '/work?service=dynamic',
   },
   {
     id: 'whatsapp', name: 'WhatsApp automation',
     line: 'Answer customers instantly, send order updates and collect leads on WhatsApp.',
     audience: 'Shops, clinics, restaurants, service businesses',
-    price: 'From [price]', link: 'See WhatsApp automation', href: '/services/whatsapp-automation',
+    price: 'From [price]', time: 'Live in 1–2 weeks', link: 'See WhatsApp automation', href: '/services/whatsapp-automation',
   },
   {
     id: 'n8n', name: 'n8n workflows',
     line: 'Connect your apps so data moves by itself: forms, sheets, CRM, invoices.',
     audience: 'Teams stuck copying and pasting',
-    price: 'From [price]', link: 'See n8n workflows', href: '/services/n8n-automation',
+    price: 'From [price]', time: 'Often running in days', link: 'See n8n workflows', href: '/services/n8n-automation',
   },
 ];
 

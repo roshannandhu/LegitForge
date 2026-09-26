@@ -26,7 +26,17 @@
 .fire-line { margin: 0 0 12px; max-width: 46ch; }
 .fire-for { margin: 0 0 16px; font-size: 15px; color: var(--text-muted); }
 .fire-for .type-label { color: var(--text); margin-right: 4px; }
-.fire-price { margin: 0 0 8px; font-weight: 600; }
+.fire-price { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 0 0 8px; font-weight: 600; }
+.fire-time { padding: 2px 10px; border: 1px solid var(--line); border-radius: 999px; font-size: 14px; font-weight: 600; color: var(--text-muted); }
+/* the demo is running: its number and frame warm up (plan D #3) */
+.fire-num { transition: color 400ms var(--ease-forge); }
+.fire:has(.demo-player[data-running]) .fire-num { color: var(--heat-color); }
+:is(.fire-stage, .page-demo, .fire) .demo-player::after {
+  content: ""; position: absolute; inset: 0; border-radius: 16px; pointer-events: none; opacity: 0;
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--heat-color) 60%, transparent), 0 0 24px -12px var(--heat-color);
+  transition: opacity 600ms var(--ease-forge);
+}
+:is(.fire-stage, .page-demo, .fire) .demo-player[data-running]::after { opacity: 1; }
 
 /* demo stage: identical frame for all four at tablet+; natural height on phones */
 .demo {

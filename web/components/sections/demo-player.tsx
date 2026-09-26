@@ -34,7 +34,8 @@ export function DemoPlayer({ kind, children }: { kind: DemoId; children: React.R
     const build = () => {
       tl?.progress(1, true).kill();                            // back to the finished frame (no onComplete)
       tl = DEMOS[kind](el, gsap).pause(0);
-      tl.eventCallback('onComplete', () => hold(gsap.delayedCall(HOLD, loop)));
+      tl.eventCallback('onStart', () => { el.dataset.running = ''; });              // the card warms (plan D #3)
+      tl.eventCallback('onComplete', () => { delete el.dataset.running; hold(gsap.delayedCall(HOLD, loop)); });
       cur = tl;
     };
     const loop = () => hold(gsap.to(box, {
@@ -50,12 +51,14 @@ export function DemoPlayer({ kind, children }: { kind: DemoId; children: React.R
     const io = new IntersectionObserver(([e]) => {
       visible = e.isIntersecting;
       if (visible) cur?.resume(); else cur?.pause();
+      if (!visible) delete el.dataset.running; else if (cur === tl && tl && tl.progress() > 0 && tl.progress() < 1) el.dataset.running = '';
     }, { threshold: 0.3 });
     io.observe(el);
 
     return () => {
       io.disconnect();
       cur?.kill();
+      delete el.dataset.running;
       tl?.progress(1, true).kill();                            // text swaps land on their final values
       gsap.set(box, { clearProps: 'opacity' });
     };
