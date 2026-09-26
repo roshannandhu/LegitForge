@@ -152,6 +152,10 @@ html:active-view-transition-type(cleave)::view-transition-group(project-cover) {
    html[data-lite] (lib/boot.ts): weak devices keep every section and every demo, minus the
    costs that make a budget phone stutter. */
 [data-lite] *, [data-lite] *::before, [data-lite] *::after { animation-iteration-count: 1 !important; }   /* no infinite loops */
+/* Text in the Archivo web font was the largest single cost of a budget phone's first layout
+   (measured 1.9 s → 0.75 s at 6× CPU with the system font). Weak devices read the page in their
+   own system font; every other device keeps Archivo. Stamps keep the stencil face. */
+html[data-lite] { --font-archivo: ui-sans-serif, system-ui, -apple-system, Roboto, sans-serif; }
 /* No content-visibility: measured on a throttled phone, skipping sections or cards moved their
    layout into scrolling and made both load and scroll slower on this page. */
 

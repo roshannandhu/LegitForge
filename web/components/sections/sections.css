@@ -592,6 +592,7 @@
 .flip-btn[aria-pressed="true"] { border-color: var(--heat-color); }
 
 /* ============================================================== hallmarks */
+#proof { overflow-x: clip; }   /* the cards snap in from rotated offsets: a corner must never widen a phone */
 .engraved-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; }
 @media (min-width: 1024px) { .engraved-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px; } }
 .engraved {
@@ -962,9 +963,10 @@
 .picker-qs li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
 .picker-q { font-size: 15px; }
 .picker-btns { display: flex; gap: 8px; }
-.picker-result { display: grid; gap: 12px; justify-items: start; min-height: 112px; align-content: center; padding: 16px 20px; border-radius: 12px; border: 1px dashed var(--line); }
+.picker-result { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; justify-items: start; min-height: 112px; align-content: center; padding: 16px 20px; border-radius: 12px; border: 1px dashed var(--line); }
 .picker-result[data-verdict] { border-style: solid; border-color: var(--heat-color); box-shadow: 0 0 24px -12px var(--heat-color); animation: cafe-flip 420ms both; }
 .picker-result p { margin: 0; }
+.picker-result .btn { max-width: 100%; white-space: normal; text-align: center; }   /* any font, any width: it wraps, never widens a phone */
 .picker-wait { color: var(--text-muted); font-size: 15px; }
 [data-motion="off"] .picker-result { animation: none; }
 
