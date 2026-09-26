@@ -12,6 +12,7 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
 - Team section only, both lazy-loaded when #team is near: React Three Fiber + Rapier
   (components/lanyard, fine pointer ≥1024px) and `motion` inside the vendored FlipCard
   (components/react-bits). Nothing else may import them.
+- Fonts: Archivo self-hosted subset (see Performance), Big Shoulders Stencil via next/font/google.
 - Hero (the Teardown, PLAN §6.2c, seven layers: SEO, web, WhatsApp, n8n, quote, warranty, NFC): data lib/teardown.ts · component components/hero/teardown.tsx ·
   live screens components/hero/layer-screens.tsx · their flows components/hero/teardown-flows.ts
 - First-visit intro (the Hallmark Strike, PLAN §6.1b): components/intro, pure CSS. lib/boot.ts
@@ -24,6 +25,10 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
   dynamicParams = false): the font files in assets/og are read at build time, never on Workers.
 - Admin (PLAN §7.8): app/admin (pages, Server Actions in actions.ts), lib/admin (auth, D1 queries),
   app/api/admin/upload (R2), app/media (serves R2 images). Setup: README "Admin".
+  "Add from GitHub" (app/admin/projects/github-add.tsx + projectFromGithubAction): image + repo link →
+  draft project; the brief is lib/admin/github.ts repoBrief (GitHub data only, no AI; numbers are
+  never invented). GITHUB_TOKEN secret for private repos. The cloud sandbox's proxy blocks
+  api.github.com: test with a fixture server via GITHUB_API_BASE (honoured only with ADMIN_DEV_BYPASS).
 - Projects on public pages come from lib/work.ts: published D1 rows, else the placeholders in
   content.ts/pages.ts. Never import PROJECTS/CASE_STUDIES in a page again; use getProjects().
   People the same way: lib/team.ts getTeam() (tag 'team'), never TEAM/MEMBER_DETAILS in a page.
@@ -92,6 +97,36 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
   scrollLeft, and only cards within a column of the view get a band and an atlas.
 - Team cards: public/lanyard/card.glb is the React Bits card with its branded texture
   stripped; the art is drawn at runtime by lib/card-art.ts. Don't ship React Bits' lanyard.png.
+
+## Performance on budget phones (measure at 360px with 4-6x CPU throttling before and after)
+- Never remove or simplify an animation, the intro, the embers or the Archivo font for speed
+  (the owner's rule). Improve how the same thing is built and drawn instead.
+- Lite mode: html[data-lite] (LITE_BOOT in lib/boot.ts, lib/lite.ts isLite) for <=3 GB RAM, <=4 cores,
+  Data Saver or 2G. Same site; only the order of work changes (data-near rules below, GSAP after
+  idle). `?lite=1` / `?lite=0` force it. `npm run check` forces it off; `LITE=1 npm run check` audits it.
+- Never write per-frame CSS variables on <html> (the whole page restyles): put them on the element
+  that reads them (--scroll-energy lives on .heat-rod).
+- Lenis only on fine-pointer screens, imported on demand; use lib/lenis-store.ts, never lenis/react.
+- No container queries in the hero: live screens size in --cq (1 % of their screen width).
+- No backdrop-filter on phones; no permanent will-change on unpinned layers.
+- useGsap setups run one per task (lib/gsap.ts queue). DemoPlayer and the phone hero flows build
+  their timelines only when near the screen.
+- Lite phones keep hero cards 3–7 (≤767px) and every demo (≤479px) out of the first layout until
+  a plain IntersectionObserver sets data-near (teardown.tsx, demo-player.tsx; placeholder heights
+  in sections.css: re-measure them if a demo's phone height changes). Safety nets: motion off, and
+  data-lite-all 8 s after load if no observer ran (lib/boot.ts).
+- --heat on <html> changes in one step (heat-director.tsx, one IntersectionObserver); only
+  heat.value eases, for the embers. Written only when it changes.
+- Below-the-fold client sections (Compare, LiveTest, Team, Quench) are wrapped in
+  HydrateWhenNear (components/motion/hydrate-when-near.tsx): server HTML from the first paint,
+  React takes over within 600px. Page-wide observers must re-observe on `lf:hydrated`.
+  Don't wrap sections that pin (Process) or anything above the fold.
+- Archivo is self-hosted (next/font/local, app/fonts/archivo-latin.woff2, one 80 KB subset, both
+  axes; Google's two files were 176 KB). It arrives in time for the first layout, which spares a
+  full re-layout on swap. New Latin character in copy → scripts/subset-archivo.py (check names it).
+- content-visibility was measured and rejected: it moved layout into scrolling on this page.
+- Team section rebuild (server markup + attached flip/drag) was measured and skipped: the whole
+  section costs ~240 ms on a lite phone; HydrateWhenNear defers its hydration instead.
 
 ## Before saying a task is done
 - npm run build and npm run check pass (check covers 375, 768 and 1440, both themes, motion on and off).

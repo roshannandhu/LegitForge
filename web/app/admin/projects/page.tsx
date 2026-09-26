@@ -1,6 +1,7 @@
 import { listProjects } from '@/lib/admin/db';
 import { createProjectAction, moveProjectAction, publishProjectAction } from '../actions';
 import { ActionForm, Submit } from '../ui';
+import { GithubAdd } from './github-add';
 
 export default async function AdminProjects() {
   const rows = await listProjects();
@@ -12,6 +13,9 @@ export default async function AdminProjects() {
         Drafts stay private: open one and use Preview.
       </p>
 
+      <GithubAdd />
+
+      <h2 className="type-h3">Or start from a title</h2>
       <ActionForm action={createProjectAction} className="admin-form">
         <div className="admin-grid">
           <label className="field"><span>New project title</span><input name="title" required maxLength={120} placeholder="Sweet Crumbs Bakery website" /></label>

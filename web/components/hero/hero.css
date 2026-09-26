@@ -46,11 +46,11 @@
   transition: color 200ms var(--ease-forge);
 }
 .td-callouts li { grid-template-columns: 1fr auto; }
-.td-callouts .num { grid-column: 2; grid-row: 1 / span 2; color: var(--heat-color); font-weight: 700; }
+.td-callouts .num { grid-column: 2; grid-row: 1 / span 2; color: var(--heat-ink); font-weight: 700; }
 .td-callouts strong, .td-callouts em { grid-column: 1; }
 .td-callouts strong { color: var(--text); font-weight: 600; }
 .td-callouts em { font-style: normal; }
-.td-callouts li[data-active] strong { color: var(--heat-color); }
+.td-callouts li[data-active] strong { color: var(--heat-ink); }
 
 /* the hand and phone: photographic anchor */
 .td-phone { position: absolute; left: var(--phone-x); top: var(--phone-y); width: var(--phone-w); translate: -50% -50%; }
@@ -65,13 +65,17 @@
   opacity: 0; transition: opacity 300ms var(--ease-forge);
 }
 .td-word span { display: inline-block; }
-.td-final { position: absolute; inset: 0; opacity: 0; transition: opacity 300ms var(--ease-forge);  }
+.td-final {   /* the six screens not on show are skipped by the renderer, not just transparent */
+  position: absolute; inset: 0; opacity: 0; transition: opacity 300ms var(--ease-forge); content-visibility: hidden;
+}
 .td-screen[data-state="brand"] .td-word { opacity: 1; }
+.td-screen[data-state="final"][data-lead="seo"] .td-final[data-for="seo"],
+.td-screen[data-state="final"][data-lead="nfc"] .td-final[data-for="nfc"],
 .td-screen[data-state="final"][data-lead="web"] .td-final[data-for="web"],
 .td-screen[data-state="final"][data-lead="wa"] .td-final[data-for="wa"],
 .td-screen[data-state="final"][data-lead="n8n"] .td-final[data-for="n8n"],
 .td-screen[data-state="final"][data-lead="quote"] .td-final[data-for="quote"],
-.td-screen[data-state="final"][data-lead="warranty"] .td-final[data-for="warranty"] { opacity: 1; }
+.td-screen[data-state="final"][data-lead="warranty"] .td-final[data-for="warranty"] { opacity: 1; content-visibility: visible; }
 [data-motion="off"] :is(.td-word, .td-final) { transition: none; }
 /* the glass has lifted out: a dark screen with a faint circuit grid */
 .td-screen[data-state="dark"] {
@@ -149,7 +153,11 @@
   }
   .td-glass { position: relative; inset: auto; aspect-ratio: 15 / 32; transform: rotateY(-10deg); }
   .td-cap { display: block; margin: 0; font-size: 14px; font-weight: 600; }
-  .td-cap .num { color: var(--heat-color); margin-right: 4px; }
+  /* lite phones: cards 3–7 lay out their screen only once they near the view (data-near,
+     teardown.tsx); the glass keeps its size (aspect-ratio). Safety nets: motion off, and
+     data-lite-all 8 s after load (lib/boot.ts) */
+  html[data-lite]:not([data-lite-all]):not([data-motion="off"]) .td-layer:nth-child(n+3):not([data-near]) .td-glass > .ls { display: none; }
+  .td-cap .num { color: var(--heat-ink); margin-right: 4px; }
 }
 
 /* ------------------------------------------------------------------ the live screens
@@ -240,7 +248,7 @@
   height: calc(3 * 1.5em + 2 * 4px); overflow: hidden; margin: 0; padding: 0; list-style: none; line-height: 1.5;
 }
 .hud-log li { flex: none; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: var(--text-muted); animation: log-in 300ms var(--ease-forge); }
-.hud-log li::before { content: "› "; color: var(--heat-color); }
+.hud-log li::before { content: "› "; color: var(--heat-ink); }
 .hud-log li:last-child { color: var(--text); }
 .hud-log li[hidden] { display: none; }
 @keyframes log-in { from { opacity: 0; transform: translateY(4px); } }

@@ -53,7 +53,7 @@ export async function teamFromDb(includeHidden: boolean): Promise<Member[] | nul
   }
 }
 
-export const getTeam = unstable_cache(
+const getTeamCached = unstable_cache(
   async (): Promise<Member[]> => {
     const rows = await teamFromDb(false);
     return rows && rows.length ? rows : FALLBACK;
@@ -61,6 +61,11 @@ export const getTeam = unstable_cache(
   ['team-members'],
   { tags: ['team'] },
 );
+
+/** During `next build` the placeholders, without touching the cache: .next/cache survives between
+ *  builds, and a list cached by a LOCAL server (test rows) would be baked into production pages. */
+export const getTeam: typeof getTeamCached = (...args) =>
+  process.env.NEXT_PHASE === 'phase-production-build' ? Promise.resolve(FALLBACK) : getTeamCached(...args);
 
 /** Only the fields the card components need: bios and links stay on the server. */
 export const toCards = (team: Member[]): Card[] =>

@@ -28,7 +28,7 @@ async function fromDb(): Promise<Testimonial[] | null> {
   }
 }
 
-export const getTestimonials = unstable_cache(
+const getTestimonialsCached = unstable_cache(
   async (): Promise<Testimonial[]> => {
     const rows = await fromDb();
     return rows && rows.length ? rows : TESTIMONIALS;
@@ -36,3 +36,8 @@ export const getTestimonials = unstable_cache(
   ['testimonials'],
   { tags: ['testimonials'] },
 );
+
+/** During `next build` the placeholders, without touching the cache: .next/cache survives between
+ *  builds, and a list cached by a LOCAL server (test rows) would be baked into production pages. */
+export const getTestimonials: typeof getTestimonialsCached = (...args) =>
+  process.env.NEXT_PHASE === 'phase-production-build' ? Promise.resolve(TESTIMONIALS) : getTestimonialsCached(...args);

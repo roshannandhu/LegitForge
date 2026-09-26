@@ -130,4 +130,4 @@ html.menu-open { overflow: hidden; }
   margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--line); font-size: 14px; color: var(--text-muted);
 }
 .footer-base p { margin: 0; }
-.footer-base a { color: var(--text); }
+.footer-base a { color: var(--text); text-decoration: underline; text-underline-offset: 3px; }

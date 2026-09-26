@@ -11,6 +11,7 @@ import * as db from '@/lib/admin/db';
 import { getEnv } from '@/lib/cf';
 import { getTeam, TEAM_DEFAULTS } from '@/lib/team';
 import type { WorkCategory } from '@/lib/pages';
+import { BriefError, parseRepo, repoBrief, type Brief } from '@/lib/admin/github';
 
 const str = (f: FormData, k: string, max = 2000) => String(f.get(k) ?? '').trim().slice(0, max);
 const opt = (f: FormData, k: string, max = 2000) => str(f, k, max) || null;
@@ -27,6 +28,47 @@ function refreshPublic() {
 }
 
 /* ------------------------------------------------------------------ projects */
+/** "Add from GitHub": the repo link becomes a DRAFT project with its brief filled in
+ *  (lib/admin/github.ts). The browser then uploads the cover to /api/admin/upload and opens
+ *  the editor; the owner checks it and presses Publish. */
+export type GithubResult = { id: string; title: string; alt: string } | { error: string };
+
+export async function projectFromGithubAction(url: string): Promise<GithubResult> {
+  await requireAdmin();
+  const ref = parseRepo(String(url ?? ''));
+  if (!ref) return { error: 'That isn’t a GitHub repository link. It looks like https://github.com/owner/repo.' };
+  const env = await getEnv();
+  const token = env?.GITHUB_TOKEN || process.env.GITHUB_TOKEN || undefined;
+  // a test fixture server, honoured only with the local admin bypass (never in production)
+  const apiBase = (env?.ADMIN_DEV_BYPASS || process.env.ADMIN_DEV_BYPASS) ? (env?.GITHUB_API_BASE || process.env.GITHUB_API_BASE || undefined) : undefined;
+  let b: Brief;
+  try { b = await repoBrief(ref, { token, apiBase }); }
+  catch (e) { return { error: e instanceof BriefError ? e.message : 'Couldn’t read that repository. Try again.' }; }
+
+  let slug = b.slugBase;
+  for (let n = 2; await db.slugTaken(slug); n++) slug = `${b.slugBase.slice(0, 55)}-${n}`;
+  const id = await db.createProject(b.title, slug);
+  await db.updateProject(id, {
+    slug, title: b.title, client_type: '', category: b.category, summary: b.summary, challenge: b.challenge,
+    result_value: null, result_label: null, stack: JSON.stringify(b.stack), live_url: b.liveUrl,
+    status_stamp: b.liveUrl ? 'live' : 'none', tags: JSON.stringify(b.tags), built: JSON.stringify(b.built),
+    results: '[]', team: '[]', is_featured: 0, launched_on: b.launchedOn, proof_before: null, proof_after: null,
+  });
+  revalidatePath('/admin/projects');
+  return { id, title: b.title, alt: `Screenshot of ${b.title}` };
+}
+
+/** Rollback for "Add from GitHub" when the cover upload fails: drops the draft it just made. */
+export async function discardDraftAction(id: string) {
+  await requireAdmin();
+  const row = await db.getProjectRow(id);
+  if (!row || row.is_published) return;
+  const keys = await db.deleteProject(id);
+  const media = (await getEnv())?.MEDIA;
+  if (media && keys.length) await media.delete(keys);
+  revalidatePath('/admin/projects');
+}
+
 export async function createProjectAction(_: FormState, f: FormData): Promise<FormState> {
   await requireAdmin();
   const title = str(f, 'title', 120);

@@ -26,11 +26,15 @@ import type { CardPerson } from '@/lib/card-art';
 import type { Card } from '@/lib/team';
 import { SITE } from '@/lib/site';
 
-// Card 003 is yours: two cards look sparse, and a hiring ad from a two-person studio
+// The next free card is yours (003 while there are two of us): two cards look sparse, and a
+// hiring ad from a two-person studio
 // reads as premature. It looks like a team card, so people flip it (§6.8).
-const VISITOR: CardPerson = {
-  id: 'you', idCode: 'LF-003', name: 'You', role: 'Client', initials: '?', skills: [], shipped: '', favorite: '', visitor: true,
-};
+const visitor = (code: string): CardPerson => ({
+  id: 'you', idCode: `LF-${code}`, name: 'You', role: 'Client', initials: '?', skills: [], shipped: '', favorite: '', visitor: true,
+});
+/** One past the highest team code: the visitor never shares a real person's number. */
+const nextCode = (team: Card[]) =>
+  String(Math.max(0, ...team.map((m) => Number(m.idCode.replace(/\D/g, '')) || 0)) + 1).padStart(3, '0');
 
 /** 3D only where it earns its weight (§6.8 tiers). A fine pointer is required because
  *  touch-drag fights page scrolling; everything else gets FlipCard. */
@@ -86,8 +90,9 @@ export function Team({ team, head = true }: { team: Card[]; head?: boolean }) {
       id: m.slug, idCode: m.idCode, name: m.name, role: m.role, initials: m.initials,
       skills: m.skills, shipped: m.shipped, favorite: m.favorite, photo: m.photo, building: m.building,
     })),
-    VISITOR,
+    visitor(nextCode(team)),
   ], [team]);
+  const youCode = nextCode(team);
   const motionOn = useMotionEnabled();
   const { resolvedTheme } = useTheme();
   const sectionRef = useRef<HTMLElement>(null);
@@ -242,11 +247,11 @@ export function Team({ team, head = true }: { team: Card[]; head?: boolean }) {
                 >
                   {p.visitor ? (
                     <>
-                      <p className="name-tag-name">Card 003 is yours</p>
+                      <p className="name-tag-name">Card {youCode} is yours</p>
                       <p className="name-tag-role">Every project starts as a blank card.</p>
                       <div className="name-tag-actions">
                         <button type="button" className="flip-btn" aria-pressed={!!flipped[p.id]} onClick={() => toggle(p.id)}>
-                          Flip card 003
+                          Flip card {youCode}
                         </button>
                         <a className="text-link" href="#contact">Tell us what you’re building</a>
                       </div>

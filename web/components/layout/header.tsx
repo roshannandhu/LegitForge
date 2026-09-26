@@ -7,7 +7,7 @@
  *  - phone menu: full screen, focus trapped, Esc closes, scroll locked */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useLenis } from 'lenis/react';
+import { useLenis } from '@/lib/lenis-store';
 import { ForgeLever } from './forge-lever';
 import { CoinMark, ChatIcon, CloseIcon, MenuIcon } from '@/components/ui/icons';
 import { useGsap } from '@/lib/gsap';
@@ -103,7 +103,7 @@ export function Header() {
 
         <div className="header-actions">
           <ForgeLever />
-          <a className="btn btn-primary btn-sm header-cta" href={wa}
+          <a className="btn btn-primary btn-sm header-cta" href={wa} aria-label="Chat on WhatsApp"
              {...(wa.startsWith('http') && { target: '_blank', rel: 'noopener' })}>
             <ChatIcon className="btn-icon" />
             <span className="cta-long">Chat on WhatsApp</span>

@@ -120,8 +120,8 @@ for (const run of RUNS.filter((r) => !only || r.name.includes(only))) {
   // §6.1b: the Hallmark Strike plays on a first visit with motion on, never with motion off,
   // and always ends by itself (the overlay must be gone before anything is audited).
   const played = await page.evaluate(() => localStorage.getItem('lf-intro-seen') === '1');
-  const expectIntro = run.motion !== 'reduce' && LITE === '0';   // lite mode never plays it
-  expectIntro !== played ? fail(run.name, `intro ${played ? 'played when it should not' : 'did not play'}`) : pass(`intro ${played ? 'played' : 'skipped (motion off or lite)'}`);
+  const expectIntro = run.motion !== 'reduce';
+  expectIntro !== played ? fail(run.name, `intro ${played ? 'played when it should not' : 'did not play'}`) : pass(`intro ${played ? 'played' : 'skipped (motion off)'}`);
   const ended = await page.waitForFunction(() => !document.documentElement.dataset.intro, null, { timeout: 4000 }).then(() => true, () => false);
   ended ? pass('intro ended by itself') : fail(run.name, 'intro overlay still up after 4 s');
   await page.screenshot({ path: `${OUT}/${run.name}-hero.png` });
@@ -228,6 +228,26 @@ if (!only || only === 'flow') {
     minOp > 0.9 ? pass(`${kind}: never fades out to restart`) : fail('flow', `${kind}: the box faded to opacity ${minOp}`);
   }
   await ctx.close();
+}
+
+// Font coverage: Archivo is one self-hosted subset (app/fonts/archivo-latin.woff2). Every Latin
+// character a page shows must be in it, or it would silently render in the fallback font.
+// Symbols Google never served in Archivo (arrows, ★, ✓, box drawing) stay system glyphs, as before.
+if (!only || only === 'glyphs') {
+  console.log('\nfont coverage');
+  const { readFile } = await import('node:fs/promises');
+  const covered = new Set(JSON.parse(await readFile(new URL('../app/fonts/archivo-latin.codepoints.json', import.meta.url), 'utf8')));
+  const latin = (c) => (c >= 0x20 && c <= 0x24f) || (c >= 0x2000 && c <= 0x206f) || c === 0x20b9 || c === 0x20ac || c === 0x2122;
+  const missing = new Map();
+  for (const path of ['/', '/services/website-development', '/services/seo', '/work/project-one', '/team', '/team/member-one', '/contact', '/blog/static-or-dynamic-website', '/privacy']) {
+    const html = await (await fetch(BASE + path)).text();
+    const text = html.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>|<[^>]+>/g, ' ')
+      .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16))).replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(+d))
+      .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&[a-z]+;/g, ' ');
+    for (const ch of text) { const c = ch.codePointAt(0); if (latin(c) && !covered.has(c) && c !== 0x20 && c !== 0xa0) missing.set(ch, path); }
+  }
+  missing.size === 0 ? pass('every Latin character on the pages is in the Archivo subset')
+    : fail('glyphs', `not in app/fonts/archivo-latin.woff2: ${[...missing].map(([ch, p]) => `"${ch}" U+${ch.codePointAt(0).toString(16).toUpperCase()} (${p})`).join(', ')} — regenerate it (README "Fonts")`);
 }
 
 // Admin (PLAN §7.8): locked to anyone without a valid Cloudflare Access JWT. The dev bypass

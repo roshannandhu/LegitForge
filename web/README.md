@@ -65,6 +65,15 @@ reads the people from the database. "Regenerate ID card" redraws the flip and 3D
 wrangler.jsonc, a paid add-on). Without it, the button says so; pasting a screenshot always
 works.
 
+**Add from GitHub (fastest way to add a project):** Admin → Projects → "Add from GitHub" → paste or
+pick the image, paste the repo link, press Create project. The title, summary, challenge, what was
+built, stack, tags, category and live link are written from the repo's description, README, topics,
+languages and homepage (no AI, no cost). It opens as a draft: check it, add the client and the result
+number (numbers are never made up), then Publish. For private repos, create a fine-grained GitHub
+token (GitHub → Settings → Developer settings → Fine-grained tokens; repository access: your project
+repos; permissions: Contents and Metadata, read-only) and set it: `npx wrangler secret put GITHUB_TOKEN`.
+Public repos work without it (GitHub allows 60 reads an hour without a token).
+
 **Locally:** run `npm run db:migrate:local`, set `ADMIN_DEV_BYPASS=1` in `.dev.vars`, run
 `npm run dev`, then open http://localhost:3000/admin. The bypass only works on localhost.
 
@@ -80,6 +89,18 @@ works.
 Without both secrets, /admin is a 404 for everyone. If you change data outside the admin
 (for example with `wrangler d1 execute`), press Admin → Site → "Refresh site content". Published projects replace the
 placeholders on the home page and /work. Draft previews are at `/admin/preview/<slug>`.
+
+## Fonts
+
+Archivo is self-hosted as one subset, `app/fonts/archivo-latin.woff2` (about 80 KB, both variable
+axes). Google serves it as two files (176 KB). Same glyphs, so the site looks identical; it just
+arrives before the first layout. If `npm run check` reports a character missing from the subset,
+rebuild it:
+
+```
+python3 -m venv /tmp/fe && /tmp/fe/bin/pip install fonttools brotli
+/tmp/fe/bin/python scripts/subset-archivo.py "new characters"
+```
 
 ## Before launch
 

@@ -22,3 +22,8 @@ ACCESS_TEAM_DOMAIN=
 ACCESS_AUD=
 # Local only: 1 opens /admin on localhost without Access. Never set it in production.
 ADMIN_DEV_BYPASS=
+# Admin → Projects → "Add from GitHub". A fine-grained GitHub token with read-only "Contents" and
+# "Metadata" on your repos. Needed for private repos; public ones work without it (60 reads/hour).
+GITHUB_TOKEN=
+# Local tests only (with ADMIN_DEV_BYPASS): a fixture server instead of api.github.com.
+GITHUB_API_BASE=
