@@ -12,7 +12,7 @@
 
 import { useEffect, useRef } from 'react';
 import Image from 'next/image';
-import { useLenis } from 'lenis/react';
+import { useLenis } from '@/lib/lenis-store';
 import {
   CALLOUTS, CALLOUT_W, DEFAULT_LEAD, DESIGN, FOCUS, ISO_SCALE, LAYERS, LEAD_EVENT, PHONE, PIN_END, RUN,
   SCREEN, SCREEN_C, SLOTS, actIndex, isLayerId, type LayerId,

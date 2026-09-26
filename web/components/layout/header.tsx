@@ -7,7 +7,7 @@
  *  - phone menu: full screen, focus trapped, Esc closes, scroll locked */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useLenis } from 'lenis/react';
+import { useLenis } from '@/lib/lenis-store';
 import { ForgeLever } from './forge-lever';
 import { CoinMark, ChatIcon, CloseIcon, MenuIcon } from '@/components/ui/icons';
 import { useGsap } from '@/lib/gsap';
