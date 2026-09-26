@@ -34,6 +34,13 @@ const TOP = 0.25;         // anchors sit this far below the canvas top (world un
 
 export default function TeamLanyards({ people, flipped, onToggleFlip, highlighted, theme, visible, onReady }) {
   const [art, setArt] = useState(null);
+  // plan D #9: once the cards have dropped in, every card swings the same way together, once
+  const [wave, setWave] = useState(0);
+  useEffect(() => {
+    if (!visible || !art || wave) return;
+    const t = setTimeout(() => setWave(1), 1400);
+    return () => clearTimeout(t);
+  }, [visible, art, wave]);
 
   // Paint card atlases + band once fonts and photos are ready, and again when the theme changes.
   // Wait one frame first: next-themes swaps the html class in its own effect, which runs
@@ -73,7 +80,7 @@ export default function TeamLanyards({ people, flipped, onToggleFlip, highlighte
         <Physics gravity={[0, -40, 0]} timeStep={1 / 60} paused={!visible}>
           {art && (
             <Suspense fallback={null}>
-              <Bands people={people} art={art} flipped={flipped} onToggleFlip={onToggleFlip} highlighted={highlighted} />
+              <Bands people={people} art={art} flipped={flipped} onToggleFlip={onToggleFlip} highlighted={highlighted} wave={wave} />
               <Ready onReady={onReady} />
             </Suspense>
           )}
@@ -102,7 +109,7 @@ function Ready({ onReady }) {
 }
 
 /** One band per person, anchored over the centre of its column (columns are equal thirds). */
-function Bands({ people, art, flipped, onToggleFlip, highlighted }) {
+function Bands({ people, art, flipped, onToggleFlip, highlighted, wave }) {
   const viewport = useThree((s) => s.viewport);
   const n = people.length;
   const span = viewport.width / n;
@@ -116,11 +123,12 @@ function Bands({ people, art, flipped, onToggleFlip, highlighted }) {
       flipped={!!flipped[p.id]}
       highlighted={highlighted === p.id}
       onToggleFlip={() => onToggleFlip(p.id)}
+      wave={wave}
     />
   ));
 }
 
-function Band({ anchor, atlas, bandTexture, flipped, highlighted, onToggleFlip, maxSpeed = 50, minSpeed = 0 }) {
+function Band({ anchor, atlas, bandTexture, flipped, highlighted, onToggleFlip, wave, maxSpeed = 50, minSpeed = 0 }) {
   const band = useRef(), fixed = useRef(), j1 = useRef(), j2 = useRef(), j3 = useRef(), card = useRef();
   const vec = useMemo(() => new THREE.Vector3(), []);
   const dir = useMemo(() => new THREE.Vector3(), []);
@@ -155,6 +163,13 @@ function Band({ anchor, atlas, bandTexture, flipped, highlighted, onToggleFlip, 
     const ang = c.angvel();
     c.setAngvel({ x: ang.x, y: ang.y + (flipped ? 6 : -6), z: ang.z }, true);
   }, [flipped]);
+
+  // the shared hello: one sideways push, the same for every card
+  useEffect(() => {
+    if (!wave || !card.current) return;
+    const v = card.current.linvel();
+    card.current.setLinvel({ x: v.x + 4.5, y: v.y + 1, z: v.z }, true);
+  }, [wave]);
 
   // a name tag was hovered or focused: that card hops
   useEffect(() => {

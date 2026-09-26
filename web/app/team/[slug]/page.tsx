@@ -51,7 +51,7 @@ export default async function Member({ params }: { params: Promise<{ slug: strin
         </div>
         <MemberCard p={{
           id: m.slug, idCode: m.idCode, name: m.name, role: m.role, initials: m.initials, photo: m.photo,
-          skills: m.skills, shipped: m.shipped, favorite: m.favorite,
+          skills: m.skills, shipped: m.shipped, favorite: m.favorite, building: m.building,
         }} />
       </div>
 

@@ -20,6 +20,8 @@ export interface CardPerson {
   skills: string[];
   shipped: string;
   favorite: string;
+  /** "Currently building" (plan D #9): one honest line, set in the admin; empty = hidden */
+  building?: string;
   /** path under /public, e.g. /team/member-one.jpg; empty = monogram */
   photo?: string;
   visitor?: boolean;
@@ -193,6 +195,19 @@ function drawFront(ctx: CanvasRenderingContext2D, r: typeof FRONT, p: CardPerson
   ctx.fillStyle = t.muted;
   fitFont(ctx, p.role, 500, 52, f.sans, inner);
   ctx.fillText(p.role, x0, 1156);
+
+  // currently building: a live dot, a label, and the line (left of the seal)
+  if (p.building) {
+    const maxW = inner - 330;
+    ctx.fillStyle = t.heatHi;
+    ctx.beginPath(); ctx.arc(x0 + 12, 1230, 12, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = t.muted;
+    setFont(ctx, 600, 38, f.sans);
+    ctx.fillText('NOW BUILDING', x0 + 40, 1243);
+    ctx.fillStyle = t.text;
+    fitFont(ctx, p.building, 600, 48, f.sans, maxW);
+    ctx.fillText(p.building, x0, 1306);
+  }
 
   // holographic "LEGIT" seal, bottom right
   const sw = 300, sh = 104, sx = r.x + r.w - pad - sw, sy = r.h - pad - sh - 40;

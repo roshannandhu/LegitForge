@@ -528,6 +528,9 @@
 .id-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }   /* cover, like the 3D atlas */
 .id-name { margin: 0; font-size: 22px; font-weight: 700; font-stretch: 106%; line-height: 1.15; }
 .id-role { margin: 2px 0 0; color: var(--text-muted); }
+/* currently building (plan D #9): one honest line with a live dot */
+.id-now { display: flex; align-items: center; gap: 6px; margin: 8px 0 0; max-width: 62%; font-size: 14px; font-weight: 600; line-height: 1.3; }
+.id-now-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--heat-hi); box-shadow: 0 0 0 3px color-mix(in oklab, var(--heat-hi) 25%, transparent); }
 .id-seal {
   align-self: flex-end; margin-top: auto; padding: 4px 10px; border-radius: 6px;
   font-family: var(--font-stencil), var(--font-sans); font-size: 14px; letter-spacing: .14em; text-transform: uppercase;

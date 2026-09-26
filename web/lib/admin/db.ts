@@ -213,6 +213,7 @@ export interface MemberRow {
   id: string; slug: string; name: string; role: string; id_code: string; bio: string; skills: string; tools: string;
   photo_key: string | null; card_version: number; linkedin_url: string | null; github_url: string | null;
   website_url: string | null; favorite_project_id: string | null; is_published: number; sort_order: number; initials: string | null;
+  building: string | null;
 }
 
 export async function listMembers() {
@@ -236,12 +237,12 @@ export async function importMembers(people: { slug: string; idCode: string; name
 }
 
 export async function updateMember(id: string, v: Pick<MemberRow, 'slug' | 'name' | 'role' | 'id_code' | 'bio' | 'skills' | 'tools' |
-  'linkedin_url' | 'github_url' | 'website_url' | 'favorite_project_id' | 'initials'>) {
+  'linkedin_url' | 'github_url' | 'website_url' | 'favorite_project_id' | 'initials' | 'building'>) {
   await (await adminDb()).prepare(
     `UPDATE team_members SET slug = ?, name = ?, role = ?, id_code = ?, bio = ?, skills = ?, tools = ?, linkedin_url = ?,
-       github_url = ?, website_url = ?, favorite_project_id = ?, initials = ? WHERE id = ?`,
+       github_url = ?, website_url = ?, favorite_project_id = ?, initials = ?, building = ? WHERE id = ?`,
   ).bind(v.slug, v.name, v.role, v.id_code, v.bio, v.skills, v.tools, v.linkedin_url, v.github_url, v.website_url,
-    v.favorite_project_id, v.initials, id).run();
+    v.favorite_project_id, v.initials, v.building, id).run();
 }
 
 export async function memberConflict(id: string, slug: string, idCode: string) {

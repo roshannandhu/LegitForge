@@ -21,7 +21,7 @@ const FALLBACK: Member[] = TEAM.map((m) => ({ ...m, ...(MEMBER_DETAILS[m.slug] ?
 type Row = {
   slug: string; name: string; role: string; id_code: string; bio: string; skills: string; tools: string;
   photo_key: string | null; card_version: number; linkedin_url: string | null; github_url: string | null;
-  website_url: string | null; initials: string | null; favorite: string | null;
+  website_url: string | null; initials: string | null; favorite: string | null; building: string | null;
 };
 const list = (json: string) => { try { const v = JSON.parse(json); return Array.isArray(v) ? v.map(String) : []; } catch { return []; } };
 const monogram = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]!.toUpperCase()).join('') || 'LF';
@@ -42,7 +42,7 @@ export async function teamFromDb(includeHidden: boolean): Promise<Member[] | nul
     return (members.results as Row[]).map((r) => ({
       slug: r.slug, idCode: r.id_code, name: r.name, role: r.role, initials: r.initials || monogram(r.name),
       photo: r.photo_key ? `/media/${r.photo_key}?v=${r.card_version}` : '',
-      skills: list(r.skills), shipped: String(shipped(r.slug)), favorite: r.favorite ?? '—',
+      skills: list(r.skills), shipped: String(shipped(r.slug)), favorite: r.favorite ?? '—', building: r.building ?? '',
       bio: r.bio, tools: list(r.tools), cardVersion: r.card_version,
       links: ([['LinkedIn', r.linkedin_url], ['GitHub', r.github_url], ['Website', r.website_url]] as const)
         .filter(([, href]) => href).map(([label, href]) => ({ label, href: href! })),
@@ -64,7 +64,7 @@ export const getTeam = unstable_cache(
 
 /** Only the fields the card components need: bios and links stay on the server. */
 export const toCards = (team: Member[]): Card[] =>
-  team.map(({ slug, idCode, name, role, initials, photo, skills, shipped, favorite }) => ({ slug, idCode, name, role, initials, photo, skills, shipped, favorite }));
+  team.map(({ slug, idCode, name, role, initials, photo, skills, shipped, favorite, building }) => ({ slug, idCode, name, role, initials, photo, skills, shipped, favorite, building }));
 
 /** Defaults the admin imports as its starting rows. */
 export const TEAM_DEFAULTS = FALLBACK;

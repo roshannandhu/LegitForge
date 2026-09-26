@@ -199,6 +199,7 @@ export async function saveMemberAction(id: string, _: FormState, f: FormData): P
     linkedin_url: httpsOrNull(opt(f, 'linkedin_url', 300)), github_url: httpsOrNull(opt(f, 'github_url', 300)),
     website_url: httpsOrNull(opt(f, 'website_url', 300)), favorite_project_id: opt(f, 'favorite_project_id', 40),
     initials: str(f, 'initials', 3).toUpperCase() || null,
+    building: opt(f, 'building', 60),
   });
   updateTag('team');
   revalidatePath('/admin/team');

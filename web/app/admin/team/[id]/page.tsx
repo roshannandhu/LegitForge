@@ -49,6 +49,7 @@ export default async function EditMember({ params }: { params: Promise<{ id: str
                 <option value="">None yet</option>
                 {projects.map((p) => <option key={p.id} value={p.id}>{p.title}</option>)}
               </select></label>
+            <label className="field"><span>Currently building <small>(on the ID card; keep it true, blank hides it)</small></span><input name="building" defaultValue={m.building ?? ''} maxLength={60} placeholder="a clinic booking app" /></label>
             <label className="field"><span>Skills <small>(comma separated, up to 6, on the card)</small></span><input name="skills" defaultValue={parse(m.skills).join(', ')} /></label>
             <label className="field"><span>Tools <small>(comma separated, portfolio page)</small></span><input name="tools" defaultValue={parse(m.tools).join(', ')} /></label>
             <label className="field"><span>LinkedIn</span><input name="linkedin_url" type="url" defaultValue={m.linkedin_url ?? ''} placeholder="https://" /></label>

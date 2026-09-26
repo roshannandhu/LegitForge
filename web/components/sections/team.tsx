@@ -77,7 +77,7 @@ export function Team({ team, head = true }: { team: Card[]; head?: boolean }) {
   const people = useMemo<CardPerson[]>(() => [
     ...team.map((m) => ({
       id: m.slug, idCode: m.idCode, name: m.name, role: m.role, initials: m.initials,
-      skills: m.skills, shipped: m.shipped, favorite: m.favorite, photo: m.photo,
+      skills: m.skills, shipped: m.shipped, favorite: m.favorite, photo: m.photo, building: m.building,
     })),
     VISITOR,
   ], [team]);
