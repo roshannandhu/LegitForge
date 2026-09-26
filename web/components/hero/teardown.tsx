@@ -8,7 +8,9 @@
  *  Real 3D with no WebGL: each layer's position, tilt and scale are CSS variables
  *  (--x --y --tilt --s) that GSAP animates, so the no-JS frame is plain CSS and exact.
  *  Tablet and desktop: one pinned, scrubbed timeline. Phones: no pin; the layers are a swipe
- *  row under the phone and each plays when it is in view. Motion off: the finished stack. */
+ *  row under the phone and each plays when it is in view. Motion off: the finished stack.
+ *  Stop scrolling and it carries on by itself (idleJourney; phones: the row auto-advances),
+ *  and the phone in the hand mirrors the layer being run. */
 
 import { useEffect, useRef } from 'react';
 import { useLenis } from '@/lib/lenis-store';
@@ -153,8 +155,11 @@ export default function TeardownMotion() {
       // states that are not tweens: screen, focused callout, log, act rail
       const render = () => {
         const p = tl.progress();
-        setScreen(p < 0.02 ? 'brand' : p < 0.95 ? 'dark' : 'final');
         const focus = LAYERS.findIndex((_, i) => p >= win(i) && p < win(i) + RUN.each);
+        // the phone in the hand mirrors the layer being run, so it is never an empty black slab
+        const mirror = focus >= 0 && p < 0.95;
+        screen.dataset.lead = mirror ? LAYERS[focus].id : lead.current;
+        setScreen(p < 0.02 ? 'brand' : mirror ? 'final' : p < 0.95 ? 'dark' : 'final');
         callouts.forEach((c, i) => c.toggleAttribute('data-active', i === focus));
         layers.forEach((l, i) => l.toggleAttribute('data-lit', p >= win(i) && p < 0.86));   // the customer's request has reached it
         const ran = LAYERS.filter((_, i) => p >= win(i) + 0.03).map((l) => l.id);
@@ -170,6 +175,7 @@ export default function TeardownMotion() {
         render();
         st = ScrollTrigger.create({ trigger: hero, start: 'top top', end: PIN_END, pin: true, scrub: 0.8, invalidateOnRefresh: true, animation: tl });
       }
+      const stopIdle = st ? idleJourney(st, win, tl) : () => {};
 
       // a chip was picked: that layer leads (the phone ends on it) and the page glides to it
       const onLead = (e: Event) => {
@@ -183,8 +189,45 @@ export default function TeardownMotion() {
         if (l) l.scrollTo(y, { duration: 2.4, force: true }); else window.scrollTo({ top: y, behavior: 'smooth' });
       };
       window.addEventListener(LEAD_EVENT, onLead);
-      return () => window.removeEventListener(LEAD_EVENT, onLead);
+      return () => { window.removeEventListener(LEAD_EVENT, onLead); stopIdle(); };
     });
+
+    /** Scroll leads; stop and it carries on by itself (tablet and desktop). Once the reader has
+     *  torn the phone down and then leaves the wheel alone for IDLE ms inside the pin, the page
+     *  glides on through the run at a reading pace, so every layer plays exactly as if scrolled
+     *  (it IS the scrolled timeline). After NFC it rewinds to SEO and goes again. Any wheel,
+     *  touch, key or click hands control straight back. Only while the hero is pinned. */
+    function idleJourney(st: ReturnType<typeof ScrollTrigger.create>, win: (i: number) => number, tl: gsap.core.Timeline) {
+      const IDLE = 1600, PER_LAYER = 4.2;                              // seconds of glide per layer
+      let timer = 0, raf = 0, last = 0, pauseUntil = 0;
+      const y = (p: number) => st.start + p * (st.end - st.start);
+      const scrollTo = (to: number, duration = 0) => {
+        const l = lenisRef.current;
+        if (l) l.scrollTo(to, duration ? { duration, force: true } : { immediate: true, force: true });
+        else window.scrollTo({ top: to, behavior: duration ? 'smooth' : 'instant' });
+      };
+      const stop = () => { cancelAnimationFrame(raf); raf = 0; };
+      const step = (t: number) => {
+        raf = requestAnimationFrame(step);
+        const dt = Math.min(0.05, (t - (last || t)) / 1000); last = t;
+        if (t < pauseUntil || !st.isActive) return;
+        const from = y(win(0) - 0.02), to = y(win(LAYERS.length));
+        const cur = window.scrollY;
+        if (cur >= to) { scrollTo(from, 1.6); pauseUntil = t + 2400; return; }   // rewind, then again
+        scrollTo(Math.max(cur, from - 1) + ((to - from) / (LAYERS.length * PER_LAYER)) * dt);
+      };
+      const arm = () => {
+        clearTimeout(timer); stop();
+        timer = window.setTimeout(() => {
+          // only after the reader has torn it down themselves, and never past the run
+          if (!st.isActive || tl.progress() < 0.12 || tl.progress() > win(LAYERS.length)) return;
+          last = 0; pauseUntil = 0; raf = requestAnimationFrame(step);
+        }, IDLE);
+      };
+      const events = ['wheel', 'touchstart', 'pointerdown', 'keydown'] as const;
+      events.forEach((e) => window.addEventListener(e, arm, { passive: true }));
+      return () => { clearTimeout(timer); stop(); events.forEach((e) => window.removeEventListener(e, arm)); };
+    }
 
     /* ---------------------------------------------------- phones: a swipe row */
     mm.add('(max-width: 767px)', () => {
@@ -225,7 +268,28 @@ export default function TeardownMotion() {
         showLog(ran); setAct(ran.has('done') ? 3 : 2);
       }), { threshold: 0.6 });
       layers.forEach((el) => io.observe(el));
-      return () => { near.disconnect(); io.disconnect(); toFinal.kill(); window.removeEventListener(LEAD_EVENT, onLead); flows.forEach((f) => f?.progress(1)); };
+
+      // the row moves on to the next card by itself while it is on screen; a touch stops it
+      const row = layers[0].parentElement!;
+      let auto = 0, onScreen = false, touched = false;
+      const next = () => {
+        if (!onScreen || touched) return;
+        const x = row.scrollLeft + row.clientWidth / 2;
+        const i = layers.findIndex((l) => l.offsetLeft + l.offsetWidth / 2 > x + 8);
+        const card = layers[i < 0 ? 0 : i];
+        row.scrollTo({ left: card.offsetLeft - (row.clientWidth - card.offsetWidth) / 2, behavior: 'smooth' });
+      };
+      const vis = new IntersectionObserver(([e]) => {
+        onScreen = e.isIntersecting;
+        clearInterval(auto);
+        if (onScreen && !touched) auto = window.setInterval(next, 4200);
+      }, { threshold: 0.6 });
+      vis.observe(row);
+      const hold = () => { touched = true; clearInterval(auto); };
+      row.addEventListener('touchstart', hold, { passive: true });
+      row.addEventListener('pointerdown', hold, { passive: true });
+      return () => { vis.disconnect(); clearInterval(auto); row.removeEventListener('touchstart', hold); row.removeEventListener('pointerdown', hold);
+        near.disconnect(); io.disconnect(); toFinal.kill(); window.removeEventListener(LEAD_EVENT, onLead); flows.forEach((f) => f?.progress(1)); };
     });
   }, { scope: root, dependencies: [motionOn] });
 
