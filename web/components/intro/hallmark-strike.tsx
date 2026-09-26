@@ -8,6 +8,7 @@
  *  key, click, tap or wheel. The overlay ignores the pointer: the page underneath is live. */
 
 import './intro.css';
+import { CoinMark } from '@/components/ui/icons';
 
 const SKIP =
   `(function(){var d=document.documentElement;if(!d.dataset.intro)return;var ev=['keydown','pointerdown','wheel','touchstart'];` +
@@ -16,31 +17,6 @@ const SKIP =
 
 const SPARKS = Array.from({ length: 14 }, (_, i) => ({ a: `${i * (360 / 14) + (i % 3) * 7}deg`, r: `${70 + (i % 4) * 26}px` }));
 const RIM = Array.from({ length: 10 }, (_, i) => i);
-
-function CoinFace() {
-  return (
-    <svg viewBox="0 0 200 200" className="coin-svg">
-      <defs>
-        <radialGradient id="lf-gold" cx="38%" cy="32%" r="75%">
-          <stop offset="0" stopColor="#FFE9A8" /><stop offset=".45" stopColor="#E3B452" /><stop offset="1" stopColor="#A87424" />
-        </radialGradient>
-        <linearGradient id="lf-steel" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#5C6B7A" /><stop offset=".5" stopColor="#2E3945" /><stop offset="1" stopColor="#1A222B" />
-        </linearGradient>
-        <path id="lf-ring" d="M100 100 m-80 0 a80 80 0 1 1 160 0 a80 80 0 1 1 -160 0" />
-      </defs>
-      <circle cx="100" cy="100" r="98" fill="url(#lf-gold)" />
-      <circle cx="100" cy="100" r="92" fill="url(#lf-steel)" />
-      <circle cx="100" cy="100" r="68" fill="url(#lf-gold)" />
-      <circle cx="100" cy="100" r="68" fill="none" stroke="#7A5418" strokeWidth="1.5" />
-      <g className="coin-text">
-        <text className="coin-ring-text"><textPath href="#lf-ring" startOffset="0">LEGIT FORGE · LEGIT FORGE · LEGIT FORGE ·</textPath></text>
-        <text x="100" y="96" textAnchor="middle" className="coin-word">LEGIT</text>
-        <text x="100" y="124" textAnchor="middle" className="coin-word">FORGE</text>
-      </g>
-    </svg>
-  );
-}
 
 export function HallmarkStrike() {
   return (
@@ -78,8 +54,8 @@ export function HallmarkStrike() {
           <div className="coin-wrap">
             <div className="coin">
               {RIM.map((i) => <i key={i} className="coin-rim" style={{ '--z': i } as React.CSSProperties} />)}
-              <div className="coin-face coin-front"><CoinFace /></div>
-              <div className="coin-face coin-back"><CoinFace /></div>
+              <div className="coin-face coin-front"><CoinMark className="coin-svg" textClassName="coin-text" /></div>
+              <div className="coin-face coin-back"><CoinMark className="coin-svg" textClassName="coin-text" /></div>
             </div>
           </div>
         </div>

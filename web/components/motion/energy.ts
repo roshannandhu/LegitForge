@@ -5,9 +5,11 @@
 export const energy = { value: 0, target: 0 };
 
 let written = -1;
+let rod: HTMLElement | null | undefined;
 export function writeEnergyVar() {
   const v = Math.round(energy.value * 100) / 100;          // two decimals: no style churn at rest
   if (v === written) return;
   written = v;
-  document.documentElement.style.setProperty('--scroll-energy', String(v));
+  // on the one element that reads it: a variable on <html> would restyle the whole page every frame
+  (rod ??= document.querySelector<HTMLElement>('.heat-rod'))?.style.setProperty('--scroll-energy', String(v));
 }

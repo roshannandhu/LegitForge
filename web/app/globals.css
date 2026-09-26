@@ -147,3 +147,12 @@ html:active-view-transition-type(cleave)::view-transition-group(project-cover) {
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden;
   clip-path: inset(50%); white-space: nowrap; border: 0;
 }
+
+/* ================================================================ lite mode
+   html[data-lite] (lib/boot.ts): weak devices keep every section and every demo, minus the
+   costs that make a budget phone stutter. */
+[data-lite] *, [data-lite] *::before, [data-lite] *::after { animation-iteration-count: 1 !important; }   /* no infinite loops */
+@media (max-width: 767px) {
+  /* off-screen sections skip style, layout and paint until they come near (phones never pin) */
+  [data-lite] main > section:not(.hero) { content-visibility: auto; contain-intrinsic-size: auto 900px; }
+}
