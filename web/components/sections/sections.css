@@ -1024,3 +1024,18 @@
 .wg-link:hover { color: var(--heat-hi); }
 .ag-item .ag-media { position: absolute; inset: 0; aspect-ratio: auto; border: 0; background: none; }
 .ag-item .ag-media::after { display: none; }
+
+/* Lite phones up to 479px: a demo lays out only once it is within 600px of the view (data-near,
+   demo-player.tsx). Its box holds the measured height meanwhile, so nothing below it shifts.
+   Safety nets: motion off, and data-lite-all 8 s after load (lib/boot.ts). */
+@media (max-width: 479px) {
+  html[data-lite]:not([data-lite-all]):not([data-motion="off"]) .demo-player:not([data-near]) > * > * { display: none; }
+  html[data-lite]:not([data-lite-all]):not([data-motion="off"]) .demo-player:not([data-near]) > * { box-sizing: border-box; }
+  html[data-lite]:not([data-lite-all]):not([data-motion="off"]) .demo-player:not([data-near]) > .demo-website { min-height: calc(35vw + 143px); }
+  html[data-lite]:not([data-lite-all]):not([data-motion="off"]) .demo-player:not([data-near]) > .demo-app { min-height: 345px; }
+  html[data-lite]:not([data-lite-all]):not([data-motion="off"]) .demo-player:not([data-near]) > .demo-whatsapp { min-height: 414px; }
+  html[data-lite]:not([data-lite-all]):not([data-motion="off"]) .demo-player:not([data-near]) > .demo-n8n { min-height: 294px; }
+  html[data-lite]:not([data-lite-all]):not([data-motion="off"]) .demo-player:not([data-near]) > .demo-seo { min-height: 363px; }
+  html[data-lite]:not([data-lite-all]):not([data-motion="off"]) .demo-player:not([data-near]) > .demo-nfc { min-height: 297px; }
+  html[data-lite]:not([data-lite-all]):not([data-motion="off"]) .demo-player:not([data-near]) > .quote-mock { min-height: 681px; }
+}

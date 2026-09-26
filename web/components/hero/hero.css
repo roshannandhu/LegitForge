@@ -153,6 +153,10 @@
   }
   .td-glass { position: relative; inset: auto; aspect-ratio: 15 / 32; transform: rotateY(-10deg); }
   .td-cap { display: block; margin: 0; font-size: 14px; font-weight: 600; }
+  /* lite phones: cards 3–7 lay out their screen only once they near the view (data-near,
+     teardown.tsx); the glass keeps its size (aspect-ratio). Safety nets: motion off, and
+     data-lite-all 8 s after load (lib/boot.ts) */
+  html[data-lite]:not([data-lite-all]):not([data-motion="off"]) .td-layer:nth-child(n+3):not([data-near]) .td-glass > .ls { display: none; }
   .td-cap .num { color: var(--heat-color); margin-right: 4px; }
 }
 

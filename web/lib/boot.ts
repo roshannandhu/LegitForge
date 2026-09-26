@@ -17,7 +17,7 @@ export const LITE_BOOT =
   `try{var d=document.documentElement,n=navigator,c=n.connection||{},q=/[?&]lite=([01])/.exec(location.search);` +
   `if(q)localStorage.setItem('lf-lite',q[1]);var f=localStorage.getItem('lf-lite');` +
   `var weak=(n.deviceMemory&&n.deviceMemory<=3)||(n.hardwareConcurrency&&n.hardwareConcurrency<=4)||c.saveData||/2g/.test(c.effectiveType||'');` +
-  `if(f==='1'||(f!=='0'&&weak))d.dataset.lite=''}catch(e){}`;
+  `if(f==='1'||(f!=='0'&&weak)){d.dataset.lite='';addEventListener('load',function(){setTimeout(function(){if(!('nearJs' in d.dataset))d.dataset.liteAll=''},8000)})}}catch(e){}`;
 
 /** html[data-intro]: the Hallmark Strike (PLAN §6.1b) plays on a first visit to the home
  *  page with motion on, loaded at the top and not for review links. It clears itself. */

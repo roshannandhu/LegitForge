@@ -12,7 +12,8 @@
  *  snapshots every text node and class attribute in the demo, and puts them back on cleanup,
  *  so switching motion off lands on the server-rendered frame. */
 
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
+import { markNearJs } from '@/lib/lite';
 import { useGsap } from '@/lib/gsap';
 import { useMotionEnabled } from '@/components/motion/motion-provider';
 import { DEMOS, FLOWS, type DemoId } from './demos';
@@ -36,6 +37,18 @@ function snapshot(root: Element) {
 export function DemoPlayer({ kind, children }: { kind: DemoId; children: React.ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
   const motionOn = useMotionEnabled();
+
+  // data-near: the demo is within 600px of the screen. Lite phones keep a demo's content out of
+  // the first layout until then (sections.css). Plain observer, so it never waits for GSAP.
+  useEffect(() => {
+    markNearJs();
+    const el = ref.current!;
+    const io = new IntersectionObserver(([e]) => {
+      if (e.isIntersecting) { el.dataset.near = ''; io.disconnect(); }
+    }, { rootMargin: '600px 0px' });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
 
   useGsap(({ gsap }) => {
     const el = ref.current!;
@@ -82,7 +95,8 @@ export function DemoPlayer({ kind, children }: { kind: DemoId; children: React.R
     const near = new IntersectionObserver(([e]) => {
       if (!e.isIntersecting || built) return;
       built = true; near.disconnect();
-      build();                                                 // start state now, still off screen
+      el.dataset.near = '';                                    // shown before it is measured
+      build();                                                // start state now, still off screen
       if (visible) cur?.resume();
     }, { rootMargin: '600px 0px' });
     near.observe(el);

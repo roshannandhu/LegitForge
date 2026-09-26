@@ -17,6 +17,7 @@ import {
   SCREEN_C, SLOTS, actIndex, isLayerId, type LayerId,
 } from '@/lib/teardown';
 import { useMotionEnabled } from '@/components/motion/motion-provider';
+import { markNearJs } from '@/lib/lite';
 import { useGsap, type Gs } from '@/lib/gsap';
 import { buildFlow } from './teardown-flows';
 
@@ -51,6 +52,20 @@ export default function TeardownMotion() {
     });
     ro.observe(box);
     return () => ro.disconnect();
+  }, []);
+
+  // phones: data-near marks a glass card as it nears the screen. Lite phones keep cards 3–7 out
+  // of the first layout until then (hero.css). Plain observer: never waits for GSAP.
+  useEffect(() => {
+    markNearJs();
+    const cards = [...root.current!.querySelectorAll<HTMLElement>('.td-layer')];
+    const io = new IntersectionObserver((entries) => entries.forEach((en) => {
+      if (!en.isIntersecting) return;
+      (en.target as HTMLElement).dataset.near = '';
+      io.unobserve(en.target);
+    }), { rootMargin: '200px 300px' });
+    cards.forEach((c) => io.observe(c));
+    return () => io.disconnect();
   }, []);
 
   useGsap(({ gsap, ScrollTrigger }) => {
@@ -192,7 +207,7 @@ export default function TeardownMotion() {
       // each card's flow is built as it nears the screen (its start state set off screen), not
       // all seven at load: that was one of a budget phone's longest load tasks
       const flows: (ReturnType<typeof buildFlow> | undefined)[] = [];
-      const build = (i: number) => (flows[i] ??= buildFlow(LAYERS[i].id, layers[i], gsap).pause(0));
+      const build = (i: number) => { layers[i].dataset.near = ''; return (flows[i] ??= buildFlow(LAYERS[i].id, layers[i], gsap).pause(0)); };   // shown before it is measured
       const near = new IntersectionObserver((entries) => entries.forEach((en) => {
         if (!en.isIntersecting) return;
         build(layers.indexOf(en.target as HTMLElement));
