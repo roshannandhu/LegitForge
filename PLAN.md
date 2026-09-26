@@ -4211,7 +4211,7 @@ If Meta verification is late, launch with plain "Chat on WhatsApp" links and swi
 | Visit live site | Opens the client's site in a new tab | Project cards, case studies |
 | Open [Name]'s portfolio | Opens the member page | Team |
 | Flip [Name]'s card | Flips the card | Team name tags |
-| Replay demo | Replays a service demo | Services, on phones |
+| ~~Replay demo~~ | Removed: demos loop non-stop while on screen (§22.3) | — |
 | Send project details | Submits the form | Quench, contact page |
 
 Rule: the same action always has the same label. "Chat on WhatsApp" is never called "Contact us" somewhere else.
@@ -4442,9 +4442,31 @@ So the plan is three releases, and **we launch at the first one**.
 | Process C2 sticky stack (§23.2) | Done: tablets and laptops with motion on; phones and motion off keep the timeline |
 | The Cleave as a page transition, card → case study (§23.1) | Done: cross-document View Transitions, `CLEAVE_BOOT` in `lib/boot.ts`, styles in `app/globals.css` |
 | Blog (§7.4) | Done: MDX in `content/blog`, registry `lib/blog.ts`, `scripts/blog-index.mjs` runs before dev/build. Two starter posts are drafts (noindex, not in the sitemap) until `draft: false` |
-| **Next (R2/R3)** | **1. Share images** · **2. Admin (§7.8)**. Both are specified in §22.4 below |
+| Share images (§22.4 step 1) | Done: `lib/og.tsx`, a static 1200 × 630 card for the site and for each service, case study and post |
+| Admin (§7.8, §22.4 step 2) | Done. Covers projects (paste to upload, alt text required on the server, width, height and dominant colour), leads with CSV export, testimonials (permission required) and site stats. Cloudflare Access plus a server JWT check; public pages read published D1 projects, with the placeholders as fallback. One change from §7.8: the draft preview is `/admin/preview/<slug>`, not `/work/<slug>?preview=1`. Access then guards it too, and the /work pages stay static |
+| Admin, round 2 | Done:
+- **Team profiles:** name, role, bio, skills, tools, links, favourite build and photo. Pages read `team_members` with the code as fallback; "Regenerate ID card" bumps `card_version`.
+- **Share images for admin projects:** the uploaded cover; placeholder cards moved to `/og/work/<slug>`.
+- **Image sitemap:** covers and team photos, with project `lastmod`.
+- **Capture cover from the live URL:** Browser Rendering; needs the paid `BROWSER` binding. |
+| Demos and SEO | Done. Demos loop non-stop while on screen (Replay removed; hero untouched). Every animation has hidden step-by-step text. Home adds WebSite and ItemList data. The check enforces one h1, a canonical, title ≤ 70 and description 50–160 |
+| Section detailing (plan D, 13 items) | Done, each checked at 375, 768 and 1440:
+1. **Hero:** the customer's thread through the layers.
+2. **Trust strip:** hallmark punches.
+3. **Services:** a demo card warms while it runs; time chips.
+4. **Quotation:** request as a WhatsApp bubble; the coin seal stamps ACCEPTED.
+5. **Compare:** hot-chisel handle with price and time at each end.
+6. **Live test:** reply stopwatch.
+7. **Process:** deliverables drop in.
+8. **Projects:** before → after proof (admin fields).
+9. **Team:** "Now building" (admin), shared swing.
+10. **Hallmarks:** testimonials from the admin.
+11. **Pricing:** timeline bars; FAQ spark.
+12. **Contact:** the form quenches; RECEIVED with the reply-by time.
+13. **Footer:** forge status. |
+| **Left for launch** | Everything under "Left for R1", plus the Access application and its two secrets (web/README.md "Admin"), and Browser Rendering if cover capture is wanted |
 
-### 22.4 Next build steps (handover)
+### 22.4 Next build steps (handover) — both built, see §22.3
 
 Each step: build it → `npx tsc --noEmit` → `npm run build` → `npx next start -p 3300` → `BASE=http://localhost:3300 npm run check`. Screenshot new pieces at 375, 768 and 1440, in both themes. Then commit and push.
 

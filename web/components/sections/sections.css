@@ -26,7 +26,17 @@
 .fire-line { margin: 0 0 12px; max-width: 46ch; }
 .fire-for { margin: 0 0 16px; font-size: 15px; color: var(--text-muted); }
 .fire-for .type-label { color: var(--text); margin-right: 4px; }
-.fire-price { margin: 0 0 8px; font-weight: 600; }
+.fire-price { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 0 0 8px; font-weight: 600; }
+.fire-time { padding: 2px 10px; border: 1px solid var(--line); border-radius: 999px; font-size: 14px; font-weight: 600; color: var(--text-muted); }
+/* the demo is running: its number and frame warm up (plan D #3) */
+.fire-num { transition: color 400ms var(--ease-forge); }
+.fire:has(.demo-player[data-running]) .fire-num { color: var(--heat-color); }
+:is(.fire-stage, .page-demo, .fire) .demo-player::after {
+  content: ""; position: absolute; inset: 0; border-radius: 16px; pointer-events: none; opacity: 0;
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--heat-color) 60%, transparent), 0 0 24px -12px var(--heat-color);
+  transition: opacity 600ms var(--ease-forge);
+}
+:is(.fire-stage, .page-demo, .fire) .demo-player[data-running]::after { opacity: 1; }
 
 /* demo stage: identical frame for all four at tablet+; natural height on phones */
 .demo {
@@ -157,7 +167,21 @@
 .quote-points p { margin: 0; max-width: 52ch; }
 .quote-trust { margin: 32px 0 0; padding: 16px 20px; max-width: 58ch; border-left: 2px solid var(--quench); color: var(--text-muted); font-size: 15px; }
 
-.quote-mock { display: grid; justify-items: center; }
+.quote-mock { display: grid; justify-items: center; overflow-x: clip; }   /* the seal drops in large: never widen a phone */
+/* the request, as a WhatsApp message (plan D #4) */
+.qm-bubble {
+  justify-self: end; max-width: 280px; margin: 0 0 10px; padding: 8px 12px 6px; border-radius: 12px 12px 2px 12px;
+  background: #1F6B52; color: #F1F6F3; font-size: 14px; line-height: 1.4;
+}
+@media (min-width: 480px) { .qm-bubble { margin-right: calc(50% - 190px); } }   /* aligned with the quote's right edge */
+.qm-bubble-time { margin-left: 8px; font-size: 12px; opacity: .7; }
+.qm-quote { position: relative; }
+/* our seal: the logo coin pressed into the paper, with a faint impression ring */
+.qm-seal {
+  position: absolute; right: 18px; bottom: -24px; z-index: 1; width: 56px; height: 56px; rotate: -12deg; border-radius: 50%;
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--heat-color) 18%, transparent), 0 6px 14px rgb(0 0 0 / .35);
+}
+.qm-seal svg { display: block; width: 100%; height: 100%; }
 .qm {
   width: 100%; max-width: 380px; padding: 20px;
   background: var(--surface); border: 1px solid var(--line); border-radius: 16px;
@@ -198,17 +222,39 @@
 }
 @media (max-width: 767px) { .compare { aspect-ratio: 4 / 5; } }
 .compare-static { position: absolute; inset: 0; clip-path: inset(0 calc(100% - var(--pos) * 1%) 0 0); }
-.compare-divider { position: absolute; top: 0; bottom: 0; left: calc(var(--pos) * 1%); width: 2px; translate: -1px 0; background: var(--heat-color); pointer-events: none; }
+.compare-divider {
+  position: absolute; top: 0; bottom: 0; left: calc(var(--pos) * 1%); width: 2px; translate: -1px 0; pointer-events: none;
+  background: linear-gradient(var(--heat-hi), var(--heat-mid) 40%, var(--heat-lo));
+  box-shadow: 0 0 10px 1px color-mix(in oklab, var(--heat-mid) 60%, transparent);
+  transition: box-shadow 200ms var(--ease-forge);
+}
+.compare:has(input:active) .compare-divider { box-shadow: 0 0 18px 3px var(--heat-mid); }   /* the chisel bites harder while dragged */
+/* the hot chisel (plan D #5): a steel shank with a glowing tip, sitting on the seam */
 .compare-handle {
   position: absolute; top: 50%; left: calc(var(--pos) * 1%); translate: -50% -50%; pointer-events: none;
-  display: flex; align-items: center; justify-content: center; gap: 6px; width: 44px; height: 44px; border-radius: 50%;
-  background: var(--surface); border: 2px solid var(--heat-color);
+  display: grid; place-items: center; width: 44px; height: 88px; color: var(--text);
+  filter: drop-shadow(0 4px 8px rgb(0 0 0 / .35)) drop-shadow(0 6px 10px color-mix(in oklab, var(--heat-mid) 40%, transparent));
 }
-.compare-handle i { width: 0; height: 0; border: 5px solid transparent; }
-.compare-handle i:first-child { border-right-color: var(--text); border-left-width: 0; }
-.compare-handle i:last-child { border-left-color: var(--text); border-right-width: 0; }
+.compare-handle svg { width: 28px; height: 72px; overflow: visible; }
+@media (max-width: 767px) { .compare-handle { height: 96px; } .compare-handle svg { width: 32px; height: 82px; } }
+/* the decision facts at each end; each fades as the other side takes over */
+.compare-fact {
+  position: absolute; bottom: 12px; z-index: 1; max-width: 44%; padding: 6px 12px; border: 1px solid var(--line); border-radius: 999px;
+  background: color-mix(in oklab, var(--bg) 88%, transparent); color: var(--text-muted); font-size: 14px; line-height: 1.3; pointer-events: none;
+}
+.compare-fact b { color: var(--text); margin-right: 4px; }
+.compare-fact.is-static { left: 12px; opacity: clamp(0, (var(--pos) - 12) / 18, 1); }
+.compare-fact.is-dynamic { right: 12px; text-align: right; opacity: clamp(0, (88 - var(--pos)) / 18, 1); }
+/* phones: the frame is too narrow for chips, so the facts sit in a row under it */
+.compare-facts { display: none; }
+@media (max-width: 767px) {
+  .compare-fact { display: none; }
+  .compare-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 12px 0 0; font-size: 14px; color: var(--text-muted); }
+  .compare-facts span:last-child { text-align: right; }
+  .compare-facts b { display: block; color: var(--text); }
+}
 .compare input[type="range"] { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: ew-resize; }
-.compare:has(input:focus-visible) .compare-handle { outline: 2px solid var(--focus); outline-offset: 3px; }
+.compare:has(input:focus-visible) .compare-handle { outline: 2px solid var(--focus); outline-offset: 3px; border-radius: 12px; }
 .compare-note { margin: 16px 0 0; color: var(--text-muted); }
 
 .cafe { position: absolute; inset: 0; display: flex; flex-direction: column; background: var(--bg); font-size: clamp(11px, 1.4vw, 15px); }
@@ -308,6 +354,17 @@
 }
 @media (min-width: 1024px) { .step-get { grid-column: 3; margin-top: 4px; } }
 .step-get .type-label { color: var(--text-muted); }
+.step-get { grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: 12px; }
+.step-get > span:last-child { display: grid; gap: 2px; }
+/* the deliverable (plan D #7): drops onto the card as it pins; always there without motion */
+.step-obj {
+  display: grid; place-items: center; width: 40px; height: 40px; border-radius: 10px;
+  background: color-mix(in oklab, var(--heat-color) 14%, var(--surface)); color: var(--heat-color);
+  transition: transform 520ms cubic-bezier(.3, 1.5, .5, 1), opacity 300ms var(--ease-forge);
+}
+.step-obj svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+[data-motion="on"] [data-animated="true"] .step:not(.is-reached) .step-obj { opacity: 0; transform: translateY(-28px) rotate(-14deg) scale(.8); }
+[data-motion="off"] .step-obj { transition: none; }
 .steps-note { margin: 32px 0 0 68px; font-size: 14px; color: var(--text-muted); }
 @media (max-width: 767px) { .steps-note { margin-left: 0; } }
 [data-motion="off"] .step-node { transition: none; }
@@ -356,10 +413,20 @@
     linear-gradient(color-mix(in oklab, var(--quench) 40%, transparent) 1px, transparent 1px) 0 0 / 24px 24px,
     linear-gradient(90deg, color-mix(in oklab, var(--quench) 40%, transparent) 1px, transparent 1px) 0 0 / 24px 24px;
 }
+.cover-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }   /* uploaded covers (admin) */
 .cover-initials { position: relative; font-size: 56px; font-weight: 800; font-stretch: 112%; color: color-mix(in oklab, var(--quench) 70%, var(--text)); }
 .project-cover .stamp { position: absolute; top: 16px; right: 16px; z-index: 1; }
 /* cooling (§6.7 #17): the cover enters heat-tinted and cools to full colour */
 .project { --card-heat: 0; }
+/* before -> after, driven by the same cooling (--card-heat 1 -> 0); phones never cool, so they show the end */
+.project-proof { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; margin: 8px 0 0; font-size: 15px; }
+.project-proof .was { position: relative; color: var(--text-muted); }
+.project-proof .was::after {
+  content: ""; position: absolute; left: -2px; right: -2px; top: 55%; height: 2px; background: var(--heat-color);
+  clip-path: inset(0 calc(var(--card-heat) * 100%) 0 0);
+}
+.project-proof .arrow { color: var(--heat-color); opacity: calc(1 - var(--card-heat)); }
+.project-proof .now { font-weight: 700; opacity: calc(1 - var(--card-heat)); transform: translateX(calc(var(--card-heat) * -8px)); }
 .project-cover::after {
   content: ""; position: absolute; inset: 0; pointer-events: none;
   background: var(--heat-color); mix-blend-mode: color; opacity: calc(var(--card-heat) * .6);
@@ -491,6 +558,9 @@
 .id-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }   /* cover, like the 3D atlas */
 .id-name { margin: 0; font-size: 22px; font-weight: 700; font-stretch: 106%; line-height: 1.15; }
 .id-role { margin: 2px 0 0; color: var(--text-muted); }
+/* currently building (plan D #9): one honest line with a live dot */
+.id-now { display: flex; align-items: center; gap: 6px; margin: 8px 0 0; max-width: 62%; font-size: 14px; font-weight: 600; line-height: 1.3; }
+.id-now-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--heat-hi); box-shadow: 0 0 0 3px color-mix(in oklab, var(--heat-hi) 25%, transparent); }
 .id-seal {
   align-self: flex-end; margin-top: auto; padding: 4px 10px; border-radius: 6px;
   font-family: var(--font-stencil), var(--font-sans); font-size: 14px; letter-spacing: .14em; text-transform: uppercase;
@@ -582,6 +652,26 @@
 }
 .faq-item[open] summary::after { rotate: -135deg; margin-top: -2px; }
 .faq-item p { margin: 0 0 20px; max-width: 65ch; color: var(--text-muted); }
+/* an answer opens with a short spark underline (plan D #11) */
+.faq-item p::before {
+  content: ""; display: block; width: 48px; height: 2px; margin-bottom: 12px; border-radius: 2px; transform-origin: left center;
+  background: linear-gradient(90deg, var(--heat-hi), var(--heat-mid)); box-shadow: 0 0 8px var(--heat-mid);
+}
+.faq-item[open] p::before { animation: faq-spark 420ms var(--ease-forge) both; }
+@keyframes faq-spark { from { transform: scaleX(0); opacity: 0; } to { transform: none; opacity: 1; } }
+[data-motion="off"] .faq-item p::before { animation: none; }
+
+/* pricing timeline bars (plan D #11): one shared scale; fill from --a to --b, drawn in once */
+.tl-bar { position: relative; display: block; height: 6px; margin-top: 8px; max-width: 160px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.tl-fill {
+  position: absolute; top: 0; bottom: 0; left: calc(var(--a) * 100%); width: calc((var(--b) - var(--a)) * 100%); min-width: 6px;
+  border-radius: 3px; background: linear-gradient(90deg, var(--heat-mid), var(--heat-hi)); transform-origin: left center;
+  transition: transform 700ms var(--ease-forge); transition-delay: calc(var(--i, 0) * 90ms);
+}
+[data-armed]:not([data-punched]) .tl-fill { transform: scaleX(0); }
+[data-motion="off"] .tl-fill { transition: none; }
+.price-scale { margin: 8px 0 0; font-size: 14px; color: var(--text-muted); }
+@media (max-width: 767px) { .tl-bar { max-width: 200px; } }
 [data-motion="off"] .faq-item summary::after { transition: none; }
 
 /* ================================================================= quench */
@@ -621,6 +711,22 @@
 .form-sent { display: grid; justify-items: center; gap: 16px; max-width: 520px; margin-top: 16px; }
 .form-sent p { margin: 0; }
 .stamp-sent { padding: 6px 14px 5px; font-size: 18px; }
+/* the quench (plan D #12): steam rises, the seal lands, RECEIVED is stamped across it */
+.sent-seal { position: relative; display: grid; place-items: center; width: 160px; height: 120px; }
+.sent-coin { width: 84px; height: 84px; border-radius: 50%; box-shadow: 0 0 0 6px color-mix(in oklab, var(--heat-color) 16%, transparent), 0 10px 24px rgb(0 0 0 / .3);
+  animation: seal-land 520ms cubic-bezier(.3, 1.4, .5, 1) 250ms both; }
+.sent-coin svg { display: block; width: 100%; height: 100%; }
+.sent-stamp { position: absolute; bottom: 4px; padding: 4px 12px 3px; font-size: 16px; background: var(--bg); animation: stamp-hit 380ms cubic-bezier(.2, .9, .3, 1.3) 700ms both; }
+.steam { position: absolute; top: 18px; width: 38px; height: 38px; border-radius: 50%; background: radial-gradient(closest-side, color-mix(in oklab, var(--text) 30%, transparent), transparent);
+  filter: blur(6px); opacity: 0; animation: steam-rise 1400ms ease-out both; }
+.steam:nth-child(1) { left: 40px; } .steam:nth-child(2) { left: 64px; animation-delay: 120ms; } .steam:nth-child(3) { left: 88px; animation-delay: 240ms; }
+@keyframes steam-rise { 0% { opacity: 0; transform: translateY(20px) scale(.6); } 30% { opacity: .9; } 100% { opacity: 0; transform: translateY(-40px) scale(1.6); } }
+@keyframes seal-land { from { opacity: 0; transform: scale(1.8) rotate(-30deg); } to { opacity: 1; transform: none; } }
+@keyframes stamp-hit { from { opacity: 0; transform: scale(2); } to { opacity: 1; transform: none; } }
+[data-motion="off"] :is(.sent-coin, .sent-stamp) { animation: none; }
+[data-motion="off"] .steam { display: none; }
+.sent-by { font-size: var(--step-lead); }
+.sent-note { color: var(--text-muted); font-size: 15px; }
 .hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
 
 /* ============================================================ trust strip */
@@ -634,6 +740,25 @@
 @media (min-width: 1024px) { .trust-list { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 .trust-list li { padding: 20px 24px; background: var(--surface); color: var(--text-muted); font-size: 15px; line-height: 1.5; }
 .trust-list strong { display: block; margin-bottom: 4px; color: var(--text); font-weight: 700; }
+.trust-list .punch { margin: 2px 0 12px 2px; }
+
+/* hallmark punch (plan D #2, components/motion/punch-in.tsx): struck in once, staggered by --i */
+.punch {
+  --ink: color-mix(in oklab, var(--heat-color) 80%, var(--text));
+  display: inline-block; padding: 2px 8px 1px; border: 2px solid var(--ink); border-radius: 5px; rotate: -5deg;
+  color: var(--ink); font-family: var(--font-stencil), var(--font-sans); font-weight: 700; font-size: 14px;
+  letter-spacing: .12em; line-height: 1.1; text-transform: uppercase; white-space: nowrap;
+}
+[data-armed]:not([data-punched]) [data-punch] { opacity: 0; }
+[data-punched] [data-punch] { animation: punch-in 520ms cubic-bezier(.2, .9, .3, 1.2) both; animation-delay: calc(var(--i, 0) * 140ms + 120ms); }
+@keyframes punch-in {
+  0% { opacity: 0; transform: scale(2.2); filter: blur(2px); }
+  55% { opacity: 1; transform: scale(.92); filter: none; }
+  75% { transform: scale(1.04); }
+  100% { opacity: 1; transform: none; }
+}
+[data-motion="off"] [data-punch] { animation: none; opacity: 1; }
+.testimonials .t-mark { margin-bottom: 12px; font-size: 14px; }
 
 /* ================================================================ the Cleave §23.1 */
 .cleave { position: relative; }
@@ -664,16 +789,7 @@
 .plate-steel span { display: block; margin-top: 20px; font-size: 14px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--heat-color); }
 
 /* ============================================= working-flow demos (demos.ts) */
-.demo-player { position: relative; display: grid; gap: 8px; }
-.demo-replay {
-  justify-self: end; min-height: 44px; padding: 0 16px; visibility: visible;
-  border: 1px solid var(--line); border-radius: 10px; background: transparent; color: var(--text);
-  font: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
-}
-.demo-replay:not([data-shown]) { visibility: hidden; }   /* keeps its row (no layout shift) and leaves focus and the a11y tree; not [hidden]: Tailwind forces that to display:none */
-.demo-replay:hover { border-color: var(--text-muted); }
-[data-motion="off"] .demo-replay { display: none; }            /* motion off never replays: no empty row */
-
+.demo-player { position: relative; }
 /* website: live tag, badge, cursor, click ripple */
 .demo-tag { margin-left: auto; padding: 2px 8px; border-radius: 999px; background: color-mix(in oklab, var(--heat-color) 22%, transparent); color: var(--text); font-size: 11px; font-weight: 700; }
 .bp-img { position: relative; }
@@ -730,3 +846,16 @@
   .cafe-dynamic .cafe-order { display: table; margin-left: auto; }
   .cafe-static .cafe-hours, .cafe-static .cafe-map { margin-right: 50%; }
 }
+
+/* live test: the reply stopwatch (plan D #6) */
+.live-watch { display: flex; align-items: baseline; gap: 6px; margin: 0 0 20px; }
+.live-watch-dot { align-self: center; width: 10px; height: 10px; border-radius: 50%; background: var(--line); }
+.live-watch[data-state="running"] .live-watch-dot { background: var(--heat-color); animation: watch-pulse 800ms ease-in-out infinite; }
+.live-watch[data-state="done"] .live-watch-dot { background: var(--success); }
+.live-watch-num { font-size: 48px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+.live-watch[data-state="done"] .live-watch-num { color: var(--success); }
+.live-watch-unit { font-size: 20px; font-weight: 700; }
+.live-watch-label { margin-left: 8px; font-size: 15px; color: var(--text-muted); }
+@keyframes watch-pulse { 50% { opacity: .35; transform: scale(.8); } }
+[data-motion="off"] .live-watch-dot { animation: none; }
+@media (max-width: 479px) { .live-watch-num { font-size: 40px; } }

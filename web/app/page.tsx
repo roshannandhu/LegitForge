@@ -16,15 +16,43 @@ import { Hallmarks } from '@/components/sections/hallmarks';
 import { PricingFaq } from '@/components/sections/pricing-faq';
 import { Quench } from '@/components/sections/quench';
 import { HallmarkStrike } from '@/components/intro/hallmark-strike';
-import { PROCESS, SERVICES, TEAM } from '@/lib/content';
+import { PROCESS, SERVICES } from '@/lib/content';
+import { getTeam, toCards } from '@/lib/team';
 import { SITE, waLink } from '@/lib/site';
+import { LAYERS } from '@/lib/teardown';
 import '@/components/hero/hero.css';
 import '@/components/sections/sections.css';
+
+/** What happens at each hero layer, in the words the teardown's screens show (lib/teardown.ts). */
+const HERO_JOURNEY = [
+  'Priya asks for an AC installation quote on the business website.',
+  'the WhatsApp bot replies in seconds and asks her room size.',
+  'n8n prices the job and makes the PDF, with no copy-paste.',
+  'she opens quote Q-2041 for ₹45,800 and accepts it.',
+  'her warranty is issued, checkable by QR code and valid to 2027, with a WhatsApp reminder set.',
+];
+const SERVICE_URL: Record<string, string> = {
+  web: '/services/website-development', wa: '/services/whatsapp-automation', n8n: '/services/n8n-automation',
+};
+
+/** The site, the studio, and the five systems the hero takes apart (PLAN §10.4, SEO plan B). */
+const siteLd = [
+  { '@context': 'https://schema.org', '@type': 'WebSite', name: SITE.name, url: SITE.url, inLanguage: 'en-IN' },
+  {
+    '@context': 'https://schema.org', '@type': 'ItemList', name: 'What we build, layer by layer',
+    itemListElement: LAYERS.map((l, i) => ({
+      '@type': 'ListItem', position: i + 1, name: l.name, description: `${l.spec}. ${HERO_JOURNEY[i]}`,
+      ...(SERVICE_URL[l.id] ? { url: `${SITE.url}${SERVICE_URL[l.id]}` } : {}),
+    })),
+  },
+];
 
 /** Organization + the services we sell, for search engines and AI answers (PLAN §10.4). */
 const orgLd = {
   '@context': 'https://schema.org',
   '@type': 'ProfessionalService',
+  logo: `${SITE.url}/icon.svg`,
+  image: `${SITE.url}/opengraph-image`,
   name: SITE.name,
   url: SITE.url,
   email: SITE.email,
@@ -48,7 +76,8 @@ const orgLd = {
   },
 };
 
-export default function Home() {
+export default async function Home() {
+  const team = toCards(await getTeam());
   const wa = waLink();
   return (
     <>
@@ -71,13 +100,15 @@ export default function Home() {
           <Teardown />
           <HeroLog />
         </div>
-        <p className="sr-only">
-          Diagram: the phone in the hand comes apart into five working layers — a static website,
-          WhatsApp automation, an n8n automation, a quotation system and a warranty system. One
-          customer’s request runs through each in turn: she asks for a quote on the website, the
-          WhatsApp bot asks her room size, n8n prices it, she accepts the quote, and her warranty
-          is issued.
-        </p>
+        <div className="sr-only">
+          <p>
+            Diagram: the phone in the hand comes apart into five working layers. One customer’s
+            request runs through each in turn, top to bottom:
+          </p>
+          <ol>
+            {LAYERS.map((l, i) => <li key={l.id}>{l.name} ({l.spec}): {HERO_JOURNEY[i]}</li>)}
+          </ol>
+        </div>
       </section>
 
       <Cleave cover={<div className="plate-steel"><p className="type-display">Now, everything behind it.<span>Scroll to open it up</span></p></div>}>
@@ -85,11 +116,14 @@ export default function Home() {
       </Cleave>
       <Services />
       <Quotation />
-      <Compare />
+      <Compare facts={{
+        static: { price: SERVICES[0].price, time: SERVICES[0].time },
+        dynamic: { price: SERVICES[1].price, time: SERVICES[1].time },
+      }} />
       <LiveTest />
       <Process steps={PROCESS} />
       <Projects />
-      <Team team={TEAM} />
+      <Team team={team} />
       <Hallmarks />
       <PricingFaq />
       <Quench />
@@ -97,7 +131,7 @@ export default function Home() {
       <HeatDirector />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(orgLd).replace(/</g, '\\u003c') }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify([orgLd, ...siteLd]).replace(/</g, '\\u003c') }}
       />
     </>
   );

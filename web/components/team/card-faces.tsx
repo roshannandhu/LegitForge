@@ -14,6 +14,7 @@ export function CardFront({ p }: { p: CardPerson }) {
       </div>
       <p className="id-name">{p.name}</p>
       <p className="id-role">{p.role}</p>
+      {p.building && <p className="id-now"><span className="id-now-dot" aria-hidden="true" /><span className="sr-only">Currently building: </span>{p.building}</p>}
       <span className="id-seal">Legit</span>
     </div>
   );

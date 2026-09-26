@@ -14,6 +14,15 @@ import { useMotionEnabled } from '@/components/motion/motion-provider';
 import { useGsap } from '@/lib/gsap';
 import type { PROCESS } from '@/lib/content';
 
+/** What you get at each step, as a small object that drops onto the card when it pins
+ *  (plan D #7): the scope document, the design link, the weekly preview, the keys. */
+const OBJECTS = [
+  <svg key="doc" viewBox="0 0 24 24"><path d="M6 2.5h8l4 4V21a.5.5 0 0 1-.5.5h-11A.5.5 0 0 1 6 21z" /><path d="M14 2.5V7h4M9 12h6M9 15h6M9 18h4" /></svg>,
+  <svg key="link" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.6 0l3-3a4 4 0 0 0-5.6-5.6l-1 1" /><path d="M14 10a4 4 0 0 0-5.6 0l-3 3a4 4 0 0 0 5.6 5.6l1-1" /></svg>,
+  <svg key="preview" viewBox="0 0 24 24"><rect x="2.5" y="4" width="19" height="15" rx="2" /><path d="M2.5 8h19" /><path d="M8 13.5s1.6-2.5 4-2.5 4 2.5 4 2.5-1.6 2.5-4 2.5-4-2.5-4-2.5z" /></svg>,
+  <svg key="key" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4.5" /><path d="M11.2 11.8 20 3M16 7l2.5 2.5M18.5 4.5 21 7" /></svg>,
+];
+
 /** Keep in step with the .steps stack rules in sections.css. */
 const STACK = '(min-width: 768px) and (min-height: 640px)';
 const STACK_TOP = 96;       // under the 72 px header
@@ -85,7 +94,10 @@ export function Process({ steps }: { steps: typeof PROCESS }) {
                 </div>
                 <p className="step-what">{s.what}</p>
               </div>
-              <p className="step-get"><span className="type-label">You get</span>{s.get}</p>
+              <p className="step-get">
+                <span className="step-obj" aria-hidden="true">{OBJECTS[i] ?? OBJECTS[0]}</span>
+                <span><span className="type-label">You get</span>{s.get}</span>
+              </p>
             </li>
           ))}
         </ol>

@@ -19,6 +19,15 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
 - Logo: the coin seal (LEGIT FORGE on the rim and across the centre, no symbol), CoinMark in components/ui/icons.tsx (also app/icon.svg and mark() in lib/card-art.ts;
   keep all three in step). Its gold and steel are fixed hex in both themes, like a real coin: the
   one allowed exception to the token rule.
+- Share images: lib/og.tsx draws every card (1200 × 630, next/og); each route has an
+  opengraph-image.tsx and twitter-image.tsx, except case studies: an uploaded cover, else /og/work/<slug>. They must stay static (generateStaticParams +
+  dynamicParams = false): the font files in assets/og are read at build time, never on Workers.
+- Admin (PLAN §7.8): app/admin (pages, Server Actions in actions.ts), lib/admin (auth, D1 queries),
+  app/api/admin/upload (R2), app/media (serves R2 images). Setup: README "Admin".
+- Projects on public pages come from lib/work.ts: published D1 rows, else the placeholders in
+  content.ts/pages.ts. Never import PROJECTS/CASE_STUDIES in a page again; use getProjects().
+  People the same way: lib/team.ts getTeam() (tag 'team'), never TEAM/MEMBER_DETAILS in a page.
+  Client components get toCards(team) only, so bios stay on the server.
 
 ## Commands
 - npm run dev              local development (port 3000)
@@ -38,6 +47,12 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
 - The hero's no-JS / motion-off frame is the finished exploded stack. Each layer's position, tilt
   and scale are CSS variables (--x --y --tilt --s) with server-rendered slot values; GSAP animates
   the same variables, so if you move a slot in lib/teardown.ts, both stay in step.
+- Service demos (DemoPlayer) loop while on screen and pause off screen; each loop rebuilds its
+  timeline from the finished frame. Their hidden step text is lib/demo-transcripts.ts: keep it
+  true when a demo changes.
+- Punch-ins (components/motion/punch-in.tsx): marks with [data-punch] inside a PunchIn are struck
+  in once on view; without JS or motion they are simply there.
+- "Now" (open/closed, reply-by, forge status) is computed in the browser only: lib/business-hours.ts.
 - Live screens (layer-screens.tsx) are FINAL frames; flows play them from start states. Hide
   things until their turn with set(), never a short from() (it snaps back to visible).
 - Screen UIs are sized in cqw: the container is the glass / phone screen, never the .ls itself.
@@ -46,6 +61,11 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
 - Services named in the hero (the callouts) must stay real text in the served HTML.
 - Inline <head> scripts live in lib/boot.ts. A string exported from a 'use client' file reaches
   a Server Component as a client reference, not text.
+- Every Server Action and admin route calls requireAdmin()/adminIdentity() itself: actions are
+  public POST endpoints. Route handlers use revalidateTag('projects', { expire: 0 }); only
+  actions may call updateTag.
+- lib/work.ts never reads D1 during `next build`: the dev bindings would bake local test data
+  into production pages.
 - Never add `export const runtime = 'edge'` (OpenNext uses the Node.js runtime).
 - Binding types: cf-typegen runs with --include-runtime=false. Wrangler's full runtime types
   redeclare fetch, Response and DOM Element and break the browser code. The binding types

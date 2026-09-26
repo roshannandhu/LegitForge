@@ -4,7 +4,7 @@ import { PageHead } from '@/components/pages/page-head';
 import { CtaBand } from '@/components/pages/cta-band';
 import { JsonLd } from '@/components/pages/json-ld';
 import { findPost, formatDate, postStats, posts, relatedPosts } from '@/lib/blog';
-import { TEAM } from '@/lib/content';
+import { getTeam } from '@/lib/team';
 import { SERVICE_PAGES } from '@/lib/pages';
 import { SITE } from '@/lib/site';
 import '../../pages.css';
@@ -16,7 +16,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const p = findPost((await params).slug);
   if (!p) return {};
   return {
-    title: p.title,
+    title: p.seoTitle ?? p.title,
     description: p.description,
     alternates: { canonical: `/blog/${p.slug}` },
     openGraph: { type: 'article', publishedTime: p.date },
@@ -32,7 +32,7 @@ export default async function BlogPost({ params }: { params: Promise<{ slug: str
   if (!p) notFound();
   const { default: Article } = await import(`@/content/blog/${slug}.mdx`);
   const stats = postStats(slug);
-  const author = TEAM.find((m) => m.slug === p.author);
+  const author = (await getTeam()).find((m) => m.slug === p.author);
   const service = SERVICE_PAGES.find((s) => s.slug === p.service);
   const more = relatedPosts(slug);
   const toc = stats.toc.length >= 3 ? stats.toc : [];
@@ -91,6 +91,7 @@ export default async function BlogPost({ params }: { params: Promise<{ slug: str
         description: p.description,
         datePublished: p.date,
         wordCount: stats.words,
+        image: `${SITE.url}/blog/${p.slug}/opengraph-image`,
         url: `${SITE.url}/blog/${p.slug}`,
         mainEntityOfPage: `${SITE.url}/blog/${p.slug}`,
         author: author ? { '@type': 'Person', name: author.name, url: `${SITE.url}/team/${author.slug}` } : undefined,

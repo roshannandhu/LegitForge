@@ -5,35 +5,31 @@
 export type DemoKind = 'website' | 'app' | 'whatsapp' | 'n8n';
 
 export const SERVICES: {
-  id: DemoKind; name: string; line: string; audience: string; price: string; link: string; href: string; demoLabel: string;
+  id: DemoKind; name: string; line: string; audience: string; price: string; time: string; link: string; href: string;
 }[] = [
   {
     id: 'website', name: 'Static websites',
     line: 'A fast site that loads in about a second and is easy to update.',
     audience: 'Local businesses, portfolios, launches',
-    price: 'From [price]', link: 'See website packages', href: '/services/website-development',
-    demoLabel: 'Demo: a wireframe becomes a finished page, and its speed score reads 99.',
+    price: 'From [price]', time: 'Live in about 2 weeks', link: 'See website packages', href: '/services/website-development',
   },
   {
     id: 'app', name: 'Web apps',
     line: 'Bookings, dashboards, member areas and internal tools: software that works with your data.',
     audience: 'Growing businesses',
-    price: 'From [price]', link: 'See web app examples', href: '/work?service=dynamic',
-    demoLabel: 'Demo: a dashboard with a sales chart, three totals and a new booking arriving.',
+    price: 'From [price]', time: 'Usually 3–6 weeks', link: 'See web app examples', href: '/work?service=dynamic',
   },
   {
     id: 'whatsapp', name: 'WhatsApp automation',
     line: 'Answer customers instantly, send order updates and collect leads on WhatsApp.',
     audience: 'Shops, clinics, restaurants, service businesses',
-    price: 'From [price]', link: 'See WhatsApp automation', href: '/services/whatsapp-automation',
-    demoLabel: 'Demo: a WhatsApp bot answers a delivery question and takes an order.',
+    price: 'From [price]', time: 'Live in 1–2 weeks', link: 'See WhatsApp automation', href: '/services/whatsapp-automation',
   },
   {
     id: 'n8n', name: 'n8n workflows',
     line: 'Connect your apps so data moves by itself: forms, sheets, CRM, invoices.',
     audience: 'Teams stuck copying and pasting',
-    price: 'From [price]', link: 'See n8n workflows', href: '/services/n8n-automation',
-    demoLabel: 'Demo: a form entry travels through a sheet, an AI step, WhatsApp and a team alert.',
+    price: 'From [price]', time: 'Often running in days', link: 'See n8n workflows', href: '/services/n8n-automation',
   },
 ];
 
@@ -43,10 +39,10 @@ export const SERVICES: {
 export const TRUST_INTRO =
   'Websites, apps, quotation and warranty systems, WhatsApp automation and n8n workflows — built by the two people you talk to.';
 export const TRUST_LINES = [
-  { k: 'Fixed price before we start', v: 'No surprise invoices.' },
-  { k: 'A preview link every week', v: 'You watch it being built.' },
-  { k: 'You own everything', v: 'Code, domain, WhatsApp number and workflows.' },
-  { k: '30 days of free fixes', v: 'After launch, in writing.' },
+  { k: 'Fixed price before we start', v: 'No surprise invoices.', mark: 'Fixed' },
+  { k: 'A preview link every week', v: 'You watch it being built.', mark: 'Weekly' },
+  { k: 'You own everything', v: 'Code, domain, WhatsApp number and workflows.', mark: 'Yours' },
+  { k: '30 days of free fixes', v: 'After launch, in writing.', mark: '30 days' },
 ];
 
 /* ------------------------------------------------------------- process §6.6 */
@@ -64,21 +60,22 @@ export type Stamp = 'live' | 'in-use' | 'none';
 export const PROJECTS: {
   slug: string; title: string; client: string; resultValue: string; resultLabel: string;
   tags: string[]; stamp: Stamp; liveUrl?: string; initials: string;
+  before?: string; after?: string;      // the proof on the card: before -> after (plan D #8)
 }[] = [
-  { slug: 'project-one',   title: '[Project name]', client: '[Bakery in City]',       resultValue: '[+38%]', resultLabel: '[more enquiries in 60 days]', tags: ['Website', 'WhatsApp'], stamp: 'live',   initials: 'P1' },
-  { slug: 'project-two',   title: '[Project name]', client: '[Clinic in City]',       resultValue: '[4.2 s]', resultLabel: '[average WhatsApp reply]',    tags: ['WhatsApp', 'n8n'],     stamp: 'in-use', initials: 'P2' },
-  { slug: 'project-three', title: '[Project name]', client: '[Appliance dealer]',     resultValue: '[312]', resultLabel: '[warranties issued]',          tags: ['Web app', 'Warranty'], stamp: 'live',   initials: 'P3' },
+  { slug: 'project-one',   title: '[Project name]', client: '[Bakery in City]',       resultValue: '[+38%]', resultLabel: '[more enquiries in 60 days]', tags: ['Website', 'WhatsApp'], stamp: 'live',   initials: 'P1', before: '[6.1 s load]', after: '[0.9 s load]' },
+  { slug: 'project-two',   title: '[Project name]', client: '[Clinic in City]',       resultValue: '[4.2 s]', resultLabel: '[average WhatsApp reply]',    tags: ['WhatsApp', 'n8n'],     stamp: 'in-use', initials: 'P2', before: '[3 h reply]', after: '[4.2 s reply]' },
+  { slug: 'project-three', title: '[Project name]', client: '[Appliance dealer]',     resultValue: '[312]', resultLabel: '[warranties issued]',          tags: ['Web app', 'Warranty'], stamp: 'live',   initials: 'P3', before: '[paper cards]', after: '[QR check]' },
 ];
 
 /* ---------------------------------------------------------------- team §6.8 */
 /** photo: a square-ish portrait in public/team/, e.g. '/team/member-one.jpg' (about 800px,
  *  same origin). Empty shows the monogram. It appears on every card layer (2D, flip, 3D). */
 export const TEAM: { slug: string; idCode: string; name: string; role: string; initials: string;
-  photo: string; skills: string[]; shipped: string; favorite: string }[] = [
+  photo: string; skills: string[]; shipped: string; favorite: string; building?: string }[] = [
   { slug: 'member-one', idCode: 'LF-001', name: '[Name]', role: '[Role]', initials: 'N1', photo: '',
-    skills: ['Next.js', 'Cloudflare', 'Design systems'], shipped: '[N]', favorite: '[Favourite build]' },
+    skills: ['Next.js', 'Cloudflare', 'Design systems'], shipped: '[N]', favorite: '[Favourite build]', building: '[a clinic booking app]' },
   { slug: 'member-two', idCode: 'LF-002', name: '[Name]', role: '[Role]', initials: 'N2', photo: '',
-    skills: ['n8n', 'WhatsApp Cloud API', 'Databases'], shipped: '[N]', favorite: '[Favourite build]' },
+    skills: ['n8n', 'WhatsApp Cloud API', 'Databases'], shipped: '[N]', favorite: '[Favourite build]', building: '[a WhatsApp order bot]' },
 ];
 
 /* ------------------------------------------------------ hallmarks §6.9/§18.6 */
@@ -97,15 +94,15 @@ export const WONT_DO = [
 ];
 
 /** Empty until a client gives written permission (§6.9). The block hides itself when empty. */
-export const TESTIMONIALS: { quote: string; name: string; role: string; company: string }[] = [];
+export const TESTIMONIALS: { quote: string; name: string; role: string; company: string; date?: string }[] = [];
 
 /* ------------------------------------------------------------- pricing §6.10 */
 export const PRICING = [
-  { service: 'Static website', from: '[price]', time: '1–2 weeks', includes: 'Up to 5 pages, contact form, SEO setup, 30 days of fixes' },
-  { service: 'Web app', from: '[price]', time: '3–6 weeks', includes: 'Logins, database, admin panel' },
-  { service: 'Quotation and warranty system', from: '[price]', time: '3–6 weeks', includes: 'Quotes as links or PDFs, warranty lookup by QR, CSV export any time' },
-  { service: 'WhatsApp automation', from: '[price] setup + [price]/month', time: '1–2 weeks', includes: "Bot flows, lead capture, team alerts. Meta's message fees are billed at cost." },
-  { service: 'n8n workflow', from: '[price] per workflow', time: '2–5 days', includes: 'Build, testing, documentation, 30 days of fixes' },
+  { service: 'Static website', from: '[price]', time: '1–2 weeks', weeks: [1, 2], includes: 'Up to 5 pages, contact form, SEO setup, 30 days of fixes' },
+  { service: 'Web app', from: '[price]', time: '3–6 weeks', weeks: [3, 6], includes: 'Logins, database, admin panel' },
+  { service: 'Quotation and warranty system', from: '[price]', time: '3–6 weeks', weeks: [3, 6], includes: 'Quotes as links or PDFs, warranty lookup by QR, CSV export any time' },
+  { service: 'WhatsApp automation', from: '[price] setup + [price]/month', time: '1–2 weeks', weeks: [1, 2], includes: "Bot flows, lead capture, team alerts. Meta's message fees are billed at cost." },
+  { service: 'n8n workflow', from: '[price] per workflow', time: '2–5 days', weeks: [0.4, 1], includes: 'Build, testing, documentation, 30 days of fixes' },
 ];
 
 /* ----------------------------------------------------------------- FAQ §6.10 */

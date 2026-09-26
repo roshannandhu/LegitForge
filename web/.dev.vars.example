@@ -14,3 +14,11 @@ N8N_SHARED_KEY=
 # Cloudflare's test keys: secret 1x0000000000000000000000000000000AA always passes,
 # 2x0000000000000000000000000000000AA always fails; site key 1x00000000000000000000AA.
 TURNSTILE_SECRET_KEY=
+
+# Admin (/admin, PLAN §7.8): Cloudflare Access protects /admin* and /api/admin*; the app
+# verifies the Access JWT again. Team domain like "yourteam.cloudflareaccess.com", and the
+# Application Audience (AUD) tag from the Access application's overview page.
+ACCESS_TEAM_DOMAIN=
+ACCESS_AUD=
+# Local only: 1 opens /admin on localhost without Access. Never set it in production.
+ADMIN_DEV_BYPASS=

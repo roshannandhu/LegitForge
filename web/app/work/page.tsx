@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import { PageHead } from '@/components/pages/page-head';
 import { CtaBand } from '@/components/pages/cta-band';
 import { WorkGrid } from '@/components/work/work-grid';
-import { PROJECTS } from '@/lib/content';
-import { CASE_STUDIES, WORK_FILTERS } from '@/lib/pages';
+import { WORK_FILTERS } from '@/lib/pages';
+import { getProjects } from '@/lib/work';
 import { waLink } from '@/lib/site';
 import '@/components/sections/sections.css';
 import '../pages.css';
@@ -15,8 +15,9 @@ export const metadata: Metadata = {
 };
 
 /** /work (PLAN §7.2). */
-export default function WorkIndex() {
-  const items = PROJECTS.map((p) => ({ ...p, category: CASE_STUDIES[p.slug]?.category ?? 'static' }));
+export default async function WorkIndex() {
+  // only the card fields cross to the client filter
+  const items = (await getProjects()).map(({ study: _study, published: _published, ...card }) => card);
   return (
     <>
       <PageHead

@@ -1,5 +1,6 @@
 import { CoinMark } from '@/components/ui/icons';
 import { MotionSwitch } from './motion-switch';
+import { ForgeStatus } from './forge-status';
 import { SITE, waLink } from '@/lib/site';
 
 /** Footer (PLAN §6.12). Only links that resolve; only social accounts we keep active. */
@@ -16,6 +17,7 @@ export function Footer() {
             <span className="logo-word">Legit Forge</span>
           </a>
           <p>Websites, apps, quotation and warranty systems, WhatsApp automation and n8n workflows — built by two people in {SITE.city}.</p>
+          <ForgeStatus />
         </div>
 
         <div>

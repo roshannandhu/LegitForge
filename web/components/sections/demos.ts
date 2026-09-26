@@ -133,19 +133,25 @@ function quote(root: Element, gsap: G): TL {
   const finalMeta = meta?.textContent ?? '';
   const [accepted, valid] = $$(root, '.qm-head .stamp');
   if (meta) meta.textContent = 'Draft';
-  tl.from($$(root, '.qm-lines li'), { opacity: 0, x: -12, duration: 0.3, stagger: 0.18 }, 0.2);
-  countUp(tl, $(root, '.qm-total span:last-child'), 0.4, 0.9, (v) => `₹${Math.round(v).toLocaleString('en-IN')}`);
-  tl.call(() => { if (meta) meta.textContent = 'Sent as a link'; }, [], 1.35)
-    .call(() => { if (meta) meta.textContent = 'Opened twice'; }, [], 1.75)
-    .call(() => { if (meta) meta.textContent = finalMeta; }, [], 2.1)
-    .fromTo(accepted, { opacity: 0, scale: 1.5 }, { opacity: 1, scale: 1, duration: 0.3, ease: 'power4.in', immediateRender: true }, 2.1)
-    .from($(root, '.qm-link'), { scaleY: 0, transformOrigin: 'top center', duration: 0.4 }, 2.35)
-    .from($(root, '.qm-warranty'), { opacity: 0, y: 14, duration: 0.4 }, 2.55)
-    .fromTo($(root, '.qm-scan'), { yPercent: 0, opacity: 0 }, { opacity: 1, duration: 0.1, immediateRender: true }, 2.85)
-    .to($(root, '.qm-scan'), { top: 'auto', y: () => ($(root, '.qm-warranty')?.offsetHeight ?? 160) - 4, duration: 0.5, ease: 'power1.inOut' }, 2.85)
-    .to($(root, '.qm-scan'), { opacity: 0, duration: 0.15 }, 3.35)
-    .fromTo(valid, { opacity: 0, scale: 1.5 }, { opacity: 1, scale: 1, duration: 0.3, ease: 'power4.in', immediateRender: true }, 3.35)
-    .from($(root, '.qm-remind'), { opacity: 0, y: 10, duration: 0.35, ease: 'back.out(2)' }, 3.6);
+  // the request arrives on WhatsApp, and the quote grows out of it
+  tl.from($(root, '.qm-bubble'), { opacity: 0, y: 10, scale: 0.9, transformOrigin: 'right bottom', duration: 0.3, ease: 'back.out(2)' }, 0)
+    .from($(root, '.qm-quote'), { opacity: 0, scale: 0.4, y: -40, transformOrigin: 'right top', duration: 0.45, ease: 'power3.out' }, 0.4)
+    .from($$(root, '.qm-lines li'), { opacity: 0, x: -12, duration: 0.3, stagger: 0.18 }, 0.8);
+  countUp(tl, $(root, '.qm-total span:last-child'), 1.0, 0.9, (v) => `₹${Math.round(v).toLocaleString('en-IN')}`);
+  tl.call(() => { if (meta) meta.textContent = 'Sent as a link'; }, [], 1.95)
+    .call(() => { if (meta) meta.textContent = 'Opened twice'; }, [], 2.35)
+    .call(() => { if (meta) meta.textContent = finalMeta; }, [], 2.7)
+    .fromTo(accepted, { opacity: 0, scale: 1.5 }, { opacity: 1, scale: 1, duration: 0.3, ease: 'power4.in', immediateRender: true }, 2.7)
+    // the seal is pressed: drops in large, lands with a small bounce, the paper takes the impression
+    .fromTo($(root, '.qm-seal'), { opacity: 0, scale: 1.8, rotate: -40 }, { opacity: 1, scale: 1, rotate: -12, duration: 0.32, ease: 'power4.in', immediateRender: true }, 2.7)
+    .fromTo($(root, '.qm-quote'), { y: 0 }, { y: 2, duration: 0.06, yoyo: true, repeat: 1, immediateRender: false }, 3.02)
+    .from($(root, '.qm-link'), { scaleY: 0, transformOrigin: 'top center', duration: 0.4 }, 3.1)
+    .from($(root, '.qm-warranty'), { opacity: 0, y: 14, duration: 0.4 }, 3.3)
+    .fromTo($(root, '.qm-scan'), { yPercent: 0, opacity: 0 }, { opacity: 1, duration: 0.1, immediateRender: true }, 3.6)
+    .to($(root, '.qm-scan'), { top: 'auto', y: () => ($(root, '.qm-warranty')?.offsetHeight ?? 160) - 4, duration: 0.5, ease: 'power1.inOut' }, 3.6)
+    .to($(root, '.qm-scan'), { opacity: 0, duration: 0.15 }, 4.1)
+    .fromTo(valid, { opacity: 0, scale: 1.5 }, { opacity: 1, scale: 1, duration: 0.3, ease: 'power4.in', immediateRender: true }, 4.1)
+    .from($(root, '.qm-remind'), { opacity: 0, y: 10, duration: 0.35, ease: 'back.out(2)' }, 4.35);
   return tl;
 }
 

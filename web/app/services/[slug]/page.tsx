@@ -6,8 +6,8 @@ import { JsonLd } from '@/components/pages/json-ld';
 import { ServiceDemo } from '@/components/sections/service-demos';
 import { ProjectCard } from '@/components/work/project-card';
 import { CheckIcon } from '@/components/ui/icons';
-import { PROJECTS } from '@/lib/content';
-import { CASE_STUDIES, SERVICE_PAGES, serviceBySlug } from '@/lib/pages';
+import { getProjects } from '@/lib/work';
+import { SERVICE_PAGES, serviceBySlug } from '@/lib/pages';
 import { SITE, waLink } from '@/lib/site';
 import '@/components/sections/sections.css';
 import '../../pages.css';
@@ -26,7 +26,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 export default async function ServicePage({ params }: { params: Promise<{ slug: string }> }) {
   const s = serviceBySlug((await params).slug);
   if (!s) notFound();
-  const related = PROJECTS.filter((p) => s.categories.includes(CASE_STUDIES[p.slug]?.category)).slice(0, 3);
+  const related = (await getProjects()).filter((p) => s.categories.includes(p.category)).slice(0, 3);
   const wa = waLink(`Hi Legit Forge, I'd like to talk about ${s.topic}.`);
 
   return (

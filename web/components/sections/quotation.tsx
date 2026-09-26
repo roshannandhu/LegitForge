@@ -1,8 +1,11 @@
 /** Quotation and warranty system (PLAN §6.3b). Our own product, and the plainest proof
  *  that we ship real software. The mock plays as a working flow when it comes into view
- *  (demos.ts "quote"): the markup is its finished frame. */
+ *  (demos.ts "quote"): the markup is its finished frame. The request arrives as a WhatsApp
+ *  message, the quote grows out of it, and our coin seal presses ACCEPTED into it (plan D #4). */
 
+import { CoinMark } from '@/components/ui/icons';
 import { DemoPlayer } from './demo-player';
+import { DemoTranscript } from './demo-transcript';
 
 const POINTS = [
   { h: 'Quote', p: 'Build a quote from saved line items, send it as a link or PDF, and see when it was opened. Accepted quotes are timestamped and stored.' },
@@ -30,6 +33,7 @@ export function Quotation() {
 
         <DemoPlayer kind="quote">
         <div className="quote-mock" aria-hidden="true">
+          <p className="qm-bubble">Hi, can I get a quote for a split AC? <span className="qm-bubble-time">10:42</span></p>
           <div className="qm qm-quote">
             <div className="qm-head"><span className="qm-kicker num">Quote Q-2041</span><span className="stamp stamp-ok">Accepted</span></div>
             <p className="qm-title">Split AC installation</p>
@@ -40,6 +44,8 @@ export function Quotation() {
             </ul>
             <p className="qm-total num"><span>Total</span><span>₹45,800</span></p>
             <p className="qm-meta">Opened twice · accepted 14 Sep</p>
+            {/* our seal accepts it (plan D #4): the logo coin, pressed into the paper */}
+            <span className="qm-seal"><CoinMark /></span>
           </div>
 
           <svg className="qm-link" viewBox="0 0 40 120" preserveAspectRatio="none"><path d="M20 0 V120" /></svg>
@@ -57,7 +63,7 @@ export function Quotation() {
           <span className="qm-remind">Expiry reminder set on WhatsApp <b>✓✓</b></span>
         </div>
         </DemoPlayer>
-        <p className="sr-only">Example: a quote for an AC installation is sent, opened and accepted; the customer scans the warranty code and sees it is valid until September 2027; an expiry reminder is set on WhatsApp.</p>
+        <DemoTranscript kind="quote" />
       </div>
     </section>
   );

@@ -53,6 +53,34 @@ and, when deploying, `npm run db:migrate:remote`. After changing `wrangler.jsonc
 `npm run cf-typegen`. If the change adds a new kind of binding, add its type to
 `cloudflare-bindings.d.ts`.
 
+## Admin (/admin)
+
+Projects (paste a screenshot to upload, or capture the live site), team profiles and ID
+cards, leads with CSV export, testimonials and site numbers. PLAN §7.8.
+
+**Team:** open Admin → Team and choose "Import the current team" once. From then on the site
+reads the people from the database. "Regenerate ID card" redraws the flip and 3D cards.
+
+**Capture cover** needs Cloudflare Browser Rendering (the `BROWSER` binding in
+wrangler.jsonc, a paid add-on). Without it, the button says so; pasting a screenshot always
+works.
+
+**Locally:** run `npm run db:migrate:local`, set `ADMIN_DEV_BYPASS=1` in `.dev.vars`, run
+`npm run dev`, then open http://localhost:3000/admin. The bypass only works on localhost.
+
+**In production,** Cloudflare Access protects it, and the app checks the Access token again:
+1. Zero Trust → Access → Applications → Add a self-hosted application for your domain.
+   Give it two paths: `/admin` and `/api/admin`.
+2. Add a policy that allows your two email addresses.
+3. Copy the application's **Audience (AUD) tag** and your team domain
+   (`yourteam.cloudflareaccess.com`), then set both as secrets:
+   `npx wrangler secret put ACCESS_AUD` and `npx wrangler secret put ACCESS_TEAM_DOMAIN`.
+4. Apply the migrations remotely: `npm run db:migrate:remote`.
+
+Without both secrets, /admin is a 404 for everyone. If you change data outside the admin
+(for example with `wrangler d1 execute`), press Admin → Site → "Refresh site content". Published projects replace the
+placeholders on the home page and /work. Draft previews are at `/admin/preview/<slug>`.
+
 ## Before launch
 
 Search the code for `[` placeholders and `TODO` (real domain, WhatsApp number, business details,
