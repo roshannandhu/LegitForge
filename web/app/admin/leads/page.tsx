@@ -8,7 +8,7 @@ export default async function AdminLeads({ searchParams }: { searchParams: Promi
   return (
     <>
       <h1 className="type-h2">Leads</h1>
-      <div className="admin-actions admin-lead">
+      <div className="admin-actions admin-lead admin-leads-filter">
         <a className="btn btn-ghost btn-sm" href="/admin/leads" aria-current={!status ? 'page' : undefined}>All</a>
         {LEAD_STATUSES.map((s) => <a key={s} className="btn btn-ghost btn-sm" href={`/admin/leads?status=${s}`} aria-current={status === s ? 'page' : undefined}>{s}</a>)}
         <a className="btn btn-primary btn-sm" href="/admin/leads/export">Export CSV</a>

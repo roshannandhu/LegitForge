@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { requireAdmin } from '@/lib/admin/auth';
+import { AdminNav } from './ui';
 import './admin.css';
 
 /** /admin (PLAN §7.8): behind Cloudflare Access, verified again by requireAdmin(). Anyone
@@ -21,9 +22,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   return (
     <div className="admin wrap">
       <div className="admin-bar">
-        <nav aria-label="Admin">
-          <ul className="admin-nav">{NAV.map((n) => <li key={n.href}><a href={n.href}>{n.label}</a></li>)}</ul>
-        </nav>
+        <AdminNav items={NAV} />
         <p className="admin-who">Signed in as <strong>{who}</strong></p>
       </div>
       {children}

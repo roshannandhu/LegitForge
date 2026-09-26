@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import { CATEGORIES, getProjectRow, listImages, STAMPS } from '@/lib/admin/db';
 import { getTeam } from '@/lib/team';
 import { captureCoverAction, deleteImageAction, deleteProjectAction, publishProjectAction, saveProjectAction, setCoverAction } from '../../actions';
-import { ActionButton, ActionForm, Submit } from '../../ui';
+import { ActionButton, ActionForm, ConfirmSubmit, Submit } from '../../ui';
 import { ImageManager } from './image-manager';
 
 const parse = <T,>(s: string): T[] => { try { return JSON.parse(s); } catch { return []; } };
@@ -22,9 +22,7 @@ export default async function EditProject({ params }: { params: Promise<{ id: st
       <h1 className="type-h2">{p.title}</h1>
       <div className="admin-actions admin-lead">
         <span className={`pill${p.is_published ? ' is-on' : ''}`}>{p.is_published ? 'Published' : 'Draft'}</span>
-        <form action={publishProjectAction.bind(null, id, !p.is_published)}>
-          <button className="btn btn-primary btn-sm">{p.is_published ? 'Unpublish' : 'Publish'}</button>
-        </form>
+        <ActionButton action={publishProjectAction.bind(null, id, !p.is_published)} className="btn btn-primary btn-sm">{p.is_published ? 'Unpublish' : 'Publish'}</ActionButton>
         <a className="btn btn-ghost btn-sm" href={`/admin/preview/${p.slug}`} target="_blank" rel="noopener">Preview</a>
       </div>
 
@@ -46,7 +44,7 @@ export default async function EditProject({ params }: { params: Promise<{ id: st
                 <p>{im.alt}</p>
                 <div className="admin-actions">
                   {im.kind !== 'cover' && <form action={setCoverAction.bind(null, id, im.id)}><button className="btn btn-ghost btn-sm">Make cover</button></form>}
-                  <form action={deleteImageAction.bind(null, id, im.id)}><button className="btn btn-ghost btn-sm btn-danger">Delete</button></form>
+                  <form action={deleteImageAction.bind(null, id, im.id)}><ConfirmSubmit message={`Delete this ${im.kind} image? This can't be undone.`}>Delete</ConfirmSubmit></form>
                 </div>
               </li>
             ))}
@@ -98,8 +96,9 @@ export default async function EditProject({ params }: { params: Promise<{ id: st
 
       <section className="admin-section" aria-labelledby="danger-h">
         <h2 id="danger-h" className="type-h3">Delete</h2>
-        <form action={deleteProjectAction.bind(null, id)}>
-          <button className="btn btn-ghost btn-danger">Delete this project and its images</button>
+        <form action={deleteProjectAction.bind(null, id)} className="admin-form">
+          <label className="admin-check"><input type="checkbox" name="confirm" required /> Delete “{p.title}”, its images and its page for good</label>
+          <div><button className="btn btn-ghost btn-danger">Delete this project and its images</button></div>
         </form>
       </section>
     </>

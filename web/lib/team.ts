@@ -33,7 +33,7 @@ export async function teamFromDb(includeHidden: boolean): Promise<Member[] | nul
   try {
     const [members, projects] = await db.batch([
       db.prepare(
-        `SELECT m.*, p.title AS favorite FROM team_members m LEFT JOIN projects p ON p.id = m.favorite_project_id
+        `SELECT m.*, p.title AS favorite FROM team_members m LEFT JOIN projects p ON p.id = m.favorite_project_id AND p.is_published = 1
           ${includeHidden ? '' : 'WHERE m.is_published = 1'} ORDER BY m.sort_order, m.slug`),
       db.prepare('SELECT team FROM projects WHERE is_published = 1'),
     ]);

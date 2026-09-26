@@ -1,6 +1,6 @@
 import { listTestimonials } from '@/lib/admin/db';
 import { deleteTestimonialAction, publishTestimonialAction, saveTestimonialAction } from '../actions';
-import { ActionButton, ActionForm, Submit } from '../ui';
+import { ActionButton, ActionForm, ConfirmSubmit, Submit } from '../ui';
 
 function Fields({ t }: { t?: Awaited<ReturnType<typeof listTestimonials>>[number] }) {
   return (
@@ -38,7 +38,7 @@ export default async function AdminTestimonials() {
                   <span className={`pill${t.is_published ? ' is-on' : ''}`}>{t.is_published ? 'Published' : 'Not published'}</span>
                   <span className={`pill${t.permission_confirmed ? ' is-on' : ''}`}>{t.permission_confirmed ? 'Permission given' : 'No permission yet'}</span>
                   <ActionButton action={publishTestimonialAction.bind(null, t.id, !t.is_published)}>{t.is_published ? 'Unpublish' : 'Publish'}</ActionButton>
-                  <form action={deleteTestimonialAction.bind(null, t.id)}><button className="btn btn-ghost btn-sm btn-danger">Delete</button></form>
+                  <form action={deleteTestimonialAction.bind(null, t.id)}><ConfirmSubmit message={`Delete ${t.person_name}’s testimonial? This can't be undone.`}>Delete</ConfirmSubmit></form>
                 </div>
                 <details>
                   <summary className="check">Edit “{t.quote.slice(0, 60)}{t.quote.length > 60 ? '…' : ''}” — {t.person_name}</summary>
