@@ -11,37 +11,27 @@
  *  row under the phone and each plays when it is in view. Motion off: the finished stack. */
 
 import { useEffect, useRef } from 'react';
-import Image from 'next/image';
 import { useLenis } from '@/lib/lenis-store';
 import {
-  CALLOUTS, CALLOUT_W, DEFAULT_LEAD, DESIGN, FOCUS, ISO_SCALE, LAYERS, LEAD_EVENT, PHONE, PIN_END, RUN,
-  SCREEN, SCREEN_C, SLOTS, actIndex, isLayerId, type LayerId,
+  DEFAULT_LEAD, DESIGN, FOCUS, ISO_SCALE, LAYERS, LEAD_EVENT, PIN_END, RUN,
+  SCREEN_C, SLOTS, actIndex, isLayerId, type LayerId,
 } from '@/lib/teardown';
 import { useMotionEnabled } from '@/components/motion/motion-provider';
 import { useGsap, type Gs } from '@/lib/gsap';
-import { LayerScreen } from './layer-screens';
 import { buildFlow } from './teardown-flows';
 
-const STAGE_VARS = {
-  '--dw': `${DESIGN.w}px`, '--dh': `${DESIGN.h}px`,
-  '--phone-w': `${PHONE.w}px`, '--phone-x': `${PHONE.cx}px`, '--phone-y': `${PHONE.cy}px`,
-  '--scr-w': `${SCREEN.w}px`, '--scr-h': `${SCREEN.h}px`,
-  '--iso-s': ISO_SCALE,
-} as unknown as React.CSSProperties;
-
-/** Sets --fit during parsing (tablet and up), so the stage never visibly rescales at hydration.
- *  Keep in step with the resize effect below. */
-const FIT_NOW = `(function(s){if(matchMedia('(max-width: 767px)').matches)return;var b=s.parentElement.getBoundingClientRect();` +
-  `if(b.width)s.style.setProperty('--fit',Math.min((b.width-28)/${DESIGN.w},b.height/${DESIGN.h},1.25).toFixed(3))})` +
-  `(document.currentScript.previousElementSibling)`;
-
-const WORD = 'Legit Forge';
 let introPlayed = false;
 
-export default function Teardown() {
+export default function TeardownMotion() {
   const motionOn = useMotionEnabled();
+  const marker = useRef<HTMLSpanElement>(null);
   const root = useRef<HTMLDivElement>(null);
   const stage = useRef<HTMLDivElement>(null);
+  // point the refs at the server-rendered hero before any effect below runs
+  useEffect(() => {
+    root.current = marker.current!.closest<HTMLDivElement>('.stage-fit.td');
+    stage.current = root.current!.querySelector<HTMLDivElement>('.td-stage');
+  }, []);
   const trigger = useRef<Gs['ScrollTrigger']>(undefined);
   const lead = useRef<LayerId>(DEFAULT_LEAD);
   const lenis = useLenis();
@@ -224,48 +214,7 @@ export default function Teardown() {
     });
   }, { scope: root, dependencies: [motionOn] });
 
-  return (
-    <div className="stage-fit td" ref={root}>
-      {/* suppressHydrationWarning: FIT_NOW adds --fit to this style before React hydrates */}
-      <div className="stage td-stage" ref={stage} style={STAGE_VARS} suppressHydrationWarning>
-        {/* leader lines and callouts: the technical-drawing layer (tablet and up) */}
-        <svg className="td-leaders" viewBox={`0 0 ${DESIGN.w} ${DESIGN.h}`} aria-hidden="true">
-          {SLOTS.map((s, i) => (
-            <path key={i} d={`M${CALLOUTS[i].x + CALLOUT_W + 8} ${CALLOUTS[i].y + 11} L${s.x - 96} ${s.y}`} />
-          ))}
-        </svg>
-        <ol className="td-callouts" style={{ '--cw': `${CALLOUT_W}px` } as React.CSSProperties}>
-          {LAYERS.map((l, i) => (
-            <li key={l.id} style={{ '--cx': `${CALLOUTS[i].x}px`, '--cy': `${CALLOUTS[i].y}px` } as React.CSSProperties}>
-              <span className="num">{l.num}</span> <strong>{l.name}</strong> <em>{l.spec}</em>
-            </li>
-          ))}
-        </ol>
-
-        <div className="td-phone">
-          <Image src="/hero/phone@2x.avif" alt="" width={1200} height={1653} priority sizes="(max-width: 767px) 62vw, 30vw" />
-          <div className="td-screen" data-state="final" data-lead={DEFAULT_LEAD} aria-hidden="true">
-            <p className="td-word">{[...WORD].map((c, i) => <span key={i}>{c === ' ' ? ' ' : c}</span>)}</p>
-            {LAYERS.map((l) => <div key={l.id} className="td-final" data-for={l.id}><LayerScreen id={l.id} /></div>)}
-          </div>
-        </div>
-
-        <ul className="td-layers" aria-label="What happens inside the phone">
-          {LAYERS.map((l, i) => (
-            <li
-              key={l.id}
-              className="td-layer"
-              data-layer={l.id}
-              style={{ '--sx': SLOTS[i].x, '--sy': SLOTS[i].y, zIndex: 10 - i } as React.CSSProperties}
-            >
-              <div className="td-glass"><LayerScreen id={l.id} /></div>
-              <p className="td-cap"><span className="num">{l.num}</span> {l.name}</p>
-            </li>
-          ))}
-        </ul>
-        <span className="td-pulse" aria-hidden="true" />
-      </div>
-      <script dangerouslySetInnerHTML={{ __html: FIT_NOW }} />
-    </div>
-  );
+  // the markup is a Server Component (teardown-view.tsx): this is only the motion, attached to
+  // it through the marker, so the hero's ~350 nodes never have to hydrate
+  return <span ref={marker} hidden />;
 }

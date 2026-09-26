@@ -12,6 +12,7 @@
 import { useRef } from 'react';
 import { useGsap } from '@/lib/gsap';
 import { useMotionEnabled } from './motion-provider';
+import { isLite } from '@/lib/lite';
 
 export function Cleave({ cover, children, label }: { cover: React.ReactNode; children: React.ReactNode; label?: string }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -19,7 +20,7 @@ export function Cleave({ cover, children, label }: { cover: React.ReactNode; chi
 
   useGsap(({ gsap }) => {
     const el = ref.current!;
-    if (!motionOn) { delete el.dataset.armed; return; }
+    if (!motionOn || isLite()) { delete el.dataset.armed; return; }   // lite: the content simply sits in the page
     el.dataset.armed = '';
     const mm = gsap.matchMedia();
     mm.add({ pin: '(min-width: 768px)', phone: '(max-width: 767px)' }, (ctx) => {

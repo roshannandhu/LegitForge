@@ -17,6 +17,7 @@ export function HeatDirector() {
 
   useGsap(
     ({ gsap, ScrollTrigger }) => {
+      if (isLite()) return;   // lite: one steady heat, no trigger per section to measure and update
       gsap.utils.toArray<HTMLElement>('[data-heat]').forEach((section) => {
         ScrollTrigger.create({
           trigger: section,

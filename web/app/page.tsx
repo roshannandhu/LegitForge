@@ -1,4 +1,4 @@
-import Teardown from '@/components/hero/teardown';
+import Teardown from '@/components/hero/teardown-view';
 import { HeroLog } from '@/components/hero/hero-log';
 import { StoryChips } from '@/components/hero/story-chips';
 import { HeroStatus } from '@/components/hero/hero-status';
