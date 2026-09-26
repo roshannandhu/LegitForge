@@ -12,6 +12,7 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
 - Team section only, both lazy-loaded when #team is near: React Three Fiber + Rapier
   (components/lanyard, fine pointer ≥1024px) and `motion` inside the vendored FlipCard
   (components/react-bits). Nothing else may import them.
+- Fonts: Archivo self-hosted subset (see Performance), Big Shoulders Stencil via next/font/google.
 - Hero (the Teardown, PLAN §6.2c, seven layers: SEO, web, WhatsApp, n8n, quote, warranty, NFC): data lib/teardown.ts · component components/hero/teardown.tsx ·
   live screens components/hero/layer-screens.tsx · their flows components/hero/teardown-flows.ts
 - First-visit intro (the Hallmark Strike, PLAN §6.1b): components/intro, pure CSS. lib/boot.ts
@@ -116,6 +117,9 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
   HydrateWhenNear (components/motion/hydrate-when-near.tsx): server HTML from the first paint,
   React takes over within 600px. Page-wide observers must re-observe on `lf:hydrated`.
   Don't wrap sections that pin (Process) or anything above the fold.
+- Archivo is self-hosted (next/font/local, app/fonts/archivo-latin.woff2, one 80 KB subset, both
+  axes; Google's two files were 176 KB). It arrives in time for the first layout, which spares a
+  full re-layout on swap. New Latin character in copy → scripts/subset-archivo.py (check names it).
 - content-visibility was measured and rejected: it moved layout into scrolling on this page.
 - Team section rebuild (server markup + attached flip/drag) was measured and skipped: the whole
   section costs ~240 ms on a lite phone; HydrateWhenNear defers its hydration instead.

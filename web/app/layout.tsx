@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
-import { Archivo, Big_Shoulders_Stencil } from 'next/font/google';
+import { Big_Shoulders_Stencil } from 'next/font/google';
+import localFont from 'next/font/local';
 import { ThemeProvider } from 'next-themes';
 import { MotionProvider } from '@/components/motion/motion-provider';
 import { MOTION_BOOT_SCRIPT, LITE_BOOT, INTRO_BOOT, CLEAVE_BOOT } from '@/lib/boot';
@@ -11,11 +12,21 @@ import { SITE } from '@/lib/site';
 import './globals.css';
 import '@/components/layout/layout.css';
 
-const archivo = Archivo({
-  subsets: ['latin'],
-  axes: ['wdth'],          // the width axis is our hammer (PLAN §4.3)
+/** Archivo, variable in weight (100–900) and width (62–125 %, our hammer: PLAN §4.3). Self-hosted
+ *  as ONE subset file (app/fonts/archivo-latin.woff2, 80 KB: ASCII, Latin-1, the site's
+ *  punctuation and ₹) instead of Google's two latin + latin-ext files (176 KB). Same glyphs,
+ *  same axes, same kerning and figures, so it looks identical; it simply arrives in time for
+ *  the first layout far more often, which spares a budget phone a full re-layout on swap.
+ *  Regenerate it when copy gains a new symbol: web/README.md "Fonts". */
+const archivo = localFont({
+  src: './fonts/archivo-latin.woff2',
+  weight: '100 900',
+  style: 'normal',
   variable: '--font-archivo',
   display: 'swap',
+  preload: true,
+  adjustFontFallback: 'Arial',
+  declarations: [{ prop: 'font-stretch', value: '62% 125%' }],
 });
 
 /** The one stamp face: only inside hallmark stamps and ID codes (§4.3). Not preloaded —
