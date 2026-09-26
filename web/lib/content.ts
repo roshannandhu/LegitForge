@@ -50,12 +50,13 @@ export const SERVICES: {
    word for word, a promise reads as policy rather than a sales line. */
 export const TRUST_INTRO =
   'Websites, apps, quotation and warranty systems, WhatsApp automation and n8n workflows — built by the two people you talk to.';
+export const TRUST_TITLE = 'Four promises, stamped in steel.';
 export const TRUST_LINES = [
-  { k: 'Fixed price before we start', v: 'No surprise invoices.', mark: 'Fixed' },
-  { k: 'A preview link every week', v: 'You watch it being built.', mark: 'Weekly' },
-  { k: 'You own everything', v: 'Code, domain, WhatsApp number and workflows.', mark: 'Yours' },
-  { k: '30 days of free fixes', v: 'After launch, in writing.', mark: '30 days' },
-];
+  { k: 'Fixed price before we start', v: 'No surprise invoices.', mark: 'Fixed', icon: 'lock' },
+  { k: 'A preview link every week', v: 'You watch it being built.', mark: 'Weekly', icon: 'weeks' },
+  { k: 'You own everything', v: 'Code, domain, WhatsApp number and workflows.', mark: 'Yours', icon: 'key' },
+  { k: '30 days of free fixes', v: 'After launch, in writing.', mark: '30 days', icon: 'meter' },
+] as const;
 
 /* ------------------------------------------------------------- process §6.6 */
 export const PROCESS = [

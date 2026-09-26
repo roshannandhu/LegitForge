@@ -7,7 +7,10 @@
  *  `children` is the real content, rendered normally. The cover exists only once JS with
  *  motion on has armed it (data-armed), so with no JS or motion off the content simply sits
  *  in the page. Tablet and desktop pin for 80 % of a screen; phones never pin (§4.8): there
- *  the plate splits as it scrolls in. */
+ *  the plate splits as it scrolls in.
+ *
+ *  data-open marks the moment the halves are mostly apart (and stays), so the content can
+ *  start its own entrance then, not while it is still hidden (the Trust plates key off it). */
 
 import { useRef } from 'react';
 import { useGsap } from '@/lib/gsap';
@@ -25,18 +28,19 @@ export function Cleave({ cover, children, label }: { cover: React.ReactNode; chi
     mm.add({ pin: '(min-width: 768px)', phone: '(max-width: 767px)' }, (ctx) => {
       const pin = !!ctx.conditions!.pin;
       const q = gsap.utils.selector(el);
+      const onUpdate = (self: { progress: number }) => { if (self.progress > 0.55 && !('open' in el.dataset)) el.dataset.open = ''; };
       gsap.timeline({
         defaults: { ease: 'none' },
         scrollTrigger: pin
-          ? { trigger: el, start: 'top top', end: '+=80%', pin: true, scrub: 0.8, invalidateOnRefresh: true }
-          : { trigger: el, start: 'top 75%', end: 'top 5%', scrub: 0.6 },
+          ? { trigger: el, start: 'top top', end: '+=80%', pin: true, scrub: 0.8, invalidateOnRefresh: true, onUpdate }
+          : { trigger: el, start: 'top 75%', end: 'top 5%', scrub: 0.6, onUpdate },
       })
         .fromTo(q('[data-seam]'), { opacity: 0, scaleY: 0.2 }, { opacity: 1, scaleY: 1, duration: 0.18 }, 0)   // the chisel bites
         .to(q('[data-cleave="l"]'), { xPercent: -100, rotate: -1.5, duration: 0.82, ease: 'power2.in' }, 0.18)
         .to(q('[data-cleave="r"]'), { xPercent: 100, rotate: 1.5, duration: 0.82, ease: 'power2.in' }, 0.18)
         .to(q('[data-seam]'), { opacity: 0, scaleX: 6, duration: 0.3 }, 0.3);
     });
-    return () => { mm.revert(); delete el.dataset.armed; };
+    return () => { mm.revert(); delete el.dataset.armed; delete el.dataset.open; };
   }, { dependencies: [motionOn] });
 
   return (

@@ -7,8 +7,8 @@
 import { useEffect, useRef } from 'react';
 import { useMotionEnabled } from './motion-provider';
 
-export function PunchIn({ children, className, as: Tag = 'div', threshold = 0.5 }: {
-  children: React.ReactNode; className?: string; as?: 'div' | 'ul' | 'section'; threshold?: number;
+export function PunchIn({ children, className, as: Tag = 'div', threshold = 0.5, style, 'aria-hidden': hidden }: {
+  children: React.ReactNode; className?: string; as?: 'div' | 'ul' | 'li' | 'section'; threshold?: number; style?: React.CSSProperties; 'aria-hidden'?: boolean;
 }) {
   const ref = useRef<HTMLElement>(null);
   const motionOn = useMotionEnabled();
@@ -27,5 +27,5 @@ export function PunchIn({ children, className, as: Tag = 'div', threshold = 0.5 
     return () => io.disconnect();
   }, [motionOn, threshold]);
 
-  return <Tag ref={ref as never} className={className}>{children}</Tag>;
+  return <Tag ref={ref as never} className={className} style={style} aria-hidden={hidden}>{children}</Tag>;
 }
