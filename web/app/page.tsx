@@ -5,6 +5,7 @@ import { HeroStatus } from '@/components/hero/hero-status';
 import { HeatDirector } from '@/components/motion/heat-director';
 import { TrustStrip } from '@/components/sections/trust-strip';
 import { Cleave } from '@/components/motion/cleave';
+import { HydrateWhenNear } from '@/components/motion/hydrate-when-near';
 import { Services } from '@/components/sections/services';
 import { Quotation } from '@/components/sections/quotation';
 import { Compare } from '@/components/sections/compare';
@@ -119,17 +120,19 @@ export default async function Home() {
       </Cleave>
       <Services />
       <Quotation />
+      <HydrateWhenNear>
       <Compare facts={{
         static: { price: SERVICES[0].price, time: SERVICES[0].time },
         dynamic: { price: SERVICES[1].price, time: SERVICES[1].time },
       }} />
-      <LiveTest />
+      </HydrateWhenNear>
+      <HydrateWhenNear><LiveTest /></HydrateWhenNear>
       <Process steps={PROCESS} />
       <Projects />
-      <Team team={team} />
+      <HydrateWhenNear><Team team={team} /></HydrateWhenNear>
       <Hallmarks />
       <PricingFaq />
-      <Quench />
+      <HydrateWhenNear><Quench /></HydrateWhenNear>
 
       <HeatDirector />
       <script

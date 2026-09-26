@@ -10,6 +10,7 @@
 
 import { useEffect } from 'react';
 import { useMotionEnabled } from './motion-provider';
+import { HYDRATED_EVENT } from './hydrate-when-near';
 
 export const heat = { value: 0.35 };
 
@@ -44,8 +45,11 @@ export function HeatDirector() {
       if (!motionOn) { heat.value = target; return; }
       if (!raf) raf = requestAnimationFrame(ease);
     }, { rootMargin: '-55% 0px -45% 0px' });   // a one-line band at 55 % of the viewport
-    document.querySelectorAll('[data-heat]').forEach((s) => io.observe(s));
-    return () => { io.disconnect(); cancelAnimationFrame(raf); };
+    const observeAll = () => { io.disconnect(); document.querySelectorAll('[data-heat]').forEach((s) => io.observe(s)); };
+    observeAll();
+    // a section hydrated late (HydrateWhenNear) is a new element: observe again
+    window.addEventListener(HYDRATED_EVENT, observeAll);
+    return () => { io.disconnect(); cancelAnimationFrame(raf); window.removeEventListener(HYDRATED_EVENT, observeAll); };
   }, [motionOn]);
 
   return null;
