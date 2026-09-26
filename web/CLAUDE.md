@@ -110,10 +110,15 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
   a plain IntersectionObserver sets data-near (teardown.tsx, demo-player.tsx; placeholder heights
   in sections.css: re-measure them if a demo's phone height changes). Safety nets: motion off, and
   data-lite-all 8 s after load if no observer ran (lib/boot.ts).
-- --heat on <html> changes in one step (heat-director.tsx); only heat.value eases, for the embers.
+- --heat on <html> changes in one step (heat-director.tsx, one IntersectionObserver); only
+  heat.value eases, for the embers. Written only when it changes.
+- Below-the-fold client sections (Compare, LiveTest, Team, Quench) are wrapped in
+  HydrateWhenNear (components/motion/hydrate-when-near.tsx): server HTML from the first paint,
+  React takes over within 600px. Page-wide observers must re-observe on `lf:hydrated`.
+  Don't wrap sections that pin (Process) or anything above the fold.
 - content-visibility was measured and rejected: it moved layout into scrolling on this page.
 - Team section rebuild (server markup + attached flip/drag) was measured and skipped: the whole
-  section costs ~240 ms on a lite phone, less than its risk to the flip and drag.
+  section costs ~240 ms on a lite phone; HydrateWhenNear defers its hydration instead.
 
 ## Before saying a task is done
 - npm run build and npm run check pass (check covers 375, 768 and 1440, both themes, motion on and off).
