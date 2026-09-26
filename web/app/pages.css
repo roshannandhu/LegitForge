@@ -124,3 +124,39 @@
 .member-more { display: inline-flex; align-items: center; min-height: 44px; margin-top: 8px; }
 .member-links { margin-top: 20px; }
 .page-contact .section { padding-top: 72px; }
+
+/* ----------------------------------------------------------------- blog (§7.4) */
+.post-list { display: grid; gap: 16px; margin: 0; padding: 0; list-style: none; }
+@media (min-width: 768px) { .post-list { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; } }
+.post-card h2, .post-card h3 { margin: 8px 0; }
+.post-meta { font-size: 14px; color: var(--text-muted); }
+.post-byline { margin: 0; font-size: 15px; color: var(--text-muted); }
+.post-byline .text-link { display: inline-flex; align-items: center; min-height: 44px; }
+
+.post-layout { display: grid; gap: 32px; }
+@media (min-width: 1024px) { .post-layout.has-toc { grid-template-columns: 240px minmax(0, 1fr); gap: 64px; align-items: start; } }
+.post-toc { padding: 20px 24px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); }
+@media (min-width: 1024px) { .post-toc { position: sticky; top: 104px; padding: 0; border: 0; background: none; } }
+.post-toc h2 { margin: 0 0 8px; color: var(--text-muted); }
+.post-toc ol { display: grid; margin: 0; padding: 0; list-style: none; }
+.post-toc a { display: flex; align-items: center; min-height: 44px; color: var(--text-muted); font-size: 15px; line-height: 1.35; text-decoration: none; }
+.post-toc a:hover { color: var(--text); }
+
+.post-body { max-width: 68ch; min-width: 0; }
+.post-body > p:first-child { font-size: var(--step-lead); line-height: 1.55; }
+.post-body p, .post-body ul, .post-body ol { margin: 0 0 16px; }
+.post-body ul { padding-left: 24px; list-style: disc; }
+.post-body ol { padding-left: 24px; list-style: decimal; }
+.post-body li::marker { color: var(--heat-color); }
+.post-body li { margin-bottom: 6px; }
+.post-body h2 { margin: 48px 0 16px; scroll-margin-top: 96px; }
+.post-body h3 { margin: 32px 0 12px; scroll-margin-top: 96px; }
+.post-table { margin: 0 0 24px; overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; }
+.post-table table { width: 100%; border-collapse: collapse; font-size: 15px; }
+.post-table th, .post-table td { padding: 12px 16px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+.post-table th { background: var(--surface-2); font-weight: 600; }
+.post-table tr:last-child td { border-bottom: 0; }
+.post-service { margin-top: 48px; padding: 28px; border: 1px solid var(--line); border-top: 2px solid var(--heat-color); border-radius: 16px; background: var(--surface); }
+.post-service .type-label { color: var(--text-muted); }
+.post-service h2 { margin: 8px 0; }
+.post-service p { color: var(--text-muted); }
