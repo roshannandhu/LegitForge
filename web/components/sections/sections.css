@@ -311,6 +311,22 @@
 .steps-note { margin: 32px 0 0 68px; font-size: 14px; color: var(--text-muted); }
 @media (max-width: 767px) { .steps-note { margin-left: 0; } }
 [data-motion="off"] .step-node { transition: none; }
+/* C2 sticky stack (§23.2): tablets and laptops with motion on. Pure CSS pinning, so it holds
+   before GSAP loads; process.tsx only adds the settle (scale .94, dim). The cards replace the
+   molten line here: each card's top edge heats up as it is reached. Keep STACK_* in step. */
+@media (min-width: 768px) and (min-height: 640px) {
+  [data-motion="on"] .steps { gap: 24px; }
+  [data-motion="on"] .steps::before, [data-motion="on"] .steps::after { display: none; }
+  [data-motion="on"] .step {
+    position: sticky; top: calc(96px + var(--i, 0) * 16px);
+    padding: 28px; background: var(--surface); border: 1px solid var(--line); border-top: 2px solid var(--heat-color);
+    border-radius: 16px; transform-origin: 50% 0;
+    box-shadow: 0 -12px 32px rgb(0 0 0 / .22), inset 0 1px 0 rgb(255 255 255 / .06);
+  }
+  [data-motion="on"] [data-animated="true"] .step:not(.is-reached) { border-top-color: var(--line); }
+  [data-motion="on"] .steps-note { margin-left: 0; }
+  :root:not(.dark)[data-motion="on"] .step { box-shadow: 0 -8px 24px rgb(20 30 40 / .08); }
+}
 
 /* =============================================================== projects */
 .projects { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px; margin: 0; padding: 0; list-style: none; }

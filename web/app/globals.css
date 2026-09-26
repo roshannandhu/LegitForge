@@ -118,6 +118,30 @@ html:not(.dark) body::before {
 ::view-transition-old(root),
 ::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
 
+/* The Cleave as a page transition (§23.1): project card → case study, cross-document.
+   lib/boot.ts (CLEAVE_BOOT) skips every other navigation and adds the "cleave" type here.
+   A white-hot seam bites in at 38 %, the case study opens out of it while the old page
+   falls back, and the clicked cover morphs into the case-study cover. */
+@view-transition { navigation: auto; }
+.vt-seam { display: none; }
+html:active-view-transition-type(cleave) .vt-seam {
+  display: block; position: fixed; inset: 0; z-index: 300; pointer-events: none; view-transition-name: cleave-seam;
+  background: linear-gradient(90deg, transparent 33%, #FFC24A 37.6%, #FFF4D6 38%, #FFC24A 38.4%, transparent 43%);
+  clip-path: polygon(41.2% 0, 42.8% 0, 34.8% 100%, 33.2% 100%);
+}
+html:active-view-transition-type(cleave) .case-cover { view-transition-name: project-cover; }
+html:active-view-transition-type(cleave) .site-header { view-transition-name: site-header; }
+html:active-view-transition-type(cleave)::view-transition-new(root) { animation: vt-cleave-open 820ms cubic-bezier(.7, 0, .2, 1) both; }
+html:active-view-transition-type(cleave)::view-transition-old(root) { animation: vt-cleave-fall 820ms cubic-bezier(.7, 0, .2, 1) both; }
+html:active-view-transition-type(cleave)::view-transition-new(cleave-seam) { animation: vt-cleave-seam 820ms linear both; }
+html:active-view-transition-type(cleave)::view-transition-group(project-cover) { animation-duration: 820ms; animation-timing-function: cubic-bezier(.7, 0, .2, 1); }
+@keyframes vt-cleave-open {
+  0%, 18% { clip-path: polygon(42% 0, 42% 0, 34% 100%, 34% 100%); }
+  100% { clip-path: polygon(-20% 0, 120% 0, 120% 100%, -20% 100%); }
+}
+@keyframes vt-cleave-fall { 0%, 18% { transform: none; filter: none; } 100% { transform: scale(.96); filter: brightness(.45); } }
+@keyframes vt-cleave-seam { 0% { opacity: 0; } 14%, 24% { opacity: 1; } 48%, 100% { opacity: 0; } }
+
 /* ============================================================ utilities */
 .sr-only {
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden;
