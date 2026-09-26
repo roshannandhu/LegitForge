@@ -605,6 +605,24 @@
 @media (min-width: 1024px) { .trust-list { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 .trust-list li { padding: 20px 24px; background: var(--surface); color: var(--text-muted); font-size: 15px; line-height: 1.5; }
 .trust-list strong { display: block; margin-bottom: 4px; color: var(--text); font-weight: 700; }
+.trust-list .punch { margin: 2px 0 12px 2px; }
+
+/* hallmark punch (plan D #2, components/motion/punch-in.tsx): struck in once, staggered by --i */
+.punch {
+  --ink: color-mix(in oklab, var(--heat-color) 80%, var(--text));
+  display: inline-block; padding: 2px 8px 1px; border: 2px solid var(--ink); border-radius: 5px; rotate: -5deg;
+  color: var(--ink); font-family: var(--font-stencil), var(--font-sans); font-weight: 700; font-size: 14px;
+  letter-spacing: .12em; line-height: 1.1; text-transform: uppercase; white-space: nowrap;
+}
+[data-armed]:not([data-punched]) [data-punch] { opacity: 0; }
+[data-punched] [data-punch] { animation: punch-in 520ms cubic-bezier(.2, .9, .3, 1.2) both; animation-delay: calc(var(--i, 0) * 140ms + 120ms); }
+@keyframes punch-in {
+  0% { opacity: 0; transform: scale(2.2); filter: blur(2px); }
+  55% { opacity: 1; transform: scale(.92); filter: none; }
+  75% { transform: scale(1.04); }
+  100% { opacity: 1; transform: none; }
+}
+[data-motion="off"] [data-punch] { animation: none; opacity: 1; }
 
 /* ================================================================ the Cleave §23.1 */
 .cleave { position: relative; }

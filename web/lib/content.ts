@@ -39,10 +39,10 @@ export const SERVICES: {
 export const TRUST_INTRO =
   'Websites, apps, quotation and warranty systems, WhatsApp automation and n8n workflows — built by the two people you talk to.';
 export const TRUST_LINES = [
-  { k: 'Fixed price before we start', v: 'No surprise invoices.' },
-  { k: 'A preview link every week', v: 'You watch it being built.' },
-  { k: 'You own everything', v: 'Code, domain, WhatsApp number and workflows.' },
-  { k: '30 days of free fixes', v: 'After launch, in writing.' },
+  { k: 'Fixed price before we start', v: 'No surprise invoices.', mark: 'Fixed' },
+  { k: 'A preview link every week', v: 'You watch it being built.', mark: 'Weekly' },
+  { k: 'You own everything', v: 'Code, domain, WhatsApp number and workflows.', mark: 'Yours' },
+  { k: '30 days of free fixes', v: 'After launch, in writing.', mark: '30 days' },
 ];
 
 /* ------------------------------------------------------------- process §6.6 */
