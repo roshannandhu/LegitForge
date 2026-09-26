@@ -121,49 +121,75 @@
 .msg.confirm { display: flex; align-items: flex-start; gap: 6px; }
 .confirm-icon { flex: none; width: 14px; height: 14px; margin-top: 1px; color: var(--success); }
 
-/* 4 — n8n: an editor window on a dotted canvas */
+/* 4 — n8n: the editor canvas (service-demos.tsx N8nDemo). Nodes sit on the wires' own grid:
+   --x/--y (wide, 640 × 300) or --px/--py (tall, phones, 300 × 560), as % of the canvas, and
+   tiles are sized in cqw of it, so wires and tiles always meet. App colours are fixed hex, like
+   the Google G: they are the apps', not ours. */
 .demo-n8n {
   background:
     radial-gradient(circle, color-mix(in oklab, var(--text-muted) 28%, transparent) 1px, transparent 1.5px) 0 0 / 18px 18px,
     var(--surface);
 }
-.n8n { display: grid; gap: 28px; width: 100%; max-width: 600px; }
-.n8n-top {
-  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 8px 12px;
-  border: 1px solid var(--line); border-radius: 10px; background: var(--bg); font-size: 12px; color: var(--text-muted);
+.n8c { --tw: 8.75cqw; position: relative; width: 100%; max-width: 640px; aspect-ratio: 640 / 300; container-type: inline-size; }
+.n8c-wires { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.n8c-tall { display: none; }
+.n8c-wires path { fill: none; stroke: color-mix(in oklab, var(--text-muted) 55%, transparent); stroke-width: 2; vector-effect: non-scaling-stroke; transition: stroke 300ms; }
+.n8c-wires path.ran { stroke: var(--success); }
+.n8c-count { font-size: 11px; font-weight: 600; fill: var(--success); opacity: 0; transition: opacity 300ms; }
+.n8c-count.ran { opacity: 1; }
+.n8c-port { font-size: 10px; fill: var(--text-muted); }
+.n8c-node {   /* a zero-size point on the grid; flex centres the tile and labels on it (grid would not) */
+  position: absolute; left: var(--x); top: var(--y); width: 0; height: 0;
+  display: flex; flex-direction: column; align-items: center;
 }
-.n8n-title { font-weight: 700; color: var(--text); margin-right: auto; }
-.n8n-active { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; border-radius: 999px; color: var(--success); border: 1px solid color-mix(in oklab, var(--success) 50%, var(--line)); font-weight: 600; }
-.n8n-active i { width: 6px; height: 6px; border-radius: 50%; background: var(--success); box-shadow: 0 0 6px var(--success); }
-.n8n-runs b { color: var(--text); }
-.n8n-log {
-  display: flex; align-items: center; gap: 10px; margin: 0; padding: 8px 12px; overflow: hidden;
-  border: 1px solid var(--line); border-radius: 10px; background: var(--bg); font-size: 12px; color: var(--text-muted);
+.n8c-tile {
+  position: relative; display: grid; place-items: center; width: var(--tw); aspect-ratio: 1; margin-top: calc(var(--tw) / -2);
+  border: 1.5px solid color-mix(in oklab, var(--text-muted) 45%, var(--line)); border-radius: 12px;
+  background: var(--surface-2); color: var(--text); box-shadow: 0 4px 12px rgb(0 0 0 / .18);
+  transition: border-color 300ms;
 }
-.n8n-log span { flex: none; font-weight: 600; }
-.n8n-json { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--heat-ink); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-.flow-icon { width: 22px; height: 22px; }
-.flow-ok {
-  position: absolute; right: -6px; bottom: -6px; display: grid; place-items: center; width: 18px; height: 18px;
-  border-radius: 50%; background: var(--success); color: var(--surface);
+.n8c-node.done .n8c-tile { border-color: var(--success); }
+.n8c-tile svg { width: 52%; height: 52%; }
+.n8c-form .n8c-tile { border-radius: calc(var(--tw) / 2) 12px 12px calc(var(--tw) / 2); color: #FF6D5A; }
+.n8c-bolt { position: absolute; left: -7px; top: 50%; width: 12px; height: 12px; margin-top: -6px; border-radius: 50%; background: #FF6D5A; box-shadow: 0 0 0 3px var(--surface); }
+.n8c-sheet .n8c-tile { color: #1FA463; }
+.n8c-ai .n8c-tile { background: #10141A; color: #FFFFFF; }
+.n8c-switch .n8c-tile { color: #3B8BD9; }
+.n8c-wa .n8c-tile { color: #25D366; }
+.n8c-team .n8c-tile { color: #8B5CF6; }
+.n8c-ok {
+  position: absolute; right: -7px; top: -7px; display: grid; place-items: center; width: 18px; height: 18px;
+  border-radius: 50%; background: var(--success); color: var(--surface); opacity: 0; transform: scale(.4);
+  transition: opacity 200ms, transform 300ms cubic-bezier(.3, 1.6, .5, 1);
 }
-.flow-ok svg { width: 12px; height: 12px; }
-.flow { position: relative; width: 100%; max-width: 600px; }
-.flow-wire { position: absolute; left: 10%; top: 21px; width: 80%; height: 2px; overflow: visible; }
-.flow-wire path { fill: none; stroke: var(--heat-color); stroke-width: 2; vector-effect: non-scaling-stroke; }
-.flow-nodes { position: relative; display: flex; justify-content: space-between; margin: 0; padding: 0; list-style: none; }
-.flow-node { display: grid; justify-items: center; gap: 8px; width: 20%; text-align: center; }
-.flow-check {
-  position: relative; z-index: 1; display: grid; place-items: center; width: 44px; height: 44px;
-  border: 1.5px solid var(--heat-color); border-radius: 12px; background: var(--surface); color: var(--heat-color);
-  box-shadow: 0 0 0 4px color-mix(in oklab, var(--heat-color) 14%, transparent);
+.n8c-ok svg { width: 12px; height: 12px; }
+.n8c-node.done .n8c-ok { opacity: 1; transform: none; }
+.n8c-name { margin-top: 8px; font-size: 12px; font-weight: 600; line-height: 1.2; color: var(--text); white-space: nowrap; }
+.n8c-out { margin-top: 2px; font-size: 11px; font-weight: 600; color: var(--heat-ink); white-space: nowrap; }
+.n8c-node:not(.done) .n8c-out { color: var(--text-muted); }
+.n8c-dot {
+  position: absolute; left: 0; top: 0; z-index: 2; width: 12px; height: 12px; margin: -6px; border-radius: 50%; pointer-events: none;
+  background: var(--success); box-shadow: 0 0 12px 3px color-mix(in oklab, var(--success) 70%, transparent); opacity: 0;
 }
-.flow-name { font-size: 12px; font-weight: 500; line-height: 1.25; color: var(--text-muted); }
-@media (max-width: 767px) {
-  .flow { padding: 12px 0; }
-  .flow-check { width: 36px; height: 36px; }
-  .flow-wire { top: 29px; }
-  .flow-name { font-size: 11px; }
+.n8c-bar {
+  position: absolute; right: 0; top: -4px; display: inline-flex; align-items: center; gap: 8px; padding: 4px 10px;
+  border: 1px solid var(--line); border-radius: 8px; background: var(--bg); font-size: 11px; color: var(--text-muted);
+}
+.n8c-bar b { color: var(--text); }
+.n8c-toggle { position: relative; width: 24px; height: 14px; border-radius: 999px; background: var(--success); }
+.n8c-toggle i { position: absolute; right: 2px; top: 2px; width: 10px; height: 10px; border-radius: 50%; background: #FFFFFF; }
+.n8c-sep { width: 1px; height: 12px; background: var(--line); }
+/* phones: the same workflow top to bottom, the branch splitting at the foot */
+@media (max-width: 479px) {
+  .n8c { --tw: 17cqw; aspect-ratio: 300 / 560; max-width: 320px; margin-top: 28px; }
+  .n8c-wide { display: none; }
+  .n8c-tall { display: block; }
+  .n8c-node { left: var(--px); top: var(--py); }
+  .n8c-bar { top: -32px; right: 50%; transform: translateX(50%); }
+  /* the wires run under the tiles here, so the main line's labels sit to the right of each tile */
+  .n8c-node:not(.n8c-wa, .n8c-team) :is(.n8c-name, .n8c-out) { position: absolute; left: calc(var(--tw) / 2 + 12px); margin: 0; }
+  .n8c-node:not(.n8c-wa, .n8c-team) .n8c-name { top: -20px; }
+  .n8c-node:not(.n8c-wa, .n8c-team) .n8c-out { top: 2px; }
 }
 
 /* ================================================================= stamps */
@@ -948,13 +974,6 @@
 .wa-ticks { margin-left: 4px; color: var(--text-muted); font-weight: 700; }
 .wa-ticks.read { color: #53B7F0; }
 
-/* n8n: the travelling packet and each node's output */
-.flow-packet {
-  position: absolute; left: 10%; top: 22px; z-index: 2; width: 14px; height: 14px; margin: -7px;
-  border-radius: 50%; background: var(--heat-hi); box-shadow: 0 0 12px 3px var(--heat-hi); opacity: 0; pointer-events: none;
-}
-.flow-out { font-size: 11px; font-weight: 600; color: var(--heat-ink); white-space: nowrap; }
-
 /* quotation: the QR scan line and the WhatsApp reminder */
 .qm-warranty { position: relative; overflow: hidden; }
 .qm-scan { position: absolute; left: 0; right: 0; top: 0; height: 2px; background: var(--success); box-shadow: 0 0 10px 2px var(--success); opacity: 0; pointer-events: none; }
@@ -1007,17 +1026,6 @@
 .qx-stats dd { margin: 4px 0 0; font-size: 16px; font-weight: 700; }
 .qx-note { margin: 0; color: var(--text-muted); font-size: 11px; }
 
-/* n8n on phones: five nodes in a row leave no room for their outputs, so the workflow runs
-   top to bottom there (demos.ts moves the packet along y when the flow is vertical) */
-@media (max-width: 479px) {
-  .flow-wire { left: 21px; top: 22px; width: 2px; height: calc(100% - 44px); background: var(--heat-color); }
-  .flow-wire path { display: none; }   /* the horizontal path; the box itself is the vertical wire */
-  .flow-nodes { flex-direction: column; gap: 14px; }
-  .flow-node { display: grid; grid-template-columns: 44px auto 1fr; justify-items: start; align-items: center; gap: 12px; width: 100%; text-align: left; }
-  .flow-name { font-size: 14px; }
-  .flow-out { justify-self: end; font-size: 12px; }
-  .flow-packet { left: 22px; top: 22px; }
-}
 
 /* compare on phones: the halves stack into one column, so the dynamic version's extras sit
    right-aligned, on its own side of the divider (the static extras stay left) */
@@ -1240,7 +1248,7 @@
   html[data-lite]:not([data-lite-all]):not([data-motion="off"]) .demo-player:not([data-near]) > .demo-website { min-height: calc(35vw + 143px); }
   html[data-lite]:not([data-lite-all]):not([data-motion="off"]) .demo-player:not([data-near]) > .demo-app { min-height: 345px; }
   html[data-lite]:not([data-lite-all]):not([data-motion="off"]) .demo-player:not([data-near]) > .demo-whatsapp { min-height: 414px; }
-  html[data-lite]:not([data-lite-all]):not([data-motion="off"]) .demo-player:not([data-near]) > .demo-n8n { min-height: 459px; }
+  html[data-lite]:not([data-lite-all]):not([data-motion="off"]) .demo-player:not([data-near]) > .demo-n8n { min-height: 640px; }
   html[data-lite]:not([data-lite-all]):not([data-motion="off"]) .demo-player:not([data-near]) > .demo-seo { min-height: 363px; }
   html[data-lite]:not([data-lite-all]):not([data-motion="off"]) .demo-player:not([data-near]) > .demo-nfc { min-height: 297px; }
   html[data-lite]:not([data-lite-all]):not([data-motion="off"]) .demo-player:not([data-near]) > .quote-mock { min-height: 681px; }
