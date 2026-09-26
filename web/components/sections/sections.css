@@ -1124,22 +1124,86 @@
 [data-motion="off"] .picker-result { animation: none; }
 
 /* 5 — SEO: a results page (plan F) */
-.serp { display: grid; gap: 10px; width: 100%; max-width: 440px; font-size: 12px; }
-.serp-bar { display: flex; align-items: center; gap: 10px; padding: 8px 14px; border: 1px solid var(--line); border-radius: 999px; background: var(--bg); }
-.serp-g { width: 18px; height: 18px; flex: none; }   /* the Google G: fixed brand colours in both themes */
-.serp-q { min-height: 1.3em; font-size: 13px; }
-.serp-list { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
-.serp-item { position: relative; display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 8px; align-items: start; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
-.serp-item.is-you { z-index: 1; border-color: color-mix(in oklab, var(--success) 60%, var(--line)); box-shadow: 0 6px 16px -8px rgb(0 0 0 / .4); }
-.serp-rank { color: var(--text-muted); font-weight: 700; }
+/* SEO: a Google results page (service-demos.tsx SeoDemo). Google's own colours (logo letters,
+   link blue, star amber, map, pins) are fixed hex, per theme where Google has a dark mode. */
+.serp { --g-blue: #1A0DAB; --g-text: #202124; --g-muted: #4D5156; --g-page: #FFFFFF; --g-line: #DADCE0; --g-chip: #F1F3F4;
+  --g-map: #E8EAED; --g-road: #FFFFFF; --g-water: #AADAFF; --g-green: #188038;
+  position: relative; display: grid; gap: 6px; width: 100%; max-width: 480px; padding: 10px 14px; font-size: 12px; line-height: 1.4;
+  border-radius: 12px; background: var(--g-page); color: var(--g-text); font-family: Arial, var(--font-sans); box-shadow: 0 8px 24px -12px rgb(0 0 0 / .35);
+}
+.dark .serp { --g-blue: #99C3FF; --g-text: #E8EAED; --g-muted: #BDC1C6; --g-page: #1F1F1F; --g-line: #3C4043; --g-chip: #303134;
+  --g-map: #2C3440; --g-road: #3E4A59; --g-water: #17263C; --g-green: #81C995; }
+.serp-head { display: flex; align-items: center; gap: 12px; }
+.serp-logo { flex: none; font-size: 20px; font-weight: 500; letter-spacing: -.02em; line-height: 1; }
+.serp-logo i { font-style: normal; }
+.serp-logo i:nth-child(1), .serp-logo i:nth-child(4) { color: #4285F4; }
+.serp-logo i:nth-child(2), .serp-logo i:nth-child(6) { color: #EA4335; }
+.serp-logo i:nth-child(3) { color: #FBBC05; }
+.serp-logo i:nth-child(5) { color: #34A853; }
+.serp-bar {
+  flex: 1; display: flex; align-items: center; gap: 10px; min-width: 0; padding: 7px 14px;
+  border: 1px solid var(--g-line); border-radius: 999px; background: var(--g-page); box-shadow: 0 1px 6px rgb(32 33 36 / .18);
+}
+.serp-q { flex: 1; min-width: 0; min-height: 1.3em; overflow: hidden; white-space: nowrap; font-size: 13px; }
+.serp-q::after { content: ""; display: inline-block; width: 1px; height: 1.1em; margin-left: 1px; vertical-align: -2px; background: #4285F4; animation: serp-caret 1s steps(1) infinite; }
+@keyframes serp-caret { 50% { opacity: 0; } }
+[data-motion="off"] .serp-q::after { animation: none; opacity: 0; }
+.serp-tools { display: flex; align-items: center; gap: 10px; flex: none; color: #4285F4; }
+.serp-tools svg { width: 16px; height: 16px; }
+.serp-g { width: 18px; height: 18px; flex: none; }
+.serp-tabs { display: flex; gap: 16px; padding: 0 2px; border-bottom: 1px solid var(--g-line); color: var(--g-muted); font-size: 12px; }
+.serp-tabs span { padding-bottom: 5px; }
+.serp-tabs .on { color: var(--g-blue); border-bottom: 3px solid var(--g-blue); margin-bottom: -1px; }
+/* the Maps pack: a little map with the three pins */
+.serp-map { position: relative; height: 52px; overflow: hidden; border-radius: 8px; background: var(--g-map); }
+.serp-road { position: absolute; background: var(--g-road); }
+.serp-road.r1 { left: -10%; right: -10%; top: 40%; height: 5px; transform: rotate(-6deg); }
+.serp-road.r2 { top: -20%; bottom: -20%; left: 30%; width: 4px; transform: rotate(18deg); }
+.serp-road.r3 { top: -20%; bottom: -20%; left: 72%; width: 3px; transform: rotate(-12deg); }
+.serp-water { position: absolute; right: -6%; bottom: -30%; width: 28%; height: 90%; border-radius: 50%; background: var(--g-water); }
+.serp-pin { position: absolute; width: 14px; height: 14px; margin: -14px 0 0 -7px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); background: #EA4335; box-shadow: 0 2px 3px rgb(0 0 0 / .3); }
+.serp-pin::after { content: ""; position: absolute; left: 4px; top: 4px; width: 6px; height: 6px; border-radius: 50%; background: rgb(0 0 0 / .35); }
+.serp-pin.p-b { left: 22%; top: 70%; opacity: .75; }
+.serp-pin.p-c { left: 58%; top: 82%; opacity: .75; }
+.serp-pin.p-you { left: 45%; top: 50%; width: 18px; height: 18px; margin: -18px 0 0 -9px; background: #EA4335; z-index: 1; }
+.serp-pin.p-you::after { left: 5px; top: 5px; width: 8px; height: 8px; background: #FFFFFF; }
+/* the listings */
+.serp-list { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
+.serp-item {
+  position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center;
+  padding: 5px 8px; border-bottom: 1px solid var(--g-line); background: var(--g-page);
+}
+.serp-item:last-child { border-bottom: 0; }
+.serp-item.is-you { z-index: 1; border-radius: 8px; box-shadow: 0 0 0 1.5px color-mix(in oklab, var(--g-green) 70%, transparent); }
 .serp-body { display: grid; gap: 1px; min-width: 0; }
-.serp-url { color: var(--text-muted); font-size: 11px; }
-.serp-title { color: #2F6FB8; font-size: 13px; font-weight: 600; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.serp-meta { color: #8A6410; font-size: 11px; }
-.serp-top { position: absolute; top: -8px; right: 10px; padding: 1px 8px; border-radius: 6px; background: var(--success); color: #FFFFFF; font-size: 10.5px; font-weight: 700; }
-.dark .serp-top { color: #0E1319; }   /* the dark theme's success green is light: dark text reads on it */
-.serp-stats { display: flex; flex-wrap: wrap; gap: 6px 16px; color: var(--text-muted); }
-.serp-stats b { color: var(--text); font-size: 15px; }
+.serp-title { color: var(--g-blue); font-size: 13px; font-weight: 400; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.serp-meta { color: var(--g-muted); font-size: 11px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.serp-rate { color: var(--g-text); }
+.serp-stars { color: #FBBC04; letter-spacing: -1px; }
+.serp-note { color: var(--g-muted); font-size: 11px; }
+.serp-note.open { color: var(--g-green); }
+.serp-acts { display: flex; gap: 6px; }
+.serp-act { position: relative; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--g-line); color: var(--g-blue); }
+.serp-act svg { width: 14px; height: 14px; }
+.serp-top {
+  position: absolute; top: -9px; right: 44px; padding: 1px 8px; border-radius: 6px;
+  background: var(--g-green); color: #FFFFFF; font-size: 10.5px; font-weight: 700; white-space: nowrap;
+}
+.dark .serp-top { color: #0E1319; }
+/* the tap on Call (a finger's touch point) */
+.serp-tap { position: absolute; left: 0; top: 0; z-index: 3; width: 22px; height: 22px; margin: -11px; border-radius: 50%; pointer-events: none;
+  background: rgb(66 133 244 / .35); border: 2px solid rgb(66 133 244 / .8); opacity: 0; }
+.demo-seo { padding: 12px; overflow: visible; }   /* the results page fills its box, like a phone screen; where the
+   16:10 box is shorter than the page (about 1024 px wide), overflow: visible lets the box grow to fit it */
+/* the owner's side: what Search Console counts */
+.serp-stats { display: flex; flex-wrap: wrap; gap: 6px 16px; padding-top: 4px; border-top: 1px dashed var(--g-line); color: var(--g-muted); }
+.serp-stats b { color: var(--g-text); font-size: 15px; }
+@media (max-width: 479px) {
+  .serp { padding: 10px; }
+  .serp-logo { display: none; }                      /* Google's phone results page keeps the box, not the wordmark */
+  .serp-tab-more { display: none; }
+  .serp-acts .serp-act:first-child { display: none; }
+}
 
 /* 6 — NFC: card, waves, phone */
 .nfc { position: relative; display: flex; align-items: center; justify-content: center; gap: 24px; width: 100%; }
@@ -1249,7 +1313,7 @@
   html[data-lite]:not([data-lite-all]):not([data-motion="off"]) .demo-player:not([data-near]) > .demo-app { min-height: 345px; }
   html[data-lite]:not([data-lite-all]):not([data-motion="off"]) .demo-player:not([data-near]) > .demo-whatsapp { min-height: 414px; }
   html[data-lite]:not([data-lite-all]):not([data-motion="off"]) .demo-player:not([data-near]) > .demo-n8n { min-height: 640px; }
-  html[data-lite]:not([data-lite-all]):not([data-motion="off"]) .demo-player:not([data-near]) > .demo-seo { min-height: 363px; }
+  html[data-lite]:not([data-lite-all]):not([data-motion="off"]) .demo-player:not([data-near]) > .demo-seo { min-height: 392px; }
   html[data-lite]:not([data-lite-all]):not([data-motion="off"]) .demo-player:not([data-near]) > .demo-nfc { min-height: 297px; }
   html[data-lite]:not([data-lite-all]):not([data-motion="off"]) .demo-player:not([data-near]) > .quote-mock { min-height: 681px; }
 }

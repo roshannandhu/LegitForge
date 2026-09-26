@@ -95,20 +95,54 @@ function AppDemo() {
   );
 }
 
-/* 5 — SEO: a local search, the business climbs to the top result, clicks and calls add up */
+/* 5 — SEO: a Google search for the service, as it really looks on a phone or laptop: the query
+       types in, the Maps pack loads, CoolAir climbs from third to the top listing, its pin lifts
+       on the map, someone taps Call, and the week's clicks and calls from Google go up. */
+const SERP_LISTINGS = [
+  { id: 'you', name: 'CoolAir Services', rating: '4.9', reviews: '212', kind: 'AC installation · Kochi', note: 'Open now · Fitted in a day' },
+  { id: 'b', name: 'City AC Repairs', rating: '4.1', reviews: '38', kind: 'AC repair service · Kochi', note: 'Closes 7 pm' },
+  { id: 'c', name: 'FrostFix Kochi', rating: '3.8', reviews: '19', kind: 'Air conditioning contractor', note: 'Opens 10 am' },
+];
+
+function SerpIcon({ d }: { d: string }) {
+  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={d} /></svg>;
+}
+
 function SeoDemo() {
   return (
     <div className="serp">
-      <div className="serp-bar"><GoogleG className="serp-g" /><span className="serp-q">ac installation kochi</span></div>
+      <div className="serp-head">
+        <span className="serp-logo" aria-hidden="true"><i>G</i><i>o</i><i>o</i><i>g</i><i>l</i><i>e</i></span>
+        <div className="serp-bar">
+          <span className="serp-q">ac installation kochi</span>
+          <span className="serp-tools">
+            <SerpIcon d="M12 4a3 3 0 0 1 3 3v5a3 3 0 0 1-6 0V7a3 3 0 0 1 3-3zM6 11a6 6 0 0 0 12 0M12 17v3" />
+            <GoogleG className="serp-g" />
+          </span>
+        </div>
+      </div>
+      <div className="serp-tabs"><span className="on">All</span><span>Maps</span><span>Images</span><span>News</span><span className="serp-tab-more">Shopping</span></div>
+      <div className="serp-map" aria-hidden="true">
+        <i className="serp-road r1" /><i className="serp-road r2" /><i className="serp-road r3" /><i className="serp-water" />
+        <i className="serp-pin p-b" /><i className="serp-pin p-c" /><i className="serp-pin p-you" />
+      </div>
       <ol className="serp-list">
-        <li className="serp-item is-you">
-          <span className="serp-rank num">1</span>
-          <span className="serp-body"><span className="serp-url">coolair.in</span><b className="serp-title">CoolAir: AC installation in Kochi, fitted in a day</b><span className="serp-meta">★ 4.9 · 212 reviews · Open now</span></span>
-          <span className="serp-top">Top result</span>
-        </li>
-        <li className="serp-item"><span className="serp-rank num">2</span><span className="serp-body"><span className="serp-url">cityacrepairs.com</span><b className="serp-title">City AC Repairs</b><span className="serp-meta">★ 4.1 · 38 reviews</span></span></li>
-        <li className="serp-item"><span className="serp-rank num">3</span><span className="serp-body"><span className="serp-url">frostfix.in</span><b className="serp-title">FrostFix Kochi</b><span className="serp-meta">★ 3.8 · 19 reviews</span></span></li>
+        {SERP_LISTINGS.map((l) => (
+          <li key={l.id} className={`serp-item${l.id === 'you' ? ' is-you' : ''}`}>
+            <span className="serp-body">
+              <b className="serp-title">{l.name}</b>
+              <span className="serp-meta"><span className="serp-rate num">{l.rating}</span> <span className="serp-stars">★★★★★</span> <span className="num">({l.reviews})</span> · {l.kind}</span>
+              <span className={`serp-note${l.id === 'you' ? ' open' : ''}`}>{l.note}</span>
+            </span>
+            <span className="serp-acts">
+              <span className="serp-act"><SerpIcon d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM3 12h18M12 3c3 3.3 3 14.7 0 18M12 3c-3 3.3-3 14.7 0 18" /></span>
+              <span className={`serp-act${l.id === 'you' ? ' serp-call' : ''}`}><SerpIcon d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2" /></span>
+            </span>
+            {l.id === 'you' && <span className="serp-top">#1 on Google Maps</span>}
+          </li>
+        ))}
       </ol>
+      <span className="serp-tap" aria-hidden="true" />
       <div className="serp-stats">
         <span><b className="num serp-clicks">148</b> clicks this week</span>
         <span><b className="num serp-calls">23</b> calls from Google</span>

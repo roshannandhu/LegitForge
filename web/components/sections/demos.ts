@@ -128,6 +128,21 @@ function quote(root: Element, gsap: G): TL {
 }
 
 /* 6 — SEO: the query types, the business climbs from third to the top, clicks and calls count */
+/* SEO: a finger taps CoolAir's Call button (the touch point, then the button's ripple) */
+function tapCall(tl: TL, root: Element, at: number) {
+  const serp = $(root, '.serp'), call = $(root, '.serp-call'), tap = $(root, '.serp-tap');
+  if (!serp || !call || !tap) return;
+  const spot = () => {
+    const a = serp.getBoundingClientRect(), b = call.getBoundingClientRect();
+    return { x: b.left - a.left + b.width / 2, y: b.top - a.top + b.height / 2 };
+  };
+  tl.set(tap, { x: () => spot().x + 30, y: () => spot().y + 30, scale: 1.4, opacity: 0 }, at)
+    .to(tap, { x: () => spot().x, y: () => spot().y, opacity: 1, duration: 0.45, ease: 'power2.out' }, at)
+    .to(tap, { scale: 0.8, duration: 0.12, yoyo: true, repeat: 1 }, at + 0.45)
+    .fromTo(call, { backgroundColor: 'transparent' }, { backgroundColor: 'rgb(66 133 244 / .25)', duration: 0.15, yoyo: true, repeat: 1, immediateRender: false }, at + 0.5)
+    .to(tap, { opacity: 0, duration: 0.3 }, at + 0.8);
+}
+
 function seo(root: Element, gsap: G): TL {
   const tl = gsap.timeline({ defaults: { ease: 'power2.out' } });
   const q = $(root, '.serp-q'), items = $$(root, '.serp-item'), you = items[0];
@@ -140,9 +155,12 @@ function seo(root: Element, gsap: G): TL {
     .from(items, { opacity: 0, y: 8, duration: 0.3, stagger: 0.08 }, 0.85)
     .fromTo(you, { y: step * 2 }, { y: 0, duration: 0.8, ease: 'power3.inOut', immediateRender: true }, 1.3)
     .fromTo(items.slice(1), { y: -step }, { y: 0, duration: 0.8, ease: 'power3.inOut', immediateRender: true }, 1.3)
-    .from($(root, '.serp-top'), { opacity: 0, scale: 0.6, duration: 0.3, ease: 'back.out(2)' }, 2.1);
+    .from($(root, '.serp-top'), { opacity: 0, scale: 0.6, duration: 0.3, ease: 'back.out(2)' }, 2.1)
+    .from($$(root, '.serp-pin'), { opacity: 0, y: -14, duration: 0.35, stagger: 0.1, ease: 'bounce.out' }, 0.9)
+    .fromTo($(root, '.serp-pin.p-you'), { scale: 1 }, { scale: 1.35, duration: 0.2, yoyo: true, repeat: 1, immediateRender: false }, 2.1);
+  tapCall(tl, root, 2.5);
   countUp(tl, $(root, '.serp-clicks'), 2.2, 1.0);
-  countUp(tl, $(root, '.serp-calls'), 2.3, 1.0);
+  countUp(tl, $(root, '.serp-calls'), 2.9, 0.6);
   return tl;
 }
 
@@ -343,9 +361,13 @@ function seoFlow(root: Element, gsap: G): TL {
     .to(you, { y: 0, duration: 0.8, ease: 'power3.inOut' }, 2.8)
     .to(items.slice(1), { y: 0, duration: 0.8, ease: 'power3.inOut' }, 2.8)
     .fromTo($(root, '.serp-top'), { opacity: 0, scale: 0.6 }, { opacity: 1, scale: 1, duration: 0.3, ease: 'back.out(2)', immediateRender: false }, 3.6)
-    .call(() => { c += 3 + (i % 4); txt(clicks, String(c)); if (i % 2) txt(calls, String(++n)); }, [], 3.7)
-    .fromTo([clicks, calls], { scale: 1.2 }, { scale: 1, duration: 0.35, immediateRender: false }, 3.7)
-    .to({}, { duration: 1.2 }, 4.1);
+    .fromTo($(root, '.serp-pin.p-you'), { scale: 1 }, { scale: 1.35, duration: 0.2, yoyo: true, repeat: 1, immediateRender: false }, 3.6)
+    .call(() => { c += 3 + (i % 4); txt(clicks, String(c)); }, [], 3.7)
+    .fromTo(clicks, { scale: 1.2 }, { scale: 1, duration: 0.35, immediateRender: false }, 3.7);
+  tapCall(tl, root, 3.9);
+  tl.call(() => txt(calls, String(++n)), [], 4.45)
+    .fromTo(calls, { scale: 1.2 }, { scale: 1, duration: 0.35, immediateRender: false }, 4.45)
+    .to({}, { duration: 1.2 }, 4.8);
   return tl;
 }
 
