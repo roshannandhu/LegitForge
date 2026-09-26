@@ -180,6 +180,30 @@ if (!only || only === 'og') {
   }
 }
 
+// Admin (PLAN §7.8): locked to anyone without a valid Cloudflare Access JWT. The dev bypass
+// only works on localhost, so these requests go to this machine's network address instead.
+if (!only || only === 'admin') {
+  console.log('\nadmin access');
+  const { networkInterfaces } = await import('node:os');
+  const ip = Object.values(networkInterfaces()).flat().find((n) => n && n.family === 'IPv4' && !n.internal)?.address;
+  const locked = ip ? BASE.replace(/localhost|127\.0\.0\.1/, ip) : null;
+  if (!locked || locked === BASE) console.log('  · skipped: no network address to test from (the bypass allows localhost)');
+  else {
+    const page = await fetch(locked + '/admin');
+    const html = await page.text();
+    page.status === 404 && !html.includes('admin-nav') ? pass('/admin is a 404 without Access') : fail('admin', `/admin answered ${page.status} without Access`);
+    /<meta name="robots" content="[^"]*noindex/.test(html) ? pass('/admin is noindex') : fail('admin', '/admin has no noindex');
+    const forged = await fetch(locked + '/admin', { headers: { 'cf-access-jwt-assertion': 'e30.e30.AAAA' } });
+    forged.status === 404 ? pass('/admin rejects a forged Access token') : fail('admin', `forged token got ${forged.status}`);
+    const up = await fetch(locked + '/api/admin/upload', { method: 'POST', body: new FormData() });
+    up.status === 403 ? pass('POST /api/admin/upload is 403 without Access') : fail('admin', `upload answered ${up.status}`);
+    const csv = await fetch(locked + '/admin/leads/export');
+    csv.status === 403 ? pass('/admin/leads/export is 403 without Access') : fail('admin', `export answered ${csv.status}`);
+    const prev = await fetch(locked + '/admin/preview/project-one');
+    prev.status === 404 ? pass('draft preview is a 404 without Access') : fail('admin', `preview answered ${prev.status}`);
+  }
+}
+
 // Inner pages (PLAN §7): the same §4.8 audit at every viewport, both themes on phone
 const PAGES = ['/services', '/services/website-development', '/services/whatsapp-automation', '/services/n8n-automation',
   '/work', '/work/project-one', '/team', '/team/member-one', '/contact', '/privacy', '/terms', '/blog', '/blog/static-or-dynamic-website'];

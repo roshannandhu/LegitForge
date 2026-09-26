@@ -22,6 +22,10 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
 - Share images: lib/og.tsx draws every card (1200 × 630, next/og); each route has an
   opengraph-image.tsx and twitter-image.tsx. They must stay static (generateStaticParams +
   dynamicParams = false): the font files in assets/og are read at build time, never on Workers.
+- Admin (PLAN §7.8): app/admin (pages, Server Actions in actions.ts), lib/admin (auth, D1 queries),
+  app/api/admin/upload (R2), app/media (serves R2 images). Setup: README "Admin".
+- Projects on public pages come from lib/work.ts: published D1 rows, else the placeholders in
+  content.ts/pages.ts. Never import PROJECTS/CASE_STUDIES in a page again; use getProjects().
 
 ## Commands
 - npm run dev              local development (port 3000)
@@ -49,6 +53,11 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
 - Services named in the hero (the callouts) must stay real text in the served HTML.
 - Inline <head> scripts live in lib/boot.ts. A string exported from a 'use client' file reaches
   a Server Component as a client reference, not text.
+- Every Server Action and admin route calls requireAdmin()/adminIdentity() itself: actions are
+  public POST endpoints. Route handlers use revalidateTag('projects', { expire: 0 }); only
+  actions may call updateTag.
+- lib/work.ts never reads D1 during `next build`: the dev bindings would bake local test data
+  into production pages.
 - Never add `export const runtime = 'edge'` (OpenNext uses the Node.js runtime).
 - Binding types: cf-typegen runs with --include-runtime=false. Wrangler's full runtime types
   redeclare fetch, Response and DOM Element and break the browser code. The binding types

@@ -1,11 +1,13 @@
 import type { MetadataRoute } from 'next';
-import { PROJECTS, TEAM } from '@/lib/content';
+import { TEAM } from '@/lib/content';
+import { getProjects } from '@/lib/work';
 import { SERVICE_PAGES } from '@/lib/pages';
 import { SITE } from '@/lib/site';
 import { published } from '@/lib/blog';
 
 /** PLAN §10.1. Every public route. Blog posts join when they leave draft. */
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const projects = await getProjects();
   const now = new Date();
   const u = (path: string, priority: number, changeFrequency: 'weekly' | 'monthly' | 'yearly' = 'monthly') =>
     ({ url: `${SITE.url}${path}`, lastModified: now, changeFrequency, priority });
@@ -14,7 +16,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     u('/services', 0.9),
     ...SERVICE_PAGES.map((s) => u(`/services/${s.slug}`, 0.9)),
     u('/work', 0.8, 'weekly'),
-    ...PROJECTS.map((p) => u(`/work/${p.slug}`, 0.7)),
+    ...projects.map((p) => u(`/work/${p.slug}`, 0.7)),
     u('/team', 0.6),
     ...TEAM.map((m) => u(`/team/${m.slug}`, 0.5)),
     ...(published().length ? [u('/blog', 0.6, 'weekly')] : []),

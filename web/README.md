@@ -53,6 +53,26 @@ and, when deploying, `npm run db:migrate:remote`. After changing `wrangler.jsonc
 `npm run cf-typegen`. If the change adds a new kind of binding, add its type to
 `cloudflare-bindings.d.ts`.
 
+## Admin (/admin)
+
+Projects (paste a screenshot to upload), leads with CSV export, testimonials and site
+numbers. PLAN §7.8.
+
+**Locally:** run `npm run db:migrate:local`, set `ADMIN_DEV_BYPASS=1` in `.dev.vars`, run
+`npm run dev`, then open http://localhost:3000/admin. The bypass only works on localhost.
+
+**In production,** Cloudflare Access protects it, and the app checks the Access token again:
+1. Zero Trust → Access → Applications → Add a self-hosted application for your domain.
+   Give it two paths: `/admin` and `/api/admin`.
+2. Add a policy that allows your two email addresses.
+3. Copy the application's **Audience (AUD) tag** and your team domain
+   (`yourteam.cloudflareaccess.com`), then set both as secrets:
+   `npx wrangler secret put ACCESS_AUD` and `npx wrangler secret put ACCESS_TEAM_DOMAIN`.
+4. Apply the migrations remotely: `npm run db:migrate:remote`.
+
+Without both secrets, /admin is a 404 for everyone. Published projects replace the
+placeholders on the home page and /work. Draft previews are at `/admin/preview/<slug>`.
+
 ## Before launch
 
 Search the code for `[` placeholders and `TODO` (real domain, WhatsApp number, business details,

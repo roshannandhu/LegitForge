@@ -356,6 +356,7 @@
     linear-gradient(color-mix(in oklab, var(--quench) 40%, transparent) 1px, transparent 1px) 0 0 / 24px 24px,
     linear-gradient(90deg, color-mix(in oklab, var(--quench) 40%, transparent) 1px, transparent 1px) 0 0 / 24px 24px;
 }
+.cover-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }   /* uploaded covers (admin) */
 .cover-initials { position: relative; font-size: 56px; font-weight: 800; font-stretch: 112%; color: color-mix(in oklab, var(--quench) 70%, var(--text)); }
 .project-cover .stamp { position: absolute; top: 16px; right: 16px; z-index: 1; }
 /* cooling (§6.7 #17): the cover enters heat-tinted and cools to full colour */

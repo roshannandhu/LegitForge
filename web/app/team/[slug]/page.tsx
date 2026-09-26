@@ -5,8 +5,9 @@ import { CtaBand } from '@/components/pages/cta-band';
 import { JsonLd } from '@/components/pages/json-ld';
 import { MemberCard } from '@/components/team/member-card';
 import { ProjectCard } from '@/components/work/project-card';
-import { PROJECTS, TEAM } from '@/lib/content';
-import { CASE_STUDIES, MEMBER_DETAILS } from '@/lib/pages';
+import { TEAM } from '@/lib/content';
+import { getProjects } from '@/lib/work';
+import { MEMBER_DETAILS } from '@/lib/pages';
 import { SITE, waLink } from '@/lib/site';
 import '@/components/sections/sections.css';
 import '../../pages.css';
@@ -31,7 +32,7 @@ export default async function Member({ params }: { params: Promise<{ slug: strin
   const m = find((await params).slug);
   if (!m) notFound();
   const d = MEMBER_DETAILS[m.slug];
-  const projects = PROJECTS.filter((p) => CASE_STUDIES[p.slug]?.team.some((t) => t.slug === m.slug));
+  const projects = (await getProjects()).filter((p) => p.study.team.some((t) => t.slug === m.slug));
   const wa = waLink(`Hi, I saw ${m.name}'s portfolio on your site.`);
 
   return (

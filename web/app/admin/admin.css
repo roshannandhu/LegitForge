@@ -1,0 +1,81 @@
+/* Admin (PLAN §7.8): the site's tokens and 4 px scale, plain and dense. Tables scroll
+   inside their own box on phones; every control is a 44 px target. */
+.admin { padding-top: 112px; padding-bottom: 96px; }
+@media (max-width: 767px) { .admin { padding-top: 88px; } }
+.admin-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 24px; margin-bottom: 32px; padding-bottom: 16px; border-bottom: 1px solid var(--line); }
+.admin-nav { display: flex; flex-wrap: wrap; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.admin-nav a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 14px; border-radius: 10px; color: var(--text); font-weight: 600; text-decoration: none; }
+.admin-nav a:hover { background: var(--surface); }
+.admin-who { margin: 0; font-size: 14px; color: var(--text-muted); overflow-wrap: anywhere; }
+.admin h1 { margin: 0 0 8px; }
+.admin-lead { max-width: 65ch; margin: 0 0 32px; color: var(--text-muted); }
+.admin-section { margin-top: 48px; }
+.admin-section > h2 { margin: 0 0 16px; }
+
+.admin-cards { display: grid; gap: 16px; margin: 0; padding: 0; list-style: none; }
+@media (min-width: 768px) { .admin-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.admin-card { display: grid; gap: 4px; padding: 24px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); color: inherit; text-decoration: none; }
+.admin-card:hover { border-color: var(--heat-color); }
+.admin-card .num { font-size: 40px; font-weight: 800; }
+.admin-card span:last-child { color: var(--text-muted); font-size: 15px; }
+
+/* tables */
+.admin-table-wrap { position: relative; overflow-x: auto;   /* position: contains the sr-only labels, or they widen a phone */
+   border: 1px solid var(--line); border-radius: 16px; background: var(--surface); }
+.admin-table { width: 100%; min-width: 640px; border-collapse: collapse; font-size: 15px; }
+.admin-table th, .admin-table td { padding: 10px 16px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: middle; }
+.admin-table th { font-size: 14px; font-weight: 600; color: var(--text-muted); background: var(--surface-2); }
+.admin-table tr:last-child td { border-bottom: 0; }
+.admin-table .muted { color: var(--text-muted); font-size: 14px; }
+.admin-table .msg { max-width: 36ch; white-space: pre-wrap; }
+.admin-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.admin-inline { display: inline-flex; align-items: center; gap: 8px; margin: 0; }
+.admin-empty { padding: 24px; border: 1px dashed var(--line); border-radius: 16px; color: var(--text-muted); }
+.pill { display: inline-flex; align-items: center; padding: 2px 10px; border: 1px solid var(--line); border-radius: 999px; font-size: 14px; white-space: nowrap; }
+.pill.is-on { border-color: var(--success); color: var(--success); }
+
+/* forms */
+.admin-form { display: grid; gap: 20px; max-width: 880px; }
+.admin-grid { display: grid; gap: 20px; }
+@media (min-width: 768px) { .admin-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.field { display: grid; gap: 6px; }
+.field > span { font-size: 14px; font-weight: 600; }
+.field small { font-size: 14px; color: var(--text-muted); }
+.field input, .field select, .field textarea {
+  width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px;
+  background: var(--bg); color: var(--text); font: inherit; font-size: 16px;
+}
+.field textarea { min-height: 112px; resize: vertical; }
+.field input:focus-visible, .field select:focus-visible, .field textarea:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.check { display: flex; align-items: center; gap: 10px; min-height: 44px; font-weight: 600; }
+.check input { width: 20px; height: 20px; accent-color: var(--accent); }
+.admin-fieldset { display: grid; gap: 12px; margin: 0; padding: 16px 20px; border: 1px solid var(--line); border-radius: 12px; }
+.admin-fieldset legend { padding: 0 6px; font-size: 14px; font-weight: 600; }
+.team-row { display: grid; gap: 8px; align-items: center; }
+@media (min-width: 768px) { .team-row { grid-template-columns: 220px minmax(0, 1fr); } }
+.admin-msg { margin: 0; font-size: 15px; font-weight: 600; }
+.admin-msg.is-error { color: var(--danger); }
+.admin-msg.is-ok { color: var(--success); }
+.btn-sm { min-height: 44px; padding: 0 14px; font-size: 14px; }
+.btn[disabled] { opacity: .6; cursor: progress; }
+.btn-danger { border-color: color-mix(in oklab, var(--danger) 60%, var(--line)); color: var(--danger); }
+
+/* images */
+.drop {
+  display: grid; gap: 12px; padding: 24px; border: 2px dashed var(--line); border-radius: 16px; background: var(--surface);
+}
+.drop[data-active] { border-color: var(--heat-color); }
+.drop-preview { display: grid; gap: 16px; }
+@media (min-width: 768px) { .drop-preview { grid-template-columns: 240px minmax(0, 1fr); align-items: start; } }
+.drop-preview img { width: 100%; height: auto; border-radius: 10px; border: 1px solid var(--line); }
+.thumbs { display: grid; gap: 16px; margin: 0; padding: 0; list-style: none; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+.thumb { display: grid; gap: 8px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.thumb img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 8px; }
+.thumb p { margin: 0; font-size: 14px; color: var(--text-muted); overflow-wrap: anywhere; }
+.swatch { display: inline-block; width: 14px; height: 14px; margin-right: 6px; vertical-align: -2px; border: 1px solid var(--line); border-radius: 4px; }
+
+/* draft preview: the case study sits inside the admin's own .wrap */
+.admin-preview .wrap { padding-left: 0; padding-right: 0; }
+.admin-preview .page-head { padding-top: 16px; }
+.admin .muted { color: var(--text-muted); font-size: 14px; }
+.admin details summary { cursor: pointer; }

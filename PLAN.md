@@ -4442,9 +4442,11 @@ So the plan is three releases, and **we launch at the first one**.
 | Process C2 sticky stack (§23.2) | Done: tablets and laptops with motion on; phones and motion off keep the timeline |
 | The Cleave as a page transition, card → case study (§23.1) | Done: cross-document View Transitions, `CLEAVE_BOOT` in `lib/boot.ts`, styles in `app/globals.css` |
 | Blog (§7.4) | Done: MDX in `content/blog`, registry `lib/blog.ts`, `scripts/blog-index.mjs` runs before dev/build. Two starter posts are drafts (noindex, not in the sitemap) until `draft: false` |
-| **Next (R2/R3)** | **1. Share images** · **2. Admin (§7.8)**. Both are specified in §22.4 below |
+| Share images (§22.4 step 1) | Done: `lib/og.tsx`, a static 1200 × 630 card for the site and for each service, case study and post |
+| Admin (§7.8, §22.4 step 2) | Done. Covers projects (paste to upload, alt text required on the server, width, height and dominant colour), leads with CSV export, testimonials (permission required) and site stats. Cloudflare Access plus a server JWT check; public pages read published D1 projects, with the placeholders as fallback. One change from §7.8: the draft preview is `/admin/preview/<slug>`, not `/work/<slug>?preview=1`. Access then guards it too, and the /work pages stay static |
+| **Left for launch** | Everything under "Left for R1", plus the Access application and its two secrets (web/README.md "Admin"). Later (R3): cover capture from the live URL (§7.8 item 2) and team profile editing |
 
-### 22.4 Next build steps (handover)
+### 22.4 Next build steps (handover) — both built, see §22.3
 
 Each step: build it → `npx tsc --noEmit` → `npm run build` → `npx next start -p 3300` → `BASE=http://localhost:3300 npm run check`. Screenshot new pieces at 375, 768 and 1440, in both themes. Then commit and push.
 
