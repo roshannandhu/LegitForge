@@ -42,7 +42,7 @@ export function WorkGrid({ items, filters, waHref }: {
       <p className="sr-only" aria-live="polite">{shown.length} {shown.length === 1 ? 'project' : 'projects'} shown</p>
 
       {shown.length > 0 ? (
-        <ul className="work-grid">{shown.map((p) => <ProjectCard key={p.slug} p={p} />)}</ul>
+        <ul className="work-grid">{shown.map((p) => <ProjectCard key={p.slug} p={p} headingLevel={2} />)}</ul>
       ) : (
         <p className="work-empty">
           No {label} projects to show yet.{' '}

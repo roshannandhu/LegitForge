@@ -30,7 +30,7 @@
 .fire-time { padding: 2px 10px; border: 1px solid var(--line); border-radius: 999px; font-size: 14px; font-weight: 600; color: var(--text-muted); }
 /* the demo is running: its number and frame warm up (plan D #3) */
 .fire-num { transition: color 400ms var(--ease-forge); }
-.fire:has(.demo-player[data-running]) .fire-num { color: var(--heat-color); }
+.fire:has(.demo-player[data-running]) .fire-num { color: var(--heat-ink); }
 :is(.fire-stage, .page-demo, .fire) .demo-player::after {
   content: ""; position: absolute; inset: 0; border-radius: 16px; pointer-events: none; opacity: 0;
   box-shadow: 0 0 0 1px color-mix(in oklab, var(--heat-color) 60%, transparent), 0 0 24px -12px var(--heat-color);
@@ -149,7 +149,7 @@
   letter-spacing: .12em; text-transform: uppercase; line-height: 1.1; white-space: nowrap;
 }
 .stamp-ok { color: var(--success); }
-.stamp-hallmark { color: var(--heat-color); background: color-mix(in oklab, var(--bg) 80%, transparent); }
+.stamp-hallmark { color: var(--heat-ink); background: color-mix(in oklab, var(--bg) 80%, transparent); }
 .inline-icon { display: inline-block; width: 1em; height: 1em; vertical-align: -.125em; }
 
 /* ============================================================== quotation */
@@ -174,7 +174,7 @@
   background: #1F6B52; color: #F1F6F3; font-size: 14px; line-height: 1.4;
 }
 @media (min-width: 480px) { .qm-bubble { margin-right: calc(50% - 190px); } }   /* aligned with the quote's right edge */
-.qm-bubble-time { margin-left: 8px; font-size: 12px; opacity: .7; }
+.qm-bubble-time { margin-left: 8px; font-size: 12px; opacity: .9; }
 .qm-quote { position: relative; }
 /* our seal: the logo coin pressed into the paper, with a faint impression ring */
 .qm-seal {
@@ -423,7 +423,7 @@
   content: ""; position: absolute; left: -2px; right: -2px; top: 55%; height: 2px; background: var(--heat-color);
   clip-path: inset(0 calc(var(--card-heat) * 100%) 0 0);
 }
-.project-proof .arrow { color: var(--heat-color); opacity: calc(1 - var(--card-heat)); }
+.project-proof .arrow { color: var(--heat-ink); opacity: calc(1 - var(--card-heat)); }
 .project-proof .now { font-weight: 700; opacity: calc(1 - var(--card-heat)); transform: translateX(calc(var(--card-heat) * -8px)); }
 .project-cover::after {
   content: ""; position: absolute; inset: 0; pointer-events: none;
@@ -810,7 +810,7 @@
   position: absolute; left: 10%; top: 22px; z-index: 2; width: 14px; height: 14px; margin: -7px;
   border-radius: 50%; background: var(--heat-hi); box-shadow: 0 0 12px 3px var(--heat-hi); opacity: 0; pointer-events: none;
 }
-.flow-out { font-size: 11px; font-weight: 600; color: var(--heat-color); white-space: nowrap; }
+.flow-out { font-size: 11px; font-weight: 600; color: var(--heat-ink); white-space: nowrap; }
 
 /* quotation: the QR scan line and the WhatsApp reminder */
 .qm-warranty { position: relative; overflow: hidden; }
@@ -935,13 +935,13 @@
 .engines { display: grid; gap: 16px; margin-top: 24px; }
 @media (min-width: 768px) { .engines { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .engine { position: relative; padding: 20px 24px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); transition: opacity 300ms var(--ease-forge); }
-.engine.is-static { opacity: calc(.5 + .5 * var(--pos) / 100); }
+.engine.is-static { opacity: calc(.88 + .12 * var(--pos) / 100); }   /* dims, but its words stay at 4.5:1 */
 .engine.is-dynamic { opacity: calc(.5 + .5 * (100 - var(--pos)) / 100); }
 .engine-h { margin: 0 0 12px; font-size: 14px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); }
 .engine-path { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0; padding: 0; list-style: none; font-size: 14px; font-weight: 600; }
 .engine-path li { padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
-.engine-path li + li::before { content: "→"; margin: 0 8px 0 -2px; color: var(--heat-color); }
-.engine-path.is-loop li:last-child::after { content: " ↺"; color: var(--heat-color); }
+.engine-path li + li::before { content: "→"; margin: 0 8px 0 -2px; color: var(--heat-ink); }
+.engine-path.is-loop li:last-child::after { content: " ↺"; color: var(--heat-ink); }
 /* the request travelling the path: one hop for static, a round trip for dynamic */
 .engine-track { position: relative; display: block; height: 2px; margin: 14px 0 0; overflow: hidden; border-radius: 2px; background: var(--line); }
 .engine-track::after {
@@ -954,6 +954,8 @@
 [data-motion="off"] .engine-track::after { animation: none; transform: none; }
 .engine-note { margin: 12px 0 0; font-size: 15px; color: var(--text-muted); }
 .engine-note b, .engine-note i { color: var(--text); }
+/* the static side dims down to .88: a touch darker than --text-muted keeps its words at 4.5:1 */
+.engine .engine-h, .engine .engine-note { color: color-mix(in oklab, var(--text-muted) 60%, var(--text)); }
 
 /* which one do I need? */
 .picker { display: grid; gap: 16px; margin-top: 24px; padding: 24px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); }
@@ -981,9 +983,10 @@
 .serp-rank { color: var(--text-muted); font-weight: 700; }
 .serp-body { display: grid; gap: 1px; min-width: 0; }
 .serp-url { color: var(--text-muted); font-size: 11px; }
-.serp-title { color: #5B9FE6; font-size: 13px; font-weight: 600; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.serp-meta { color: #D8A93C; font-size: 11px; }
-.serp-top { position: absolute; top: -8px; right: 10px; padding: 1px 8px; border-radius: 6px; background: var(--success); color: #0E1319; font-size: 10.5px; font-weight: 700; }
+.serp-title { color: #2F6FB8; font-size: 13px; font-weight: 600; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.serp-meta { color: #8A6410; font-size: 11px; }
+.serp-top { position: absolute; top: -8px; right: 10px; padding: 1px 8px; border-radius: 6px; background: var(--success); color: #FFFFFF; font-size: 10.5px; font-weight: 700; }
+.dark .serp-top { color: #0E1319; }   /* the dark theme's success green is light: dark text reads on it */
 .serp-stats { display: flex; flex-wrap: wrap; gap: 6px 16px; color: var(--text-muted); }
 .serp-stats b { color: var(--text); font-size: 15px; }
 

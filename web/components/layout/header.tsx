@@ -103,7 +103,7 @@ export function Header() {
 
         <div className="header-actions">
           <ForgeLever />
-          <a className="btn btn-primary btn-sm header-cta" href={wa}
+          <a className="btn btn-primary btn-sm header-cta" href={wa} aria-label="Chat on WhatsApp"
              {...(wa.startsWith('http') && { target: '_blank', rel: 'noopener' })}>
             <ChatIcon className="btn-icon" />
             <span className="cta-long">Chat on WhatsApp</span>

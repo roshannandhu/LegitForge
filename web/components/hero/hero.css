@@ -46,11 +46,11 @@
   transition: color 200ms var(--ease-forge);
 }
 .td-callouts li { grid-template-columns: 1fr auto; }
-.td-callouts .num { grid-column: 2; grid-row: 1 / span 2; color: var(--heat-color); font-weight: 700; }
+.td-callouts .num { grid-column: 2; grid-row: 1 / span 2; color: var(--heat-ink); font-weight: 700; }
 .td-callouts strong, .td-callouts em { grid-column: 1; }
 .td-callouts strong { color: var(--text); font-weight: 600; }
 .td-callouts em { font-style: normal; }
-.td-callouts li[data-active] strong { color: var(--heat-color); }
+.td-callouts li[data-active] strong { color: var(--heat-ink); }
 
 /* the hand and phone: photographic anchor */
 .td-phone { position: absolute; left: var(--phone-x); top: var(--phone-y); width: var(--phone-w); translate: -50% -50%; }
@@ -157,7 +157,7 @@
      teardown.tsx); the glass keeps its size (aspect-ratio). Safety nets: motion off, and
      data-lite-all 8 s after load (lib/boot.ts) */
   html[data-lite]:not([data-lite-all]):not([data-motion="off"]) .td-layer:nth-child(n+3):not([data-near]) .td-glass > .ls { display: none; }
-  .td-cap .num { color: var(--heat-color); margin-right: 4px; }
+  .td-cap .num { color: var(--heat-ink); margin-right: 4px; }
 }
 
 /* ------------------------------------------------------------------ the live screens
@@ -248,7 +248,7 @@
   height: calc(3 * 1.5em + 2 * 4px); overflow: hidden; margin: 0; padding: 0; list-style: none; line-height: 1.5;
 }
 .hud-log li { flex: none; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: var(--text-muted); animation: log-in 300ms var(--ease-forge); }
-.hud-log li::before { content: "› "; color: var(--heat-color); }
+.hud-log li::before { content: "› "; color: var(--heat-ink); }
 .hud-log li:last-child { color: var(--text); }
 .hud-log li[hidden] { display: none; }
 @keyframes log-in { from { opacity: 0; transform: translateY(4px); } }
