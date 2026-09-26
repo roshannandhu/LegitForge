@@ -354,6 +354,17 @@
 }
 @media (min-width: 1024px) { .step-get { grid-column: 3; margin-top: 4px; } }
 .step-get .type-label { color: var(--text-muted); }
+.step-get { grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: 12px; }
+.step-get > span:last-child { display: grid; gap: 2px; }
+/* the deliverable (plan D #7): drops onto the card as it pins; always there without motion */
+.step-obj {
+  display: grid; place-items: center; width: 40px; height: 40px; border-radius: 10px;
+  background: color-mix(in oklab, var(--heat-color) 14%, var(--surface)); color: var(--heat-color);
+  transition: transform 520ms cubic-bezier(.3, 1.5, .5, 1), opacity 300ms var(--ease-forge);
+}
+.step-obj svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+[data-motion="on"] [data-animated="true"] .step:not(.is-reached) .step-obj { opacity: 0; transform: translateY(-28px) rotate(-14deg) scale(.8); }
+[data-motion="off"] .step-obj { transition: none; }
 .steps-note { margin: 32px 0 0 68px; font-size: 14px; color: var(--text-muted); }
 @media (max-width: 767px) { .steps-note { margin-left: 0; } }
 [data-motion="off"] .step-node { transition: none; }
