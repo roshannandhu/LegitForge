@@ -267,6 +267,45 @@ export async function setMemberPhoto(id: string, key: string | null) {
   return old?.photo_key ?? null;
 }
 
+/** "Add person": hidden until their profile is filled in; gets the next free LF-00N code. */
+export async function createMember(name: string, role: string, slug: string) {
+  const db = await adminDb();
+  const codes = (await db.prepare('SELECT id_code FROM team_members').all<{ id_code: string }>()).results
+    .map((r) => Number(r.id_code.replace(/\D/g, '')) || 0);
+  const next = Math.max(0, ...codes) + 1;
+  const last = await db.prepare('SELECT COALESCE(MAX(sort_order), -1) AS m FROM team_members').first<{ m: number }>();
+  const id = crypto.randomUUID();
+  const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]!.toUpperCase()).join('');
+  await db.prepare(
+    `INSERT INTO team_members (id, slug, name, role, id_code, bio, initials, is_published, sort_order) VALUES (?, ?, ?, ?, ?, '', ?, 0, ?)`,
+  ).bind(id, slug, name, role, `LF-${String(next).padStart(3, '0')}`, initials, (last?.m ?? -1) + 1).run();
+  return id;
+}
+
+export async function memberSlugTaken(slug: string) {
+  return !!(await (await adminDb()).prepare('SELECT 1 FROM team_members WHERE slug = ?').bind(slug).first());
+}
+
+export async function moveMember(id: string, dir: -1 | 1) {
+  const db = await adminDb();
+  const ids = (await db.prepare('SELECT id FROM team_members ORDER BY sort_order, slug').all<{ id: string }>()).results.map((r) => r.id);
+  const i = ids.indexOf(id), j = i + dir;
+  if (i < 0 || j < 0 || j >= ids.length) return;
+  [ids[i], ids[j]] = [ids[j], ids[i]];
+  await db.batch(ids.map((mid, n) => db.prepare('UPDATE team_members SET sort_order = ? WHERE id = ?').bind(n, mid)));
+}
+
+/** Returns the photo key, to delete from R2. Their project credits go with them (ON DELETE CASCADE). */
+export async function deleteMember(id: string) {
+  const db = await adminDb();
+  const row = await db.prepare('SELECT photo_key FROM team_members WHERE id = ?').bind(id).first<{ photo_key: string | null }>();
+  await db.batch([
+    db.prepare('DELETE FROM member_projects WHERE member_id = ?').bind(id),
+    db.prepare('DELETE FROM team_members WHERE id = ?').bind(id),
+  ]);
+  return row?.photo_key ?? null;
+}
+
 export async function publishedProjectTitles() {
   return (await (await adminDb()).prepare('SELECT id, title FROM projects ORDER BY sort_order').all<{ id: string; title: string }>()).results;
 }

@@ -19,6 +19,8 @@ export function ServiceDemo({ kind }: { kind: DemoKind }) {
           {kind === 'app' && <AppDemo />}
           {kind === 'whatsapp' && <WhatsAppDemo />}
           {kind === 'n8n' && <N8nDemo />}
+          {kind === 'seo' && <SeoDemo />}
+          {kind === 'nfc' && <NfcDemo />}
         </div>
       </DemoPlayer>
       <DemoTranscript kind={kind} />
@@ -88,6 +90,48 @@ function AppDemo() {
           <div className="row"><span /><span>Table for 6</span><span className="num">6:45 pm</span></div>
         </div>
         <span className="dash-toast"><CheckIcon className="inline-icon" /> Booking from WhatsApp</span>
+      </div>
+    </div>
+  );
+}
+
+/* 5 — SEO: a local search, the business climbs to the top result, clicks and calls add up */
+function SeoDemo() {
+  return (
+    <div className="serp">
+      <div className="serp-bar"><span className="serp-g" /><span className="serp-q">ac installation kochi</span></div>
+      <ol className="serp-list">
+        <li className="serp-item is-you">
+          <span className="serp-rank num">1</span>
+          <span className="serp-body"><span className="serp-url">coolair.in</span><b className="serp-title">CoolAir: AC installation in Kochi, fitted in a day</b><span className="serp-meta">★ 4.9 · 212 reviews · Open now</span></span>
+          <span className="serp-top">Top result</span>
+        </li>
+        <li className="serp-item"><span className="serp-rank num">2</span><span className="serp-body"><span className="serp-url">cityacrepairs.com</span><b className="serp-title">City AC Repairs</b><span className="serp-meta">★ 4.1 · 38 reviews</span></span></li>
+        <li className="serp-item"><span className="serp-rank num">3</span><span className="serp-body"><span className="serp-url">frostfix.in</span><b className="serp-title">FrostFix Kochi</b><span className="serp-meta">★ 3.8 · 19 reviews</span></span></li>
+      </ol>
+      <div className="serp-stats">
+        <span><b className="num serp-clicks">148</b> clicks this week</span>
+        <span><b className="num serp-calls">23</b> calls from Google</span>
+      </div>
+    </div>
+  );
+}
+
+/* 6 — NFC: a phone meets a card, waves ripple, the page opens: contact, review, warranty */
+function NfcDemo() {
+  return (
+    <div className="nfc">
+      <div className="nfc-card">
+        <span className="nfc-brand">CoolAir</span>
+        <span className="nfc-mark" />
+        <span className="nfc-waves"><i /><i /><i /></span>
+      </div>
+      <div className="nfc-phone">
+        <p className="nfc-kicker">Tapped · no app needed</p>
+        <p className="nfc-h">Leave a review</p>
+        <p className="nfc-stars">★★★★★</p>
+        <p className="nfc-sub">CoolAir Services · Google</p>
+        <span className="nfc-btn">Post review</span>
       </div>
     </div>
   );

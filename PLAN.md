@@ -4464,6 +4464,13 @@ So the plan is three releases, and **we launch at the first one**.
 11. **Pricing:** timeline bars; FAQ spark.
 12. **Contact:** the form quenches; RECEIVED with the reply-by time.
 13. **Footer:** forge status. |
+| Plan F (flow, SEO + NFC, work gallery, unlimited team) | Done, checked at 375, 768 and 1440:
+1. **Hero:** the thread line is gone (the lit layer edges stay); seven layers, with SEO first and NFC last.
+2. **What we build:** SEO and NFC join, each with a demo, its own service page, pricing rows and form options.
+3. **Demos flow:** after their intro, every demo keeps working without a reset or fade (FLOWS in `demos.ts`). The check fails a demo that stops changing or fades out.
+4. **Quotation:** one living document on a lifecycle rail (enquiry → reminder). It is signed and sealed, flips to its warranty card (QR or NFC tap), then the next job starts. Example stats sit under it.
+5. **Work:** a React Bits Accordion Gallery (API reimplemented; reactbits.dev is blocked from the sandbox) showing admin-uploaded covers. It is a vertical accordion on phones.
+6. **Team:** add, reorder and remove people in Admin → Team. One borderless, full-bleed strip scrolls sideways for any number of cards. The 3D canvas has no box: it is full width with headroom, the camera follows the scroll, and it only draws cards near the view. Tested with 2 and 12 people. |
 | **Left for launch** | Everything under "Left for R1", plus the Access application and its two secrets (web/README.md "Admin"), and Browser Rendering if cover capture is wanted |
 
 ### 22.4 Next build steps (handover) — both built, see §22.3

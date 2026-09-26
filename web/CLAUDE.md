@@ -12,7 +12,7 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
 - Team section only, both lazy-loaded when #team is near: React Three Fiber + Rapier
   (components/lanyard, fine pointer ≥1024px) and `motion` inside the vendored FlipCard
   (components/react-bits). Nothing else may import them.
-- Hero (the Teardown, PLAN §6.2c): data lib/teardown.ts · component components/hero/teardown.tsx ·
+- Hero (the Teardown, PLAN §6.2c, seven layers: SEO, web, WhatsApp, n8n, quote, warranty, NFC): data lib/teardown.ts · component components/hero/teardown.tsx ·
   live screens components/hero/layer-screens.tsx · their flows components/hero/teardown-flows.ts
 - First-visit intro (the Hallmark Strike, PLAN §6.1b): components/intro, pure CSS. lib/boot.ts
   decides it before first paint. Clear localStorage `lf-intro-seen` to see it again.
@@ -47,9 +47,12 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
 - The hero's no-JS / motion-off frame is the finished exploded stack. Each layer's position, tilt
   and scale are CSS variables (--x --y --tilt --s) with server-rendered slot values; GSAP animates
   the same variables, so if you move a slot in lib/teardown.ts, both stay in step.
-- Service demos (DemoPlayer) loop while on screen and pause off screen; each loop rebuilds its
-  timeline from the finished frame. Their hidden step text is lib/demo-transcripts.ts: keep it
-  true when a demo changes.
+- Service demos (DemoPlayer): DEMOS[kind] is the intro (builds the finished frame once), then
+  FLOWS[kind] keeps the demo working forever as a repeat:-1 timeline: no reset, no fade (plan F).
+  Each cycle ends where the next begins; rotating text uses txt() (keeps React's text node) and
+  never adds or removes nodes. DemoPlayer snapshots text and classes and restores them, with
+  flow.revert(), when motion goes off. Pauses off screen. `npm run check` fails a demo that
+  stops changing or fades its box out. Hidden step text: lib/demo-transcripts.ts, keep it true.
 - Punch-ins (components/motion/punch-in.tsx): marks with [data-punch] inside a PunchIn are struck
   in once on view; without JS or motion they are simply there.
 - "Now" (open/closed, reply-by, forge status) is computed in the browser only: lib/business-hours.ts.
@@ -78,6 +81,15 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
   Importing content.ts into a 'use client' file ships all of it to the browser.
 - Inner pages: app/pages.css + components/pages (PageHead with breadcrumbs, CtaBand, JsonLd).
   Blocks use .page-block on a .wrap: set padding-top only, or you erase .wrap's side padding.
+- Home #work is the Accordion Gallery (components/react-bits/accordion-gallery.jsx, a
+  reimplementation of the React Bits API: reactbits.dev is blocked from the sandbox; swap in
+  `npx shadcn@latest add @react-bits/AccordionGallery-JS-CSS` and keep its `LF:` props). Panels
+  keep data-project-card + .project-cover for the Cleave transition. Its flex-grow transition is
+  the one allowed layout animation: the box has a fixed height, so nothing else moves.
+- Team: any number of people (Admin → Team: add, reorder, remove). One full-bleed strip scrolls
+  sideways in every layer. The 3D canvas is full width with headroom (sections.css
+  .team-canvas, HEAD in team-lanyards.jsx: keep them equal), its camera follows the strip's
+  scrollLeft, and only cards within a column of the view get a band and an atlas.
 - Team cards: public/lanyard/card.glb is the React Bits card with its branded texture
   stripped; the art is drawn at runtime by lib/card-art.ts. Don't ship React Bits' lanyard.png.
 

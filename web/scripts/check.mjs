@@ -196,6 +196,33 @@ if (!only || only === 'og') {
   }
 }
 
+// Demos flow (plan F step 4): after the intro every service demo keeps changing, forever,
+// and never fades its box out to restart (no "reload")
+if (!only || only === 'flow') {
+  console.log('\ndemo flows');
+  const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  await ctx.addInitScript(() => localStorage.setItem('lf-intro-seen', '1'));
+  const page = await ctx.newPage();
+  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+  for (const kind of ['website', 'app', 'whatsapp', 'n8n', 'seo', 'nfc', 'quote']) {
+    const demo = page.locator(`.demo-player:has(.demo-${kind})`).first();
+    await demo.scrollIntoViewIfNeeded();
+    await page.evaluate((k) => {
+      const box = document.querySelector(`.demo-player > .demo-${k}`);
+      window.__minOp = 1;
+      const f = () => { window.__minOp = Math.min(window.__minOp, +getComputedStyle(box).opacity); if (window.__k === k) requestAnimationFrame(f); };
+      window.__k = k; f();
+    }, kind);
+    await page.waitForTimeout(5000);                                  // the intro
+    const shots = new Set();
+    for (let i = 0; i < 8; i++) { shots.add((await demo.screenshot()).toString('base64')); await page.waitForTimeout(700); }
+    const minOp = await page.evaluate(() => window.__minOp);
+    shots.size >= 4 ? pass(`${kind}: keeps changing (${shots.size}/8 distinct frames)`) : fail('flow', `${kind}: only ${shots.size}/8 distinct frames after the intro`);
+    minOp > 0.9 ? pass(`${kind}: never fades out to restart`) : fail('flow', `${kind}: the box faded to opacity ${minOp}`);
+  }
+  await ctx.close();
+}
+
 // Admin (PLAN §7.8): locked to anyone without a valid Cloudflare Access JWT. The dev bypass
 // only works on localhost, so these requests go to this machine's network address instead.
 if (!only || only === 'admin') {
@@ -221,7 +248,7 @@ if (!only || only === 'admin') {
 }
 
 // Inner pages (PLAN §7): the same §4.8 audit at every viewport, both themes on phone
-const PAGES = ['/services', '/services/website-development', '/services/whatsapp-automation', '/services/n8n-automation',
+const PAGES = ['/services', '/services/website-development', '/services/whatsapp-automation', '/services/n8n-automation', '/services/seo', '/services/nfc',
   '/work', '/work/project-one', '/team', '/team/member-one', '/contact', '/privacy', '/terms', '/blog', '/blog/static-or-dynamic-website'];
 const PAGE_RUNS = RUNS.filter((r) => r.audit || r.name === 'phone-light');
 if (!process.env.SKIP_PAGES) for (const run of PAGE_RUNS.filter((r) => !only || r.name.includes(only))) {

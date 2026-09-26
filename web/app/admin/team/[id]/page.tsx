@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import { getMember, publishedProjectTitles } from '@/lib/admin/db';
-import { regenerateCardAction, removeMemberPhotoAction, saveMemberAction } from '../../actions';
+import { deleteMemberAction, regenerateCardAction, removeMemberPhotoAction, saveMemberAction } from '../../actions';
 import { ActionButton, ActionForm, Submit } from '../../ui';
 import { ImageManager } from '../../projects/[id]/image-manager';
 
@@ -59,6 +59,14 @@ export default async function EditMember({ params }: { params: Promise<{ id: str
           <label className="field"><span>Bio <small>(60–120 words, first person)</small></span><textarea name="bio" defaultValue={m.bio} required maxLength={1200} rows={6} /></label>
           <div><Submit>Save</Submit></div>
         </ActionForm>
+      </section>
+
+      <section className="admin-section" aria-labelledby="danger-h">
+        <h2 id="danger-h" className="type-h3">Remove</h2>
+        <form action={deleteMemberAction.bind(null, id)} className="admin-form">
+          <label className="admin-check"><input type="checkbox" name="confirm" required /> Remove {m.name}, their ID card and photo from the site</label>
+          <div><button className="btn btn-ghost btn-danger">Remove this person</button></div>
+        </form>
       </section>
     </>
   );

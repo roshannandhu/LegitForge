@@ -36,12 +36,6 @@ const FIT_NOW = `(function(s){if(matchMedia('(max-width: 767px)').matches)return
   `(document.currentScript.previousElementSibling)`;
 
 const WORD = 'Legit Forge';
-/** The thread: the spine runs from above the top layer down through each slot's centre (revealed
- *  top to bottom); the tail curves up into the phone, so it appears on its own at the end. */
-const LAST = SLOTS[SLOTS.length - 1];
-const SPINE = [`M${SLOTS[0].x} ${SLOTS[0].y - 70}`, ...SLOTS.map((p) => `L${p.x} ${p.y}`)].join(' ');
-const TAIL = `M${LAST.x} ${LAST.y} C${LAST.x} ${LAST.y + 60} ${SCREEN_C.x - 120} ${SCREEN_C.y + 40} ${SCREEN_C.x} ${SCREEN_C.y}`;
-
 let introPlayed = false;
 
 export default function Teardown() {
@@ -116,17 +110,10 @@ export default function Teardown() {
 
       // 1 — tear down: the top layer lifts first and travels furthest
       layers.forEach((el, i) => {
-        const at = 0.03 + i * 0.04;
+        const at = 0.03 + i * 0.024;
         tl.to(el, { opacity: 1, duration: 0.015 }, at)
-          .to(el, { '--x': SLOTS[i].x, '--y': SLOTS[i].y, '--tilt': 1, '--s': ISO_SCALE, duration: 0.12, ease: 'power2.out' }, at);
+          .to(el, { '--x': SLOTS[i].x, '--y': SLOTS[i].y, '--tilt': 1, '--s': ISO_SCALE, duration: 0.1, ease: 'power2.out' }, at);
       });
-
-      // the thread draws with the run: top of the stack at the first window, the phone at the last
-      const thread = host.querySelector<SVGElement>('.td-thread')!;
-      gsap.set(thread, { '--thread': 0, '--tail': 0, opacity: 1 });
-      tl.to(thread, { '--thread': 1, duration: win(LAYERS.length - 1) - win(0) + 0.02, ease: 'none' }, win(0))
-        .to(thread, { '--tail': 1, duration: 0.02 }, win(LAYERS.length) - 0.02)    // into the phone: done
-        .to(thread, { opacity: 0, duration: 0.03 }, 0.86);
 
       const drawing = [host.querySelector('.td-callouts'), host.querySelector('.td-leaders')];
       gsap.set(drawing, { opacity: 0 });
@@ -134,25 +121,25 @@ export default function Teardown() {
 
       // 2 — run: each layer comes forward, plays, goes back; the pulse carries the result down
       layers.forEach((el, i) => {
-        const w0 = win(i);
+        const w0 = win(i), E = RUN.each;                                 // each window, in fractions of E
         const others = layers.filter((_, k) => k !== i);
-        tl.set(el, { zIndex: 30 }, w0).set(el, { zIndex: 10 - i }, w0 + 0.113)   // the reader's layer is in front
-          .to(others, { '--dim': 0.4, duration: 0.015 }, w0)
-          .to(el, { '--dim': 1, '--x': FOCUS.x, '--y': FOCUS.y, '--tilt': 0, '--s': FOCUS.s, duration: 0.025, ease: 'power2.inOut' }, w0);
+        tl.set(el, { zIndex: 30 }, w0).set(el, { zIndex: 10 - i }, w0 + E * 0.98)   // the reader's layer is in front
+          .to(others, { '--dim': 0.4, duration: E * 0.13 }, w0)
+          .to(el, { '--dim': 1, '--x': FOCUS.x, '--y': FOCUS.y, '--tilt': 0, '--s': FOCUS.s, duration: E * 0.22, ease: 'power2.inOut' }, w0);
         const flow = buildFlow(LAYERS[i].id, el, gsap);
-        flow.timeScale(flow.duration() / 0.065);
-        tl.add(flow, w0 + 0.025);
-        tl.to(el, { '--x': SLOTS[i].x, '--y': SLOTS[i].y, '--tilt': 1, '--s': ISO_SCALE, duration: 0.02, ease: 'power2.inOut' }, w0 + 0.093);
+        flow.timeScale(flow.duration() / (E * 0.565));
+        tl.add(flow, w0 + E * 0.22);
+        tl.to(el, { '--x': SLOTS[i].x, '--y': SLOTS[i].y, '--tilt': 1, '--s': ISO_SCALE, duration: E * 0.17, ease: 'power2.inOut' }, w0 + E * 0.81);
         const to = SLOTS[i + 1] ?? SCREEN_C;
         tl.fromTo(pulse, { '--px': SLOTS[i].x, '--py': SLOTS[i].y, opacity: 1 },
-          { '--px': to.x, '--py': to.y, duration: 0.02, ease: 'power1.inOut', immediateRender: false }, w0 + 0.093)
-          .to(pulse, { opacity: 0, duration: 0.004 }, w0 + 0.113);
+          { '--px': to.x, '--py': to.y, duration: E * 0.17, ease: 'power1.inOut', immediateRender: false }, w0 + E * 0.81)
+          .to(pulse, { opacity: 0, duration: E * 0.035 }, w0 + E * 0.98);
       });
       tl.to(layers, { '--dim': 1, duration: 0.01 }, win(LAYERS.length));
 
       // 3 — snap back: nearest first, into the screen
       [...layers].reverse().forEach((el, k) => {
-        const at = 0.86 + k * 0.016;
+        const at = 0.86 + k * 0.012;
         tl.to(el, { '--x': SCREEN_C.x, '--y': SCREEN_C.y, '--tilt': 0, '--s': 1, duration: 0.05, ease: 'power2.in' }, at)
           .to(el, { opacity: 0, duration: 0.012 }, at + 0.045);
       });
@@ -164,7 +151,7 @@ export default function Teardown() {
         setScreen(p < 0.02 ? 'brand' : p < 0.95 ? 'dark' : 'final');
         const focus = LAYERS.findIndex((_, i) => p >= win(i) && p < win(i) + RUN.each);
         callouts.forEach((c, i) => c.toggleAttribute('data-active', i === focus));
-        layers.forEach((l, i) => l.toggleAttribute('data-lit', p >= win(i) && p < 0.86));   // the thread has reached it
+        layers.forEach((l, i) => l.toggleAttribute('data-lit', p >= win(i) && p < 0.86));   // the customer's request has reached it
         const ran = LAYERS.filter((_, i) => p >= win(i) + 0.03).map((l) => l.id);
         showLog(new Set([...ran, ...(p >= 0.95 ? ['done'] : []), ...(ran.length ? [] : ['wait'])]));
         setAct(actIndex(p) + 1);
@@ -253,12 +240,6 @@ export default function Teardown() {
             {LAYERS.map((l) => <div key={l.id} className="td-final" data-for={l.id}><LayerScreen id={l.id} /></div>)}
           </div>
         </div>
-
-        {/* the customer's thread: one line through every layer, drawn as her request travels */}
-        <svg className="td-thread" viewBox={`0 0 ${DESIGN.w} ${DESIGN.h}`} aria-hidden="true">
-          <path className="td-spine" d={SPINE} />
-          <path className="td-tail" d={TAIL} />
-        </svg>
 
         <ul className="td-layers" aria-label="What happens inside the phone">
           {LAYERS.map((l, i) => (

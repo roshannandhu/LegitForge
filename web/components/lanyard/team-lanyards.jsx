@@ -16,6 +16,11 @@
  *  - Shorter rope (0.5 vs 1) so the card is bigger in our 640px slot.
  *  - Rendering and physics pause while the section is off-screen. Physics starts paused,
  *    so the cards swing in the first time the section appears (step 3).
+ *  - No box (plan F step 7): the canvas spans the strip's full width with headroom above and
+ *    below, at the same 136px per world unit. Each band hangs over its card's column, measured
+ *    from the DOM; the camera follows the strip's scrollLeft, so the 3D cards scroll with it.
+ *    Only cards within a column of the view have a band (and a painted atlas), so 50 people
+ *    cost what 5 do. The canvas ignores the pointer; events come from the stage element.
  */
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, extend, useFrame, useThree } from '@react-three/fiber';
@@ -29,40 +34,97 @@ extend({ MeshLineGeometry, MeshLineMaterial });
 
 const CARD_URL = '/lanyard/card.glb';
 const SEG = 0.5;          // rope segment length
-const CAMERA_Z = 13.3;    // fov 20 -> 4.69 world units tall = 136px/unit in a 640px slot
-const TOP = 0.25;         // anchors sit this far below the canvas top (world units)
+const PX = 136;           // pixels per world unit (sections.css sizes the 2D cards to match)
+const HEAD = 160;         // px of canvas above the strip (sections.css .team-canvas top)
+const TOP = 0.25;         // anchors sit this far below the strip's top (world units)
+const FOV = 20;
+const zFor = (h) => h / PX / 2 / Math.tan((FOV / 2) * Math.PI / 180);   // camera distance for 136px/unit
 
-export default function TeamLanyards({ people, flipped, onToggleFlip, highlighted, theme, visible, onReady }) {
-  const [art, setArt] = useState(null);
+export default function TeamLanyards({ people, strip, stage, flipped, onToggleFlip, highlighted, theme, visible, onReady }) {
+  const [band, setBand] = useState(null);
+  const atlases = useRef(new Map());          // person id -> painted texture (this theme)
+  const [painted, setPainted] = useState(0);  // bumps when atlases are added
+  const [cols, setCols] = useState([]);       // each card column's centre, px from the strip's content start
+  const [range, setRange] = useState([0, Math.min(people.length, 6) - 1]);
   // plan D #9: once the cards have dropped in, every card swings the same way together, once
   const [wave, setWave] = useState(0);
   useEffect(() => {
-    if (!visible || !art || wave) return;
+    if (!visible || !band || wave) return;
     const t = setTimeout(() => setWave(1), 1400);
     return () => clearTimeout(t);
-  }, [visible, art, wave]);
+  }, [visible, band, wave]);
 
-  // Paint card atlases + band once fonts and photos are ready, and again when the theme changes.
-  // Wait one frame first: next-themes swaps the html class in its own effect, which runs
-  // AFTER this child effect, so reading tokens immediately would paint the old theme.
+  // measure the columns, and which of them are in (or one column beyond) the view
+  useEffect(() => {
+    const el = strip.current;
+    if (!el) return;
+    let raf = 0;
+    const measure = () => {
+      const lis = [...el.querySelectorAll('.lanyard')];
+      const box = el.getBoundingClientRect();
+      setCols(lis.map((li) => { const r = li.getBoundingClientRect(); return r.left - box.left + el.scrollLeft + r.width / 2; }));
+    };
+    const inView = () => {
+      raf = 0;
+      const lis = el.querySelectorAll('.lanyard');
+      const w = lis[0]?.offsetWidth || 280;
+      const first = Math.max(0, Math.floor(el.scrollLeft / w) - 1);
+      const last = Math.min(people.length - 1, Math.ceil((el.scrollLeft + el.clientWidth) / w) + 1);
+      setRange((r) => (r[0] === first && r[1] === last ? r : [first, last]));
+    };
+    const onScroll = () => { if (!raf) raf = requestAnimationFrame(inView); };
+    measure(); inView();
+    const ro = new ResizeObserver(() => { measure(); inView(); });
+    ro.observe(el);
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => { ro.disconnect(); el.removeEventListener('scroll', onScroll); cancelAnimationFrame(raf); };
+  }, [strip, people.length]);
+
+  // the band texture, and a fresh set of atlases, whenever the theme changes. Wait one frame
+  // first: next-themes swaps the html class in its own effect, which runs AFTER this one.
   useEffect(() => {
     let alive = true;
-    let raf = 0;
-    Promise.all([loadCardPhotos(people), loadCardFonts()]).then(([photos]) => {
-      raf = requestAnimationFrame(() => {
+    const raf = requestAnimationFrame(() => {
+      loadCardFonts().then(() => {
         if (!alive) return;
-        const next = { atlases: people.map((p, i) => drawCardAtlas(p, photos[i])), band: drawBand() };
-        setArt((prev) => {
-          prev?.atlases.forEach((t) => t.dispose());
-          prev?.band.dispose();
-          return next;
-        });
+        atlases.current.forEach((t) => t.dispose());
+        atlases.current.clear();
+        setBand((prev) => { prev?.dispose(); return drawBand(); });
+        setPainted((n) => n + 1);
       });
     });
     return () => { alive = false; cancelAnimationFrame(raf); };
-  }, [people, theme]);
+  }, [theme]);
+
+  // paint the atlases of the cards near the view, once each (photos load only for those)
+  useEffect(() => {
+    if (!band) return;
+    const need = people.slice(range[0], range[1] + 1).filter((p) => !atlases.current.has(p.id));
+    if (!need.length) return;
+    let alive = true;
+    loadCardPhotos(need).then((photos) => {
+      if (!alive) return;
+      need.forEach((p, i) => atlases.current.set(p.id, drawCardAtlas(p, photos[i])));
+      setPainted((n) => n + 1);
+    });
+    return () => { alive = false; };
+  }, [band, range, people, painted]);
+
+  // new people data (an admin edit): repaint every atlas
+  useEffect(() => {
+    atlases.current.forEach((t) => t.dispose());
+    atlases.current.clear();
+    setPainted((n) => n + 1);
+  }, [people]);
+
+  useEffect(() => () => { atlases.current.forEach((t) => t.dispose()); }, []);
 
   const night = theme === 'dark';
+  const shown = [];
+  for (let i = range[0]; i <= range[1]; i++) {
+    const p = people[i];
+    if (p && atlases.current.has(p.id) && cols[i] != null) shown.push({ p, i });
+  }
 
   return (
     <div className="team-canvas" aria-hidden="true">
@@ -70,18 +132,21 @@ export default function TeamLanyards({ people, flipped, onToggleFlip, highlighte
           this boundary keeps that suspension inside the scene. */}
       <Suspense fallback={null}>
       <Canvas
-        camera={{ position: [0, 0, CAMERA_Z], fov: 20 }}
+        camera={{ position: [0, 0, zFor(1000)], fov: FOV }}
         dpr={[1, 2]}
         frameloop={visible ? 'always' : 'never'}
         gl={{ alpha: true }}
+        eventSource={stage.current ?? undefined}
+        eventPrefix="client"
+        resize={{ scroll: true, debounce: { scroll: 0, resize: 0 } }}
         onCreated={({ gl }) => gl.setClearColor(new THREE.Color(0x000000), 0)}
       >
+        <Follow strip={strip} />
         <ambientLight intensity={Math.PI} />
-        <CameraAdjuster />
         <Physics gravity={[0, -40, 0]} timeStep={1 / 60} paused={!visible}>
-          {art && (
+          {band && shown.length > 0 && (
             <Suspense fallback={null}>
-              <Bands people={people} art={art} flipped={flipped} onToggleFlip={onToggleFlip} highlighted={highlighted} wave={wave} />
+              <Bands shown={shown} cols={cols} atlases={atlases.current} band={band} flipped={flipped} onToggleFlip={onToggleFlip} highlighted={highlighted} wave={wave} />
               <Ready onReady={onReady} />
             </Suspense>
           )}
@@ -99,17 +164,12 @@ export default function TeamLanyards({ people, flipped, onToggleFlip, highlighte
   );
 }
 
-/** Adjusts camera distance when the canvas has a narrower aspect ratio so all 3 cards fit nicely */
-function CameraAdjuster() {
-  const { camera, size } = useThree();
-  useFrame(() => {
-    const aspect = size.width / Math.max(size.height, 1);
-    const targetZ = CAMERA_Z * Math.max(1, 1.45 / Math.max(aspect, 0.45));
-    if (Math.abs(camera.position.z - targetZ) > 0.02) {
-      camera.position.z = THREE.MathUtils.lerp(camera.position.z, targetZ, 0.1);
-      camera.updateProjectionMatrix();
-    }
-  });
+/** Keeps 136px per unit at any canvas height, and slides the camera with the strip's scroll. */
+function Follow({ strip }) {
+  const camera = useThree((s) => s.camera);
+  const h = useThree((s) => s.size.height);
+  useEffect(() => { camera.position.z = zFor(h); camera.updateProjectionMatrix(); }, [camera, h]);
+  useFrame(() => { camera.position.x = (strip.current?.scrollLeft ?? 0) / PX; });
   return null;
 }
 
@@ -123,18 +183,18 @@ function Ready({ onReady }) {
   return null;
 }
 
-/** One band per person, anchored over the centre of its column (columns are equal thirds). */
-function Bands({ people, art, flipped, onToggleFlip, highlighted, wave }) {
-  const viewport = useThree((s) => s.viewport);
-  const n = people.length;
-  const span = viewport.width / n;
-  const y = viewport.height / 2 - TOP;
-  return people.map((p, i) => (
+/** One band per card near the view, anchored over the centre of its column. The strip's
+ *  content starts at the canvas's left edge, so column px map straight to world x (the camera
+ *  adds the scroll). */
+function Bands({ shown, cols, atlases, band, flipped, onToggleFlip, highlighted, wave }) {
+  const size = useThree((s) => s.size);
+  const y = size.height / 2 / PX - HEAD / PX - TOP;
+  return shown.map(({ p, i }) => (
     <Band
       key={p.id}
-      anchor={[(i - (n - 1) / 2) * span, y, 0]}
-      atlas={art.atlases[i]}
-      bandTexture={art.band}
+      anchor={[(cols[i] - size.width / 2) / PX, y, 0]}
+      atlas={atlases.get(p.id)}
+      bandTexture={band}
       flipped={!!flipped[p.id]}
       highlighted={highlighted === p.id}
       onToggleFlip={() => onToggleFlip(p.id)}
@@ -254,6 +314,8 @@ function Band({ anchor, atlas, bandTexture, flipped, highlighted, onToggleFlip, 
           onPointerOver={() => hover(true)}
           onPointerOut={() => hover(false)}
           onPointerDown={(e) => {
+            // events come from the whole stage: a press on a name tag, button or link is theirs, not the card's
+            if (e.nativeEvent.target?.closest?.('.name-tag, button, a')) return;
             e.target.setPointerCapture(e.pointerId);
             down.current = { x: e.clientX, y: e.clientY, t: performance.now() };
             drag(new THREE.Vector3().copy(e.point).sub(vec.copy(card.current.translation())));
