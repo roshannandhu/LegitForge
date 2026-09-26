@@ -6,7 +6,8 @@
 
 import { useRef, useState } from 'react';
 import { useTheme } from 'next-themes';
-import { CheckIcon } from '@/components/ui/icons';
+import { CoinMark } from '@/components/ui/icons';
+import { replyByLabel } from '@/lib/business-hours';
 import { BUDGETS, HONEYPOT, NEEDS, validateLead, type LeadErrors, type LeadField } from '@/lib/lead';
 import { SITE, waLink } from '@/lib/site';
 import { Turnstile, type TurnstileHandle } from './turnstile';
@@ -17,6 +18,7 @@ export function Quench() {
   const formRef = useRef<HTMLFormElement>(null);
   const [errors, setErrors] = useState<LeadErrors>({});
   const [state, setState] = useState<State>('idle');
+  const [replyBy, setReplyBy] = useState('');
   const [armed, setArmed] = useState(false);          // Turnstile loads on the form's first focus
   const turnstile = useRef<TurnstileHandle>(null);
   const { resolvedTheme } = useTheme();
@@ -49,6 +51,7 @@ export function Quench() {
         return;
       }
       if (!res.ok) throw new Error(String(res.status));
+      setReplyBy(replyByLabel());
       setState('sent');
       form.reset();
     } catch {
@@ -69,9 +72,17 @@ export function Quench() {
         <p className="quench-or">or send the details</p>
 
         {state === 'sent' ? (
+          // the quench (plan D #12): a puff of steam, then our seal stamps RECEIVED with the reply-by time
           <div className="form-sent" role="status">
-            <span className="stamp stamp-ok stamp-sent"><CheckIcon className="inline-icon" /> Sent</span>
-            <p>Details sent. We’ll message you on WhatsApp within {SITE.replyWithin}.</p>
+            <div className="sent-seal" aria-hidden="true">
+              <i className="steam" /><i className="steam" /><i className="steam" />
+              <span className="sent-coin"><CoinMark /></span>
+              <span className="stamp stamp-ok sent-stamp">Received</span>
+            </div>
+            <p className="sent-by">
+              {replyBy ? <>We’ll reply on WhatsApp by <strong>{replyBy}</strong>{replyBy.endsWith('.') ? '' : '.'}</> : <>We’ll reply on WhatsApp within <strong>{SITE.replyWithin}</strong>.</>}
+            </p>
+            <p className="sent-note">Details received. We usually reply within {SITE.replyWithin} during working hours.</p>
             <a className="btn btn-ghost" href={waLink()}>Open WhatsApp now</a>
           </div>
         ) : (
