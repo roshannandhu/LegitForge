@@ -94,7 +94,7 @@ export const WONT_DO = [
 ];
 
 /** Empty until a client gives written permission (§6.9). The block hides itself when empty. */
-export const TESTIMONIALS: { quote: string; name: string; role: string; company: string }[] = [];
+export const TESTIMONIALS: { quote: string; name: string; role: string; company: string; date?: string }[] = [];
 
 /* ------------------------------------------------------------- pricing §6.10 */
 export const PRICING = [

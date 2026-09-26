@@ -692,6 +692,7 @@
   100% { opacity: 1; transform: none; }
 }
 [data-motion="off"] [data-punch] { animation: none; opacity: 1; }
+.testimonials .t-mark { margin-bottom: 12px; font-size: 14px; }
 
 /* ================================================================ the Cleave §23.1 */
 .cleave { position: relative; }

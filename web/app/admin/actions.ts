@@ -22,6 +22,7 @@ export type FormState = { error?: string; ok?: string } | undefined;
 
 function refreshPublic() {
   updateTag('projects');
+  updateTag('testimonials');
   updateTag('team');           // "projects shipped" and favourites are on the cards
 }
 
@@ -133,6 +134,7 @@ export async function saveTestimonialAction(_: FormState, f: FormData): Promise<
     person_role: opt(f, 'person_role', 120), company: opt(f, 'company', 120),
     permission_confirmed: f.get('permission_confirmed') === 'on',
   });
+  updateTag('testimonials');
   revalidatePath('/admin/testimonials');
   return { ok: 'Saved.' };
 }
@@ -140,6 +142,7 @@ export async function saveTestimonialAction(_: FormState, f: FormData): Promise<
 export async function publishTestimonialAction(id: string, published: boolean): Promise<FormState> {
   await requireAdmin();
   const ok = await db.setTestimonialPublished(id, published);
+  if (ok) updateTag('testimonials');
   revalidatePath('/admin/testimonials');
   return ok ? { ok: published ? 'Published.' : 'Unpublished.' } : { error: 'Tick “Client gave written permission” before publishing.' };
 }
@@ -147,6 +150,7 @@ export async function publishTestimonialAction(id: string, published: boolean): 
 export async function deleteTestimonialAction(id: string) {
   await requireAdmin();
   await db.deleteTestimonial(id);
+  updateTag('testimonials');
   revalidatePath('/admin/testimonials');
 }
 
