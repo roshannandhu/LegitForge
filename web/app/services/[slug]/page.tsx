@@ -8,7 +8,7 @@ import { ProjectCard } from '@/components/work/project-card';
 import { CheckIcon } from '@/components/ui/icons';
 import { getProjects } from '@/lib/work';
 import { SERVICE_PAGES, serviceBySlug } from '@/lib/pages';
-import { SITE, waLink } from '@/lib/site';
+import { orgRef, SITE, waLink } from '@/lib/site';
 import '@/components/sections/sections.css';
 import '../../pages.css';
 
@@ -104,7 +104,7 @@ export default async function ServicePage({ params }: { params: Promise<{ slug: 
         description: s.description,
         url: `${SITE.url}/services/${s.slug}`,
         areaServed: SITE.city,
-        provider: { '@type': 'ProfessionalService', name: SITE.name, url: SITE.url },
+        provider: orgRef,
       }} />
       <JsonLd data={{
         '@type': 'FAQPage',

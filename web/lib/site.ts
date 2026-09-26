@@ -24,6 +24,10 @@ export const SITE = {
   },
 } as const;
 
+/** The studio's node in structured data: pages point at it by @id instead of repeating it. */
+export const ORG_ID = `${SITE.url}/#org`;
+export const orgRef = { '@type': 'ProfessionalService', '@id': ORG_ID, name: SITE.name, url: SITE.url, logo: `${SITE.url}/icon.svg` };
+
 export function waLink(text: string = SITE.whatsappText) {
   if (!SITE.whatsappNumber) return '/#contact';
   return `https://wa.me/${SITE.whatsappNumber}?text=${encodeURIComponent(text)}`;

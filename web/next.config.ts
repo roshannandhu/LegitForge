@@ -2,8 +2,11 @@ import type { NextConfig } from 'next';
 import { initOpenNextCloudflareForDev } from '@opennextjs/cloudflare';
 import createMDX from '@next/mdx';
 
-/** PLAN §8.6, §13. The CSP starts report-only; switch to enforcing after every page has
- *  been tested with it (and after Turnstile and Web Analytics are live). */
+/** PLAN §8.6, §13. The CSP is report-only until Turnstile and Web Analytics are live. `npm run
+ *  check` (ONLY=seo) fails on any violation on every page, so switching to enforcing is then one
+ *  line: rename the key to 'Content-Security-Policy'.
+ *  'wasm-unsafe-eval' and connect-src blob: are for the 3D team cards (Rapier's WebAssembly
+ *  physics, and three.js loading the card model and textures from blob URLs). */
 const securityHeaders = [
   { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains' },
   { key: 'X-Content-Type-Options', value: 'nosniff' },
@@ -13,10 +16,10 @@ const securityHeaders = [
     key: 'Content-Security-Policy-Report-Only',
     value: [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com https://static.cloudflareinsights.com",
+      "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://challenges.cloudflare.com https://static.cloudflareinsights.com",
       'frame-src https://challenges.cloudflare.com',
       "img-src 'self' data: blob:",
-      "connect-src 'self' https://cloudflareinsights.com",
+      "connect-src 'self' blob: https://cloudflareinsights.com",
       "style-src 'self' 'unsafe-inline'",
       "font-src 'self'",
     ].join('; '),

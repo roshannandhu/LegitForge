@@ -202,6 +202,53 @@ if (!only || only === 'og') {
   }
 }
 
+// Structured data and the security policy (plan J): every JSON-LD block parses and carries the
+// fields search engines require for its type, and no page trips the CSP. The policy is still
+// report-only, but the browser fires securitypolicyviolation for it all the same, so this is
+// the test that makes switching it to enforcing a one-line change.
+if (!only || only === 'seo') {
+  console.log('\nstructured data and CSP');
+  const REQUIRED = {
+    ProfessionalService: ['name', 'url', 'address'], WebSite: ['name', 'url'], ItemList: ['itemListElement'],
+    FAQPage: ['mainEntity'], Service: ['name', 'provider'], BreadcrumbList: ['itemListElement'], CreativeWork: ['name'],
+    Person: ['name'], BlogPosting: ['headline', 'datePublished', 'author', 'image', 'publisher'],
+  };
+  const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  await ctx.addInitScript(() => {
+    localStorage.setItem('lf-intro-seen', '1');
+    window.__csp = [];
+    document.addEventListener('securitypolicyviolation', (e) => window.__csp.push(`${e.violatedDirective} ${e.blockedURI || '(inline)'}`));
+  });
+  const page = await ctx.newPage();
+  for (const path of ['/', '/services', '/services/website-development', '/work', '/work/project-one', '/team', '/team/member-one',
+    '/contact', '/blog', '/blog/static-or-dynamic-website', '/privacy', '/terms']) {
+    await page.goto(BASE + path, { waitUntil: 'networkidle' });
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));      // lazy parts load too
+    await page.waitForTimeout(800);
+    const { blocks, csp } = await page.evaluate(() => ({
+      blocks: [...document.querySelectorAll('script[type="application/ld+json"]')].map((s) => s.textContent),
+      csp: window.__csp,
+    }));
+    const bad = [];
+    const types = [];
+    for (const raw of blocks) {
+      let d; try { d = JSON.parse(raw); } catch { bad.push('a JSON-LD block does not parse'); continue; }
+      for (const item of Array.isArray(d) ? d : [d]) {
+        if (item['@context'] !== 'https://schema.org') bad.push(`${item['@type']}: no schema.org @context`);
+        const need = REQUIRED[item['@type']];
+        if (!need) { bad.push(`unexpected type ${item['@type']}`); continue; }
+        types.push(item['@type']);
+        const missing = need.filter((k) => item[k] == null || (Array.isArray(item[k]) && !item[k].length));
+        if (missing.length) bad.push(`${item['@type']} misses ${missing.join(', ')}`);
+        if (item['@type'] === 'FAQPage' && item.mainEntity.some((q) => !q.name || !q.acceptedAnswer?.text)) bad.push('FAQPage has a question without an answer');
+      }
+    }
+    bad.length ? fail('seo', `${path}: ${bad.join('; ')}`) : pass(`${path} JSON-LD ok${types.length ? ` (${types.join(', ')})` : ''}`);
+    csp.length ? fail('seo', `${path}: CSP would block ${[...new Set(csp)].join(', ')}`) : pass(`${path} no CSP violations`);
+  }
+  await ctx.close();
+}
+
 // Demos flow (plan F step 4): after the intro every service demo keeps changing, forever,
 // and never fades its box out to restart (no "reload")
 if (!only || only === 'flow') {

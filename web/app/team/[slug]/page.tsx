@@ -7,7 +7,7 @@ import { MemberCard } from '@/components/team/member-card';
 import { ProjectCard } from '@/components/work/project-card';
 import { getProjects } from '@/lib/work';
 import { getTeam } from '@/lib/team';
-import { SITE, waLink } from '@/lib/site';
+import { orgRef, SITE, waLink } from '@/lib/site';
 import '@/components/sections/sections.css';
 import '../../pages.css';
 
@@ -80,7 +80,7 @@ export default async function Member({ params }: { params: Promise<{ slug: strin
         jobTitle: m.role,
         url: `${SITE.url}/team/${m.slug}`,
         knowsAbout: m.skills,
-        worksFor: { '@type': 'Organization', name: SITE.name, url: SITE.url },
+        worksFor: orgRef,
       }} />
     </>
   );
