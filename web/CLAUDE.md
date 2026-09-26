@@ -94,9 +94,11 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
   stripped; the art is drawn at runtime by lib/card-art.ts. Don't ship React Bits' lanyard.png.
 
 ## Performance on budget phones (measure at 360px with 4-6x CPU throttling before and after)
+- Never remove or simplify an animation, the intro, the embers or the Archivo font for speed
+  (the owner's rule). Improve how the same thing is built and drawn instead.
 - Lite mode: html[data-lite] (LITE_BOOT in lib/boot.ts, lib/lite.ts isLite) for <=3 GB RAM, <=4 cores,
-  Data Saver or 2G: no intro, still embers, instant --heat, no infinite loops, system font.
-  `?lite=1` / `?lite=0` force it. `npm run check` forces it off; `LITE=1 npm run check` audits it.
+  Data Saver or 2G. Same site; only the order of work changes (data-near rules below, GSAP after
+  idle). `?lite=1` / `?lite=0` force it. `npm run check` forces it off; `LITE=1 npm run check` audits it.
 - Never write per-frame CSS variables on <html> (the whole page restyles): put them on the element
   that reads them (--scroll-energy lives on .heat-rod).
 - Lenis only on fine-pointer screens, imported on demand; use lib/lenis-store.ts, never lenis/react.

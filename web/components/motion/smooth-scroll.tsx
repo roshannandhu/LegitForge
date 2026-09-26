@@ -7,7 +7,7 @@
  *  loaded (lib/gsap.ts): it takes over the wheel, and with no GSAP ticker driving it the page
  *  would not scroll at all. Until then, scrolling is native.
  *
- *  Never on touch screens or weak devices (lib/lite.ts): there Lenis leaves the scroll native
+ *  Never on touch screens (lib/lite.ts): there Lenis leaves the scroll native
  *  anyway and would only add work to every frame. Lenis is imported on demand, so it is not in
  *  the first-load JS; lib/lenis-store.ts shares the instance (header, hero). */
 
@@ -17,13 +17,13 @@ import { loadGsap } from '@/lib/gsap';
 import { lenisStore } from '@/lib/lenis-store';
 import { useMotionEnabled } from './motion-provider';
 import { energy, writeEnergyVar } from './energy';
-import { isLite, isTouch } from '@/lib/lite';
+import { isTouch } from '@/lib/lite';
 
 export function SmoothScroll() {
   const motionOn = useMotionEnabled();
 
   useEffect(() => {
-    if (!motionOn || isTouch() || isLite()) return;
+    if (!motionOn || isTouch()) return;
     let alive = true;
     let stop: (() => void) | undefined;
     Promise.all([loadGsap(), import('lenis')]).then(([{ gsap, ScrollTrigger }, { default: Lenis }]) => {

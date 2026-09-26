@@ -8,7 +8,6 @@
 import { useRef } from 'react';
 import { useGsap } from '@/lib/gsap';
 import { useMotionEnabled } from './motion-provider';
-import { isLite } from '@/lib/lite';
 
 // hand-set, never random: the same "tossed on the bench" layout on every visit
 const OFFSETS = [[-16, 12, -2], [14, -10, 1.8], [-10, -14, 1.2], [18, 8, -1.5], [-12, 16, 2], [10, -6, -1]];
@@ -19,7 +18,7 @@ export function SnapToGrid() {
 
   useGsap(({ gsap }) => {
     const section = marker.current?.closest('section');
-    if (!motionOn || !section || isLite()) return;   // lite: the cards simply sit in the grid
+    if (!motionOn || !section) return;
     const cards = [...section.querySelectorAll<HTMLElement>('[data-snap]')];
     const k = matchMedia('(max-width: 767px)').matches ? 0.4 : 1;   // full-width cards: stay on screen
     cards.forEach((el, i) => {

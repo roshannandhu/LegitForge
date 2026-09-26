@@ -6,7 +6,6 @@
 
 import { useGsap } from '@/lib/gsap';
 import { useMotionEnabled } from './motion-provider';
-import { isLite } from '@/lib/lite';
 
 export const heat = { value: 0.35 };
 
@@ -18,7 +17,6 @@ export function HeatDirector() {
 
   useGsap(
     ({ gsap, ScrollTrigger }) => {
-      if (isLite()) return;   // lite: one steady heat, no trigger per section to measure and update
       gsap.utils.toArray<HTMLElement>('[data-heat]').forEach((section) => {
         ScrollTrigger.create({
           trigger: section,

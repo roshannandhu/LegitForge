@@ -120,8 +120,8 @@ for (const run of RUNS.filter((r) => !only || r.name.includes(only))) {
   // §6.1b: the Hallmark Strike plays on a first visit with motion on, never with motion off,
   // and always ends by itself (the overlay must be gone before anything is audited).
   const played = await page.evaluate(() => localStorage.getItem('lf-intro-seen') === '1');
-  const expectIntro = run.motion !== 'reduce' && LITE === '0';   // lite mode never plays it
-  expectIntro !== played ? fail(run.name, `intro ${played ? 'played when it should not' : 'did not play'}`) : pass(`intro ${played ? 'played' : 'skipped (motion off or lite)'}`);
+  const expectIntro = run.motion !== 'reduce';
+  expectIntro !== played ? fail(run.name, `intro ${played ? 'played when it should not' : 'did not play'}`) : pass(`intro ${played ? 'played' : 'skipped (motion off)'}`);
   const ended = await page.waitForFunction(() => !document.documentElement.dataset.intro, null, { timeout: 4000 }).then(() => true, () => false);
   ended ? pass('intro ended by itself') : fail(run.name, 'intro overlay still up after 4 s');
   await page.screenshot({ path: `${OUT}/${run.name}-hero.png` });

@@ -3,14 +3,13 @@
 /** Ember background for Forge Night (PLAN §5.6.4, animation #1).
  *  One fixed canvas behind everything. Count and speed follow `heat.value`; scroll energy
  *  (§23.3) works the bellows: scroll fast and more, faster, brighter sparks fly.
- *  Stops in Workshop Day, in hidden tabs, and when motion is off (one still frame). Weak
- *  devices get the still frame too; phones draw at 30 fps (sparks don't need 60). */
+ *  Stops in Workshop Day, in hidden tabs, and when motion is off (one still frame). Phones
+ *  draw at 30 fps (sparks don't need 60). */
 
 import { useEffect, useRef } from 'react';
 import { heat } from '@/components/motion/heat-director';
 import { energy } from '@/components/motion/energy';
 import { useMotionEnabled } from '@/components/motion/motion-provider';
-import { isLite } from '@/lib/lite';
 
 type Ember = { x: number; y: number; vx: number; vy: number; age: number; ttl: number; r: number };
 
@@ -92,7 +91,7 @@ export function ForgeCanvas() {
       readColors();
       stop();
       if (!root.classList.contains('dark') || document.hidden) { ctx.clearRect(0, 0, w, h); return; }
-      if (!motionOn || isLite()) { drawStill(); return; }
+      if (!motionOn) { drawStill(); return; }
       last = performance.now();
       raf = requestAnimationFrame(frame);
     };
