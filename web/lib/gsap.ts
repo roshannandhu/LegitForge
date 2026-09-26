@@ -24,6 +24,9 @@ const whenIdleAfterLoad = () => new Promise<void>((resolve) => {
 export function loadGsap(): Promise<Gs> {
   return (loading ??= whenIdleAfterLoad().then(() => Promise.all([import('gsap'), import('gsap/ScrollTrigger')])).then(([{ gsap }, { ScrollTrigger }]) => {
     gsap.registerPlugin(ScrollTrigger);
+    // phones: the address bar sliding away while scrolling resizes the viewport; re-measuring
+    // every trigger each time is a classic mobile stutter, and nothing here depends on it
+    ScrollTrigger.config({ ignoreMobileResize: true });
     return { gsap, ScrollTrigger };
   }));
 }
