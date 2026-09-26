@@ -79,6 +79,9 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
   redeclare fetch, Response and DOM Element and break the browser code. The binding types
   come from cloudflare-bindings.d.ts instead; add a line there for any new binding kind.
 - Never edit an applied migration; add migrations/000N_*.sql.
+- D1 enforces foreign keys: clear what points at a row before deleting it (lib/admin/db.ts
+  deleteProject clears favourites and credits). Image R2 keys are content hashes and can be
+  shared by two rows: delete the object only when no row still uses it. One cover per project.
 - A lead is stored before anything else happens to it. Alerts (n8n) run in ctx.waitUntil
   after the response, so an outage there never loses a lead.
 - Copy lives in lib/content.ts (home) and lib/pages.ts (inner pages: services, case studies,

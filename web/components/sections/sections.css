@@ -754,17 +754,135 @@
 .hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
 
 /* ============================================================ trust strip */
-.trust { padding-top: 24px; padding-bottom: 24px; }
-.trust-intro { max-width: 60ch; margin: 0 0 20px; font-size: var(--step-lead); line-height: 1.5; }
-.trust-list {
-  display: grid; gap: 1px; margin: 0; padding: 0; list-style: none; overflow: hidden;
-  border: 1px solid var(--line); border-radius: 16px; background: var(--line);
-}
+/* Four promises forged as the Cleave opens (trust-strip.tsx). "go" = the list was punched AND
+   its Cleave is open (or has no armed Cleave at all). Every animation is declared paused while
+   the list is armed and runs on go, so each starts from its first frame whenever that is. */
+.trust { padding-top: 32px; padding-bottom: 32px; }
+.trust-head { display: grid; gap: 16px 48px; margin-bottom: 32px; }
+@media (min-width: 1024px) { .trust-head { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); align-items: end; } }
+.trust-head h2 { margin: 0; max-width: 14ch; }
+.trust-intro { max-width: 52ch; margin: 0; font-size: var(--step-lead); line-height: 1.5; color: var(--text-muted); }
+.trust-list { position: relative; display: grid; gap: 16px; margin: 0; padding: 0 0 20px; list-style: none; }
 @media (min-width: 768px) { .trust-list { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (min-width: 1024px) { .trust-list { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-.trust-list li { padding: 20px 24px; background: var(--surface); color: var(--text-muted); font-size: 15px; line-height: 1.5; }
-.trust-list strong { display: block; margin-bottom: 4px; color: var(--text); font-weight: 700; }
-.trust-list .punch { margin: 2px 0 12px 2px; }
+
+/* a plate: brushed steel, like the Cleave's */
+.trust-plate {
+  position: relative; isolation: isolate; overflow: hidden; display: block; padding: 24px 24px 28px;
+  border: 1px solid var(--line); border-radius: 16px; color: var(--text-muted); font-size: 15px; line-height: 1.5;
+  background:
+    repeating-linear-gradient(90deg, rgb(255 255 255 / .03) 0 1px, transparent 1px 3px),
+    linear-gradient(160deg, var(--surface-2), var(--surface) 65%);
+  transition: translate 240ms var(--ease-forge), border-color 240ms;
+}
+.trust-plate strong { display: block; margin-bottom: 4px; color: var(--text); font-weight: 700; }
+.trust-plate .punch { position: relative; margin: 2px 0 16px 2px; }
+/* the heat it arrives with: an overlay that fades as it cools */
+.trust-plate::before {
+  content: ""; position: absolute; inset: 0; z-index: -1; opacity: 0; pointer-events: none;
+  background: radial-gradient(120% 90% at 30% 20%, var(--forge-white) 0%, var(--forge-hot) 30%, var(--forge-deep) 70%, transparent 100%);
+}
+/* the glint on hover (fine pointers) */
+.trust-plate::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .0;
+  background: linear-gradient(105deg, transparent 35%, rgb(255 255 255 / .16) 50%, transparent 65%);
+  transform: translateX(-110%);
+}
+@media (hover: hover) and (pointer: fine) {
+  .trust-plate:hover { translate: 0 -4px; border-color: color-mix(in oklab, var(--heat-color) 55%, var(--line)); }
+  .trust-plate:hover::after { opacity: 1; transform: translateX(110%); transition: transform 700ms var(--ease-forge); }
+}
+
+/* press head and sparks: only ever seen during the strike */
+.press {
+  position: absolute; left: 20px; top: -64px; width: 92px; height: 56px; opacity: 0; pointer-events: none;
+  border-radius: 0 0 8px 8px; border: 1px solid var(--line);
+  background: linear-gradient(180deg, var(--surface-2), var(--bg)); box-shadow: 0 6px 12px rgb(0 0 0 / .35);
+}
+.press::before { content: ""; position: absolute; left: 40px; bottom: 100%; width: 12px; height: 80px; background: var(--line); }
+.sparks { position: absolute; left: 62px; top: 36px; width: 0; height: 0; pointer-events: none; }
+.sparks i {
+  position: absolute; left: 0; top: 0; width: 4px; height: 4px; margin: -2px; border-radius: 50%; opacity: 0;
+  background: var(--forge-white); box-shadow: 0 0 6px 1px var(--forge-hot);
+  --a: calc(var(--s) * 60deg - 150deg);
+}
+
+/* the live icons (final frame = the static state) */
+.ti { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; min-height: 40px; margin-bottom: 12px; color: var(--heat-ink); }
+.ti-price { font-weight: 800; font-size: 18px; color: var(--text); }
+.ti-lock .ti-hole { fill: var(--surface); }
+.ti-week { display: inline-grid; justify-items: center; gap: 2px; min-width: 32px; padding: 4px 4px 2px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); }
+.ti-week small { font-size: 14px; line-height: 1; color: var(--text-muted); }
+.ti-week svg { color: var(--success); }
+.ti-chip { padding: 2px 10px; border-radius: 999px; background: color-mix(in oklab, var(--heat-color) 22%, transparent); color: var(--text); font-size: 14px; font-weight: 600; }
+.ti-key svg { overflow: visible; }
+.ti-keyart { transform-box: fill-box; transform-origin: 7px 8px; }
+.ti-drops { display: flex; flex-wrap: wrap; gap: 4px; }
+.ti-drops span { padding: 1px 8px; border: 1px solid var(--line); border-radius: 999px; background: var(--bg); color: var(--text); font-size: 14px; }
+.ti-meter { gap: 12px; }
+.ti-meter b { font-family: var(--font-stencil), var(--font-sans); font-size: 32px; line-height: 1; color: var(--text); }
+.ti-bar { position: relative; flex: 1; min-width: 80px; max-width: 160px; height: 8px; border-radius: 999px; background: var(--bg); border: 1px solid var(--line); overflow: hidden; }
+.ti-bar i { position: absolute; inset: 0; border-radius: inherit; background: linear-gradient(90deg, var(--heat-color), var(--forge-hot)); transform-origin: left; }
+
+/* the weld that joins the four */
+.trust-weld {
+  position: absolute; left: 8px; right: 8px; bottom: 6px; height: 2px; border-radius: 2px; transform-origin: left;
+  background: color-mix(in oklab, var(--heat-color) 70%, transparent);
+}
+.trust-weld::after {
+  content: ""; position: absolute; inset: -2px 0; border-radius: 4px; opacity: 0;
+  background: var(--forge-white); box-shadow: 0 0 18px 4px var(--forge-hot);
+}
+
+/* ---- the sequence: each plate (and the weld) is its own PunchIn, so stacked plates on a phone
+   strike as each reaches the screen. Declared paused while armed; run on go. In the 4-up row
+   all four are seen at once and strike in turn, 300 ms apart. */
+.trust-plate[data-armed] { --t: 0ms; animation: plate-shake 200ms linear calc(var(--t) + 520ms) both paused; }
+@media (min-width: 1024px) { .trust-plate[data-armed] { --t: calc(var(--i) * 300ms); } }
+.trust-plate[data-armed]::before { animation: plate-cool 1500ms ease-out calc(var(--t) + 700ms) both paused; }
+.trust-plate[data-armed] .press { animation: press-strike 640ms cubic-bezier(.5, 0, .3, 1) calc(var(--t) + 180ms) both paused; }
+.trust-plate[data-armed] .sparks i { animation: spark 560ms cubic-bezier(.1, .7, .3, 1) calc(var(--t) + 520ms) backwards paused; }
+.trust-plate[data-armed] [data-punch] { opacity: 0; animation: none; }   /* scaled up only once it strikes (a 2× mark would stick out of a phone) */
+:is(.trust-plate)[data-armed][data-punched]:is(.cleave[data-open] *, .cleave:not([data-armed]) *) [data-punch] { animation: punch-in 460ms cubic-bezier(.2, .9, .3, 1.2) calc(var(--t) + 470ms) both; }
+.trust-plate[data-armed] .ti-shackle { animation: ti-shackle 520ms cubic-bezier(.3, 1.6, .5, 1) calc(var(--t) + 1100ms) both paused; }
+.trust-plate[data-armed] .ti-price { animation: ti-rise 500ms var(--ease-forge) calc(var(--t) + 950ms) both paused; }
+.trust-plate[data-armed] .ti-week svg { animation: ti-pop 320ms cubic-bezier(.3, 1.6, .5, 1) calc(var(--t) + 900ms + var(--w) * 160ms) both paused; }
+.trust-plate[data-armed] .ti-chip { animation: ti-rise 420ms var(--ease-forge) calc(var(--t) + 1650ms) both paused; }
+.trust-plate[data-armed] .ti-keyart { animation: ti-turn 700ms cubic-bezier(.3, 1.4, .5, 1) calc(var(--t) + 950ms) both paused; }
+.trust-plate[data-armed] .ti-drops span { animation: ti-drop 420ms cubic-bezier(.3, 1.5, .5, 1) calc(var(--t) + 1300ms + var(--d) * 110ms) both paused; }
+.trust-plate[data-armed] .ti-bar i { animation: ti-fill 1200ms var(--ease-forge) calc(var(--t) + 950ms) both paused; }
+.trust-weld[data-armed] { --t: 500ms; animation: weld-draw 700ms cubic-bezier(.6, 0, .3, 1) var(--t) both paused; }
+@media (min-width: 1024px) { .trust-weld[data-armed] { --t: 2000ms; } }
+.trust-weld[data-armed]::after { animation: weld-glow 1400ms ease-out var(--t) both paused; }
+
+/* go: punched, and its Cleave is open (or there is no armed Cleave around it) */
+:is(.trust-plate, .trust-weld)[data-punched]:is(.cleave[data-open] *, .cleave:not([data-armed]) *),
+:is(.trust-plate, .trust-weld)[data-punched]:is(.cleave[data-open] *, .cleave:not([data-armed]) *) :is(.press, .sparks i, .ti *),
+:is(.trust-plate, .trust-weld)[data-punched]:is(.cleave[data-open] *, .cleave:not([data-armed]) *)::before,
+:is(.trust-plate, .trust-weld)[data-punched]:is(.cleave[data-open] *, .cleave:not([data-armed]) *)::after { animation-play-state: running; }
+.trust-plate::after { animation: none; }   /* the glint is a hover transition, never a keyframe */
+
+@keyframes plate-cool { 0% { opacity: .95; } 35% { opacity: .7; } 100% { opacity: 0; } }
+@keyframes plate-shake { 0%, 100% { transform: none; } 30% { transform: translateY(3px); } 60% { transform: translateY(-1px); } }
+@keyframes press-strike {
+  0% { opacity: 0; transform: translateY(-40px); }
+  15% { opacity: 1; }
+  52% { opacity: 1; transform: translateY(70px); }
+  62% { transform: translateY(66px); }
+  100% { opacity: 0; transform: translateY(-40px); }
+}
+@keyframes spark {
+  0% { opacity: 1; transform: rotate(var(--a)) translateX(0); }
+  100% { opacity: 0; transform: rotate(var(--a)) translateX(34px) translateY(10px); }
+}
+@keyframes ti-shackle { 0% { transform: translateY(-5px); } 100% { transform: none; } }
+@keyframes ti-rise { 0% { opacity: 0; transform: translateY(8px); } 100% { opacity: 1; transform: none; } }
+@keyframes ti-pop { 0% { opacity: 0; transform: scale(0); } 100% { opacity: 1; transform: none; } }
+@keyframes ti-turn { 0% { transform: rotate(-90deg); } 100% { transform: none; } }
+@keyframes ti-drop { 0% { opacity: 0; transform: translateY(-14px); } 100% { opacity: 1; transform: none; } }
+@keyframes ti-fill { 0% { transform: scaleX(0); } 100% { transform: none; } }
+@keyframes weld-draw { 0% { transform: scaleX(0); } 100% { transform: none; } }
+@keyframes weld-glow { 0% { opacity: 1; } 100% { opacity: 0; } }
 
 /* hallmark punch (plan D #2, components/motion/punch-in.tsx): struck in once, staggered by --i */
 .punch {

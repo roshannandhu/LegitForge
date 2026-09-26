@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { getMember, publishedProjectTitles } from '@/lib/admin/db';
+import { getMember, projectTitles } from '@/lib/admin/db';
 import { deleteMemberAction, regenerateCardAction, removeMemberPhotoAction, saveMemberAction } from '../../actions';
 import { ActionButton, ActionForm, Submit } from '../../ui';
 import { ImageManager } from '../../projects/[id]/image-manager';
@@ -10,7 +10,7 @@ export default async function EditMember({ params }: { params: Promise<{ id: str
   const { id } = await params;
   const m = await getMember(id);
   if (!m) notFound();
-  const projects = await publishedProjectTitles();
+  const projects = await projectTitles();
 
   return (
     <>
@@ -47,7 +47,7 @@ export default async function EditMember({ params }: { params: Promise<{ id: str
             <label className="field"><span>Favourite build <small>(on the card back)</small></span>
               <select name="favorite_project_id" defaultValue={m.favorite_project_id ?? ''}>
                 <option value="">None yet</option>
-                {projects.map((p) => <option key={p.id} value={p.id}>{p.title}</option>)}
+                {projects.map((p) => <option key={p.id} value={p.id}>{p.title}{p.is_published ? '' : ' (draft: shows once published)'}</option>)}
               </select></label>
             <label className="field"><span>Currently building <small>(on the ID card; keep it true, blank hides it)</small></span><input name="building" defaultValue={m.building ?? ''} maxLength={60} placeholder="a clinic booking app" /></label>
             <label className="field"><span>Skills <small>(comma separated, up to 6, on the card)</small></span><input name="skills" defaultValue={parse(m.skills).join(', ')} /></label>

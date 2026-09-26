@@ -119,11 +119,20 @@ export async function saveProjectAction(id: string, _: FormState, f: FormData): 
   return { ok: 'Saved.' };
 }
 
-export async function publishProjectAction(id: string, published: boolean) {
+/** Publishing needs what every card and case study shows: a client line and a summary. A draft
+ *  from "Add from GitHub" has no client line yet, so the owner checks it before it goes live. */
+export async function publishProjectAction(id: string, published: boolean): Promise<FormState> {
   await requireAdmin();
+  if (published) {
+    const row = await db.getProjectRow(id);
+    if (!row) return { error: 'That project no longer exists.' };
+    if (!row.client_type.trim() || !row.summary.trim()) return { error: 'Fill in the client and the one-line summary, save, then publish.' };
+  }
   await db.setPublished(id, published);
   refreshPublic();
   revalidatePath('/admin/projects');
+  revalidatePath(`/admin/projects/${id}`);
+  return { ok: published ? 'Published.' : 'Unpublished.' };
 }
 
 export async function moveProjectAction(id: string, dir: -1 | 1) {
@@ -133,8 +142,9 @@ export async function moveProjectAction(id: string, dir: -1 | 1) {
   revalidatePath('/admin/projects');
 }
 
-export async function deleteProjectAction(id: string) {
+export async function deleteProjectAction(id: string, f: FormData) {
   await requireAdmin();
+  if (f.get('confirm') !== 'on') return;
   const keys = await db.deleteProject(id);
   const media = (await getEnv())?.MEDIA;
   if (media && keys.length) await media.delete(keys);
@@ -239,6 +249,8 @@ export async function saveMemberAction(id: string, _: FormState, f: FormData): P
   }
   const bio = str(f, 'bio', 1200);
   if (bio.length < 40) return { error: 'Write a bio of at least a couple of sentences.' };
+  const before = await db.getMember(id);
+  if (!before) return { error: 'That person no longer exists.' };
   await db.updateMember(id, {
     slug, name: str(f, 'name', 80), role: str(f, 'role', 80), id_code: idCode, bio,
     skills: JSON.stringify(csv(f, 'skills').slice(0, 6)), tools: JSON.stringify(csv(f, 'tools').slice(0, 12)),
@@ -247,6 +259,7 @@ export async function saveMemberAction(id: string, _: FormState, f: FormData): P
     initials: str(f, 'initials', 3).toUpperCase() || null,
     building: opt(f, 'building', 60),
   });
+  if (before.slug !== slug) { await db.renameCredits(before.slug, slug); updateTag('projects'); }
   updateTag('team');
   revalidatePath('/admin/team');
   revalidatePath(`/admin/team/${id}`);
@@ -255,6 +268,7 @@ export async function saveMemberAction(id: string, _: FormState, f: FormData): P
 
 export async function publishMemberAction(id: string, published: boolean) {
   await requireAdmin();
+  if (published && !(await db.getMember(id))?.bio.trim()) return;   // the button only shows once the profile is filled in
   await db.setMemberPublished(id, published);
   updateTag('team');
   revalidatePath('/admin/team');
@@ -282,7 +296,9 @@ export async function moveMemberAction(id: string, dir: -1 | 1) {
 export async function deleteMemberAction(id: string, f: FormData) {
   await requireAdmin();
   if (f.get('confirm') !== 'on') return;
+  const gone = await db.getMember(id);
   const key = await db.deleteMember(id);
+  if (gone) { await db.renameCredits(gone.slug, null); updateTag('projects'); }
   const media = (await getEnv())?.MEDIA;
   if (media && key) await media.delete(key);
   updateTag('team');

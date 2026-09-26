@@ -19,7 +19,7 @@ import { Quench } from '@/components/sections/quench';
 import { HallmarkStrike } from '@/components/intro/hallmark-strike';
 import { PROCESS, SERVICES } from '@/lib/content';
 import { getTeam, toCards } from '@/lib/team';
-import { SITE, waLink } from '@/lib/site';
+import { ORG_ID, SITE, waLink } from '@/lib/site';
 import { LAYERS } from '@/lib/teardown';
 import '@/components/hero/hero.css';
 import '@/components/sections/sections.css';
@@ -41,7 +41,7 @@ const SERVICE_URL: Record<string, string> = {
 
 /** The site, the studio, and the five systems the hero takes apart (PLAN §10.4, SEO plan B). */
 const siteLd = [
-  { '@context': 'https://schema.org', '@type': 'WebSite', name: SITE.name, url: SITE.url, inLanguage: 'en-IN' },
+  { '@context': 'https://schema.org', '@type': 'WebSite', name: SITE.name, url: SITE.url, inLanguage: 'en-IN', publisher: { '@id': ORG_ID } },
   {
     '@context': 'https://schema.org', '@type': 'ItemList', name: 'What we build, layer by layer',
     itemListElement: LAYERS.map((l, i) => ({
@@ -55,6 +55,7 @@ const siteLd = [
 const orgLd = {
   '@context': 'https://schema.org',
   '@type': 'ProfessionalService',
+  '@id': ORG_ID,
   logo: `${SITE.url}/icon.svg`,
   image: `${SITE.url}/opengraph-image`,
   name: SITE.name,
@@ -63,6 +64,9 @@ const orgLd = {
   description:
     'A two-person studio building websites, web apps, quotation and warranty systems, WhatsApp automation and n8n workflows.',
   areaServed: SITE.city,
+  address: { '@type': 'PostalAddress', addressLocality: SITE.city, addressCountry: SITE.country },
+  ...(SITE.whatsappNumber ? { telephone: `+${SITE.whatsappNumber}` } : {}),
+  ...(() => { const same = Object.values(SITE.social).filter(Boolean); return same.length ? { sameAs: same } : {}; })(),
   openingHoursSpecification: {
     '@type': 'OpeningHoursSpecification',
     dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],

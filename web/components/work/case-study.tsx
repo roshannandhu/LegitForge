@@ -4,7 +4,7 @@ import { JsonLd } from '@/components/pages/json-ld';
 import { ProjectCard } from '@/components/work/project-card';
 import { CheckIcon, ExternalIcon } from '@/components/ui/icons';
 import { getTeam } from '@/lib/team';
-import { SITE } from '@/lib/site';
+import { orgRef, SITE } from '@/lib/site';
 import type { WorkProject } from '@/lib/work';
 
 /** Case study (PLAN §7.2): header → cover → challenge → what we built → results with sources →
@@ -98,7 +98,7 @@ export async function CaseStudy({ p, next }: { p: WorkProject; next?: WorkProjec
         name: p.title,
         url: `${SITE.url}/work/${p.slug}`,
         about: p.client,
-        creator: { '@type': 'Organization', name: SITE.name, url: SITE.url },
+        creator: orgRef,
         keywords: c.stack.join(', '),
         image: p.cover ? `${SITE.url}${p.cover.src}` : `${SITE.url}/og/work/${p.slug}`,
         ...(c.results.length ? { abstract: c.results.map((r) => `${r.value} ${r.label}`).join('; ') } : {}),

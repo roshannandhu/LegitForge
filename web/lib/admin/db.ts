@@ -80,10 +80,14 @@ export async function moveProject(id: string, dir: -1 | 1) {
   await db.batch(ids.map((pid, n) => db.prepare('UPDATE projects SET sort_order = ? WHERE id = ?').bind(n, pid)));
 }
 
+/** Also clears what points at the project (a favourite build, member credits): D1 enforces
+ *  foreign keys, so leaving them made the delete fail. Returns the R2 keys to delete. */
 export async function deleteProject(id: string) {
   const db = await adminDb();
-  const keys = (await db.prepare('SELECT r2_key FROM project_images WHERE project_id = ?').bind(id).all<{ r2_key: string }>()).results;
+  const keys = (await db.prepare('SELECT DISTINCT r2_key FROM project_images WHERE project_id = ?').bind(id).all<{ r2_key: string }>()).results;
   await db.batch([
+    db.prepare('UPDATE team_members SET favorite_project_id = NULL WHERE favorite_project_id = ?').bind(id),
+    db.prepare('DELETE FROM member_projects WHERE project_id = ?').bind(id),
     db.prepare('DELETE FROM project_images WHERE project_id = ?').bind(id),
     db.prepare('DELETE FROM projects WHERE id = ?').bind(id),
   ]);
@@ -102,9 +106,13 @@ export async function insertImage(v: Omit<ImageRow, 'id' | 'sort_order'>) {
   const last = await db.prepare('SELECT COALESCE(MAX(sort_order), -1) AS m, COUNT(*) AS n FROM project_images WHERE project_id = ?')
     .bind(v.project_id).first<{ m: number; n: number }>();
   const kind = last?.n ? v.kind : 'cover';                      // the first image is the cover
-  await db.prepare(
-    `INSERT INTO project_images (id, project_id, r2_key, alt, kind, width, height, dominant_color, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-  ).bind(id, v.project_id, v.r2_key, v.alt, kind, v.width, v.height, v.dominant_color, (last?.m ?? -1) + 1).run();
+  await db.batch([
+    // one cover per project: a new cover moves the old one to the gallery
+    ...(kind === 'cover' ? [db.prepare(`UPDATE project_images SET kind = 'gallery' WHERE project_id = ? AND kind = 'cover'`).bind(v.project_id)] : []),
+    db.prepare(
+      `INSERT INTO project_images (id, project_id, r2_key, alt, kind, width, height, dominant_color, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).bind(id, v.project_id, v.r2_key, v.alt, kind, v.width, v.height, v.dominant_color, (last?.m ?? -1) + 1),
+  ]);
   return id;
 }
 
@@ -116,11 +124,21 @@ export async function setCover(projectId: string, imageId: string) {
   ]);
 }
 
+/** Returns the R2 key to delete, or null while another row still shows the same file (keys are
+ *  content hashes, so uploading one image twice shares it). A deleted cover hands over to the
+ *  next image, so the project never loses its cover. */
 export async function deleteImage(projectId: string, imageId: string) {
   const db = await adminDb();
-  const row = await db.prepare('SELECT r2_key FROM project_images WHERE id = ? AND project_id = ?').bind(imageId, projectId).first<{ r2_key: string }>();
+  const row = await db.prepare('SELECT r2_key, kind FROM project_images WHERE id = ? AND project_id = ?').bind(imageId, projectId).first<{ r2_key: string; kind: string }>();
+  if (!row) return null;
   await db.prepare('DELETE FROM project_images WHERE id = ? AND project_id = ?').bind(imageId, projectId).run();
-  return row?.r2_key ?? null;
+  if (row.kind === 'cover') {
+    await db.prepare(
+      `UPDATE project_images SET kind = 'cover' WHERE id = (SELECT id FROM project_images WHERE project_id = ? ORDER BY kind = 'gallery' DESC, sort_order LIMIT 1)`,
+    ).bind(projectId).run();
+  }
+  const shared = await db.prepare('SELECT 1 FROM project_images WHERE r2_key = ?').bind(row.r2_key).first();
+  return shared ? null : row.r2_key;
 }
 
 /* ------------------------------------------------------------------ leads */
@@ -179,7 +197,11 @@ export async function setTestimonialPublished(id: string, published: boolean) {
 }
 
 export async function deleteTestimonial(id: string) {
-  await (await adminDb()).prepare('DELETE FROM testimonials WHERE id = ?').bind(id).run();
+  const db = await adminDb();
+  await db.batch([
+    db.prepare('UPDATE projects SET testimonial_id = NULL WHERE testimonial_id = ?').bind(id),   // foreign key
+    db.prepare('DELETE FROM testimonials WHERE id = ?').bind(id),
+  ]);
 }
 
 /* ------------------------------------------------------------------ site stats */
@@ -306,6 +328,20 @@ export async function deleteMember(id: string) {
   return row?.photo_key ?? null;
 }
 
-export async function publishedProjectTitles() {
-  return (await (await adminDb()).prepare('SELECT id, title FROM projects ORDER BY sort_order').all<{ id: string; title: string }>()).results;
+export async function projectTitles() {
+  return (await (await adminDb()).prepare('SELECT id, title, is_published FROM projects ORDER BY sort_order').all<{ id: string; title: string; is_published: number }>()).results;
+}
+
+/** Projects credit people by slug (projects.team JSON): follow a renamed slug, drop a removed person. */
+export async function renameCredits(from: string, to: string | null) {
+  const db = await adminDb();
+  const rows = (await db.prepare('SELECT id, team FROM projects WHERE team LIKE ?').bind(`%"${from}"%`).all<{ id: string; team: string }>()).results;
+  const updates = rows.flatMap((r) => {
+    let team: { slug: string; role: string }[];
+    try { team = JSON.parse(r.team); } catch { return []; }
+    if (!team.some((t) => t.slug === from)) return [];
+    const next = to ? team.map((t) => (t.slug === from ? { ...t, slug: to } : t)) : team.filter((t) => t.slug !== from);
+    return [db.prepare('UPDATE projects SET team = ? WHERE id = ?').bind(JSON.stringify(next), r.id)];
+  });
+  if (updates.length) await db.batch(updates);
 }

@@ -1,6 +1,6 @@
 import { listProjects } from '@/lib/admin/db';
 import { createProjectAction, moveProjectAction, publishProjectAction } from '../actions';
-import { ActionForm, Submit } from '../ui';
+import { ActionButton, ActionForm, Submit } from '../ui';
 import { GithubAdd } from './github-add';
 
 export default async function AdminProjects() {
@@ -15,7 +15,7 @@ export default async function AdminProjects() {
 
       <GithubAdd />
 
-      <h2 className="type-h3">Or start from a title</h2>
+      <h2 className="type-h3 admin-subhead">Or start from a title</h2>
       <ActionForm action={createProjectAction} className="admin-form">
         <div className="admin-grid">
           <label className="field"><span>New project title</span><input name="title" required maxLength={120} placeholder="Sweet Crumbs Bakery website" /></label>
@@ -46,9 +46,7 @@ export default async function AdminProjects() {
                     <td><span className={`pill${p.is_published ? ' is-on' : ''}`}>{p.is_published ? 'Published' : 'Draft'}</span></td>
                     <td>
                       <div className="admin-actions">
-                        <form action={publishProjectAction.bind(null, p.id, !p.is_published)}>
-                          <button className="btn btn-ghost btn-sm">{p.is_published ? 'Unpublish' : 'Publish'}</button>
-                        </form>
+                        <ActionButton action={publishProjectAction.bind(null, p.id, !p.is_published)}>{p.is_published ? 'Unpublish' : 'Publish'}</ActionButton>
                         <a className="btn btn-ghost btn-sm" href={`/admin/preview/${p.slug}`} target="_blank" rel="noopener">Preview</a>
                       </div>
                     </td>

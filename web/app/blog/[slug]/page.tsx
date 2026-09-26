@@ -6,7 +6,7 @@ import { JsonLd } from '@/components/pages/json-ld';
 import { findPost, formatDate, postStats, posts, relatedPosts } from '@/lib/blog';
 import { getTeam } from '@/lib/team';
 import { SERVICE_PAGES } from '@/lib/pages';
-import { SITE } from '@/lib/site';
+import { orgRef, SITE } from '@/lib/site';
 import '../../pages.css';
 
 export const dynamicParams = false;
@@ -90,12 +90,13 @@ export default async function BlogPost({ params }: { params: Promise<{ slug: str
         headline: p.title,
         description: p.description,
         datePublished: p.date,
+        dateModified: p.date,
         wordCount: stats.words,
         image: `${SITE.url}/blog/${p.slug}/opengraph-image`,
         url: `${SITE.url}/blog/${p.slug}`,
         mainEntityOfPage: `${SITE.url}/blog/${p.slug}`,
         author: author ? { '@type': 'Person', name: author.name, url: `${SITE.url}/team/${author.slug}` } : undefined,
-        publisher: { '@type': 'Organization', name: SITE.name, url: SITE.url },
+        publisher: orgRef,
       }} />
     </>
   );
