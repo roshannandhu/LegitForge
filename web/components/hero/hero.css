@@ -65,13 +65,17 @@
   opacity: 0; transition: opacity 300ms var(--ease-forge);
 }
 .td-word span { display: inline-block; }
-.td-final { position: absolute; inset: 0; opacity: 0; transition: opacity 300ms var(--ease-forge);  }
+.td-final {   /* the six screens not on show are skipped by the renderer, not just transparent */
+  position: absolute; inset: 0; opacity: 0; transition: opacity 300ms var(--ease-forge); content-visibility: hidden;
+}
 .td-screen[data-state="brand"] .td-word { opacity: 1; }
+.td-screen[data-state="final"][data-lead="seo"] .td-final[data-for="seo"],
+.td-screen[data-state="final"][data-lead="nfc"] .td-final[data-for="nfc"],
 .td-screen[data-state="final"][data-lead="web"] .td-final[data-for="web"],
 .td-screen[data-state="final"][data-lead="wa"] .td-final[data-for="wa"],
 .td-screen[data-state="final"][data-lead="n8n"] .td-final[data-for="n8n"],
 .td-screen[data-state="final"][data-lead="quote"] .td-final[data-for="quote"],
-.td-screen[data-state="final"][data-lead="warranty"] .td-final[data-for="warranty"] { opacity: 1; }
+.td-screen[data-state="final"][data-lead="warranty"] .td-final[data-for="warranty"] { opacity: 1; content-visibility: visible; }
 [data-motion="off"] :is(.td-word, .td-final) { transition: none; }
 /* the glass has lifted out: a dark screen with a faint circuit grid */
 .td-screen[data-state="dark"] {
