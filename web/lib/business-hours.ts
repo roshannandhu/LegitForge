@@ -21,8 +21,16 @@ export const opensAtLabel = () => {
  *  working hours (never past closing), else that long after the next opening. In the
  *  studio's time zone; browser only, like isOpenNow. e.g. "4:10 p.m." or "12 p.m. tomorrow". */
 export function replyByLabel(now = new Date()) {
+  return nextLabel(now, (parseFloat(SITE.replyWithin) || 2) * 60, true);
+}
+
+/** When the forge next opens (plan D #13), e.g. "10 a.m. tomorrow"; "" while open. */
+export function opensNextLabel(now = new Date()) {
+  return isOpenNow(now) ? '' : nextLabel(now, 0, false);
+}
+
+function nextLabel(now: Date, within: number, whileOpen: boolean) {
   const { days, from, to, timeZone } = SITE.hours;
-  const within = (parseFloat(SITE.replyWithin) || 2) * 60;
   const parts = new Intl.DateTimeFormat('en-GB', {
     timeZone, weekday: 'short', hour: 'numeric', minute: 'numeric', hourCycle: 'h23',
   }).formatToParts(now);
@@ -36,7 +44,7 @@ export function replyByLabel(now = new Date()) {
     const h = Math.floor(m / 60), mm = m % 60, h12 = h % 12 || 12;
     return `${h12}${mm ? `:${String(mm).padStart(2, '0')}` : ''} ${h >= 12 ? 'p.m.' : 'a.m.'}`;
   };
-  if (works(day) && mins >= from * 60 && mins < to * 60) return clock(Math.min(mins + within, to * 60));
+  if (whileOpen && works(day) && mins >= from * 60 && mins < to * 60) return clock(Math.min(mins + within, to * 60));
   if (works(day) && mins < from * 60) return `${clock(from * 60 + within)} today`;
   for (let k = 1; k <= 7; k++) {
     const d = (day + k) % 7;
