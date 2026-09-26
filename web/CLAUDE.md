@@ -47,6 +47,12 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
 - The hero's no-JS / motion-off frame is the finished exploded stack. Each layer's position, tilt
   and scale are CSS variables (--x --y --tilt --s) with server-rendered slot values; GSAP animates
   the same variables, so if you move a slot in lib/teardown.ts, both stay in step.
+- Service demos (DemoPlayer) loop while on screen and pause off screen; each loop rebuilds its
+  timeline from the finished frame. Their hidden step text is lib/demo-transcripts.ts: keep it
+  true when a demo changes.
+- Punch-ins (components/motion/punch-in.tsx): marks with [data-punch] inside a PunchIn are struck
+  in once on view; without JS or motion they are simply there.
+- "Now" (open/closed, reply-by, forge status) is computed in the browser only: lib/business-hours.ts.
 - Live screens (layer-screens.tsx) are FINAL frames; flows play them from start states. Hide
   things until their turn with set(), never a short from() (it snaps back to visible).
 - Screen UIs are sized in cqw: the container is the glass / phone screen, never the .ls itself.

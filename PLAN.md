@@ -4211,7 +4211,7 @@ If Meta verification is late, launch with plain "Chat on WhatsApp" links and swi
 | Visit live site | Opens the client's site in a new tab | Project cards, case studies |
 | Open [Name]'s portfolio | Opens the member page | Team |
 | Flip [Name]'s card | Flips the card | Team name tags |
-| Replay demo | Replays a service demo | Services, on phones |
+| ~~Replay demo~~ | Removed: demos loop non-stop while on screen (§22.3) | — |
 | Send project details | Submits the form | Quench, contact page |
 
 Rule: the same action always has the same label. "Chat on WhatsApp" is never called "Contact us" somewhere else.
@@ -4450,6 +4450,20 @@ So the plan is three releases, and **we launch at the first one**.
 - **Image sitemap:** covers and team photos, with project `lastmod`.
 - **Capture cover from the live URL:** Browser Rendering; needs the paid `BROWSER` binding. |
 | Demos and SEO | Done. Demos loop non-stop while on screen (Replay removed; hero untouched). Every animation has hidden step-by-step text. Home adds WebSite and ItemList data. The check enforces one h1, a canonical, title ≤ 70 and description 50–160 |
+| Section detailing (plan D, 13 items) | Done, each checked at 375, 768 and 1440:
+1. **Hero:** the customer's thread through the layers.
+2. **Trust strip:** hallmark punches.
+3. **Services:** a demo card warms while it runs; time chips.
+4. **Quotation:** request as a WhatsApp bubble; the coin seal stamps ACCEPTED.
+5. **Compare:** hot-chisel handle with price and time at each end.
+6. **Live test:** reply stopwatch.
+7. **Process:** deliverables drop in.
+8. **Projects:** before → after proof (admin fields).
+9. **Team:** "Now building" (admin), shared swing.
+10. **Hallmarks:** testimonials from the admin.
+11. **Pricing:** timeline bars; FAQ spark.
+12. **Contact:** the form quenches; RECEIVED with the reply-by time.
+13. **Footer:** forge status. |
 | **Left for launch** | Everything under "Left for R1", plus the Access application and its two secrets (web/README.md "Admin"), and Browser Rendering if cover capture is wanted |
 
 ### 22.4 Next build steps (handover) — both built, see §22.3
