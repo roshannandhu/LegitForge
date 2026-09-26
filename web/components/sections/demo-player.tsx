@@ -76,7 +76,16 @@ export function DemoPlayer({ kind, children }: { kind: DemoId; children: React.R
       },
     }));
 
-    build();                                                   // start state now, while (usually) off screen
+    // build the intro only when the demo comes within 600px of the screen: building all seven
+    // at load (each measures layout) was a large share of a budget phone's load time
+    let built = false;
+    const near = new IntersectionObserver(([e]) => {
+      if (!e.isIntersecting || built) return;
+      built = true; near.disconnect();
+      build();                                                 // start state now, still off screen
+      if (visible) cur?.resume();
+    }, { rootMargin: '600px 0px' });
+    near.observe(el);
     const io = new IntersectionObserver(([e]) => {
       visible = e.isIntersecting;
       if (visible) cur?.resume(); else cur?.pause();
@@ -87,6 +96,7 @@ export function DemoPlayer({ kind, children }: { kind: DemoId; children: React.R
     io.observe(el);
 
     return () => {
+      near.disconnect();
       io.disconnect();
       cur?.kill();
       delete el.dataset.running;
