@@ -114,13 +114,17 @@ function n8n(root: Element, gsap: G): TL {
       : { scaleX: 0, transformOrigin: 'left center', duration: hop * 4, ease: 'none' }, 0.35)
     .set(checks, { scale: 0.7, opacity: 0.35 }, 0)                   // unlit until the packet arrives
     .set(outs, { opacity: 0, y: -4 }, 0)
+    .set($$(root, '.flow-ok'), { scale: 0 }, 0)
+    .from($(root, '.n8n-top'), { opacity: 0, y: -8, duration: 0.4 }, 0)
+    .from($(root, '.n8n-log'), { opacity: 0, y: 8, duration: 0.4 }, 0.35 + hop * 4)
     .fromTo($(root, '.flow-packet'), { x: 0, opacity: 0 }, { opacity: 1, duration: 0.2, immediateRender: true }, 0.15)
     .to($(root, '.flow-packet'), { [vertical ? 'y' : 'x']: () => span(), duration: hop * 4, ease: 'none' }, 0.35)
     .to($(root, '.flow-packet'), { opacity: 0, duration: 0.2 }, 0.35 + hop * 4);
   checks.forEach((c, i) => {
     const at = 0.3 + i * hop;
     tl.to(c, { scale: 1, opacity: 1, duration: 0.3, ease: 'back.out(3)' }, at)
-      .to(outs[i], { opacity: 1, y: 0, duration: 0.25 }, at + 0.1);
+      .to(outs[i], { opacity: 1, y: 0, duration: 0.25 }, at + 0.1)
+      .to(c.querySelector('.flow-ok'), { scale: 1, duration: 0.3, ease: 'back.out(3)' }, at + 0.15);
   });
   return tl;
 }
@@ -283,7 +287,9 @@ function n8nFlow(root: Element, gsap: G): TL {
   const hop = 0.5;
   const intents = ['intent: booking', 'intent: question', 'intent: order'];
   const sources = ['new entry', 'new message', 'new call'];
-  let row = numOf(outs[1]), k = 0;
+  const count = $(root, '.n8n-count'), json = $(root, '.n8n-json');
+  const names = ['Anu', 'Rahul', 'Fathima', 'Joseph'];
+  let row = numOf(outs[1]), k = 0, runs = numOf(count);
   tl.fromTo(packet, { [axis]: 0, opacity: 0 }, { opacity: 1, duration: 0.15, immediateRender: false }, 0)
     .to(packet, { [axis]: () => span(), duration: hop * 4, ease: 'none' }, 0.1)
     .to(packet, { opacity: 0, duration: 0.15 }, 0.1 + hop * 4);
@@ -294,7 +300,11 @@ function n8nFlow(root: Element, gsap: G): TL {
     if (j === 0) tl.call(() => txt(outs[0], sources[k % sources.length]), [], at);
     if (j === 1) tl.call(() => txt(outs[1], `row #${++row}`), [], at);
     if (j === 2) tl.call(() => txt(outs[2], intents[k % intents.length]), [], at);
-    if (j === checks.length - 1) tl.call(() => { k++; }, [], at);
+    if (j === checks.length - 1) tl.call(() => {
+      txt(count, (++runs).toLocaleString('en-IN'));
+      txt(json, `{ "name": "${names[k % names.length]}", "intent": "${intents[k % intents.length].slice(8)}", "row": ${row} }`);
+      k++;
+    }, [], at);
   });
   tl.to({}, { duration: 0.5 }, 0.1 + hop * 4 + 0.15);
   return tl;

@@ -9,6 +9,13 @@ export const MOTION_BOOT_SCRIPT =
   `try{var m=localStorage.getItem('lf-motion');var r=matchMedia('${REDUCED}').matches;` +
   `document.documentElement.dataset.motion=(m==='off'||r)?'off':'on'}catch(e){}`;
 
+/** The theme follows the device (next-themes, defaultTheme "system"). The lever's choice holds
+ *  while the visitor moves around the site, but a new visit or a reload starts from the device
+ *  again: the stored choice is dropped before next-themes reads it. Runs before its script. */
+export const THEME_BOOT =
+  `try{var s=sessionStorage,n=performance.getEntriesByType('navigation')[0];` +
+  `if(!s.getItem('lf-visit')||(n&&n.type==='reload'))localStorage.removeItem('theme');s.setItem('lf-visit','1')}catch(e){}`;
+
 /** html[data-lite]: a weak device (≤ 3 GB RAM, ≤ 4 cores, Data Saver or a 2G connection). It sees
  *  exactly the same site, every animation included; only the ORDER of work changes: parts below
  *  the view are laid out as they come near, and GSAP loads once the page is idle. Decided before

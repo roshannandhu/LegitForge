@@ -257,39 +257,73 @@ export default function TeardownMotion() {
         near.unobserve(en.target);
       }), { rootMargin: '200px 300px' });
       layers.forEach((el) => near.observe(el));
-      const io = new IntersectionObserver((entries) => entries.forEach((en) => {
-        if (!en.isIntersecting) return;
-        const i = layers.indexOf(en.target as HTMLElement);
-        build(i).play(0);
+      // The card centred in the row is the active one: its flow plays (again, every time it
+      // comes round), the others rest on their finished frame, and the phone in the hand shows
+      // it. The row moves on once that flow has played, NFC glides back to SEO, a swipe takes
+      // over (it carries on 6 s after the last touch), and all of it pauses off screen.
+      const row = layers[0].parentElement!;
+      let active = -1, onScreen = false, lastTouch = 0;
+      let advance: ReturnType<typeof gsap.delayedCall> | undefined;
+      const center = (card: HTMLElement) => row.scrollTo({ left: card.offsetLeft - (row.clientWidth - card.offsetWidth) / 2, behavior: 'smooth' });
+      const mirror = () => { if (active >= 0) { toFinal.kill(); screen.dataset.lead = LAYERS[active].id; setScreen('final'); } };
+      const schedule = (delay: number) => {
+        advance?.kill();
+        advance = gsap.delayedCall(delay, () => {
+          const wait = 6 - (Date.now() - lastTouch) / 1000;               // a swipe holds it for 6 s
+          if (wait > 0) return schedule(wait);
+          center(layers[(active + 1) % layers.length]);
+        });
+        if (!onScreen) advance.pause();
+      };
+      const activate = (i: number) => {
+        if (i === active) return;
+        active = i;
+        flows.forEach((f, k) => { if (f && k !== i) f.pause().progress(1); });
+        const flow = build(i).play(0);
         layers[i].setAttribute('data-lit', '');
-        io.unobserve(en.target);
         ran.delete('wait'); ran.add(LAYERS[i].id);
         if (LAYERS.every((l) => ran.has(l.id))) ran.add('done');
         showLog(ran); setAct(ran.has('done') ? 3 : 2);
-      }), { threshold: 0.6 });
-      layers.forEach((el) => io.observe(el));
-
-      // the row moves on to the next card by itself while it is on screen; a touch stops it
-      const row = layers[0].parentElement!;
-      let auto = 0, onScreen = false, touched = false;
-      const next = () => {
-        if (!onScreen || touched) return;
-        const x = row.scrollLeft + row.clientWidth / 2;
-        const i = layers.findIndex((l) => l.offsetLeft + l.offsetWidth / 2 > x + 8);
-        const card = layers[i < 0 ? 0 : i];
-        row.scrollTo({ left: card.offsetLeft - (row.clientWidth - card.offsetWidth) / 2, behavior: 'smooth' });
+        if (onScreen) mirror();
+        schedule(flow.duration() + 1.4);
       };
+      const ratios = new Map<Element, number>();
+      const pick = () => {
+        const mid = row.scrollLeft + row.clientWidth / 2;
+        let best = -1, dist = Infinity;
+        layers.forEach((l, k) => {
+          if ((ratios.get(l) ?? 0) < 0.6) return;
+          const d = Math.abs(l.offsetLeft + l.offsetWidth / 2 - mid);
+          if (d < dist) { dist = d; best = k; }
+        });
+        return best;
+      };
+      const io = new IntersectionObserver((entries) => {
+        entries.forEach((en) => ratios.set(en.target, en.isIntersecting ? en.intersectionRatio : 0));
+        const best = pick();
+        if (best >= 0 && onScreen) activate(best);
+      }, { root: row, threshold: [0, 0.6, 1] });
+      layers.forEach((el) => io.observe(el));
       const vis = new IntersectionObserver(([e]) => {
         onScreen = e.isIntersecting;
-        clearInterval(auto);
-        if (onScreen && !touched) auto = window.setInterval(next, 4200);
-      }, { threshold: 0.6 });
+        const flow = active >= 0 ? flows[active] : undefined;
+        if (onScreen) {
+          if (active < 0) { const best = pick(); if (best >= 0) activate(best); }
+          else { flow?.resume(); advance?.resume(); mirror(); }
+        } else {
+          flow?.pause(); advance?.pause();
+          screen.dataset.lead = lead.current;                              // the chip's pick again
+        }
+      }, { threshold: 0.5 });
       vis.observe(row);
-      const hold = () => { touched = true; clearInterval(auto); };
-      row.addEventListener('touchstart', hold, { passive: true });
-      row.addEventListener('pointerdown', hold, { passive: true });
-      return () => { vis.disconnect(); clearInterval(auto); row.removeEventListener('touchstart', hold); row.removeEventListener('pointerdown', hold);
-        near.disconnect(); io.disconnect(); toFinal.kill(); window.removeEventListener(LEAD_EVENT, onLead); flows.forEach((f) => f?.progress(1)); };
+      const touch = () => { lastTouch = Date.now(); };
+      row.addEventListener('touchstart', touch, { passive: true });
+      row.addEventListener('pointerdown', touch, { passive: true });
+      return () => {
+        vis.disconnect(); io.disconnect(); near.disconnect(); advance?.kill(); toFinal.kill();
+        row.removeEventListener('touchstart', touch); row.removeEventListener('pointerdown', touch);
+        window.removeEventListener(LEAD_EVENT, onLead); flows.forEach((f) => f?.progress(1));
+      };
     });
   }, { scope: root, dependencies: [motionOn] });
 

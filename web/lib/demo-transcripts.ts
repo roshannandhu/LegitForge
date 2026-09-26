@@ -43,6 +43,7 @@ export const DEMO_TRANSCRIPTS: Record<DemoId, { title: string; steps: string[] }
       'An AI step reads the message and tags the intent as an order.',
       'A WhatsApp reply goes to the customer automatically.',
       'The team gets an alert, so a person follows up.',
+      'The workflow shows as Active; its output panel shows the entry it just handled, and the executions counter goes up by one.',
       'Entries keep flowing through, from forms, messages and calls: each one is saved as the next row (215, 216 and on) and tagged as a booking, a question or an order.',
     ],
   },

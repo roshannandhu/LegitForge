@@ -5,7 +5,7 @@
  *  finished demo. Each is aria-hidden; its step-by-step text (lib/demo-transcripts.ts) sits
  *  beside it, visually hidden, for screen readers and search engines. */
 
-import { CheckIcon } from '@/components/ui/icons';
+import { CheckIcon, GoogleG } from '@/components/ui/icons';
 import type { DemoKind } from '@/lib/content';
 import { DemoPlayer } from './demo-player';
 import { DemoTranscript } from './demo-transcript';
@@ -99,7 +99,7 @@ function AppDemo() {
 function SeoDemo() {
   return (
     <div className="serp">
-      <div className="serp-bar"><span className="serp-g" /><span className="serp-q">ac installation kochi</span></div>
+      <div className="serp-bar"><GoogleG className="serp-g" /><span className="serp-q">ac installation kochi</span></div>
       <ol className="serp-list">
         <li className="serp-item is-you">
           <span className="serp-rank num">1</span>
@@ -156,22 +156,42 @@ function WhatsAppDemo() {
   );
 }
 
-/* 4 — n8n: one entry travels the workflow; every node lights up and says what it did */
+/* 4 — n8n: the editor as the owner sees it. One entry travels the workflow; every node lights
+       up and says what it did, the output panel shows the item, and the run counter ticks. */
+const N8N_ICONS: Record<string, React.ReactNode> = {
+  Form: <path d="M6 4h9l3 3v13H6zM9 10h6M9 13h6M9 16h4" />,
+  Sheet: <path d="M5 5h14v14H5zM5 10h14M5 15h14M10 5v14" />,
+  AI: <path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8zM18 15l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" />,
+  WhatsApp: <path d="M5 19l1.2-3.6A7.5 7.5 0 1 1 9 18.3zM9.5 9.5c0 3 2 5 5 5l1-1.5-2-1-1 1c-1 0-2.5-1.5-2.5-2.5l1-1-1-2z" />,
+  'Team alert': <path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15zM10 20a2 2 0 0 0 4 0" />,
+};
+
 function N8nDemo() {
   const nodes = [['Form', 'new entry'], ['Sheet', 'row #214'], ['AI', 'intent: order'], ['WhatsApp', 'sent ✓✓'], ['Team alert', 'team pinged']];
   return (
-    <div className="flow">
-      <svg className="flow-wire" viewBox="0 0 500 2" preserveAspectRatio="none"><path d="M0 1 H500" /></svg>
-      <span className="flow-packet" />
-      <ol className="flow-nodes">
-        {nodes.map(([n, out]) => (
-          <li key={n} className="flow-node">
-            <span className="flow-check"><CheckIcon /></span>
-            <span className="flow-name">{n}</span>
-            <span className="flow-out num">{out}</span>
-          </li>
-        ))}
-      </ol>
+    <div className="n8n">
+      <div className="n8n-top">
+        <span className="n8n-title">New enquiry → reply</span>
+        <span className="n8n-active"><i />Active</span>
+        <span className="n8n-runs">Executions <b className="num n8n-count">1,284</b></span>
+      </div>
+      <div className="flow">
+        <svg className="flow-wire" viewBox="0 0 500 2" preserveAspectRatio="none"><path d="M0 1 H500" /></svg>
+        <span className="flow-packet" />
+        <ol className="flow-nodes">
+          {nodes.map(([n, out]) => (
+            <li key={n} className="flow-node">
+              <span className="flow-check">
+                <svg viewBox="0 0 24 24" className="flow-icon" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{N8N_ICONS[n]}</svg>
+                <span className="flow-ok"><CheckIcon /></span>
+              </span>
+              <span className="flow-name">{n}</span>
+              <span className="flow-out num">{out}</span>
+            </li>
+          ))}
+        </ol>
+      </div>
+      <p className="n8n-log"><span>Output</span><code className="n8n-json">{'{ "name": "Anu", "intent": "order", "row": 214 }'}</code></p>
     </div>
   );
 }

@@ -271,7 +271,7 @@
 
 /* SEO layer (plan F): a results page, CoolAir on top */
 .ls-search { display: flex; align-items: center; gap: calc(3 * var(--cq)); padding: calc(3.4 * var(--cq)) calc(4 * var(--cq)); border-radius: calc(99 * var(--cq)); background: #1A232C; font-size: calc(7 * var(--cq)); }
-.ls-mag { flex: none; width: calc(5.5 * var(--cq)); height: calc(5.5 * var(--cq)); border: calc(1.2 * var(--cq)) solid #8B98A5; border-radius: 50%; }
+.ls-mag { flex: none; width: calc(6 * var(--cq)); height: calc(6 * var(--cq)); }   /* the Google G */
 .ls-results { display: grid; gap: calc(3 * var(--cq)); margin: calc(3 * var(--cq)) 0 0; padding: 0; list-style: none; }
 .ls-res { position: relative; display: grid; gap: calc(1 * var(--cq)); padding: calc(3.5 * var(--cq)) calc(4 * var(--cq)); border-radius: calc(3 * var(--cq)); background: #151D25; font-size: calc(6.4 * var(--cq)); }
 .ls-res b { color: #7CB7F0; font-size: calc(7.4 * var(--cq)); }
