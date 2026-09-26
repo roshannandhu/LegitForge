@@ -2,12 +2,12 @@ import { ExternalIcon } from '@/components/ui/icons';
 import { getProjects } from '@/lib/work';
 import { WorkGallery, type GalleryItem } from '@/components/work/work-gallery';
 
-/** Projects "Work that's live right now" (PLAN §6.7, plan F step 6): a React Bits Accordion
- *  Gallery. Each panel is a published project: its cover uploaded in Admin → Projects, else a
- *  blueprint panel with its initials. Hover (or tap) opens a panel over its details: result,
- *  before → after, the LIVE / IN USE stamp and the links. Every panel carries
- *  data-project-card and .project-cover, so the Cleave page transition still morphs it into
- *  the case study. /work keeps the full filterable grid. */
+/** Projects "Work that's live right now" (PLAN §6.7): equal flip cards (WorkGallery). The front
+ *  is the project's screenshot, uploaded in Admin → Projects (else a blueprint with its
+ *  initials); pointing at it (tap on a phone) turns it over to its details: result,
+ *  before → after, the LIVE / IN USE stamp and the links. Every card carries data-project-card
+ *  and .project-cover, so the Cleave page transition still morphs it into the case study.
+ *  /work keeps the full filterable grid. */
 export async function Projects() {
   const projects = await getProjects();
   const items: GalleryItem[] = projects.map((p) => ({
@@ -15,6 +15,8 @@ export async function Projects() {
     alt: p.cover?.alt,
     initials: p.initials,
     label: p.title,
+    client: p.client,
+    stamp: p.stamp,
     link: `/work/${p.slug}`,
     cardProps: { 'data-project-card': '' },
     content: (
