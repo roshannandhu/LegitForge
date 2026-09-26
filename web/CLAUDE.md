@@ -93,6 +93,19 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
 - Team cards: public/lanyard/card.glb is the React Bits card with its branded texture
   stripped; the art is drawn at runtime by lib/card-art.ts. Don't ship React Bits' lanyard.png.
 
+## Performance on budget phones (measure at 360px with 4-6x CPU throttling before and after)
+- Lite mode: html[data-lite] (LITE_BOOT in lib/boot.ts, lib/lite.ts isLite) for <=3 GB RAM, <=4 cores,
+  Data Saver or 2G: no intro, still embers, instant --heat, no infinite loops, system font.
+  `?lite=1` / `?lite=0` force it. `npm run check` forces it off; `LITE=1 npm run check` audits it.
+- Never write per-frame CSS variables on <html> (the whole page restyles): put them on the element
+  that reads them (--scroll-energy lives on .heat-rod).
+- Lenis only on fine-pointer screens, imported on demand; use lib/lenis-store.ts, never lenis/react.
+- No container queries in the hero: live screens size in --cq (1 % of their screen width).
+- No backdrop-filter on phones; no permanent will-change on unpinned layers.
+- useGsap setups run one per task (lib/gsap.ts queue). DemoPlayer and the phone hero flows build
+  their timelines only when near the screen.
+- content-visibility was measured and rejected: it moved layout into scrolling on this page.
+
 ## Before saying a task is done
 - npm run build and npm run check pass (check covers 375, 768 and 1440, both themes, motion on and off).
 - No horizontal overflow at any width; no spacing value outside the 4px scale.
