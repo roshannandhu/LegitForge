@@ -250,3 +250,22 @@
 }
 .story-chip:hover { border-color: var(--text-muted); }
 .story-chip[aria-pressed="true"] { border-color: var(--heat-color); background: color-mix(in oklab, var(--heat-color) 16%, transparent); }
+
+/* SEO layer (plan F): a results page, CoolAir on top */
+.ls-search { display: flex; align-items: center; gap: 3cqw; padding: 3.4cqw 4cqw; border-radius: 99cqw; background: #1A232C; font-size: 7cqw; }
+.ls-mag { flex: none; width: 5.5cqw; height: 5.5cqw; border: 1.2cqw solid #8B98A5; border-radius: 50%; }
+.ls-results { display: grid; gap: 3cqw; margin: 3cqw 0 0; padding: 0; list-style: none; }
+.ls-res { position: relative; display: grid; gap: 1cqw; padding: 3.5cqw 4cqw; border-radius: 3cqw; background: #151D25; font-size: 6.4cqw; }
+.ls-res b { color: #7CB7F0; font-size: 7.4cqw; }
+.ls-res span { color: #8B98A5; }
+.ls-res.is-top { background: #1B2733; box-shadow: inset 0 0 0 0.5cqw #3FA7D6; }
+.ls-res.is-top span:last-child { color: #F2C14E; }
+.ls-res-tag { justify-self: start; padding: 0.6cqw 2.4cqw; border-radius: 1.6cqw; background: #3FBF7F; color: #0E1319 !important; font-size: 5.4cqw; font-weight: 700; }
+/* NFC layer: the tag on the AC, then her card */
+.ls-ac { position: relative; height: 34cqw; border-radius: 4cqw; background: linear-gradient(#E9EEF2, #C9D2DB); }
+.ls-ac-grill { position: absolute; left: 8cqw; right: 8cqw; bottom: 6cqw; height: 6cqw; border-radius: 2cqw; background: repeating-linear-gradient(90deg, #9AA6B2 0 1.2cqw, transparent 1.2cqw 3cqw); }
+.ls-tag { position: absolute; right: 7cqw; top: 6cqw; display: grid; place-items: center; width: 17cqw; height: 17cqw; border-radius: 50%; background: #0E1319; color: #FFC24A; font-size: 5cqw; font-weight: 800; }
+.ls-wave { position: absolute; inset: 0; border: 0.8cqw solid #FFC24A; border-radius: 50%; opacity: 0; }
+.ls-card { display: grid; gap: 2.5cqw; margin-top: 5cqw; padding: 5cqw; border-radius: 4cqw; background: #151D25; }
+.ls-card .ls-title { margin: 0 !important; }
+.ls-card .ls-btn { justify-self: start; }

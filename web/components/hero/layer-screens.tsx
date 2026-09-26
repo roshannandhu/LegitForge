@@ -1,4 +1,4 @@
-/** The five live screens of the Teardown (PLAN §6.2c), as their FINAL frames. The flows in
+/** The seven live screens of the Teardown (PLAN §6.2c), as their FINAL frames. The flows in
  *  teardown-flows.ts play them from their start states. Sized in container units, so the same
  *  markup works on a glass layer, a phone-row card and the phone's own screen. aria-hidden:
  *  the layer's callout carries the words. */
@@ -8,12 +8,49 @@ import type { LayerId } from '@/lib/teardown';
 export function LayerScreen({ id }: { id: LayerId }) {
   return (
     <div className={`ls ls-${id}`} aria-hidden="true">
+      {id === 'seo' && <Seo />}
       {id === 'web' && <Web />}
       {id === 'wa' && <Wa />}
       {id === 'n8n' && <N8n />}
       {id === 'quote' && <Quote />}
       {id === 'warranty' && <Warranty />}
+      {id === 'nfc' && <Nfc />}
     </div>
+  );
+}
+
+function Seo() {
+  return (
+    <>
+      <p className="ls-search" data-f="search"><i className="ls-mag" /><span data-f="q">ac installation kochi</span></p>
+      <ol className="ls-results">
+        <li className="ls-res is-top" data-f="top">
+          <span className="ls-res-tag" data-f="tag">Top result</span>
+          <b>CoolAir Services</b>
+          <span>coolair.in · ★ 4.9 (212)</span>
+        </li>
+        <li className="ls-res" data-f="res"><b>City AC Repairs</b><span>★ 4.1 (38)</span></li>
+        <li className="ls-res" data-f="res"><b>FrostFix Kochi</b><span>★ 3.8 (19)</span></li>
+      </ol>
+      <span className="ls-toast" data-f="toast">Priya taps CoolAir</span>
+    </>
+  );
+}
+
+function Nfc() {
+  return (
+    <>
+      <div className="ls-ac" data-f="ac">
+        <span className="ls-ac-grill" />
+        <span className="ls-tag" data-f="tag">NFC<i className="ls-wave" data-f="wave" /><i className="ls-wave" data-f="wave" /></span>
+      </div>
+      <div className="ls-card" data-f="card">
+        <p className="ls-title">AC-88213</p>
+        <p className="ls-row"><span>Warranty</span><b>Valid to 2027</b></p>
+        <p className="ls-row"><span>Next service</span><b>In 30 days</b></p>
+        <span className="ls-btn" data-f="btn">Book a service<i className="ls-ripple" data-f="ripple" /></span>
+      </div>
+    </>
   );
 }
 

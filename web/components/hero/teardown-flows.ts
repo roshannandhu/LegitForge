@@ -21,6 +21,37 @@ function count(tl: TL, el: HTMLElement | undefined, at: number, dur: number, sho
 }
 
 const FLOWS: Record<LayerId, (r: Element, gsap: G) => TL> = {
+  seo(r, gsap) {
+    // the query types in, results arrive, CoolAir climbs from third to the top, Priya taps it
+    const tl = gsap.timeline({ defaults: { ease: 'power2.out' } });
+    const q = f(r, 'q')[0], top = f(r, 'top')[0], res = f(r, 'res');
+    const text = q?.textContent ?? '';
+    const step = top && res[0] ? res[0].offsetHeight + parseFloat(getComputedStyle(top.parentElement!).rowGap || '0') : 0;
+    tl.set([...f(r, 'tag'), ...f(r, 'toast')], { opacity: 0 }, 0)
+      .set([top, ...res], { opacity: 0 }, 0);
+    const o = { n: 0 };
+    tl.to(o, { n: text.length, duration: 0.6, ease: 'none', onUpdate: () => { if (q) q.textContent = text.slice(0, Math.round(o.n)); } }, 0.05)
+      .call(() => { if (q) q.textContent = text; }, [], 0.66)
+      .to([...res, top], { opacity: 1, duration: 0.2, stagger: 0.06 }, 0.7)
+      .fromTo(top, { y: step * 2 }, { y: 0, duration: 0.55, ease: 'power3.inOut', immediateRender: false }, 1.0)
+      .fromTo(res, { y: -step }, { y: 0, duration: 0.55, ease: 'power3.inOut', immediateRender: false }, 1.0)
+      .to(f(r, 'tag'), { opacity: 1, duration: 0.2 }, 1.55)
+      .to(f(r, 'toast'), { opacity: 1, duration: 0.25 }, 1.8)
+      .from(f(r, 'toast'), { y: 8, duration: 0.25 }, 1.8);
+    return tl;
+  },
+  nfc(r, gsap) {
+    // the phone (this screen) meets the tag on the AC: waves, then her warranty and a booking
+    const tl = gsap.timeline({ defaults: { ease: 'power2.out' } });
+    tl.set(f(r, 'card'), { opacity: 0, y: 30 }, 0)
+      .from(f(r, 'ac'), { opacity: 0, y: -10, duration: 0.3 }, 0)
+      .from(f(r, 'tag'), { scale: 0.6, opacity: 0, duration: 0.25, ease: 'back.out(2)' }, 0.25)
+      .fromTo(f(r, 'wave'), { scale: 0.4, opacity: 0.9 }, { scale: 2.4, opacity: 0, duration: 0.6, stagger: 0.18, immediateRender: false }, 0.5)
+      .to(f(r, 'card'), { opacity: 1, y: 0, duration: 0.4, ease: 'power3.out' }, 1.0)
+      .fromTo(f(r, 'ripple'), { scale: 0, opacity: 0.8 }, { scale: 2.6, opacity: 0, duration: 0.4, immediateRender: false }, 1.7)
+      .to(f(r, 'btn'), { scale: 0.93, duration: 0.07, yoyo: true, repeat: 1 }, 1.7);
+    return tl;
+  },
   web(r, gsap) {
     const tl = gsap.timeline({ defaults: { ease: 'power2.out' } });
     tl.set([...f(r, 'speed'), ...f(r, 'toast')], { opacity: 0 }, 0)
