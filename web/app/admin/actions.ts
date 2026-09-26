@@ -218,6 +218,36 @@ export async function publishMemberAction(id: string, published: boolean) {
   revalidatePath('/admin/team');
 }
 
+export async function createMemberAction(_: FormState, f: FormData): Promise<FormState> {
+  await requireAdmin();
+  const name = str(f, 'name', 80), role = str(f, 'role', 80);
+  const slug = str(f, 'slug', 60) || name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  if (!name || !role) return { error: 'Name and role are required.' };
+  if (!SLUG.test(slug)) return { error: 'The slug can only use lowercase letters, numbers and single hyphens.' };
+  if (await db.memberSlugTaken(slug)) return { error: `“${slug}” is taken.` };
+  const id = await db.createMember(name, role, slug);
+  revalidatePath('/admin/team');
+  redirect(`/admin/team/${id}`);
+}
+
+export async function moveMemberAction(id: string, dir: -1 | 1) {
+  await requireAdmin();
+  await db.moveMember(id, dir);
+  updateTag('team');
+  revalidatePath('/admin/team');
+}
+
+export async function deleteMemberAction(id: string, f: FormData) {
+  await requireAdmin();
+  if (f.get('confirm') !== 'on') return;
+  const key = await db.deleteMember(id);
+  const media = (await getEnv())?.MEDIA;
+  if (media && key) await media.delete(key);
+  updateTag('team');
+  revalidatePath('/admin/team');
+  redirect('/admin/team');
+}
+
 export async function regenerateCardAction(id: string): Promise<FormState> {
   await requireAdmin();
   await db.bumpCard(id);

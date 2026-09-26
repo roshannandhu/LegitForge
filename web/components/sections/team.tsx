@@ -11,7 +11,12 @@
  *     cross-faded over the 2D cards once its first frame is drawn.
  *
  *  The name tags are the accessible interface in every layer: names as text and
- *  "Flip [name]'s card" buttons with aria-pressed. Card visuals are aria-hidden. */
+ *  "Flip [name]'s card" buttons with aria-pressed. Card visuals are aria-hidden.
+ *
+ *  Any number of people (plan F step 7): every layer lives in one borderless, full-bleed
+ *  strip that scrolls sideways (snap, touch, trackpad, shift-wheel, arrow buttons, keyboard
+ *  focus). The 3D canvas spans the whole width and extends above and below the cards, so a
+ *  swinging card never meets an edge; its camera follows the strip's scroll. */
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType } from 'react';
 import { useTheme } from 'next-themes';
@@ -63,6 +68,8 @@ interface FlipCardProps {
 }
 interface SceneProps {
   people: CardPerson[];
+  strip: React.RefObject<HTMLUListElement | null>;
+  stage: React.RefObject<HTMLDivElement | null>;
   flipped: Record<string, boolean>;
   onToggleFlip: (id: string) => void;
   highlighted: string | null;
@@ -84,6 +91,9 @@ export function Team({ team, head = true }: { team: Card[]; head?: boolean }) {
   const motionOn = useMotionEnabled();
   const { resolvedTheme } = useTheme();
   const sectionRef = useRef<HTMLElement>(null);
+  const stripRef = useRef<HTMLUListElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
+  const [edges, setEdges] = useState({ start: true, end: true });   // at the strip's ends? (hides the arrows)
 
   const [flipped, setFlipped] = useState<Record<string, boolean>>({});
   const [highlighted, setHighlighted] = useState<string | null>(null);
@@ -129,10 +139,37 @@ export function Team({ team, head = true }: { team: Card[]; head?: boolean }) {
 
   useEffect(() => { if (!use3d) setSceneReady(false); }, [use3d]);
 
+  // the arrows appear only when the strip overflows, and dim at its ends
+  useEffect(() => {
+    const el = stripRef.current!;
+    let raf = 0;
+    const read = () => {
+      raf = 0;
+      const max = el.scrollWidth - el.clientWidth;
+      setEdges((e) => {
+        const n = { start: el.scrollLeft <= 2, end: el.scrollLeft >= max - 2 };
+        return n.start === e.start && n.end === e.end ? e : n;
+      });
+    };
+    const onScroll = () => { if (!raf) raf = requestAnimationFrame(read); };
+    read();
+    el.addEventListener('scroll', onScroll, { passive: true });
+    const ro = new ResizeObserver(onScroll);
+    ro.observe(el);
+    return () => { el.removeEventListener('scroll', onScroll); ro.disconnect(); cancelAnimationFrame(raf); };
+  }, [people.length]);
+
+  const page = (dir: -1 | 1) => {
+    const el = stripRef.current!;
+    const col = el.querySelector<HTMLElement>('.lanyard')?.offsetWidth ?? 300;
+    const step = Math.max(col, Math.floor(el.clientWidth / col - 1) * col);
+    el.scrollBy({ left: dir * step, behavior: motionOn ? 'smooth' : 'auto' });
+  };
+
   const mode = use3d && Scene ? '3d' : !use3d && Flip ? 'flip' : 'static';
 
   return (
-    <section id="team" data-heat="0.7" className="section" ref={sectionRef}>
+    <section id="team" data-heat="0.7" className="section team-section" ref={sectionRef}>
       <div className="wrap">
         {head && (
           <header className="section-head">
@@ -144,9 +181,17 @@ export function Team({ team, head = true }: { team: Card[]; head?: boolean }) {
             </p>
           </header>
         )}
+        <div className="team-bar" data-overflow={edges.start && edges.end ? undefined : ''}>
+          <p className="team-count num">{String(people.length - 1).padStart(2, '0')} people · scroll for every card</p>
+          <div className="team-arrows">
+            <button type="button" className="strip-btn" onClick={() => page(-1)} disabled={edges.start} aria-label="Previous cards">←</button>
+            <button type="button" className="strip-btn" onClick={() => page(1)} disabled={edges.end} aria-label="Next cards">→</button>
+          </div>
+        </div>
+      </div>
 
-        <div className="team-stage" data-mode={mode} data-3d-ready={mode === '3d' && sceneReady ? 'true' : undefined}>
-          <ul className="lanyards">
+      <div className="team-stage" ref={stageRef} data-mode={mode} data-3d-ready={mode === '3d' && sceneReady ? 'true' : undefined}>
+          <ul className="lanyards" ref={stripRef} aria-label="Team cards">
             {people.map((p) => (
               <li key={p.id} className={`lanyard${p.visitor ? ' lanyard-you' : ''}`}>
                 <div className="card-slot">
@@ -218,6 +263,8 @@ export function Team({ team, head = true }: { team: Card[]; head?: boolean }) {
           {mode === '3d' && Scene && (
             <Scene
               people={people}
+              strip={stripRef}
+              stage={stageRef}
               flipped={flipped}
               onToggleFlip={toggle}
               highlighted={highlighted}
@@ -226,7 +273,6 @@ export function Team({ team, head = true }: { team: Card[]; head?: boolean }) {
               onReady={onReady}
             />
           )}
-        </div>
       </div>
     </section>
   );

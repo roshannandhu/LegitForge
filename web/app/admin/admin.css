@@ -79,3 +79,4 @@
 .admin-preview .page-head { padding-top: 16px; }
 .admin .muted { color: var(--text-muted); font-size: 14px; }
 .admin details summary { cursor: pointer; }
+.admin-check { display: flex; align-items: center; gap: 8px; min-height: 44px; }
