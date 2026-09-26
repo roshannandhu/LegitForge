@@ -25,6 +25,7 @@ type Row = {
   challenge: string | null; result_value: string | null; result_label: string | null; stack: string;
   live_url: string | null; status_stamp: 'live' | 'in-use' | 'none'; tags: string; built: string;
   results: string; team: string; is_published: number; updated_at: string;
+  proof_before: string | null; proof_after: string | null;
   r2_key: string | null; cover_alt: string | null; width: number | null; height: number | null; dominant_color: string | null;
 };
 
@@ -42,6 +43,7 @@ function toWork(r: Row): WorkProject {
     slug: r.slug, title: r.title, client: r.client_type,
     resultValue: r.result_value ?? '', resultLabel: r.result_label ?? '',
     tags: list<string>(r.tags), stamp: r.status_stamp, liveUrl: r.live_url ?? undefined,
+    ...(r.proof_before && r.proof_after ? { before: r.proof_before, after: r.proof_after } : {}),
     initials: initials(r.title), cover, category: r.category, published: r.is_published === 1,
     updatedAt: r.updated_at.replace(' ', 'T') + 'Z',          // D1 datetime('now') is UTC
     study: {

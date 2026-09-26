@@ -418,6 +418,15 @@
 .project-cover .stamp { position: absolute; top: 16px; right: 16px; z-index: 1; }
 /* cooling (§6.7 #17): the cover enters heat-tinted and cools to full colour */
 .project { --card-heat: 0; }
+/* before -> after, driven by the same cooling (--card-heat 1 -> 0); phones never cool, so they show the end */
+.project-proof { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; margin: 8px 0 0; font-size: 15px; }
+.project-proof .was { position: relative; color: var(--text-muted); }
+.project-proof .was::after {
+  content: ""; position: absolute; left: -2px; right: -2px; top: 55%; height: 2px; background: var(--heat-color);
+  clip-path: inset(0 calc(var(--card-heat) * 100%) 0 0);
+}
+.project-proof .arrow { color: var(--heat-color); opacity: calc(1 - var(--card-heat)); }
+.project-proof .now { font-weight: 700; opacity: calc(1 - var(--card-heat)); transform: translateX(calc(var(--card-heat) * -8px)); }
 .project-cover::after {
   content: ""; position: absolute; inset: 0; pointer-events: none;
   background: var(--heat-color); mix-blend-mode: color; opacity: calc(var(--card-heat) * .6);

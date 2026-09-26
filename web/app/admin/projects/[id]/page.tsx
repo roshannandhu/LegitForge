@@ -65,6 +65,8 @@ export default async function EditProject({ params }: { params: Promise<{ id: st
               <select name="category" defaultValue={p.category}>{CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}</select></label>
             <label className="field"><span>Result number</span><input name="result_value" defaultValue={p.result_value ?? ''} maxLength={40} placeholder="+38%" /></label>
             <label className="field"><span>Result label</span><input name="result_label" defaultValue={p.result_label ?? ''} maxLength={120} placeholder="more enquiries in 60 days" /></label>
+            <label className="field"><span>Before <small>(the proof on the card, e.g. 6.1 s load)</small></span><input name="proof_before" defaultValue={p.proof_before ?? ''} maxLength={40} /></label>
+            <label className="field"><span>After <small>(e.g. 0.9 s load; both or neither)</small></span><input name="proof_after" defaultValue={p.proof_after ?? ''} maxLength={40} /></label>
             <label className="field"><span>Tags <small>(comma separated, on the card)</small></span><input name="tags" defaultValue={parse<string>(p.tags).join(', ')} placeholder="Website, WhatsApp" /></label>
             <label className="field"><span>Stack <small>(comma separated)</small></span><input name="stack" defaultValue={parse<string>(p.stack).join(', ')} placeholder="Next.js, Cloudflare" /></label>
             <label className="field"><span>Live URL</span><input name="live_url" type="url" defaultValue={p.live_url ?? ''} placeholder="https://" /></label>

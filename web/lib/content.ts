@@ -60,10 +60,11 @@ export type Stamp = 'live' | 'in-use' | 'none';
 export const PROJECTS: {
   slug: string; title: string; client: string; resultValue: string; resultLabel: string;
   tags: string[]; stamp: Stamp; liveUrl?: string; initials: string;
+  before?: string; after?: string;      // the proof on the card: before -> after (plan D #8)
 }[] = [
-  { slug: 'project-one',   title: '[Project name]', client: '[Bakery in City]',       resultValue: '[+38%]', resultLabel: '[more enquiries in 60 days]', tags: ['Website', 'WhatsApp'], stamp: 'live',   initials: 'P1' },
-  { slug: 'project-two',   title: '[Project name]', client: '[Clinic in City]',       resultValue: '[4.2 s]', resultLabel: '[average WhatsApp reply]',    tags: ['WhatsApp', 'n8n'],     stamp: 'in-use', initials: 'P2' },
-  { slug: 'project-three', title: '[Project name]', client: '[Appliance dealer]',     resultValue: '[312]', resultLabel: '[warranties issued]',          tags: ['Web app', 'Warranty'], stamp: 'live',   initials: 'P3' },
+  { slug: 'project-one',   title: '[Project name]', client: '[Bakery in City]',       resultValue: '[+38%]', resultLabel: '[more enquiries in 60 days]', tags: ['Website', 'WhatsApp'], stamp: 'live',   initials: 'P1', before: '[6.1 s load]', after: '[0.9 s load]' },
+  { slug: 'project-two',   title: '[Project name]', client: '[Clinic in City]',       resultValue: '[4.2 s]', resultLabel: '[average WhatsApp reply]',    tags: ['WhatsApp', 'n8n'],     stamp: 'in-use', initials: 'P2', before: '[3 h reply]', after: '[4.2 s reply]' },
+  { slug: 'project-three', title: '[Project name]', client: '[Appliance dealer]',     resultValue: '[312]', resultLabel: '[warranties issued]',          tags: ['Web app', 'Warranty'], stamp: 'live',   initials: 'P3', before: '[paper cards]', after: '[QR check]' },
 ];
 
 /* ---------------------------------------------------------------- team §6.8 */

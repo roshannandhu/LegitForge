@@ -33,6 +33,15 @@ export function ProjectCard({ p, as: Tag = 'li', headingLevel = 3 }: {
         <H className="project-title">{p.title}</H>
         <p className="project-client">{p.client}</p>
         <p className="project-result"><span className="result-value num">{p.resultValue}</span> {p.resultLabel}</p>
+        {p.before && p.after && (
+          // the proof (plan D #8): as the cover cools, the before is struck through and the after comes up
+          <p className="project-proof">
+            <span className="sr-only">Before: {p.before}. After: {p.after}.</span>
+            <span className="was num" aria-hidden="true">{p.before}</span>
+            <span className="arrow" aria-hidden="true">→</span>
+            <span className="now num" aria-hidden="true">{p.after}</span>
+          </p>
+        )}
         <ul className="project-tags" aria-label="Services">
           {p.tags.map((t) => <li key={t}>{t}</li>)}
         </ul>

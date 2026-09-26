@@ -22,7 +22,7 @@ export interface ProjectRow {
   challenge: string | null; result_value: string | null; result_label: string | null; stack: string;
   live_url: string | null; status_stamp: (typeof STAMPS)[number]; tags: string; built: string; results: string;
   team: string; is_featured: number; is_published: number; sort_order: number; launched_on: string | null;
-  updated_at: string; image_count?: number;
+  updated_at: string; image_count?: number; proof_before: string | null; proof_after: string | null;
 }
 export interface ImageRow {
   id: string; project_id: string; r2_key: string; alt: string; kind: 'cover' | 'gallery' | 'before' | 'after';
@@ -61,9 +61,9 @@ export async function updateProject(id: string, v: ProjectInput) {
   await (await adminDb()).prepare(
     `UPDATE projects SET slug = ?, title = ?, client_type = ?, category = ?, summary = ?, challenge = ?,
        result_value = ?, result_label = ?, stack = ?, live_url = ?, status_stamp = ?, tags = ?, built = ?,
-       results = ?, team = ?, is_featured = ?, launched_on = ?, updated_at = datetime('now') WHERE id = ?`,
+       results = ?, team = ?, is_featured = ?, launched_on = ?, proof_before = ?, proof_after = ?, updated_at = datetime('now') WHERE id = ?`,
   ).bind(v.slug, v.title, v.client_type, v.category, v.summary, v.challenge, v.result_value, v.result_label, v.stack,
-    v.live_url, v.status_stamp, v.tags, v.built, v.results, v.team, v.is_featured, v.launched_on, id).run();
+    v.live_url, v.status_stamp, v.tags, v.built, v.results, v.team, v.is_featured, v.launched_on, v.proof_before, v.proof_after, id).run();
 }
 
 export async function setPublished(id: string, published: boolean) {

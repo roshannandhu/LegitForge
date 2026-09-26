@@ -69,6 +69,7 @@ export async function saveProjectAction(id: string, _: FormState, f: FormData): 
     stack: JSON.stringify(csv(f, 'stack')), live_url: liveUrl, status_stamp: stamp, tags: JSON.stringify(csv(f, 'tags')),
     built: JSON.stringify(lines(f, 'built')), results: JSON.stringify(results), team: JSON.stringify(team),
     is_featured: f.get('is_featured') === 'on' ? 1 : 0, launched_on: launched,
+    proof_before: opt(f, 'proof_before', 40), proof_after: opt(f, 'proof_after', 40),
   });
   refreshPublic();
   revalidatePath('/admin/projects');
