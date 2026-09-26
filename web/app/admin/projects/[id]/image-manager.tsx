@@ -7,9 +7,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-type Picked = { file: File; url: string; width: number; height: number; color: string };
+export type Picked = { file: File; url: string; width: number; height: number; color: string };
 
-async function measure(file: File): Promise<Picked> {
+export async function measure(file: File): Promise<Picked> {
   const bmp = await createImageBitmap(file);
   const c = document.createElement('canvas');
   c.width = 24; c.height = 24;

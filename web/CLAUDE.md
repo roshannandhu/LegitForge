@@ -25,6 +25,10 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
   dynamicParams = false): the font files in assets/og are read at build time, never on Workers.
 - Admin (PLAN §7.8): app/admin (pages, Server Actions in actions.ts), lib/admin (auth, D1 queries),
   app/api/admin/upload (R2), app/media (serves R2 images). Setup: README "Admin".
+  "Add from GitHub" (app/admin/projects/github-add.tsx + projectFromGithubAction): image + repo link →
+  draft project; the brief is lib/admin/github.ts repoBrief (GitHub data only, no AI; numbers are
+  never invented). GITHUB_TOKEN secret for private repos. The cloud sandbox's proxy blocks
+  api.github.com: test with a fixture server via GITHUB_API_BASE (honoured only with ADMIN_DEV_BYPASS).
 - Projects on public pages come from lib/work.ts: published D1 rows, else the placeholders in
   content.ts/pages.ts. Never import PROJECTS/CASE_STUDIES in a page again; use getProjects().
   People the same way: lib/team.ts getTeam() (tag 'team'), never TEAM/MEMBER_DETAILS in a page.

@@ -75,7 +75,7 @@ export async function projectsFromDb(includeDrafts: boolean): Promise<WorkProjec
   }
 }
 
-export const getProjects = unstable_cache(
+const getProjectsCached = unstable_cache(
   async (): Promise<WorkProject[]> => {
     const rows = await projectsFromDb(false);
     return rows && rows.length ? rows : FALLBACK;
@@ -83,6 +83,11 @@ export const getProjects = unstable_cache(
   ['work-projects'],
   { tags: ['projects'] },
 );
+
+/** During `next build` the placeholders, without touching the cache: .next/cache survives between
+ *  builds, and a list cached by a LOCAL server (test rows) would be baked into production pages. */
+export const getProjects: typeof getProjectsCached = (...args) =>
+  process.env.NEXT_PHASE === 'phase-production-build' ? Promise.resolve(FALLBACK) : getProjectsCached(...args);
 
 export async function getProject(slug: string) {
   return (await getProjects()).find((p) => p.slug === slug);
