@@ -32,7 +32,7 @@ const FRONT = { x: 0, y: 0, w: ATLAS / 2, h: Math.round(ATLAS * 0.755) };
 const BACK = { x: ATLAS / 2, y: 0, w: ATLAS / 2, h: Math.round(ATLAS * 0.757) };
 
 // the coin seal (CoinMark in components/ui/icons.tsx), same 32×32 geometry
-const RING = 'LEGIT FORGE · LEGIT FORGE · ';
+const RING = 'LEGIT FORGE · LEGIT FORGE · LEGIT FORGE · ';
 
 type Tokens = Record<'surface' | 'surface2' | 'line' | 'text' | 'muted' | 'accent' | 'accentInk' | 'heatLo' | 'heatHi' | 'heatMid' | 'quench', string>;
 type Fonts = { sans: string; stencil: string };
@@ -107,28 +107,37 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
 }
 
 /** The coin logo (CoinMark in components/ui/icons.tsx), same 32×32 geometry. */
+/** The logo coin, drawn to canvas: the same drawing as CoinMark (components/ui/icons.tsx),
+ *  in its 200-unit space. The ring text runs clockwise from the left, like its textPath. */
 function mark(ctx: CanvasRenderingContext2D, x: number, y: number, size: number) {
   ctx.save();
   ctx.translate(x, y);
-  ctx.scale(size / 32, size / 32);
-  const gold = ctx.createRadialGradient(12, 10, 0, 12, 10, 24);
+  ctx.scale(size / 200, size / 200);
+  const gold = ctx.createRadialGradient(76, 64, 0, 76, 64, 150);
   gold.addColorStop(0, '#FFE9A8'); gold.addColorStop(.45, '#E3B452'); gold.addColorStop(1, '#A87424');
-  const steel = ctx.createLinearGradient(0, 0, 32, 32);
+  const steel = ctx.createLinearGradient(0, 0, 200, 200);
   steel.addColorStop(0, '#5C6B7A'); steel.addColorStop(.5, '#2E3945'); steel.addColorStop(1, '#1A222B');
-  const disc = (r: number, fill: CanvasGradient) => { ctx.beginPath(); ctx.arc(16, 16, r, 0, Math.PI * 2); ctx.fillStyle = fill; ctx.fill(); };
-  disc(15.6, gold);
-  disc(14.3, steel);
-  // LEGIT FORGE round the ring, one letter at a time, reading clockwise from the left
-  ctx.fillStyle = '#E6ECF1'; ctx.font = `800 2.7px ${fonts().sans}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  [...RING].forEach((ch, i) => {
-    const a = Math.PI + (i / RING.length) * Math.PI * 2;
-    ctx.save(); ctx.translate(16 + Math.cos(a) * 12.4, 16 + Math.sin(a) * 12.4); ctx.rotate(a + Math.PI / 2);
-    ctx.fillText(ch, 0, 0); ctx.restore();
-  });
-  disc(10.6, gold);
-  ctx.fillStyle = '#6E4A12'; ctx.font = `800 5.1px ${fonts().sans}`; ctx.textBaseline = 'alphabetic';
-  ctx.fillText('LEGIT', 16, 15.3);
-  ctx.fillText('FORGE', 16, 20.9);
+  const disc = (r: number, fill: CanvasGradient) => { ctx.beginPath(); ctx.arc(100, 100, r, 0, Math.PI * 2); ctx.fillStyle = fill; ctx.fill(); };
+  disc(98, gold);
+  disc(92, steel);
+  disc(68, gold);
+  ctx.beginPath(); ctx.arc(100, 100, 68, 0, Math.PI * 2); ctx.strokeStyle = '#7A5418'; ctx.lineWidth = 1.5; ctx.stroke();
+  // LEGIT FORGE three times round the ring, letter by letter along the 80-unit circle
+  const f = fonts();
+  ctx.fillStyle = '#C9D2DB'; ctx.font = `700 15px ${f.stencil}`; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+  let arc = 0;                                            // distance travelled along the ring
+  for (const ch of RING) {
+    const w = ctx.measureText(ch).width;
+    const a = Math.PI + (arc + w / 2) / 80;               // from the left, clockwise (canvas y points down)
+    ctx.save(); ctx.translate(100 + Math.cos(a) * 80, 100 + Math.sin(a) * 80); ctx.rotate(a + Math.PI / 2);
+    ctx.fillText(ch, -w / 2, 0); ctx.restore();
+    arc += w + 1.8;                                       // letter-spacing .12em
+  }
+  // the stamped words, with the light edge (stroke under the fill)
+  ctx.font = `800 25px ${f.sans}`; ctx.textAlign = 'center';
+  ctx.letterSpacing = '1px';
+  ctx.lineWidth = .8; ctx.strokeStyle = '#FFE9A8'; ctx.fillStyle = '#6E4A12';
+  for (const [w, yy] of [['LEGIT', 96], ['FORGE', 124]] as const) { ctx.strokeText(w, 100, yy); ctx.fillText(w, 100, yy); }
   ctx.restore();
 }
 

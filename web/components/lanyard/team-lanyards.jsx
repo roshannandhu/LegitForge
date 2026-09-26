@@ -139,7 +139,19 @@ export default function TeamLanyards({ people, strip, stage, flipped, onToggleFl
         eventSource={stage.current ?? undefined}
         eventPrefix="client"
         resize={{ scroll: true, debounce: { scroll: 0, resize: 0 } }}
-        onCreated={({ gl }) => gl.setClearColor(new THREE.Color(0x000000), 0)}
+        onCreated={(state) => {
+          state.gl.setClearColor(new THREE.Color(0x000000), 0);
+          // events come from the stage (the canvas ignores the pointer), and the canvas sits
+          // 160px above it and scrolls with the page: map the pointer from the canvas's real
+          // on-screen box, or every tap and drag lands beside the card (flip + drag broke)
+          state.setEvents({
+            compute: (event, st) => {
+              const r = st.gl.domElement.getBoundingClientRect();
+              st.pointer.set(((event.clientX - r.left) / r.width) * 2 - 1, -((event.clientY - r.top) / r.height) * 2 + 1);
+              st.raycaster.setFromCamera(st.pointer, st.camera);
+            },
+          });
+        }}
       >
         <Follow strip={strip} />
         <ambientLight intensity={Math.PI} />

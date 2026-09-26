@@ -5,14 +5,16 @@ import { useId } from 'react';
 type P = React.SVGProps<SVGSVGElement>;
 const base = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, strokeLinecap: 'round', strokeLinejoin: 'round' } as const;
 
-/** The logo: the LEGIT FORGE coin struck in the intro (§6.1b), as a seal. Letters only, no
- *  symbol: LEGIT FORGE runs round the steel ring and is stamped across the gold centre, as
- *  on the intro coin. Same colours in both themes, like a
- *  real coin. Keep in step with app/icon.svg and mark() in lib/card-art.ts. */
-export function CoinMark(props: P) {
+/** The logo: the very coin struck in the loading intro (§6.1b), one drawing for both. The
+ *  intro renders this same component on both faces of its flipping coin, so the logo is
+ *  exactly the coin that lands in the header. Letters only, no symbol: LEGIT FORGE runs
+ *  three times round the steel ring and is stamped across the gold centre. Same colours in
+ *  both themes, like a real coin. Keep app/icon.svg and mark() in lib/card-art.ts in step.
+ *  `textClassName` lets the intro animate the stamped letters. */
+export function CoinMark({ textClassName, ...props }: P & { textClassName?: string }) {
   const id = useId().replace(/:/g, '');
   return (
-    <svg viewBox="0 0 32 32" aria-hidden="true" {...props}>
+    <svg viewBox="0 0 200 200" aria-hidden="true" {...props}>
       <defs>
         <radialGradient id={`${id}g`} cx="38%" cy="32%" r="75%">
           <stop offset="0" stopColor="#FFE9A8" /><stop offset=".45" stopColor="#E3B452" /><stop offset="1" stopColor="#A87424" />
@@ -20,17 +22,22 @@ export function CoinMark(props: P) {
         <linearGradient id={`${id}s`} x1="0" y1="0" x2="1" y2="1">
           <stop offset="0" stopColor="#5C6B7A" /><stop offset=".5" stopColor="#2E3945" /><stop offset="1" stopColor="#1A222B" />
         </linearGradient>
-        <path id={`${id}r`} d="M16 16m-12.4 0a12.4 12.4 0 1 1 24.8 0a12.4 12.4 0 1 1-24.8 0" />
+        <path id={`${id}r`} d="M100 100 m-80 0 a80 80 0 1 1 160 0 a80 80 0 1 1 -160 0" />
       </defs>
-      <circle cx="16" cy="16" r="15.6" fill={`url(#${id}g)`} />
-      <circle cx="16" cy="16" r="14.3" fill={`url(#${id}s)`} />
-      <text fill="#E6ECF1" fontSize="2.7" fontWeight="800" dominantBaseline="central" style={{ fontFamily: 'var(--font-archivo), system-ui, sans-serif' }}>
-        <textPath href={`#${id}r`} textLength="77" lengthAdjust="spacing">LEGIT FORGE · LEGIT FORGE · </textPath>
-      </text>
-      <circle cx="16" cy="16" r="10.6" fill={`url(#${id}g)`} stroke="#7A5418" strokeWidth=".5" />
-      <g fill="#6E4A12" fontSize="5.1" fontWeight="800" textAnchor="middle" style={{ fontFamily: 'var(--font-archivo), system-ui, sans-serif', fontStretch: '112%' }}>
-        <text x="16" y="15.3">LEGIT</text>
-        <text x="16" y="20.9">FORGE</text>
+      <circle cx="100" cy="100" r="98" fill={`url(#${id}g)`} />
+      <circle cx="100" cy="100" r="92" fill={`url(#${id}s)`} />
+      <circle cx="100" cy="100" r="68" fill={`url(#${id}g)`} />
+      <circle cx="100" cy="100" r="68" fill="none" stroke="#7A5418" strokeWidth="1.5" />
+      <g className={textClassName}>
+        <text fill="#C9D2DB" fontSize="15" fontWeight="700" letterSpacing="1.8"
+          style={{ fontFamily: 'var(--font-stencil), var(--font-sans), system-ui, sans-serif' }}>
+          <textPath href={`#${id}r`} startOffset="0">LEGIT FORGE · LEGIT FORGE · LEGIT FORGE ·</textPath>
+        </text>
+        <g fill="#6E4A12" stroke="#FFE9A8" strokeWidth=".8" paintOrder="stroke" fontSize="25" fontWeight="800" letterSpacing="1" textAnchor="middle"
+          style={{ fontFamily: 'var(--font-sans), system-ui, sans-serif', fontStretch: '112%' }}>
+          <text x="100" y="96">LEGIT</text>
+          <text x="100" y="124">FORGE</text>
+        </g>
       </g>
     </svg>
   );

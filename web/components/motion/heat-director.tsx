@@ -5,6 +5,7 @@
 
 import { useGsap } from '@/lib/gsap';
 import { useMotionEnabled } from './motion-provider';
+import { isLite } from '@/lib/lite';
 
 export const heat = { value: 0.35 };
 
@@ -24,7 +25,8 @@ export function HeatDirector() {
           onToggle: (self) => {
             if (!self.isActive) return;
             const target = Number(section.dataset.heat);
-            if (!motionOn) {
+            // --heat restyles the page: weak devices take the new value in one step, not 70 frames
+            if (!motionOn || isLite()) {
               heat.value = target;
               writeHeatVar();
               return;

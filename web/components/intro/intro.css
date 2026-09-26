@@ -123,5 +123,3 @@ html[data-intro] .intro * { animation-duration: var(--d); animation-fill-mode: b
 }
 .coin-text { animation-name: coin-stamp; }
 @keyframes coin-stamp { 0%, 25% { opacity: 0; } 25.3%, 100% { opacity: 1; } }
-.coin-ring-text { font: 700 15px/1 var(--font-stencil), var(--font-sans); letter-spacing: .12em; fill: #C9D2DB; }
-.coin-word { font: 800 25px/1 var(--font-sans); font-stretch: 112%; letter-spacing: .04em; fill: #6E4A12; paint-order: stroke; stroke: #FFE9A8; stroke-width: .8px; }

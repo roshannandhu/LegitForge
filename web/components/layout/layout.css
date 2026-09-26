@@ -12,6 +12,9 @@
   border-bottom-color: var(--line);
 }
 .site-header[data-hidden="true"] { transform: translateY(-100%); }
+/* phones and weak devices: an opaque bar, not a blur recomputed under every scrolled frame */
+@media (max-width: 767px) { .site-header[data-solid="true"] { background: var(--surface); -webkit-backdrop-filter: none; backdrop-filter: none; } }
+[data-lite] .site-header[data-solid="true"] { background: var(--surface); -webkit-backdrop-filter: none; backdrop-filter: none; }
 [data-motion="off"] .site-header { transition: none; }
 [data-motion="off"] .site-header[data-hidden="true"] { transform: none; }   /* always visible without motion */
 @media (max-width: 767px) { .site-header { height: 60px; } }

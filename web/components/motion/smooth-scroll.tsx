@@ -10,7 +10,10 @@
  *  store, so useLenis() works anywhere without being wrapped.
  *
  *  Lenis mounts only after GSAP has loaded (lib/gsap.ts). It takes over the wheel, and with
- *  no GSAP ticker driving it the page would not scroll at all. Until then, scrolling is native. */
+ *  no GSAP ticker driving it the page would not scroll at all. Until then, scrolling is native.
+ *
+ *  Never on touch screens or weak devices (lib/lite.ts): there Lenis leaves the scroll native
+ *  anyway and would only add work to every frame. */
 
 import { useEffect, useState } from 'react';
 import { ReactLenis, useLenis } from 'lenis/react';
@@ -18,11 +21,12 @@ import 'lenis/dist/lenis.css';
 import { loadGsap, type Gs } from '@/lib/gsap';
 import { useMotionEnabled } from './motion-provider';
 import { energy, writeEnergyVar } from './energy';
+import { isLite, isTouch } from '@/lib/lite';
 
 export function SmoothScroll() {
   const motionOn = useMotionEnabled();
   const [gs, setGs] = useState<Gs>();
-  useEffect(() => { if (motionOn) loadGsap().then(setGs); }, [motionOn]);
+  useEffect(() => { if (motionOn && !isTouch() && !isLite()) loadGsap().then(setGs); }, [motionOn]);
   if (!motionOn || !gs) return null;
   return (
     <>

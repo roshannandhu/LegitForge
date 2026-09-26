@@ -9,10 +9,20 @@ export const MOTION_BOOT_SCRIPT =
   `try{var m=localStorage.getItem('lf-motion');var r=matchMedia('${REDUCED}').matches;` +
   `document.documentElement.dataset.motion=(m==='off'||r)?'off':'on'}catch(e){}`;
 
+/** html[data-lite]: a weak device (≤ 3 GB RAM, ≤ 4 cores, Data Saver or a 2G connection) gets
+ *  the same site with the costly extras off: no intro, a still ember frame, instant heat
+ *  changes, no infinite decorative loops, off-screen sections skipped by the renderer. Decided
+ *  before first paint. `?lite=1` / `?lite=0` force it (remembered) for testing. */
+export const LITE_BOOT =
+  `try{var d=document.documentElement,n=navigator,c=n.connection||{},q=/[?&]lite=([01])/.exec(location.search);` +
+  `if(q)localStorage.setItem('lf-lite',q[1]);var f=localStorage.getItem('lf-lite');` +
+  `var weak=(n.deviceMemory&&n.deviceMemory<=3)||(n.hardwareConcurrency&&n.hardwareConcurrency<=4)||c.saveData||/2g/.test(c.effectiveType||'');` +
+  `if(f==='1'||(f!=='0'&&weak))d.dataset.lite=''}catch(e){}`;
+
 /** html[data-intro]: the Hallmark Strike (PLAN §6.1b) plays on a first visit to the home
  *  page with motion on, loaded at the top and not for review links. It clears itself. */
 export const INTRO_BOOT =
-  `try{var d=document.documentElement;if(d.dataset.motion==='on'&&location.pathname==='/'&&!location.hash` +
+  `try{var d=document.documentElement;if(d.dataset.motion==='on'&&!('lite' in d.dataset)&&location.pathname==='/'&&!location.hash` +
   `&&!/[?&](qa|lead)=/.test(location.search)&&!localStorage.getItem('lf-intro-seen')){` +
   `localStorage.setItem('lf-intro-seen','1');d.dataset.intro='1';` +
   `setTimeout(function(){delete d.dataset.intro},2300)}}catch(e){}`;
