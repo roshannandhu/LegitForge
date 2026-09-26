@@ -199,11 +199,20 @@ export default function Teardown() {
       const toFinal = gsap.delayedCall(2.2 + introWait, () => setScreen('final'));
       const ran = new Set<string>(['wait']);
       showLog(ran); setAct(1);
-      const flows = layers.map((el, i) => buildFlow(LAYERS[i].id, el, gsap).pause(0));
+      // each card's flow is built as it nears the screen (its start state set off screen), not
+      // all seven at load: that was one of a budget phone's longest load tasks
+      const flows: (ReturnType<typeof buildFlow> | undefined)[] = [];
+      const build = (i: number) => (flows[i] ??= buildFlow(LAYERS[i].id, layers[i], gsap).pause(0));
+      const near = new IntersectionObserver((entries) => entries.forEach((en) => {
+        if (!en.isIntersecting) return;
+        build(layers.indexOf(en.target as HTMLElement));
+        near.unobserve(en.target);
+      }), { rootMargin: '200px 300px' });
+      layers.forEach((el) => near.observe(el));
       const io = new IntersectionObserver((entries) => entries.forEach((en) => {
         if (!en.isIntersecting) return;
         const i = layers.indexOf(en.target as HTMLElement);
-        flows[i].play(0);
+        build(i).play(0);
         layers[i].setAttribute('data-lit', '');
         io.unobserve(en.target);
         ran.delete('wait'); ran.add(LAYERS[i].id);
@@ -211,7 +220,7 @@ export default function Teardown() {
         showLog(ran); setAct(ran.has('done') ? 3 : 2);
       }), { threshold: 0.6 });
       layers.forEach((el) => io.observe(el));
-      return () => { io.disconnect(); toFinal.kill(); window.removeEventListener(LEAD_EVENT, onLead); flows.forEach((f) => f.progress(1)); };
+      return () => { near.disconnect(); io.disconnect(); toFinal.kill(); window.removeEventListener(LEAD_EVENT, onLead); flows.forEach((f) => f?.progress(1)); };
     });
   }, { scope: root, dependencies: [motionOn] });
 
