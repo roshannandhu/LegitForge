@@ -38,6 +38,8 @@ export const LEAD_EVENT = 'lf:lead';
 
 /* ------------------------------------------------------------------ geometry */
 export const DESIGN = { w: 780, h: 760 } as const;
+/** Phones show 610 of the 780 design px, from x = 170: the callout column is cropped (hero.css). */
+export const PHONE_CROP = 610;
 /** The hand-held phone, and its screen inside the photo (measured from the 1200 × 1653 cut-out). */
 export const PHONE = { cx: 652, cy: 444, w: 240, aspect: 1.3775 } as const;
 const phoneLeft = PHONE.cx - PHONE.w / 2;

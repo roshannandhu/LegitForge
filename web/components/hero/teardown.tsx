@@ -7,15 +7,15 @@
  *
  *  Real 3D with no WebGL: each layer's position, tilt and scale are CSS variables
  *  (--x --y --tilt --s) that GSAP animates, so the no-JS frame is plain CSS and exact.
- *  Tablet and desktop: one pinned, scrubbed timeline. Phones: no pin; the layers are a swipe
- *  row under the phone and each plays when it is in view. Motion off: the finished stack.
- *  Stop scrolling and it carries on by itself (idleJourney; phones: the row auto-advances),
- *  and the phone in the hand mirrors the layer being run. */
+ *  One pinned, scrubbed timeline on every screen: tablets and laptops pin the hero, phones pin
+ *  the stage (scaled to the phone's width, the callout column cropped; the layer being run is
+ *  named in a caption). Motion off: the finished stack. Stop scrolling and it carries on by
+ *  itself (idleJourney), and the phone in the hand mirrors the layer being run. */
 
 import { useEffect, useRef } from 'react';
 import { useLenis } from '@/lib/lenis-store';
 import {
-  DEFAULT_LEAD, DESIGN, FOCUS, ISO_SCALE, LAYERS, LEAD_EVENT, PIN_END, RUN,
+  DEFAULT_LEAD, DESIGN, FOCUS, PHONE_CROP, ISO_SCALE, LAYERS, LEAD_EVENT, PIN_END, RUN,
   SCREEN_C, SLOTS, actIndex, isLayerId, type LayerId,
 } from '@/lib/teardown';
 import { useMotionEnabled } from '@/components/motion/motion-provider';
@@ -46,10 +46,10 @@ export default function TeardownMotion() {
     const box = stageEl.parentElement!;
     const phoneMq = matchMedia('(max-width: 767px)');
     const ro = new ResizeObserver(() => {
-      if (phoneMq.matches) { stageEl.style.removeProperty('--fit'); return; }
       const r = box.getBoundingClientRect();
       if (!r.width) return;
-      stageEl.style.setProperty('--fit', Math.min((r.width - 28) / DESIGN.w, r.height / DESIGN.h, 1.25).toFixed(3));
+      const fit = phoneMq.matches ? r.width / PHONE_CROP : Math.min((r.width - 28) / DESIGN.w, r.height / DESIGN.h, 1.25);
+      stageEl.style.setProperty('--fit', fit.toFixed(3));
       trigger.current?.refresh();
     });
     ro.observe(box);
@@ -102,8 +102,11 @@ export default function TeardownMotion() {
 
     const mm = gsap.matchMedia();
 
-    /* ---------------------------------------------------- tablet and desktop */
-    mm.add('(min-width: 768px)', () => {
+    /* ---------------------------------------------------- every screen: one scrubbed timeline
+       Tablets and laptops pin the whole hero; phones pin the stage in the middle of the screen
+       (the copy above it has scrolled by), so the same teardown plays there too. */
+    mm.add({ wide: '(min-width: 768px)', phone: '(max-width: 767px)' }, (mctx) => {
+      const onPhone = !!mctx.conditions?.phone;
       if (reduced) {                                        // the finished stack, told in one frame
         layers.forEach((l) => l.setAttribute('data-lit', ''));
         setScreen('final'); setAct(2);
@@ -173,7 +176,9 @@ export default function TeardownMotion() {
       if (Number.isFinite(qa)) tl.progress(Math.min(1, Math.max(0, qa)));
       else {
         render();
-        st = ScrollTrigger.create({ trigger: hero, start: 'top top', end: PIN_END, pin: true, scrub: 0.8, invalidateOnRefresh: true, animation: tl });
+        st = ScrollTrigger.create(onPhone
+          ? { trigger: host, start: 'center center', end: '+=240%', pin: true, scrub: 0.8, invalidateOnRefresh: true, animation: tl }
+          : { trigger: hero, start: 'top top', end: PIN_END, pin: true, scrub: 0.8, invalidateOnRefresh: true, animation: tl });
       }
       const stopIdle = st ? idleJourney(st, win, tl) : () => {};
 
@@ -229,102 +234,6 @@ export default function TeardownMotion() {
       return () => { clearTimeout(timer); stop(); events.forEach((e) => window.removeEventListener(e, arm)); };
     }
 
-    /* ---------------------------------------------------- phones: a swipe row */
-    mm.add('(max-width: 767px)', () => {
-      const onLead = (e: Event) => {
-        const { id, replay } = (e as CustomEvent<{ id: LayerId; replay: boolean }>).detail;
-        if (!isLayerId(id)) return;
-        lead.current = id; setLead();
-        if (replay) layers[LAYERS.findIndex((l) => l.id === id)]?.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', inline: 'center', block: 'nearest' });
-      };
-      window.addEventListener(LEAD_EVENT, onLead);
-      if (reduced) {
-        setScreen('final'); setAct(2);
-        showLog(new Set([...LAYERS.map((l) => l.id), 'done']));
-        return () => window.removeEventListener(LEAD_EVENT, onLead);
-      }
-      setScreen('brand');
-      const toFinal = gsap.delayedCall(2.2 + introWait, () => setScreen('final'));
-      const ran = new Set<string>(['wait']);
-      showLog(ran); setAct(1);
-      // each card's flow is built as it nears the screen (its start state set off screen), not
-      // all seven at load: that was one of a budget phone's longest load tasks
-      const flows: (ReturnType<typeof buildFlow> | undefined)[] = [];
-      const build = (i: number) => { layers[i].dataset.near = ''; return (flows[i] ??= buildFlow(LAYERS[i].id, layers[i], gsap).pause(0)); };   // shown before it is measured
-      const near = new IntersectionObserver((entries) => entries.forEach((en) => {
-        if (!en.isIntersecting) return;
-        build(layers.indexOf(en.target as HTMLElement));
-        near.unobserve(en.target);
-      }), { rootMargin: '200px 300px' });
-      layers.forEach((el) => near.observe(el));
-      // The card centred in the row is the active one: its flow plays (again, every time it
-      // comes round), the others rest on their finished frame, and the phone in the hand shows
-      // it. The row moves on once that flow has played, NFC glides back to SEO, a swipe takes
-      // over (it carries on 6 s after the last touch), and all of it pauses off screen.
-      const row = layers[0].parentElement!;
-      let active = -1, onScreen = false, lastTouch = 0;
-      let advance: ReturnType<typeof gsap.delayedCall> | undefined;
-      const center = (card: HTMLElement) => row.scrollTo({ left: card.offsetLeft - (row.clientWidth - card.offsetWidth) / 2, behavior: 'smooth' });
-      const mirror = () => { if (active >= 0) { toFinal.kill(); screen.dataset.lead = LAYERS[active].id; setScreen('final'); } };
-      const schedule = (delay: number) => {
-        advance?.kill();
-        advance = gsap.delayedCall(delay, () => {
-          const wait = 6 - (Date.now() - lastTouch) / 1000;               // a swipe holds it for 6 s
-          if (wait > 0) return schedule(wait);
-          center(layers[(active + 1) % layers.length]);
-        });
-        if (!onScreen) advance.pause();
-      };
-      const activate = (i: number) => {
-        if (i === active) return;
-        active = i;
-        flows.forEach((f, k) => { if (f && k !== i) f.pause().progress(1); });
-        const flow = build(i).play(0);
-        layers[i].setAttribute('data-lit', '');
-        ran.delete('wait'); ran.add(LAYERS[i].id);
-        if (LAYERS.every((l) => ran.has(l.id))) ran.add('done');
-        showLog(ran); setAct(ran.has('done') ? 3 : 2);
-        if (onScreen) mirror();
-        schedule(flow.duration() + 1.4);
-      };
-      const ratios = new Map<Element, number>();
-      const pick = () => {
-        const mid = row.scrollLeft + row.clientWidth / 2;
-        let best = -1, dist = Infinity;
-        layers.forEach((l, k) => {
-          if ((ratios.get(l) ?? 0) < 0.6) return;
-          const d = Math.abs(l.offsetLeft + l.offsetWidth / 2 - mid);
-          if (d < dist) { dist = d; best = k; }
-        });
-        return best;
-      };
-      const io = new IntersectionObserver((entries) => {
-        entries.forEach((en) => ratios.set(en.target, en.isIntersecting ? en.intersectionRatio : 0));
-        const best = pick();
-        if (best >= 0 && onScreen) activate(best);
-      }, { root: row, threshold: [0, 0.6, 1] });
-      layers.forEach((el) => io.observe(el));
-      const vis = new IntersectionObserver(([e]) => {
-        onScreen = e.isIntersecting;
-        const flow = active >= 0 ? flows[active] : undefined;
-        if (onScreen) {
-          if (active < 0) { const best = pick(); if (best >= 0) activate(best); }
-          else { flow?.resume(); advance?.resume(); mirror(); }
-        } else {
-          flow?.pause(); advance?.pause();
-          screen.dataset.lead = lead.current;                              // the chip's pick again
-        }
-      }, { threshold: 0.5 });
-      vis.observe(row);
-      const touch = () => { lastTouch = Date.now(); };
-      row.addEventListener('touchstart', touch, { passive: true });
-      row.addEventListener('pointerdown', touch, { passive: true });
-      return () => {
-        vis.disconnect(); io.disconnect(); near.disconnect(); advance?.kill(); toFinal.kill();
-        row.removeEventListener('touchstart', touch); row.removeEventListener('pointerdown', touch);
-        window.removeEventListener(LEAD_EVENT, onLead); flows.forEach((f) => f?.progress(1));
-      };
-    });
   }, { scope: root, dependencies: [motionOn] });
 
   // the markup is a Server Component (teardown-view.tsx): this is only the motion, attached to

@@ -3,7 +3,7 @@
  *  ~350 nodes here are never hydrated: a large share of a budget phone's load time. */
 
 import Image from 'next/image';
-import { CALLOUTS, CALLOUT_W, DEFAULT_LEAD, DESIGN, ISO_SCALE, LAYERS, PHONE, SCREEN, SLOTS } from '@/lib/teardown';
+import { CALLOUTS, CALLOUT_W, DEFAULT_LEAD, DESIGN, ISO_SCALE, LAYERS, PHONE, PHONE_CROP, SCREEN, SLOTS } from '@/lib/teardown';
 import { LayerScreen } from './layer-screens';
 import TeardownMotion from './teardown';
 
@@ -14,10 +14,10 @@ const STAGE_VARS = {
   '--iso-s': ISO_SCALE,
 } as unknown as React.CSSProperties;
 
-/** Sets --fit during parsing (tablet and up), so the stage never visibly rescales at hydration.
+/** Sets --fit during parsing, so the stage never visibly rescales at hydration.
  *  Keep in step with the resize effect in teardown.tsx. */
-const FIT_NOW = `(function(s){if(matchMedia('(max-width: 767px)').matches)return;var b=s.parentElement.getBoundingClientRect();` +
-  `if(b.width)s.style.setProperty('--fit',Math.min((b.width-28)/${DESIGN.w},b.height/${DESIGN.h},1.25).toFixed(3))})` +
+const FIT_NOW = `(function(s){var b=s.parentElement.getBoundingClientRect();if(!b.width)return;` +
+  `s.style.setProperty('--fit',(matchMedia('(max-width: 767px)').matches?b.width/${PHONE_CROP}:Math.min((b.width-28)/${DESIGN.w},b.height/${DESIGN.h},1.25)).toFixed(3))})` +
   `(document.currentScript.previousElementSibling)`;
 
 const WORD = 'Legit Forge';
@@ -42,7 +42,7 @@ export default function Teardown() {
         </ol>
 
         <div className="td-phone">
-          <Image src="/hero/phone@2x.avif" alt="" width={1200} height={1653} priority sizes="(max-width: 767px) 62vw, 30vw" />
+          <Image src="/hero/phone@2x.avif" alt="" width={1200} height={1653} priority sizes="(max-width: 767px) 40vw, 30vw" />
           <div className="td-screen" data-state="final" data-lead={DEFAULT_LEAD} aria-hidden="true">
             <p className="td-word">{[...WORD].map((c, i) => <span key={i}>{c === ' ' ? ' ' : c}</span>)}</p>
             {LAYERS.map((l) => <div key={l.id} className="td-final" data-for={l.id}><LayerScreen id={l.id} /></div>)}
