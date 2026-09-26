@@ -167,7 +167,7 @@ for (const run of RUNS.filter((r) => !only || r.name.includes(only))) {
 
 // Inner pages (PLAN §7): the same §4.8 audit at every viewport, both themes on phone
 const PAGES = ['/services', '/services/website-development', '/services/whatsapp-automation', '/services/n8n-automation',
-  '/work', '/work/project-one', '/team', '/team/member-one', '/contact', '/privacy', '/terms'];
+  '/work', '/work/project-one', '/team', '/team/member-one', '/contact', '/privacy', '/terms', '/blog', '/blog/static-or-dynamic-website'];
 const PAGE_RUNS = RUNS.filter((r) => r.audit || r.name === 'phone-light');
 if (!process.env.SKIP_PAGES) for (const run of PAGE_RUNS.filter((r) => !only || r.name.includes(only))) {
   console.log(`\npages · ${run.name}`);

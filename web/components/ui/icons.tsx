@@ -5,9 +5,10 @@ import { useId } from 'react';
 type P = React.SVGProps<SVGSVGElement>;
 const base = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, strokeLinecap: 'round', strokeLinejoin: 'round' } as const;
 
-/** The logo: the LEGIT FORGE coin struck in the intro (§6.1b), reduced for 24–40 px. A gold rim,
- *  a steel ring with a reeded edge where the ring text sits on the big coin, and the anvil
- *  stamped into the gold centre. Same colours in both themes, like a real coin. */
+/** The logo: the LEGIT FORGE coin struck in the intro (§6.1b), as a seal. Letters only, no
+ *  symbol: LEGIT FORGE runs round the steel ring and is stamped across the gold centre, as
+ *  on the intro coin. Same colours in both themes, like a
+ *  real coin. Keep in step with app/icon.svg and mark() in lib/card-art.ts. */
 export function CoinMark(props: P) {
   const id = useId().replace(/:/g, '');
   return (
@@ -19,14 +20,17 @@ export function CoinMark(props: P) {
         <linearGradient id={`${id}s`} x1="0" y1="0" x2="1" y2="1">
           <stop offset="0" stopColor="#5C6B7A" /><stop offset=".5" stopColor="#2E3945" /><stop offset="1" stopColor="#1A222B" />
         </linearGradient>
+        <path id={`${id}r`} d="M16 16m-12.4 0a12.4 12.4 0 1 1 24.8 0a12.4 12.4 0 1 1-24.8 0" />
       </defs>
       <circle cx="16" cy="16" r="15.6" fill={`url(#${id}g)`} />
       <circle cx="16" cy="16" r="14.3" fill={`url(#${id}s)`} />
-      <circle cx="16" cy="16" r="12.4" fill="none" stroke="#C9D2DB" strokeOpacity=".55" strokeWidth="1.3" strokeDasharray=".9 1.05" />
+      <text fill="#E6ECF1" fontSize="2.7" fontWeight="800" dominantBaseline="central" style={{ fontFamily: 'var(--font-archivo), system-ui, sans-serif' }}>
+        <textPath href={`#${id}r`} textLength="77" lengthAdjust="spacing">LEGIT FORGE · LEGIT FORGE · </textPath>
+      </text>
       <circle cx="16" cy="16" r="10.6" fill={`url(#${id}g)`} stroke="#7A5418" strokeWidth=".5" />
-      <g fill="#6E4A12" transform="translate(16 16.6) scale(.56) translate(-15 -13.75)">
-        <path d="M20 1.5l1.1 2.6 2.6 1.1-2.6 1.1L20 8.9l-1.1-2.6-2.6-1.1 2.6-1.1z" />
-        <path d="M1 13.2 7 11.4h22V16h-6.2l-1.6 5.4h4.3V26H7.5v-4.6h4.3L10.2 16H7.3z" />
+      <g fill="#6E4A12" fontSize="5.1" fontWeight="800" textAnchor="middle" style={{ fontFamily: 'var(--font-archivo), system-ui, sans-serif', fontStretch: '112%' }}>
+        <text x="16" y="15.3">LEGIT</text>
+        <text x="16" y="20.9">FORGE</text>
       </g>
     </svg>
   );

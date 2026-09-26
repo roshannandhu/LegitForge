@@ -4438,7 +4438,45 @@ So the plan is three releases, and **we launch at the first one**.
 | Working-flow demos for every service and the quotation system | Done |
 | Hallmark Strike intro (§6.1b): the press strikes the coin, sparks and smoke, the coin flips and lands, then flies to the header logo | Done. Pure CSS, 1.8 s (1.4 s on phones). Plays once, on the first visit to the home page with motion on. Any key or tap skips it; motion off never shows it. `npm run check` asserts it plays and ends by itself |
 | Fixes found while building it | The motion boot script had never run: it was exported from a `'use client'` file, so the page got an error stub (now `lib/boot.ts`). The project cards' sr-only text escaped the swipe row and widened phones to 740 px. `npm run check` now fails if a phone's layout viewport grows past the device width |
-| **Next (R2)** | Cleave as a View Transition to case studies (§23.1) · Process sticky stack · admin and project uploads (§7.8) · blog (§7.4) |
+| Logo: the coin seal (LEGIT FORGE on the rim and across the centre, no symbol) | Done: header, footer, ID cards (2D and 3D art), favicon (`app/icon.svg`); the intro coin lands on it |
+| Process C2 sticky stack (§23.2) | Done: tablets and laptops with motion on; phones and motion off keep the timeline |
+| The Cleave as a page transition, card → case study (§23.1) | Done: cross-document View Transitions, `CLEAVE_BOOT` in `lib/boot.ts`, styles in `app/globals.css` |
+| Blog (§7.4) | Done: MDX in `content/blog`, registry `lib/blog.ts`, `scripts/blog-index.mjs` runs before dev/build. Two starter posts are drafts (noindex, not in the sitemap) until `draft: false` |
+| **Next (R2/R3)** | **1. Share images** · **2. Admin (§7.8)**. Both are specified in §22.4 below |
+
+### 22.4 Next build steps (handover)
+
+Each step: build it → `npx tsc --noEmit` → `npm run build` → `npx next start -p 3300` → `BASE=http://localhost:3300 npm run check`. Screenshot new pieces at 375, 768 and 1440, in both themes. Then commit and push.
+
+**1. Share images (Open Graph).**
+- Use `next/og` `opengraph-image.tsx` files, statically generated at build time (no runtime rendering on Workers).
+- Where:
+  - one site default in `app/`
+  - one per service (`app/services/[slug]`)
+  - one per case study (`app/work/[slug]`)
+  - one per post (`app/blog/[slug]`)
+- Design, 1200 × 630:
+  - the blueprint grid background, on the dark theme's tokens
+  - the coin seal
+  - the page title in Archivo (load the font file for `ImageResponse`)
+  - a small label (Service / Case study / Blog)
+  - the URL
+- Also add `twitter-image` (the same image) and check the `og:image` tags are present in the served HTML.
+
+**2. Admin (`/admin`, §7.8).**
+- **Access:**
+  - Protect it with Cloudflare Access, plus a server-side check of the `Cf-Access-Jwt-Assertion` header against the Access team's certificates (§13.2).
+  - The pages are `noindex` and dynamic.
+  - In local dev, allow access only when `ADMIN_DEV_BYPASS=1` is set in `.dev.vars`.
+- **Projects:**
+  - List, create, edit, publish toggle and reorder.
+  - One upload route to R2. It takes paste-to-upload (`clipboardData.files`) and file pick. It requires alt text on the server, checks the type and size, and derives width, height and the dominant colour on upload.
+  - Draft preview at `/work/[slug]?preview=1`.
+- **Leads:** list, filter by status, change status, export CSV.
+- **Also:** testimonials with the "client gave written permission" tickbox, a `site_stats` override, and a "Refresh site content" button.
+- **Content source:** the public work pages read published projects from D1 and fall back to `lib/pages.ts` / `lib/content.ts`. Add `migrations/0002_*.sql` for any missing columns; never edit 0001.
+- **UI:** Server Actions plus plain forms styled with the site's tokens. No shadcn, to protect the bundle budget. Admin code must not add to the public pages' first-load JS.
+- **Testing:** also test with `npm run db:migrate:local` and `npm run preview`. Paste an image into a new project, preview the draft, publish it, and see it on /work.
 
 ---
 

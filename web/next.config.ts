@@ -1,5 +1,6 @@
 import type { NextConfig } from 'next';
 import { initOpenNextCloudflareForDev } from '@opennextjs/cloudflare';
+import createMDX from '@next/mdx';
 
 /** PLAN §8.6, §13. The CSP starts report-only; switch to enforcing after every page has
  *  been tested with it (and after Turnstile and Web Analytics are live). */
@@ -29,7 +30,10 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+// Blog posts (content/blog/*.mdx, PLAN §7.4). Plugins are named by string so Turbopack can load them.
+const withMDX = createMDX({ options: { remarkPlugins: [['remark-gfm', {}]] } });
+
+export default withMDX(nextConfig);
 
 // `next dev` gets the wrangler.jsonc bindings (local D1, R2) through this
 initOpenNextCloudflareForDev();
