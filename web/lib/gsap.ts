@@ -13,8 +13,16 @@ export interface Gs { gsap: typeof Gsap; ScrollTrigger: typeof ScrollTriggerType
 
 let loading: Promise<Gs> | undefined;
 
+/** Weak devices (html[data-lite]) fetch GSAP only once the page has loaded and the main thread
+ *  is idle: the first seconds belong to reading and tapping, and the motion follows. */
+const whenIdleAfterLoad = () => new Promise<void>((resolve) => {
+  if (typeof document === 'undefined' || !('lite' in document.documentElement.dataset)) return resolve();
+  const idle = () => ('requestIdleCallback' in window ? requestIdleCallback(() => resolve(), { timeout: 2500 }) : setTimeout(resolve, 1200));
+  if (document.readyState === 'complete') idle(); else addEventListener('load', idle, { once: true });
+});
+
 export function loadGsap(): Promise<Gs> {
-  return (loading ??= Promise.all([import('gsap'), import('gsap/ScrollTrigger')]).then(([{ gsap }, { ScrollTrigger }]) => {
+  return (loading ??= whenIdleAfterLoad().then(() => Promise.all([import('gsap'), import('gsap/ScrollTrigger')])).then(([{ gsap }, { ScrollTrigger }]) => {
     gsap.registerPlugin(ScrollTrigger);
     return { gsap, ScrollTrigger };
   }));
