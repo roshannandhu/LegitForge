@@ -19,6 +19,9 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
 - Logo: the coin seal (LEGIT FORGE on the rim and across the centre, no symbol), CoinMark in components/ui/icons.tsx (also app/icon.svg and mark() in lib/card-art.ts;
   keep all three in step). Its gold and steel are fixed hex in both themes, like a real coin: the
   one allowed exception to the token rule.
+- Share images: lib/og.tsx draws every card (1200 × 630, next/og); each route has an
+  opengraph-image.tsx and twitter-image.tsx. They must stay static (generateStaticParams +
+  dynamicParams = false): the font files in assets/og are read at build time, never on Workers.
 
 ## Commands
 - npm run dev              local development (port 3000)

@@ -165,6 +165,21 @@ for (const run of RUNS.filter((r) => !only || r.name.includes(only))) {
   await ctx.close();
 }
 
+// Share images (PLAN §22.4 step 1): every page type has a static PNG, and its tags point at it
+if (!only || only === 'og') {
+  console.log('\nshare images');
+  for (const u of ['/opengraph-image', '/services/website-development/opengraph-image', '/work/project-one/opengraph-image',
+    '/blog/static-or-dynamic-website/opengraph-image', '/blog/static-or-dynamic-website/twitter-image']) {
+    const r = await fetch(BASE + u);
+    r.status === 200 && r.headers.get('content-type') === 'image/png' ? pass(u) : fail('og', `${u}: ${r.status} ${r.headers.get('content-type')}`);
+  }
+  for (const path of ['/', '/services/website-development', '/work/project-one', '/blog/static-or-dynamic-website']) {
+    const html = await (await fetch(BASE + path)).text();
+    const og = html.includes('property="og:image"'), tw = html.includes('name="twitter:image"');
+    og && tw ? pass(`${path} has og:image and twitter:image`) : fail('og', `${path}: og:image ${og}, twitter:image ${tw}`);
+  }
+}
+
 // Inner pages (PLAN §7): the same §4.8 audit at every viewport, both themes on phone
 const PAGES = ['/services', '/services/website-development', '/services/whatsapp-automation', '/services/n8n-automation',
   '/work', '/work/project-one', '/team', '/team/member-one', '/contact', '/privacy', '/terms', '/blog', '/blog/static-or-dynamic-website'];
