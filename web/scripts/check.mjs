@@ -184,7 +184,7 @@ for (const run of RUNS.filter((r) => !only || r.name.includes(only))) {
 // Share images (PLAN §22.4 step 1): every page type has a static PNG, and its tags point at it
 if (!only || only === 'og') {
   console.log('\nshare images');
-  for (const u of ['/opengraph-image', '/services/website-development/opengraph-image', '/work/project-one/opengraph-image',
+  for (const u of ['/opengraph-image', '/services/website-development/opengraph-image', '/og/work/project-one',
     '/blog/static-or-dynamic-website/opengraph-image', '/blog/static-or-dynamic-website/twitter-image']) {
     const r = await fetch(BASE + u);
     r.status === 200 && r.headers.get('content-type') === 'image/png' ? pass(u) : fail('og', `${u}: ${r.status} ${r.headers.get('content-type')}`);

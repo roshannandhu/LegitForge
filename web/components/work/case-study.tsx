@@ -3,15 +3,16 @@ import { CtaBand } from '@/components/pages/cta-band';
 import { JsonLd } from '@/components/pages/json-ld';
 import { ProjectCard } from '@/components/work/project-card';
 import { CheckIcon, ExternalIcon } from '@/components/ui/icons';
-import { TEAM } from '@/lib/content';
+import { getTeam } from '@/lib/team';
 import { SITE } from '@/lib/site';
 import type { WorkProject } from '@/lib/work';
 
 /** Case study (PLAN §7.2): header → cover → challenge → what we built → results with sources →
  *  stack → who built it → next project. Shared by /work/[slug] and the admin's draft preview. */
-export function CaseStudy({ p, next }: { p: WorkProject; next?: WorkProject }) {
+export async function CaseStudy({ p, next }: { p: WorkProject; next?: WorkProject }) {
   const c = p.study;
-  const builders = c.team.map((t) => ({ ...t, m: TEAM.find((m) => m.slug === t.slug) })).filter((b) => b.m);
+  const team = await getTeam();
+  const builders = c.team.map((t) => ({ ...t, m: team.find((m) => m.slug === t.slug) })).filter((b) => b.m);
   return (
     <>
       <PageHead
@@ -99,7 +100,7 @@ export function CaseStudy({ p, next }: { p: WorkProject; next?: WorkProject }) {
         about: p.client,
         creator: { '@type': 'Organization', name: SITE.name, url: SITE.url },
         keywords: c.stack.join(', '),
-        image: p.cover ? `${SITE.url}${p.cover.src}` : `${SITE.url}/work/${p.slug}/opengraph-image`,
+        image: p.cover ? `${SITE.url}${p.cover.src}` : `${SITE.url}/og/work/${p.slug}`,
         ...(c.results.length ? { abstract: c.results.map((r) => `${r.value} ${r.label}`).join('; ') } : {}),
       }} />
     </>

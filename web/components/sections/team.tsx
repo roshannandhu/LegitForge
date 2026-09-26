@@ -18,7 +18,7 @@ import { useTheme } from 'next-themes';
 import { useMotionEnabled } from '@/components/motion/motion-provider';
 import { CardBack, CardFront } from '@/components/team/card-faces';
 import type { CardPerson } from '@/lib/card-art';
-import type { TEAM } from '@/lib/content';
+import type { Card } from '@/lib/team';
 import { SITE } from '@/lib/site';
 
 // Card 003 is yours: two cards look sparse, and a hiring ad from a two-person studio
@@ -72,7 +72,7 @@ interface SceneProps {
 }
 
 /** `head={false}` on /team, where the page header already carries this heading and lead. */
-export function Team({ team, head = true }: { team: typeof TEAM; head?: boolean }) {
+export function Team({ team, head = true }: { team: Card[]; head?: boolean }) {
   // stable identity: the 3D scene repaints its textures when this changes
   const people = useMemo<CardPerson[]>(() => [
     ...team.map((m) => ({

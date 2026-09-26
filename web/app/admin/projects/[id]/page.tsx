@@ -1,8 +1,8 @@
 import { notFound } from 'next/navigation';
 import { CATEGORIES, getProjectRow, listImages, STAMPS } from '@/lib/admin/db';
-import { TEAM } from '@/lib/content';
-import { deleteImageAction, deleteProjectAction, publishProjectAction, saveProjectAction, setCoverAction } from '../../actions';
-import { ActionForm, Submit } from '../../ui';
+import { getTeam } from '@/lib/team';
+import { captureCoverAction, deleteImageAction, deleteProjectAction, publishProjectAction, saveProjectAction, setCoverAction } from '../../actions';
+import { ActionButton, ActionForm, Submit } from '../../ui';
 import { ImageManager } from './image-manager';
 
 const parse = <T,>(s: string): T[] => { try { return JSON.parse(s); } catch { return []; } };
@@ -12,6 +12,7 @@ export default async function EditProject({ params }: { params: Promise<{ id: st
   const p = await getProjectRow(id);
   if (!p) notFound();
   const images = await listImages(id);
+  const members = await getTeam();
   const team = parse<{ slug: string; role: string }>(p.team);
   const results = parse<{ value: string; label: string; source: string }>(p.results);
 
@@ -30,6 +31,10 @@ export default async function EditProject({ params }: { params: Promise<{ id: st
       <section className="admin-section" aria-labelledby="img-h">
         <h2 id="img-h" className="type-h3">Images</h2>
         <ImageManager projectId={id} />
+        <div className="admin-actions" style={{ margin: '16px 0' }}>
+          <ActionButton action={captureCoverAction.bind(null, id)}>Capture cover from the live site</ActionButton>
+          <span className="muted">Laptop and phone screenshots of {p.live_url ?? 'the live URL (add it below first)'}.</span>
+        </div>
         {images.length > 0 && (
           <ul className="thumbs" aria-label="Uploaded images">
             {images.map((im) => (
@@ -75,7 +80,7 @@ export default async function EditProject({ params }: { params: Promise<{ id: st
             <textarea name="results" defaultValue={results.map((r) => `${r.value} | ${r.label} | ${r.source}`).join('\n')} placeholder="+38% | more enquiries in 60 days | contact form records, Jan–Mar" /></label>
           <fieldset className="admin-fieldset">
             <legend>Who built it</legend>
-            {TEAM.map((m) => {
+            {members.map((m) => {
               const t = team.find((x) => x.slug === m.slug);
               return (
                 <div key={m.slug} className="team-row">

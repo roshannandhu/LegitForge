@@ -20,12 +20,14 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
   keep all three in step). Its gold and steel are fixed hex in both themes, like a real coin: the
   one allowed exception to the token rule.
 - Share images: lib/og.tsx draws every card (1200 × 630, next/og); each route has an
-  opengraph-image.tsx and twitter-image.tsx. They must stay static (generateStaticParams +
+  opengraph-image.tsx and twitter-image.tsx, except case studies: an uploaded cover, else /og/work/<slug>. They must stay static (generateStaticParams +
   dynamicParams = false): the font files in assets/og are read at build time, never on Workers.
 - Admin (PLAN §7.8): app/admin (pages, Server Actions in actions.ts), lib/admin (auth, D1 queries),
   app/api/admin/upload (R2), app/media (serves R2 images). Setup: README "Admin".
 - Projects on public pages come from lib/work.ts: published D1 rows, else the placeholders in
   content.ts/pages.ts. Never import PROJECTS/CASE_STUDIES in a page again; use getProjects().
+  People the same way: lib/team.ts getTeam() (tag 'team'), never TEAM/MEMBER_DETAILS in a page.
+  Client components get toCards(team) only, so bios stay on the server.
 
 ## Commands
 - npm run dev              local development (port 3000)

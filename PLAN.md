@@ -4444,7 +4444,13 @@ So the plan is three releases, and **we launch at the first one**.
 | Blog (§7.4) | Done: MDX in `content/blog`, registry `lib/blog.ts`, `scripts/blog-index.mjs` runs before dev/build. Two starter posts are drafts (noindex, not in the sitemap) until `draft: false` |
 | Share images (§22.4 step 1) | Done: `lib/og.tsx`, a static 1200 × 630 card for the site and for each service, case study and post |
 | Admin (§7.8, §22.4 step 2) | Done. Covers projects (paste to upload, alt text required on the server, width, height and dominant colour), leads with CSV export, testimonials (permission required) and site stats. Cloudflare Access plus a server JWT check; public pages read published D1 projects, with the placeholders as fallback. One change from §7.8: the draft preview is `/admin/preview/<slug>`, not `/work/<slug>?preview=1`. Access then guards it too, and the /work pages stay static |
-| **Left for launch** | Everything under "Left for R1", plus the Access application and its two secrets (web/README.md "Admin"). Later (R3): cover capture from the live URL (§7.8 item 2) and team profile editing |
+| Admin, round 2 | Done:
+- **Team profiles:** name, role, bio, skills, tools, links, favourite build and photo. Pages read `team_members` with the code as fallback; "Regenerate ID card" bumps `card_version`.
+- **Share images for admin projects:** the uploaded cover; placeholder cards moved to `/og/work/<slug>`.
+- **Image sitemap:** covers and team photos, with project `lastmod`.
+- **Capture cover from the live URL:** Browser Rendering; needs the paid `BROWSER` binding. |
+| Demos and SEO | Done. Demos loop non-stop while on screen (Replay removed; hero untouched). Every animation has hidden step-by-step text. Home adds WebSite and ItemList data. The check enforces one h1, a canonical, title ≤ 70 and description 50–160 |
+| **Left for launch** | Everything under "Left for R1", plus the Access application and its two secrets (web/README.md "Admin"), and Browser Rendering if cover capture is wanted |
 
 ### 22.4 Next build steps (handover) — both built, see §22.3
 

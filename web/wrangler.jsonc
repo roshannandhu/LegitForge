@@ -10,6 +10,7 @@
   "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
   "services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "legitforge-web" }],
   "images": { "binding": "IMAGES" },
+  "browser": { "binding": "BROWSER" },          // admin "Capture cover" (Browser Rendering, PLAN §7.8)
   "d1_databases": [
     // TODO: paste the id printed by `npx wrangler d1 create legitforge` into BOTH entries.
     // Local development and `npm run preview` work without it.

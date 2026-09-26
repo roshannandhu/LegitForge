@@ -207,3 +207,65 @@ export async function overview() {
   const one = (r: D1Result<{ a: number; b: number }>) => ({ total: r.results[0]?.a ?? 0, sub: r.results[0]?.b ?? 0 });
   return { leads: one(leads), projects: one(projects), testimonials: one(testimonials) };
 }
+
+/* ------------------------------------------------------------------ team */
+export interface MemberRow {
+  id: string; slug: string; name: string; role: string; id_code: string; bio: string; skills: string; tools: string;
+  photo_key: string | null; card_version: number; linkedin_url: string | null; github_url: string | null;
+  website_url: string | null; favorite_project_id: string | null; is_published: number; sort_order: number; initials: string | null;
+}
+
+export async function listMembers() {
+  return (await (await adminDb()).prepare('SELECT * FROM team_members ORDER BY sort_order, slug').all<MemberRow>()).results;
+}
+
+export async function getMember(id: string) {
+  return (await adminDb()).prepare('SELECT * FROM team_members WHERE id = ?').bind(id).first<MemberRow>();
+}
+
+/** First run: copy the people in lib/content.ts + lib/pages.ts into the table, once. */
+export async function importMembers(people: { slug: string; idCode: string; name: string; role: string; initials: string;
+  skills: string[]; bio: string; tools: string[]; links: { label: string; href: string }[] }[]) {
+  const db = await adminDb();
+  const link = (p: (typeof people)[number], label: string) => p.links.find((l) => l.label === label)?.href ?? null;
+  await db.batch(people.map((p, i) => db.prepare(
+    `INSERT OR IGNORE INTO team_members (id, slug, name, role, id_code, bio, skills, tools, linkedin_url, github_url, website_url, initials, sort_order)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).bind(crypto.randomUUID(), p.slug, p.name, p.role, p.idCode, p.bio, JSON.stringify(p.skills), JSON.stringify(p.tools),
+    link(p, 'LinkedIn'), link(p, 'GitHub'), link(p, 'Website'), p.initials, i)));
+}
+
+export async function updateMember(id: string, v: Pick<MemberRow, 'slug' | 'name' | 'role' | 'id_code' | 'bio' | 'skills' | 'tools' |
+  'linkedin_url' | 'github_url' | 'website_url' | 'favorite_project_id' | 'initials'>) {
+  await (await adminDb()).prepare(
+    `UPDATE team_members SET slug = ?, name = ?, role = ?, id_code = ?, bio = ?, skills = ?, tools = ?, linkedin_url = ?,
+       github_url = ?, website_url = ?, favorite_project_id = ?, initials = ? WHERE id = ?`,
+  ).bind(v.slug, v.name, v.role, v.id_code, v.bio, v.skills, v.tools, v.linkedin_url, v.github_url, v.website_url,
+    v.favorite_project_id, v.initials, id).run();
+}
+
+export async function memberConflict(id: string, slug: string, idCode: string) {
+  return (await adminDb()).prepare('SELECT slug, id_code FROM team_members WHERE id != ? AND (slug = ? OR id_code = ?)')
+    .bind(id, slug, idCode).first<{ slug: string; id_code: string }>();
+}
+
+export async function setMemberPublished(id: string, published: boolean) {
+  await (await adminDb()).prepare('UPDATE team_members SET is_published = ? WHERE id = ?').bind(published ? 1 : 0, id).run();
+}
+
+/** "Regenerate ID card": a new card_version changes the photo URL, so every card redraws. */
+export async function bumpCard(id: string) {
+  await (await adminDb()).prepare('UPDATE team_members SET card_version = card_version + 1 WHERE id = ?').bind(id).run();
+}
+
+/** Returns the old key, to delete from R2. */
+export async function setMemberPhoto(id: string, key: string | null) {
+  const db = await adminDb();
+  const old = await db.prepare('SELECT photo_key FROM team_members WHERE id = ?').bind(id).first<{ photo_key: string | null }>();
+  await db.prepare('UPDATE team_members SET photo_key = ?, card_version = card_version + 1 WHERE id = ?').bind(key, id).run();
+  return old?.photo_key ?? null;
+}
+
+export async function publishedProjectTitles() {
+  return (await (await adminDb()).prepare('SELECT id, title FROM projects ORDER BY sort_order').all<{ id: string; title: string }>()).results;
+}

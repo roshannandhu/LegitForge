@@ -55,8 +55,15 @@ and, when deploying, `npm run db:migrate:remote`. After changing `wrangler.jsonc
 
 ## Admin (/admin)
 
-Projects (paste a screenshot to upload), leads with CSV export, testimonials and site
-numbers. PLAN §7.8.
+Projects (paste a screenshot to upload, or capture the live site), team profiles and ID
+cards, leads with CSV export, testimonials and site numbers. PLAN §7.8.
+
+**Team:** open Admin → Team and choose "Import the current team" once. From then on the site
+reads the people from the database. "Regenerate ID card" redraws the flip and 3D cards.
+
+**Capture cover** needs Cloudflare Browser Rendering (the `BROWSER` binding in
+wrangler.jsonc, a paid add-on). Without it, the button says so; pasting a screenshot always
+works.
 
 **Locally:** run `npm run db:migrate:local`, set `ADMIN_DEV_BYPASS=1` in `.dev.vars`, run
 `npm run dev`, then open http://localhost:3000/admin. The bypass only works on localhost.
@@ -70,7 +77,8 @@ numbers. PLAN §7.8.
    `npx wrangler secret put ACCESS_AUD` and `npx wrangler secret put ACCESS_TEAM_DOMAIN`.
 4. Apply the migrations remotely: `npm run db:migrate:remote`.
 
-Without both secrets, /admin is a 404 for everyone. Published projects replace the
+Without both secrets, /admin is a 404 for everyone. If you change data outside the admin
+(for example with `wrangler d1 execute`), press Admin → Site → "Refresh site content". Published projects replace the
 placeholders on the home page and /work. Draft previews are at `/admin/preview/<slug>`.
 
 ## Before launch

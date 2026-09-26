@@ -24,10 +24,11 @@ async function measure(file: File): Promise<Picked> {
   return picked;
 }
 
-export function ImageManager({ projectId }: { projectId: string }) {
+/** projectId: a project image. memberId: a team member's photo (one per person, no kind). */
+export function ImageManager({ projectId, memberId, altHint = '' }: { projectId?: string; memberId?: string; altHint?: string }) {
   const router = useRouter();
   const [picked, setPicked] = useState<Picked | null>(null);
-  const [alt, setAlt] = useState('');
+  const [alt, setAlt] = useState(altHint);
   const [kind, setKind] = useState('gallery');
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ error?: string; ok?: string }>({});
@@ -61,14 +62,14 @@ export function ImageManager({ projectId }: { projectId: string }) {
     if (alt.trim().length < 8) { setMsg({ error: 'Describe the image first (at least 8 characters).' }); altRef.current?.focus(); return; }
     setBusy(true); setMsg({});
     const f = new FormData();
-    f.set('file', picked.file); f.set('alt', alt.trim()); f.set('projectId', projectId); f.set('kind', kind);
+    f.set('file', picked.file); f.set('alt', alt.trim()); if (projectId) f.set('projectId', projectId); if (memberId) f.set('memberId', memberId); f.set('kind', kind);
     f.set('width', String(picked.width)); f.set('height', String(picked.height)); f.set('color', picked.color);
     try {
       const res = await fetch('/api/admin/upload', { method: 'POST', body: f });
       const body = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) { setMsg({ error: body.error ?? `Upload failed (${res.status}).` }); return; }
       URL.revokeObjectURL(picked.url);
-      setPicked(null); setAlt(''); setKind('gallery');
+      setPicked(null); setAlt(altHint); setKind('gallery');
       setMsg({ ok: 'Uploaded.' });
       router.refresh();
     } catch {
@@ -96,12 +97,12 @@ export function ImageManager({ projectId }: { projectId: string }) {
               <textarea ref={altRef} value={alt} onChange={(e) => setAlt(e.target.value)} maxLength={250} required
                 placeholder="The bakery's home page on a phone, showing today's cakes and a WhatsApp button" />
             </label>
-            <label className="field"><span>Use as</span>
+            {!memberId && <label className="field"><span>Use as</span>
               <select value={kind} onChange={(e) => setKind(e.target.value)}>
                 <option value="gallery">Gallery</option><option value="cover">Cover</option>
                 <option value="before">Before</option><option value="after">After</option>
               </select>
-            </label>
+            </label>}
             <div className="admin-actions">
               <button type="button" className="btn btn-primary" onClick={upload} disabled={busy} aria-busy={busy}>{busy ? 'Uploading…' : 'Upload'}</button>
               <button type="button" className="btn btn-ghost" onClick={() => { URL.revokeObjectURL(picked.url); setPicked(null); }}>Cancel</button>

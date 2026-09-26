@@ -9,7 +9,7 @@ import { revalidatePath, updateTag } from 'next/cache';
 import { requireAdmin } from '@/lib/admin/auth';
 import * as db from '@/lib/admin/db';
 import { getEnv } from '@/lib/cf';
-import { TEAM } from '@/lib/content';
+import { getTeam, TEAM_DEFAULTS } from '@/lib/team';
 import type { WorkCategory } from '@/lib/pages';
 
 const str = (f: FormData, k: string, max = 2000) => String(f.get(k) ?? '').trim().slice(0, max);
@@ -22,6 +22,7 @@ export type FormState = { error?: string; ok?: string } | undefined;
 
 function refreshPublic() {
   updateTag('projects');
+  updateTag('team');           // "projects shipped" and favourites are on the cards
 }
 
 /* ------------------------------------------------------------------ projects */
@@ -59,7 +60,7 @@ export async function saveProjectAction(id: string, _: FormState, f: FormData): 
     const [value = '', label = '', source = ''] = l.split('|').map((x) => x.trim());
     return { value, label, source };
   }).filter((r) => r.value && r.label);
-  const team = TEAM.filter((m) => f.get(`team_${m.slug}`) === 'on')
+  const team = (await getTeam()).filter((m) => f.get(`team_${m.slug}`) === 'on')
     .map((m) => ({ slug: m.slug, role: str(f, `role_${m.slug}`, 120) }));
 
   await db.updateProject(id, {
@@ -166,4 +167,107 @@ export async function refreshSiteAction(): Promise<FormState> {
   refreshPublic();
   revalidatePath('/', 'layout');
   return { ok: 'Done. Pages update on their next visit.' };
+}
+
+/* ------------------------------------------------------------------ team */
+export async function importTeamAction() {
+  await requireAdmin();
+  await db.importMembers(TEAM_DEFAULTS);
+  revalidatePath('/admin/team');
+}
+
+const httpsOrNull = (v: string | null) => (v && /^https:\/\/\S+$/.test(v) ? v : null);
+
+export async function saveMemberAction(id: string, _: FormState, f: FormData): Promise<FormState> {
+  await requireAdmin();
+  const slug = str(f, 'slug', 60), idCode = str(f, 'id_code', 12).toUpperCase();
+  if (!str(f, 'name') || !str(f, 'role')) return { error: 'Name and role are required.' };
+  if (!SLUG.test(slug)) return { error: 'The slug can only use lowercase letters, numbers and single hyphens.' };
+  if (!/^LF-\d{3}$/.test(idCode)) return { error: 'The ID code looks like LF-001.' };
+  const clash = await db.memberConflict(id, slug, idCode);
+  if (clash) return { error: clash.slug === slug ? `“${slug}” is taken.` : `${idCode} is taken.` };
+  for (const k of ['linkedin_url', 'github_url', 'website_url']) {
+    const v = opt(f, k, 300);
+    if (v && !httpsOrNull(v)) return { error: 'Links must start with https://' };
+  }
+  const bio = str(f, 'bio', 1200);
+  if (bio.length < 40) return { error: 'Write a bio of at least a couple of sentences.' };
+  await db.updateMember(id, {
+    slug, name: str(f, 'name', 80), role: str(f, 'role', 80), id_code: idCode, bio,
+    skills: JSON.stringify(csv(f, 'skills').slice(0, 6)), tools: JSON.stringify(csv(f, 'tools').slice(0, 12)),
+    linkedin_url: httpsOrNull(opt(f, 'linkedin_url', 300)), github_url: httpsOrNull(opt(f, 'github_url', 300)),
+    website_url: httpsOrNull(opt(f, 'website_url', 300)), favorite_project_id: opt(f, 'favorite_project_id', 40),
+    initials: str(f, 'initials', 3).toUpperCase() || null,
+  });
+  updateTag('team');
+  revalidatePath('/admin/team');
+  revalidatePath(`/admin/team/${id}`);
+  return { ok: 'Saved.' };
+}
+
+export async function publishMemberAction(id: string, published: boolean) {
+  await requireAdmin();
+  await db.setMemberPublished(id, published);
+  updateTag('team');
+  revalidatePath('/admin/team');
+}
+
+export async function regenerateCardAction(id: string): Promise<FormState> {
+  await requireAdmin();
+  await db.bumpCard(id);
+  updateTag('team');
+  revalidatePath(`/admin/team/${id}`);
+  return { ok: 'The ID card will redraw on every page.' };
+}
+
+export async function removeMemberPhotoAction(id: string) {
+  await requireAdmin();
+  const old = await db.setMemberPhoto(id, null);
+  const media = (await getEnv())?.MEDIA;
+  if (media && old) await media.delete(old);
+  updateTag('team');
+  revalidatePath(`/admin/team/${id}`);
+}
+
+/* ------------------------------------------------------------------ cover capture */
+/** "Capture cover" (PLAN §7.8 item 2): screenshots the live site at 1440 × 900 (the cover) and
+ *  390 × 844 (a gallery image) through Cloudflare Browser Rendering, straight into R2, so every
+ *  cover is framed the same. Needs the BROWSER binding, which only exists on Cloudflare (it is
+ *  a paid add-on and there is no local version): elsewhere this says so and does nothing. */
+export async function captureCoverAction(projectId: string): Promise<FormState> {
+  await requireAdmin();
+  const env = await getEnv();
+  const row = await db.getProjectRow(projectId);
+  if (!row?.live_url) return { error: 'Add the project’s live URL first, then save.' };
+  if (!env?.BROWSER || !env.MEDIA) {
+    return { error: 'Cover capture runs on Cloudflare only: it needs the Browser Rendering binding (BROWSER). Paste a screenshot instead.' };
+  }
+  const { default: puppeteer } = await import('@cloudflare/puppeteer');
+  let browser: Awaited<ReturnType<typeof puppeteer.launch>> | null = null;
+  try {
+    browser = await puppeteer.launch(env.BROWSER as unknown as Parameters<typeof puppeteer.launch>[0]);
+    const page = await browser.newPage();
+    const shots: { kind: 'cover' | 'gallery'; w: number; h: number; alt: string; mobile: boolean }[] = [
+      { kind: 'cover', w: 1440, h: 900, alt: `${row.title}: the live website on a laptop`, mobile: false },
+      { kind: 'gallery', w: 390, h: 844, alt: `${row.title}: the live website on a phone`, mobile: true },
+    ];
+    for (const s of shots) {
+      await page.setViewport({ width: s.w, height: s.h, deviceScaleFactor: 1, isMobile: s.mobile, hasTouch: s.mobile });
+      await page.goto(row.live_url, { waitUntil: 'networkidle0', timeout: 30_000 });
+      const bytes = new Uint8Array(await page.screenshot({ type: 'jpeg', quality: 82 }) as Uint8Array);
+      const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))].map((b) => b.toString(16).padStart(2, '0')).join('');
+      const key = `projects/${projectId}/${hash.slice(0, 32)}.jpg`;
+      await env.MEDIA.put(key, bytes, { httpMetadata: { contentType: 'image/jpeg', cacheControl: 'public, max-age=31536000, immutable' } });
+      const id = await db.insertImage({ project_id: projectId, r2_key: key, alt: s.alt, kind: s.kind, width: s.w, height: s.h, dominant_color: null });
+      if (s.kind === 'cover') await db.setCover(projectId, id);
+    }
+  } catch (e) {
+    console.error('[capture]', e);
+    return { error: 'The live site couldn’t be captured (it may be slow or blocking bots; details are in the server log). Paste a screenshot instead.' };
+  } finally {
+    await browser?.close();
+  }
+  refreshPublic();
+  revalidatePath(`/admin/projects/${projectId}`);
+  return { ok: 'Captured: the laptop view is now the cover, and the phone view is in the gallery.' };
 }

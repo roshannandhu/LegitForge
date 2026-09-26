@@ -16,7 +16,8 @@ import { Hallmarks } from '@/components/sections/hallmarks';
 import { PricingFaq } from '@/components/sections/pricing-faq';
 import { Quench } from '@/components/sections/quench';
 import { HallmarkStrike } from '@/components/intro/hallmark-strike';
-import { PROCESS, SERVICES, TEAM } from '@/lib/content';
+import { PROCESS, SERVICES } from '@/lib/content';
+import { getTeam, toCards } from '@/lib/team';
 import { SITE, waLink } from '@/lib/site';
 import { LAYERS } from '@/lib/teardown';
 import '@/components/hero/hero.css';
@@ -75,7 +76,8 @@ const orgLd = {
   },
 };
 
-export default function Home() {
+export default async function Home() {
+  const team = toCards(await getTeam());
   const wa = waLink();
   return (
     <>
@@ -118,7 +120,7 @@ export default function Home() {
       <LiveTest />
       <Process steps={PROCESS} />
       <Projects />
-      <Team team={TEAM} />
+      <Team team={team} />
       <Hallmarks />
       <PricingFaq />
       <Quench />
