@@ -29,9 +29,8 @@ const ATLAS = 2048;
 const FRONT = { x: 0, y: 0, w: ATLAS / 2, h: Math.round(ATLAS * 0.755) };
 const BACK = { x: ATLAS / 2, y: 0, w: ATLAS / 2, h: Math.round(ATLAS * 0.757) };
 
-// the logo mark (components/ui/icons.tsx), same 32×32 geometry
-const SPARK = 'M20 1.5l1.1 2.6 2.6 1.1-2.6 1.1L20 8.9l-1.1-2.6-2.6-1.1 2.6-1.1z';
-const ANVIL = 'M1 13.2 7 11.4h22V16h-6.2l-1.6 5.4h4.3V26H7.5v-4.6h4.3L10.2 16H7.3z';
+// the coin seal (CoinMark in components/ui/icons.tsx), same 32×32 geometry
+const RING = 'LEGIT FORGE · LEGIT FORGE · ';
 
 type Tokens = Record<'surface' | 'surface2' | 'line' | 'text' | 'muted' | 'accent' | 'accentInk' | 'heatLo' | 'heatHi' | 'heatMid' | 'quench', string>;
 type Fonts = { sans: string; stencil: string };
@@ -117,13 +116,17 @@ function mark(ctx: CanvasRenderingContext2D, x: number, y: number, size: number)
   const disc = (r: number, fill: CanvasGradient) => { ctx.beginPath(); ctx.arc(16, 16, r, 0, Math.PI * 2); ctx.fillStyle = fill; ctx.fill(); };
   disc(15.6, gold);
   disc(14.3, steel);
-  ctx.beginPath(); ctx.arc(16, 16, 12.4, 0, Math.PI * 2);
-  ctx.setLineDash([.9, 1.05]); ctx.lineWidth = 1.3; ctx.strokeStyle = 'rgb(201 210 219 / .55)'; ctx.stroke(); ctx.setLineDash([]);
+  // LEGIT FORGE round the ring, one letter at a time, reading clockwise from the left
+  ctx.fillStyle = '#E6ECF1'; ctx.font = `800 2.7px ${fonts().sans}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  [...RING].forEach((ch, i) => {
+    const a = Math.PI + (i / RING.length) * Math.PI * 2;
+    ctx.save(); ctx.translate(16 + Math.cos(a) * 12.4, 16 + Math.sin(a) * 12.4); ctx.rotate(a + Math.PI / 2);
+    ctx.fillText(ch, 0, 0); ctx.restore();
+  });
   disc(10.6, gold);
-  ctx.translate(16, 16.6); ctx.scale(.56, .56); ctx.translate(-15, -13.75);
-  ctx.fillStyle = '#6E4A12';
-  ctx.fill(new Path2D(SPARK));
-  ctx.fill(new Path2D(ANVIL));
+  ctx.fillStyle = '#6E4A12'; ctx.font = `800 5.1px ${fonts().sans}`; ctx.textBaseline = 'alphabetic';
+  ctx.fillText('LEGIT', 16, 15.3);
+  ctx.fillText('FORGE', 16, 20.9);
   ctx.restore();
 }
 

@@ -8,13 +8,13 @@
 
 .intro { display: none; }
 html[data-intro] .intro {
-  --d: 1.8s; --coin: 160px; --press: 150px; --pad: 24px; --logo-y: 36px; --end-s: .2;   /* ends at the 32 px logo */
+  --d: 1.8s; --coin: 160px; --press: 150px; --pad: 24px; --logo-y: 36px; --end-s: .25;   /* ends at the 40 px logo */
   --cy: 60vh;                                      /* the coin's centre on screen */
   position: fixed; inset: 0; z-index: 200; display: block; pointer-events: none; overflow: hidden;
   animation: intro-hide var(--d) linear forwards;
 }
-@media (min-width: 1024px) { html[data-intro] .intro { --coin: 200px; --press: 190px; --end-s: .16; } }
-@media (max-width: 767px) { html[data-intro] .intro { --d: 1.4s; --coin: 120px; --press: 112px; --pad: 16px; --logo-y: 30px; --end-s: .2667; } }
+@media (min-width: 1024px) { html[data-intro] .intro { --coin: 200px; --press: 190px; --end-s: .2; } }
+@media (max-width: 767px) { html[data-intro] .intro { --d: 1.4s; --coin: 120px; --press: 112px; --pad: 16px; --logo-y: 30px; --end-s: .3333; } }
 @keyframes intro-hide { 99.9% { visibility: visible; } 100% { visibility: hidden; } }
 html[data-intro] .intro * { animation-duration: var(--d); animation-fill-mode: both; animation-timing-function: linear; }
 
@@ -91,7 +91,7 @@ html[data-intro] .intro * { animation-duration: var(--d); animation-fill-mode: b
 .coin-wrap {
   position: absolute; left: 50%; top: var(--cy); width: var(--coin); height: var(--coin); margin: calc(var(--coin) / -2);
   perspective: 900px; animation-name: coin-toss;
-  --to-x: calc(max(var(--pad), (100vw - 1240px) / 2 + var(--pad)) + 16px - 50vw);
+  --to-x: calc(max(var(--pad), (100vw - 1240px) / 2 + var(--pad)) + 20px - 50vw);
   --to-y: calc(var(--logo-y) - var(--cy));   /* the logo's centre: header rows are 72 px, 60 on phones */
 }
 @keyframes coin-toss {
