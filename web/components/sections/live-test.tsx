@@ -18,6 +18,7 @@ const STEPS = [
 ] as const;
 
 type Status = 'idle' | 'running' | 'done';
+const REPLY_AT = STEPS.find((s) => s.key === 'replied')!.at;
 
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';   // no 0/O or 1/I to misread
 const makeCode = () => {
@@ -33,9 +34,24 @@ export function LiveTest() {
   const [code, setCode] = useState('');
   const [announce, setAnnounce] = useState('');
   const timers = useRef<number[]>([]);
+  const watch = useRef<HTMLSpanElement>(null);
+  const raf = useRef(0);
 
-  const clear = () => { timers.current.forEach(clearTimeout); timers.current = []; };
+  const clear = () => { timers.current.forEach(clearTimeout); timers.current = []; cancelAnimationFrame(raf.current); };
   useEffect(() => clear, []);
+
+  /** The reply stopwatch (plan D #6): counts from the message's arrival and freezes at the reply. */
+  function startWatch(delayMs: number) {
+    const el = watch.current;
+    if (!el) return;
+    const t0 = performance.now() + delayMs;
+    const tick = (now: number) => {
+      const t = Math.min(Math.max(0, (now - t0) / 1000), REPLY_AT);
+      el.textContent = t.toFixed(1);
+      if (t < REPLY_AT) raf.current = requestAnimationFrame(tick);
+    };
+    raf.current = requestAnimationFrame(tick);
+  }
 
   function run() {
     clear();
@@ -43,6 +59,7 @@ export function LiveTest() {
     setStatus('running');
     setLit(0);
     setAnnounce('Demo started.');
+    if (motionOn) startWatch(600); else if (watch.current) watch.current.textContent = REPLY_AT.toFixed(1);
 
     STEPS.forEach((s, i) => {
       const fire = () => {
@@ -86,6 +103,12 @@ export function LiveTest() {
         </div>
 
         <div className="live-graph-wrap">
+          <p className="live-watch" data-state={status} aria-hidden="true">
+            <span className="live-watch-dot" />
+            <span ref={watch} className="live-watch-num num">{status === 'idle' ? '0.0' : REPLY_AT.toFixed(1)}</span>
+            <span className="live-watch-unit">s</span>
+            <span className="live-watch-label">{status === 'idle' ? 'reply time' : lit >= 4 ? 'replied on WhatsApp' : 'waiting for the reply…'}</span>
+          </p>
           <ol className="live-graph" aria-label="Live test progress">
             {STEPS.map((s, i) => {
               const done = i < lit;

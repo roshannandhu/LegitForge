@@ -756,3 +756,16 @@
   .cafe-dynamic .cafe-order { display: table; margin-left: auto; }
   .cafe-static .cafe-hours, .cafe-static .cafe-map { margin-right: 50%; }
 }
+
+/* live test: the reply stopwatch (plan D #6) */
+.live-watch { display: flex; align-items: baseline; gap: 6px; margin: 0 0 20px; }
+.live-watch-dot { align-self: center; width: 10px; height: 10px; border-radius: 50%; background: var(--line); }
+.live-watch[data-state="running"] .live-watch-dot { background: var(--heat-color); animation: watch-pulse 800ms ease-in-out infinite; }
+.live-watch[data-state="done"] .live-watch-dot { background: var(--success); }
+.live-watch-num { font-size: 48px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+.live-watch[data-state="done"] .live-watch-num { color: var(--success); }
+.live-watch-unit { font-size: 20px; font-weight: 700; }
+.live-watch-label { margin-left: 8px; font-size: 15px; color: var(--text-muted); }
+@keyframes watch-pulse { 50% { opacity: .35; transform: scale(.8); } }
+[data-motion="off"] .live-watch-dot { animation: none; }
+@media (max-width: 479px) { .live-watch-num { font-size: 40px; } }
