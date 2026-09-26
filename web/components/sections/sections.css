@@ -635,16 +635,7 @@
 .plate-steel span { display: block; margin-top: 20px; font-size: 14px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--heat-color); }
 
 /* ============================================= working-flow demos (demos.ts) */
-.demo-player { position: relative; display: grid; gap: 8px; }
-.demo-replay {
-  justify-self: end; min-height: 44px; padding: 0 16px; visibility: visible;
-  border: 1px solid var(--line); border-radius: 10px; background: transparent; color: var(--text);
-  font: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
-}
-.demo-replay:not([data-shown]) { visibility: hidden; }   /* keeps its row (no layout shift) and leaves focus and the a11y tree; not [hidden]: Tailwind forces that to display:none */
-.demo-replay:hover { border-color: var(--text-muted); }
-[data-motion="off"] .demo-replay { display: none; }            /* motion off never replays: no empty row */
-
+.demo-player { position: relative; }
 /* website: live tag, badge, cursor, click ripple */
 .demo-tag { margin-left: auto; padding: 2px 8px; border-radius: 999px; background: color-mix(in oklab, var(--heat-color) 22%, transparent); color: var(--text); font-size: 11px; font-weight: 700; }
 .bp-img { position: relative; }
