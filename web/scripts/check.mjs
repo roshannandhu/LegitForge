@@ -32,7 +32,7 @@ const RUNS = [
 /** Runs in the page. The §4.8 gate, measured rather than eyeballed. */
 function audit() {
   const vw = innerWidth;
-  const skip = '.projects, .lanyards, .stage-fit, .hp, .skip-link, .phone-menu, .sr-only, .team-canvas';
+  const skip = '.projects, .lanyards, .stage-fit, .hp, .skip-link, .phone-menu, .sr-only, .team-canvas, .intro';
   const name = (el) => el.tagName.toLowerCase() + (el.classList.length ? '.' + [...el.classList].join('.') : '');
   const escapees = [];
   document.querySelectorAll('body *').forEach((el) => {
@@ -60,6 +60,7 @@ function audit() {
   });
   const ids = ['top', 'services', 'quotation', 'compare', 'live-test', 'process', 'work', 'team', 'proof', 'pricing', 'contact'];
   return {
+    vw,
     overflow: Math.max(0, Math.round(document.documentElement.scrollWidth - vw)),
     missing: ids.filter((i) => !document.getElementById(i)),
     escapees: escapees.slice(0, 8),
@@ -97,11 +98,20 @@ for (const run of RUNS.filter((r) => !only || r.name.includes(only))) {
   page.on('pageerror', (e) => errors.push(`pageerror: ${String(e).slice(0, 200)}`));
 
   await page.goto(BASE, { waitUntil: 'networkidle' });
+  // §6.1b: the Hallmark Strike plays on a first visit with motion on, never with motion off,
+  // and always ends by itself (the overlay must be gone before anything is audited).
+  const played = await page.evaluate(() => localStorage.getItem('lf-intro-seen') === '1');
+  (run.motion === 'reduce') === played ? fail(run.name, `intro ${played ? 'played with motion off' : 'did not play'}`) : pass(`intro ${played ? 'played' : 'skipped (motion off)'}`);
+  const ended = await page.waitForFunction(() => !document.documentElement.dataset.intro, null, { timeout: 4000 }).then(() => true, () => false);
+  ended ? pass('intro ended by itself') : fail(run.name, 'intro overlay still up after 4 s');
   await page.screenshot({ path: `${OUT}/${run.name}-hero.png` });
 
   if (run.audit) {
     const a = await page.evaluate(audit);
     a.overflow ? fail(run.name, `horizontal overflow ${a.overflow}px`) : pass('no horizontal overflow');
+    // A phone widens its layout viewport to fit anything that escapes, and innerWidth follows,
+    // so the overflow above reads 0. Compare with the device width instead.
+    a.vw > run.viewport[0] ? fail(run.name, `layout viewport widened to ${a.vw}px`) : pass('layout viewport = device width');
     a.missing.length ? fail(run.name, `missing sections: ${a.missing}`) : pass('all 11 sections present');
     a.escapees.length ? fail(run.name, `elements outside viewport: ${a.escapees.join(', ')}`) : pass('nothing escapes the viewport');
     a.small.length ? fail(run.name, `text under 14px: ${a.small.join(', ')}`) : pass('no text under 14px');
@@ -175,6 +185,7 @@ if (!process.env.SKIP_PAGES) for (const run of PAGE_RUNS.filter((r) => !only || 
     const bad = [
       res.status() !== 200 && `status ${res.status()}`,
       a.overflow && `overflow ${a.overflow}px`,
+      a.vw > run.viewport[0] && `layout viewport widened to ${a.vw}px`,
       a.escapees.length && `escapes: ${a.escapees.join(', ')}`,
       a.small.length && `text under 14px: ${a.small.join(', ')}`,
       a.tiny.length && `targets under 44px: ${a.tiny.join(', ')}`,

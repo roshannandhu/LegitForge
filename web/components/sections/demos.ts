@@ -106,13 +106,16 @@ function n8n(root: Element, gsap: G): TL {
   const tl = gsap.timeline({ defaults: { ease: 'power2.out' } });
   const flow = $(root, '.flow')!;
   const checks = $$(root, '.flow-check'), outs = $$(root, '.flow-out');
-  const span = () => flow.offsetWidth * 0.8;                       // wire: 10 % -> 90 %
+  const vertical = flow.offsetWidth < 480;                          // phones: top to bottom (sections.css)
+  const span = () => (vertical ? flow.offsetHeight - 44 : flow.offsetWidth * 0.8);   // along the wire
   const hop = 0.55;
-  tl.from($(root, '.flow-wire'), { scaleX: 0, transformOrigin: 'left center', duration: hop * 4, ease: 'none' }, 0.35)
+  tl.from($(root, '.flow-wire'), vertical
+      ? { scaleY: 0, transformOrigin: 'center top', duration: hop * 4, ease: 'none' }
+      : { scaleX: 0, transformOrigin: 'left center', duration: hop * 4, ease: 'none' }, 0.35)
     .set(checks, { scale: 0.7, opacity: 0.35 }, 0)                   // unlit until the packet arrives
     .set(outs, { opacity: 0, y: -4 }, 0)
     .fromTo($(root, '.flow-packet'), { x: 0, opacity: 0 }, { opacity: 1, duration: 0.2, immediateRender: true }, 0.15)
-    .to($(root, '.flow-packet'), { x: () => span(), duration: hop * 4, ease: 'none' }, 0.35)
+    .to($(root, '.flow-packet'), { [vertical ? 'y' : 'x']: () => span(), duration: hop * 4, ease: 'none' }, 0.35)
     .to($(root, '.flow-packet'), { opacity: 0, duration: 0.2 }, 0.35 + hop * 4);
   checks.forEach((c, i) => {
     const at = 0.3 + i * hop;

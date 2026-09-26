@@ -325,6 +325,7 @@
 }
 @media (max-width: 767px) { .projects { grid-auto-columns: 85vw; margin-inline: -16px; padding-inline: 16px; scroll-padding-inline: 16px; } }
 .project {
+  position: relative;   /* contains the links' sr-only text: escaping the swipe row widens a phone's page */
   display: flex; flex-direction: column; overflow: hidden;
   background: var(--surface); border: 1px solid var(--line); border-radius: 16px;
   box-shadow: inset 0 1px 0 rgb(255 255 255 / .06);
@@ -653,7 +654,7 @@
   border: 1px solid var(--line); border-radius: 10px; background: transparent; color: var(--text);
   font: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
 }
-.demo-replay[hidden] { display: block; visibility: hidden; }   /* keep its row: no shift when it appears */
+.demo-replay:not([data-shown]) { visibility: hidden; }   /* keeps its row (no layout shift) and leaves focus and the a11y tree; not [hidden]: Tailwind forces that to display:none */
 .demo-replay:hover { border-color: var(--text-muted); }
 [data-motion="off"] .demo-replay { display: none; }            /* motion off never replays: no empty row */
 
@@ -667,8 +668,8 @@
 
 /* dashboard: the toast */
 .dash { position: relative; }
-.dash-toast {
-  position: absolute; right: 12px; top: 12px; display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px;
+.dash-toast {   /* in the flow under the table: never covers the totals at any width */
+  justify-self: end; display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px;
   border: 1px solid var(--line); border-radius: 999px; background: var(--bg); color: var(--text); font-size: 11px; font-weight: 600;
 }
 
@@ -693,3 +694,23 @@
   border-radius: 999px; background: color-mix(in oklab, var(--success) 18%, var(--surface)); color: var(--text); font-size: 14px; font-weight: 600;
 }
 .qm-remind b { color: #53B7F0; }
+
+/* n8n on phones: five nodes in a row leave no room for their outputs, so the workflow runs
+   top to bottom there (demos.ts moves the packet along y when the flow is vertical) */
+@media (max-width: 479px) {
+  .flow-wire { left: 21px; top: 22px; width: 2px; height: calc(100% - 44px); background: var(--heat-color); }
+  .flow-wire path { display: none; }   /* the horizontal path; the box itself is the vertical wire */
+  .flow-nodes { flex-direction: column; gap: 14px; }
+  .flow-node { display: grid; grid-template-columns: 44px auto 1fr; justify-items: start; align-items: center; gap: 12px; width: 100%; text-align: left; }
+  .flow-name { font-size: 14px; }
+  .flow-out { justify-self: end; font-size: 12px; }
+  .flow-packet { left: 22px; top: 22px; }
+}
+
+/* compare on phones: the halves stack into one column, so the dynamic version's extras sit
+   right-aligned, on its own side of the divider (the static extras stay left) */
+@media (max-width: 767px) {
+  .cafe-dynamic .cafe-live, .cafe-dynamic .cafe-status { justify-content: flex-end; align-items: flex-end; text-align: right; margin-left: 50%; }
+  .cafe-dynamic .cafe-order { display: table; margin-left: auto; }
+  .cafe-static .cafe-hours, .cafe-static .cafe-map { margin-right: 50%; }
+}

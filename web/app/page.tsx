@@ -1,4 +1,4 @@
-import Machine from '@/components/hero/machine';
+import Teardown from '@/components/hero/teardown';
 import { HeroLog } from '@/components/hero/hero-log';
 import { StoryChips } from '@/components/hero/story-chips';
 import { HeroStatus } from '@/components/hero/hero-status';
@@ -15,7 +15,8 @@ import { Team } from '@/components/sections/team';
 import { Hallmarks } from '@/components/sections/hallmarks';
 import { PricingFaq } from '@/components/sections/pricing-faq';
 import { Quench } from '@/components/sections/quench';
-import { HERO_SHOWCASE, PROCESS, SERVICES, TEAM } from '@/lib/content';
+import { HallmarkStrike } from '@/components/intro/hallmark-strike';
+import { PROCESS, SERVICES, TEAM } from '@/lib/content';
 import { SITE, waLink } from '@/lib/site';
 import '@/components/hero/hero.css';
 import '@/components/sections/sections.css';
@@ -51,6 +52,7 @@ export default function Home() {
   const wa = waLink();
   return (
     <>
+      <HallmarkStrike />
       <section className="hero" id="top" data-heat="0.35">
         <div className="wrap hero-grid">
           <div className="copy">
@@ -66,14 +68,15 @@ export default function Home() {
             <HeroStatus />
           </div>
           <StoryChips />
-          <Machine showcase={HERO_SHOWCASE} />
+          <Teardown />
           <HeroLog />
         </div>
         <p className="sr-only">
-          Diagram: a phone opening into the systems we build — website, app, API, database,
-          automation, WhatsApp and AI. You can watch it handle a website visit, a table booking in an
-          app, a quote, or a WhatsApp question: each request travels through every part, and the
-          phone shows the result about a second later.
+          Diagram: the phone in the hand comes apart into five working layers — a static website,
+          WhatsApp automation, an n8n automation, a quotation system and a warranty system. One
+          customer’s request runs through each in turn: she asks for a quote on the website, the
+          WhatsApp bot asks her room size, n8n prices it, she accepts the quote, and her warranty
+          is issued.
         </p>
       </section>
 

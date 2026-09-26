@@ -1,0 +1,127 @@
+/* The Hallmark Strike (PLAN §6.1b). Every element runs one keyframe track across the whole
+   intro (--d), so the choreography reads as percentages of one shot:
+     0-6 %  veil, smoke, blank coin on the anvil      6-24 %  the press drops
+     25 %   STRIKE: flash, ring, sparks, shake, name appears hot
+     33-46 % the press lifts                           42-74 % toss: 3 flips, lands face-up
+     74-84 % wobble and cool to gold                   86-100 % coin flies to the logo, veil lifts
+   Transform, opacity and filter only. Hidden unless html[data-intro] (set by INTRO_BOOT). */
+
+.intro { display: none; }
+html[data-intro] .intro {
+  --d: 1.8s; --coin: 160px; --press: 150px; --pad: 24px;
+  --cy: 60vh;                                      /* the coin's centre on screen */
+  position: fixed; inset: 0; z-index: 200; display: block; pointer-events: none; overflow: hidden;
+  animation: intro-hide var(--d) linear forwards;
+}
+@media (min-width: 1024px) { html[data-intro] .intro { --coin: 200px; --press: 190px; } }
+@media (max-width: 767px) { html[data-intro] .intro { --d: 1.4s; --coin: 120px; --press: 112px; --pad: 16px; } }
+@keyframes intro-hide { 99.9% { visibility: visible; } 100% { visibility: hidden; } }
+html[data-intro] .intro * { animation-duration: var(--d); animation-fill-mode: both; animation-timing-function: linear; }
+
+/* veil: holds the painted page, then lifts */
+.intro-veil { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 60%, #1B222B, #0B0F14 70%); animation-name: intro-veil; }
+@keyframes intro-veil { 0%, 84% { opacity: 1; } 100% { opacity: 0; } }
+
+/* smoke: soft drifting puffs, one burst at the strike */
+.intro-smoke i {
+  position: absolute; top: calc(var(--cy) - 60px); width: 260px; height: 160px; border-radius: 50%;
+  background: radial-gradient(closest-side, rgb(170 180 190 / .22), transparent); filter: blur(18px);
+  animation-name: intro-smoke;
+}
+.intro-smoke i:nth-child(1) { left: 12%; } .intro-smoke i:nth-child(2) { left: 30%; animation-name: intro-smoke-b; }
+.intro-smoke i:nth-child(3) { left: 46%; } .intro-smoke i:nth-child(4) { left: 58%; animation-name: intro-smoke-b; }
+.intro-smoke i:nth-child(5) { left: 70%; } .intro-smoke i:nth-child(6) { left: 38%; top: calc(var(--cy) - 140px); animation-name: intro-smoke-b; }
+@keyframes intro-smoke {
+  0% { opacity: .3; transform: translateX(-30px) scale(.8); } 25% { opacity: .5; transform: translateX(0) scale(1); }
+  30% { opacity: .9; transform: translateX(-40px) scale(1.5); } 84% { opacity: .5; transform: translateX(-90px) scale(1.7); } 100% { opacity: 0; transform: translateX(-110px) scale(1.8); }
+}
+@keyframes intro-smoke-b {
+  0% { opacity: .25; transform: translateX(30px) scale(.8); } 25% { opacity: .45; transform: translateX(0) scale(1); }
+  30% { opacity: .85; transform: translateX(40px) scale(1.5); } 84% { opacity: .45; transform: translateX(90px) scale(1.7); } 100% { opacity: 0; transform: translateX(110px) scale(1.8); }
+}
+
+/* the stage shakes once at the strike */
+.intro-stage { position: absolute; inset: 0; animation-name: intro-shake; }
+@keyframes intro-shake {
+  0%, 24.9% { transform: none; } 25.5% { transform: translate(3px, -2px); } 26.5% { transform: translate(-3px, 2px); }
+  27.5% { transform: translate(2px, 1px); } 28.5%, 100% { transform: none; }
+}
+
+/* the press: drops, strikes, lifts */
+.intro-press { position: absolute; left: 50%; bottom: calc(100vh - var(--cy) + var(--coin) * .17); width: var(--press); height: auto; translate: -50% 0; animation-name: intro-press; }
+@keyframes intro-press {
+  0%, 6% { transform: translateY(-120vh); animation-timing-function: cubic-bezier(.55, 0, 1, .45); }
+  24% { transform: translateY(0); } 25% { transform: translateY(2%); } 27% { transform: translateY(0); }
+  33% { transform: translateY(0); animation-timing-function: cubic-bezier(.4, 0, .2, 1); }
+  46%, 100% { transform: translateY(-120vh); }
+}
+.press-plate { font: 700 9px/1 var(--font-stencil), var(--font-sans); letter-spacing: .08em; fill: #3A2608; }
+
+/* the anvil the coin sits on */
+.intro-anvil {
+  position: absolute; left: 50%; top: calc(var(--cy) + var(--coin) * .16); width: calc(var(--coin) * 1.7); height: calc(var(--coin) * .42);
+  translate: -50% 0; border-radius: 6px 6px 2px 2px;
+  background: linear-gradient(180deg, #4A5663, #232B34 30%, #151A20); box-shadow: 0 1px 0 #6B7886 inset;
+  animation-name: intro-anvil;
+}
+@keyframes intro-anvil { 0%, 40% { opacity: 1; } 55%, 100% { opacity: 0; } }
+
+/* the strike: flash, shockwave, sparks */
+.intro-flash {
+  position: absolute; left: 50%; top: var(--cy); width: 70vmax; height: 70vmax; translate: -50% -50%; border-radius: 50%;
+  background: radial-gradient(closest-side, rgb(255 244 214 / .9), rgb(255 194 74 / .35) 35%, transparent); animation-name: intro-flash;
+}
+@keyframes intro-flash { 0%, 24.6% { opacity: 0; } 25.2% { opacity: 1; } 31%, 100% { opacity: 0; } }
+.intro-ring {
+  position: absolute; left: 50%; top: var(--cy); width: calc(var(--coin) * 1.2); height: calc(var(--coin) * .45); translate: -50% -50%;
+  border: 2px solid #FFC24A; border-radius: 50%; animation-name: intro-ring;
+}
+@keyframes intro-ring { 0%, 24.8% { opacity: 0; transform: scale(.3); } 25.2% { opacity: 1; } 36%, 100% { opacity: 0; transform: scale(3); } }
+.intro-sparks i {
+  position: absolute; left: 50%; top: var(--cy); width: 10px; height: 3px; margin: -1.5px 0 0 -5px; border-radius: 2px;
+  background: #FFE2B0; box-shadow: 0 0 8px 2px #FFC24A; animation-name: intro-spark;
+}
+@keyframes intro-spark {
+  0%, 24.8% { opacity: 0; transform: rotate(var(--a)) translateX(0); }
+  25.2% { opacity: 1; transform: rotate(var(--a)) translateX(20px); }
+  38%, 100% { opacity: 0; transform: rotate(var(--a)) translateX(var(--r)) scaleX(.4); }
+}
+
+/* the coin: real 3D. Two faces and a stacked rim; lying on the anvil, then tossed and flipped */
+.coin-wrap {
+  position: absolute; left: 50%; top: var(--cy); width: var(--coin); height: var(--coin); margin: calc(var(--coin) / -2);
+  perspective: 900px; animation-name: coin-toss;
+  --to-x: calc(max(var(--pad), (100vw - 1240px) / 2 + var(--pad)) + 14px - 50vw);
+  --to-y: calc(36px - var(--cy));
+}
+@keyframes coin-toss {
+  0%, 42% { transform: translate(0, 0) scale(1); animation-timing-function: cubic-bezier(.2, .7, .4, 1); }
+  58% { transform: translate(0, -30vh) scale(1.1); animation-timing-function: cubic-bezier(.6, 0, .8, .4); }
+  74% { transform: translate(0, 0) scale(1); }
+  77% { transform: translate(0, -12px) scale(1); } 80%, 86% { transform: translate(0, 0) scale(1); animation-timing-function: cubic-bezier(.6, 0, .3, 1); }
+  100% { transform: translate(var(--to-x), var(--to-y)) scale(.17); }
+}
+.coin { position: absolute; inset: 0; transform-style: preserve-3d; animation-name: coin-flip; }
+@keyframes coin-flip {
+  0%, 42% { transform: rotateX(68deg); animation-timing-function: cubic-bezier(.3, .2, .5, 1); }
+  74% { transform: rotateX(1080deg); }
+  77% { transform: rotateX(1094deg); } 80% { transform: rotateX(1072deg); } 83%, 100% { transform: rotateX(1080deg); }
+}
+.coin-face { position: absolute; inset: 0; border-radius: 50%; backface-visibility: hidden; animation-name: coin-heat; }
+.coin-front { transform: translateZ(5px); }
+.coin-back { transform: rotateX(180deg) translateZ(5px); }
+.coin-svg { display: block; width: 100%; height: 100%; }
+.coin-rim {
+  position: absolute; inset: 0; border-radius: 50%; background: linear-gradient(90deg, #7A5418, #E3B452, #7A5418);
+  transform: translateZ(calc(var(--z) * 1px - 4.5px));
+}
+/* blank steel, then stamped and glowing hot, then cooled to gold */
+@keyframes coin-heat {
+  0%, 24.9% { filter: grayscale(1) sepia(0) saturate(1) hue-rotate(0deg) brightness(.75); }
+  25.5% { filter: grayscale(0) sepia(1) saturate(5) hue-rotate(-28deg) brightness(1.6); }
+  80%, 100% { filter: grayscale(0) sepia(0) saturate(1) hue-rotate(0deg) brightness(1); }
+}
+.coin-text { animation-name: coin-stamp; }
+@keyframes coin-stamp { 0%, 25% { opacity: 0; } 25.3%, 100% { opacity: 1; } }
+.coin-ring-text { font: 700 15px/1 var(--font-stencil), var(--font-sans); letter-spacing: .12em; fill: #C9D2DB; }
+.coin-word { font: 800 25px/1 var(--font-sans); font-stretch: 112%; letter-spacing: .04em; fill: #6E4A12; paint-order: stroke; stroke: #FFE9A8; stroke-width: .8px; }

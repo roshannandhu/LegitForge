@@ -1,12 +1,6 @@
 /** All page copy in one place. Sources: PLAN §6 (sections) and §18 (copy).
  *  [Bracketed] text is a placeholder — the plan forbids launching with any of it. */
 
-/* ------------------------------------------------------ hero payoff §6.2b #2
-   A real, live client project the hero's phone lands on, with a Live stamp. Leave null
-   until one exists: the phone then ends on the WhatsApp reply instead. Never a mock-up.
-   image: same-origin screenshot of the phone view, about 390×844, AVIF under 30 KB. */
-export const HERO_SHOWCASE: { image: string; alt: string } | null = null;
-
 /* ------------------------------------------------------------ services §6.3 */
 export type DemoKind = 'website' | 'app' | 'whatsapp' | 'n8n';
 
