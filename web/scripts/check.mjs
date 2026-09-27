@@ -28,9 +28,9 @@ const RUNS = [
   { name: 'laptop-dark',        viewport: [1440, 900],  touch: false, scheme: 'dark',  motion: 'no-preference', team: '3d',   audit: true },
   { name: 'laptop-light',       viewport: [1440, 900],  touch: false, scheme: 'light', motion: 'no-preference', team: '3d',   audit: false },
   { name: 'laptop-motion-off',  viewport: [1440, 900],  touch: false, scheme: 'dark',  motion: 'reduce',        team: 'flip', audit: false },
-  { name: 'tablet-dark',        viewport: [768, 1024],  touch: true,  scheme: 'dark',  motion: 'no-preference', team: 'flip', audit: true },
-  { name: 'phone-dark',         viewport: [375, 812],   touch: true,  scheme: 'dark',  motion: 'no-preference', team: 'flip', audit: true },
-  { name: 'phone-light',        viewport: [375, 812],   touch: true,  scheme: 'light', motion: 'no-preference', team: 'flip', audit: false },
+  { name: 'tablet-dark',        viewport: [768, 1024],  touch: true,  scheme: 'dark',  motion: 'no-preference', team: '3d',   audit: true },
+  { name: 'phone-dark',         viewport: [375, 812],   touch: true,  scheme: 'dark',  motion: 'no-preference', team: '3d',   audit: true },
+  { name: 'phone-light',        viewport: [375, 812],   touch: true,  scheme: 'light', motion: 'no-preference', team: '3d',   audit: false },
 ];
 
 /** Runs in the page. The §4.8 gate, measured rather than eyeballed. */

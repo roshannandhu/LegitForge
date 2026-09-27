@@ -10,7 +10,8 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
   lib/gsap.ts. A static `import ... from 'gsap'` in a component puts 44 KB back in the first load.
   No WebGL in the hero (PLAN §6.2a, §6.2c)
 - Team section only, both lazy-loaded when #team is near: React Three Fiber + Rapier
-  (components/lanyard, fine pointer ≥1024px) and `motion` inside the vendored FlipCard
+  (components/lanyard, every screen with WebGL2 + motion, phones included; touch taps flip,
+  never drag) and `motion` inside the vendored FlipCard
   (components/react-bits). Nothing else may import them.
 - Fonts: Archivo self-hosted subset (see Performance), Big Shoulders Stencil via next/font/google.
 - Hero (the Teardown, PLAN §6.2c, seven layers: SEO, web, WhatsApp, n8n, quote, warranty, NFC): data lib/teardown.ts · component components/hero/teardown.tsx ·

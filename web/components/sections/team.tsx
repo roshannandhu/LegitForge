@@ -4,10 +4,11 @@
  *
  *  1. Server HTML: 2D ID cards hanging from CSS straps. Real text (crawlable), correct with
  *     no JS, and what everyone sees until the section scrolls near.
- *  2. FlipCard (React Bits): phones, tablets, touch screens and motion-off. Tap to flip,
- *     drag with momentum on a mouse, tilt + glare. Loaded only when the section is near.
- *  3. 3D lanyards (React Bits Lanyard, R3F + Rapier): mouse users on ≥1024px screens with
- *     WebGL2 and motion on. Drag to swing, tap to flip. Loaded only when near, then
+ *  2. FlipCard (React Bits): motion off, Data Saver, no WebGL2 or fewer than 4 cores. Tap to
+ *     flip, drag with momentum on a mouse, tilt + glare. Loaded only when the section is near.
+ *  3. 3D lanyards (React Bits Lanyard, R3F + Rapier): every screen with WebGL2 and motion on,
+ *     phones too (the owner's call: the same ID cards as on a laptop). Tap to flip; a mouse
+ *     also drags them to swing (a finger scrolls instead). Loaded only when near, then
  *     cross-faded over the 2D cards once its first frame is drawn.
  *
  *  The name tags are the accessible interface in every layer: names as text and
@@ -36,12 +37,11 @@ const visitor = (code: string): CardPerson => ({
 const nextCode = (team: Card[]) =>
   String(Math.max(0, ...team.map((m) => Number(m.idCode.replace(/\D/g, '')) || 0)) + 1).padStart(3, '0');
 
-/** 3D only where it earns its weight (§6.8 tiers). A fine pointer is required because
- *  touch-drag fights page scrolling; everything else gets FlipCard. */
+/** 3D wherever the device can draw it (§6.8 tiers; phones included since 27 Sep). Touch
+ *  gets tap-to-flip only (team-lanyards.jsx), so swipes still scroll the page and the row. */
 function canRun3d() {
   const nav = navigator as Navigator & { connection?: { saveData?: boolean } };
   if (nav.connection?.saveData) return false;
-  if (!matchMedia('(pointer: fine)').matches || innerWidth < 480) return false;
   if ((nav.hardwareConcurrency ?? 4) < 4) return false;
   const gl = document.createElement('canvas').getContext('webgl2');
   if (!gl) return false;
@@ -115,12 +115,8 @@ export function Team({ team, head = true }: { team: Card[]; head?: boolean }) {
   const onReady = useCallback(() => setSceneReady(true), []);
 
   useEffect(() => {
-    const update = () => {
-      setCapable(canRun3d());
-      setFine(matchMedia('(pointer: fine)').matches);
-    };
-    update();
-    window.addEventListener('resize', update);
+    setCapable(canRun3d());
+    setFine(matchMedia('(pointer: fine)').matches);
     const el = sectionRef.current!;
     const nearIO = new IntersectionObserver(([e]) => {
       if (e.isIntersecting) { setNear(true); nearIO.disconnect(); }
@@ -128,11 +124,7 @@ export function Team({ team, head = true }: { team: Card[]; head?: boolean }) {
     const visIO = new IntersectionObserver(([e]) => setVisible(e.isIntersecting));
     nearIO.observe(el);
     visIO.observe(el);
-    return () => {
-      window.removeEventListener('resize', update);
-      nearIO.disconnect();
-      visIO.disconnect();
-    };
+    return () => { nearIO.disconnect(); visIO.disconnect(); };
   }, []);
 
   const use3d = near && capable && motionOn;
