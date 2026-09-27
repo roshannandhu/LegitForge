@@ -139,11 +139,16 @@ export function Team({ team, head = true }: { team: Card[]; head?: boolean }) {
   useEffect(() => {
     if (!near) return;
     let alive = true;
-    if (use3d && !Scene) {
-      import('@/components/lanyard/team-lanyards').then((m) => alive && setScene(() => m.default as unknown as ComponentType<SceneProps>));
-    }
-    if (!use3d && !Flip) {
-      import('@/components/react-bits/flip-card').then((m) => alive && setFlip(() => m.default as unknown as ComponentType<FlipCardProps>));
+    // Always true in the browser. On the server NEXT_RUNTIME is a build-time constant, so the
+    // server bundle leaves out three.js, Rapier and FlipCard (~1.1 MB gzip): the Worker then
+    // fits the Workers Free 3 MB limit.
+    if (!process.env.NEXT_RUNTIME) {
+      if (use3d && !Scene) {
+        import('@/components/lanyard/team-lanyards').then((m) => alive && setScene(() => m.default as unknown as ComponentType<SceneProps>));
+      }
+      if (!use3d && !Flip) {
+        import('@/components/react-bits/flip-card').then((m) => alive && setFlip(() => m.default as unknown as ComponentType<FlipCardProps>));
+      }
     }
     return () => { alive = false; };
   }, [near, use3d, Scene, Flip]);

@@ -21,8 +21,10 @@ It comes from OpenNext's dev-bindings helper, which never loads `worker.ts`. It 
 
 ## Deploy (GitHub Actions)
 
-Needs a Cloudflare account on **Workers Paid** (PLAN §8.3): the Worker is about 3.7 MB compressed,
-over the free plan's 3 MB limit.
+Runs on **Workers Free**: the Worker is about 2.4 MB compressed, under the free plan's 3 MB limit.
+Browser-only libraries stay out of the server bundle only behind the `process.env.NEXT_RUNTIME`
+guard in components/sections/team.tsx; without it the Worker is 3.7 MB and needs **Workers Paid**
+($5/month, PLAN §8.3), which also lifts Free's 10 ms CPU limit per request.
 
 `.github/workflows/deploy-cloudflare.yml` deploys on every push to `main-exh9xw` (or by hand:
 Actions → Deploy to Cloudflare → Run workflow). Its first run creates the D1 database and both R2

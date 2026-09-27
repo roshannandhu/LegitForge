@@ -96,6 +96,10 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
 - lib/work.ts never reads D1 during `next build`: the dev bindings would bake local test data
   into production pages.
 - Never add `export const runtime = 'edge'` (OpenNext uses the Node.js runtime).
+- The Worker runs on Workers Free (3 MB compressed limit, ~2.4 MB now). A client component's
+  `import()` of browser-only code (three.js, Rapier, FlipCard) sits inside
+  `if (!process.env.NEXT_RUNTIME)` (team.tsx), or the server bundle takes it too (+1.1 MB).
+  Measure: `npx opennextjs-cloudflare build && npx wrangler deploy --dry-run --outdir <tmp>`.
 - Binding types: cf-typegen runs with --include-runtime=false. Wrangler's full runtime types
   redeclare fetch, Response and DOM Element and break the browser code. The binding types
   come from cloudflare-bindings.d.ts instead; add a line there for any new binding kind.
