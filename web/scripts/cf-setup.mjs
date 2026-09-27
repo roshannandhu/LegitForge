@@ -12,15 +12,15 @@
 
 import { readFile, writeFile, appendFile } from 'node:fs/promises';
 import { randomBytes } from 'node:crypto';
+import { cf, putSecret, requireCredentials, WORKER } from './cf-api.mjs';
 
-const WORKER = 'legitforge-web';
 const D1 = 'legitforge';
 const BUCKETS = ['legitforge-media', 'legitforge-next-cache'];
 const ZERO_ID = '00000000-0000-0000-0000-000000000000';
 
 const post = process.argv.includes('--post');
 const dry = process.argv.includes('--dry-run');
-const { CLOUDFLARE_API_TOKEN: token, CLOUDFLARE_ACCOUNT_ID: account, GITHUB_ENV, SITE_URL } = process.env;
+const { GITHUB_ENV, SITE_URL } = process.env;
 
 if (dry) {
   console.log(post
@@ -29,30 +29,13 @@ if (dry) {
       `and export NEXT_PUBLIC_SITE_URL (${SITE_URL || `https://${WORKER}.<subdomain>.workers.dev`}) to the build`);
   process.exit(0);
 }
-if (!token || !account) {
-  console.error('CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID must be set (GitHub → Settings → Secrets → Actions).');
-  process.exit(1);
-}
-
-async function cf(method, path, body) {
-  const res = await fetch(`https://api.cloudflare.com/client/v4/accounts/${account}${path}`, {
-    method,
-    headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  const json = await res.json().catch(() => ({}));
-  if (!res.ok || json.success === false) {
-    const why = (json.errors ?? []).map((e) => `${e.code}: ${e.message}`).join('; ') || res.statusText;
-    throw new Error(`${method} ${path} → ${res.status} ${why}`);
-  }
-  return json.result;
-}
+requireCredentials();
 
 if (post) {
   const secrets = await cf('GET', `/workers/scripts/${WORKER}/secrets`);
   if (secrets.some((s) => s.name === 'HASH_SALT')) console.log('HASH_SALT: already set');
   else {
-    await cf('PUT', `/workers/scripts/${WORKER}/secrets`, { name: 'HASH_SALT', text: randomBytes(32).toString('hex'), type: 'secret_text' });
+    await putSecret('HASH_SALT', randomBytes(32).toString('hex'));
     console.log('HASH_SALT: set (random, never printed)');
   }
   process.exit(0);

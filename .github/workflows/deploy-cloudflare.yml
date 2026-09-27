@@ -2,6 +2,8 @@
 # (Actions → Deploy to Cloudflare → Run workflow). First run creates D1 and R2 itself.
 # Needs two repository secrets: CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID (web/README.md).
 # Optional repository variable SITE_URL: the real domain, once it points at the Worker.
+# Optional repository variable ADMIN_EMAIL (+ secrets GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET for a
+# Google sign-in): locks /admin to that account with Cloudflare Access (scripts/cf-access.mjs).
 name: Deploy to Cloudflare
 
 on:
@@ -58,6 +60,13 @@ jobs:
 
       - name: Worker secrets (first run only)
         run: node scripts/cf-setup.mjs --post
+
+      - name: Admin lock (Cloudflare Access)
+        run: node scripts/cf-access.mjs
+        env:
+          ADMIN_EMAIL: ${{ vars.ADMIN_EMAIL }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
 
       - name: Live
         run: |

@@ -20,6 +20,8 @@ TURNSTILE_SECRET_KEY=
 # Application Audience (AUD) tag from the Access application's overview page.
 ACCESS_TEAM_DOMAIN=
 ACCESS_AUD=
+# Optional second lock: only these emails (comma-separated) may use the admin, whatever the Access policy says
+ADMIN_EMAILS=
 # Local only: 1 opens /admin on localhost without Access. Never set it in production.
 ADMIN_DEV_BYPASS=
 # Admin → Projects → "Add from GitHub". A fine-grained GitHub token with read-only "Contents" and

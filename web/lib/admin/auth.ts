@@ -56,8 +56,17 @@ export const adminIdentity = cache(async (): Promise<string | null> => {
   const token = h.get('cf-access-jwt-assertion');
   const team = env?.ACCESS_TEAM_DOMAIN, aud = env?.ACCESS_AUD;
   if (!token || !team || !aud) return null;
-  return verifyAccessJwt(token, team, aud);
+  const who = await verifyAccessJwt(token, team, aud);
+  // Second lock: with ADMIN_EMAILS set, only those accounts get in, even if the Access policy
+  // is ever widened by mistake (the policy is the first lock, scripts/cf-access.mjs).
+  return who && allowed(who, env?.ADMIN_EMAILS) ? who : null;
 });
+
+/** ADMIN_EMAILS: comma-separated, case-insensitive. Unset = the Access policy alone decides. */
+function allowed(email: string, list: string | undefined) {
+  if (!list?.trim()) return true;
+  return list.split(',').map((e) => e.trim().toLowerCase()).filter(Boolean).includes(email.toLowerCase());
+}
 
 /** For pages and Server Actions: a 404 for anyone else, so the admin's existence isn't shown. */
 export async function requireAdmin(): Promise<string> {

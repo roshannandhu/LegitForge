@@ -97,14 +97,21 @@ Public repos work without it (GitHub allows 60 reads an hour without a token).
 **Locally:** run `npm run db:migrate:local`, set `ADMIN_DEV_BYPASS=1` in `.dev.vars`, run
 `npm run dev`, then open http://localhost:3000/admin. The bypass only works on localhost.
 
-**In production,** Cloudflare Access protects it, and the app checks the Access token again:
-1. Zero Trust → Access → Applications → Add a self-hosted application for your domain.
-   Give it two paths: `/admin` and `/api/admin`.
-2. Add a policy that allows your two email addresses.
-3. Copy the application's **Audience (AUD) tag** and your team domain
-   (`yourteam.cloudflareaccess.com`), then set both as secrets:
-   `npx wrangler secret put ACCESS_AUD` and `npx wrangler secret put ACCESS_TEAM_DOMAIN`.
-4. Apply the migrations remotely: `npm run db:migrate:remote`.
+**In production,** Cloudflare Access protects it, and the app checks the Access token again.
+The deploy workflow sets it all up (`scripts/cf-access.mjs`) once the site has its own domain:
+
+1. Cloudflare → Zero Trust: open it once, choose a team name and the Free plan.
+2. Add **Access: Apps and Policies → Edit** and **Access: Organizations, Identity Providers, and
+   Groups → Edit** to the `CLOUDFLARE_API_TOKEN` (My Profile → API Tokens → edit the token).
+3. GitHub → Settings → Secrets and variables → Actions → Variables: add `ADMIN_EMAIL` (your Google
+   address; comma-separate several) and `SITE_URL` (your domain). Re-run the workflow.
+
+Sign-in is a one-time PIN sent to that email. For a "Sign in with Google" button instead, create an
+OAuth client in Google Cloud Console (APIs & Services → Credentials → OAuth client ID → Web
+application; redirect URI `https://<team>.cloudflareaccess.com/cdn-cgi/access/callback`; keep the
+consent screen in Testing with your address as the only test user) and add its ID and secret as
+the repository **secrets** `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`. Either way only
+`ADMIN_EMAIL` gets in: the Access policy allows only it, and the app checks `ADMIN_EMAILS` again.
 
 Without both secrets, /admin is a 404 for everyone. If you change data outside the admin
 (for example with `wrangler d1 execute`), press Admin → Site → "Refresh site content". Published projects replace the
