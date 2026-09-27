@@ -28,7 +28,9 @@ export default async function AdminLeads({ searchParams }: { searchParams: Promi
                   <td>{l.service ?? '—'}<br /><span className="muted">{l.budget ?? ''}</span></td>
                   <td className="msg">{l.message ?? ''}</td>
                   <td>
-                    <form action={leadStatusAction.bind(null, l.id)} className="admin-inline">
+                    {/* keyed by the saved status: React resets a form after its action, and without a new key it
+                        would snap back to the old status even though the new one was saved */}
+                    <form key={l.status} action={leadStatusAction.bind(null, l.id)} className="admin-inline">
                       <label className="field"><span className="sr-only">Status for {l.name ?? 'this lead'}</span>
                         <select name="status" defaultValue={l.status}>{LEAD_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}</select></label>
                       <button className="btn btn-ghost btn-sm">Save</button>
