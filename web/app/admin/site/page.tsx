@@ -1,8 +1,10 @@
+import { requireAdmin } from '@/lib/admin/auth';
 import { listStats, STAT_KEYS } from '@/lib/admin/db';
 import { refreshSiteAction, saveStatAction } from '../actions';
 import { ActionForm, Submit } from '../ui';
 
 export default async function AdminSite() {
+  await requireAdmin();                            // each page checks too: a layout can be skipped
   const stats = await listStats();
   const keys = [...new Set([...STAT_KEYS, ...stats.map((s) => s.key)])];
   return (

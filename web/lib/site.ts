@@ -32,5 +32,3 @@ export function waLink(text: string = SITE.whatsappText) {
   if (!SITE.whatsappNumber) return '/#contact';
   return `https://wa.me/${SITE.whatsappNumber}?text=${encodeURIComponent(text)}`;
 }
-
-export const isExternal = (href: string) => href.startsWith('http');

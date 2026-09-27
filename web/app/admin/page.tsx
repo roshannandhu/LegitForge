@@ -1,6 +1,8 @@
+import { requireAdmin } from '@/lib/admin/auth';
 import { overview } from '@/lib/admin/db';
 
 export default async function AdminHome() {
+  await requireAdmin();                            // each page checks too: a layout can be skipped
   const o = await overview();
   const cards = [
     { href: '/admin/leads?status=new', n: o.leads.sub, label: `new leads, ${o.leads.total} in all` },

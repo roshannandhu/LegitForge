@@ -1,4 +1,5 @@
 import 'server-only';
+import { cache } from 'react';
 import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { getEnv } from '@/lib/cf';
@@ -45,7 +46,7 @@ export async function verifyAccessJwt(token: string, team: string, aud: string):
 }
 
 /** The admin's email, or null. For route handlers: answer 403 on null. */
-export async function adminIdentity(): Promise<string | null> {
+export const adminIdentity = cache(async (): Promise<string | null> => {
   const h = await headers();
   const env = await getEnv();
   const host = (h.get('host') ?? '').replace(/:\d+$/, '');
@@ -56,7 +57,7 @@ export async function adminIdentity(): Promise<string | null> {
   const team = env?.ACCESS_TEAM_DOMAIN, aud = env?.ACCESS_AUD;
   if (!token || !team || !aud) return null;
   return verifyAccessJwt(token, team, aud);
-}
+});
 
 /** For pages and Server Actions: a 404 for anyone else, so the admin's existence isn't shown. */
 export async function requireAdmin(): Promise<string> {

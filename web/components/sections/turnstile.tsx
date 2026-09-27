@@ -32,8 +32,6 @@ function loadTurnstile() {
   }));
 }
 
-export const turnstileEnabled = !!SITE_KEY;
-
 export interface TurnstileHandle { reset: () => void }
 
 /** `armed`: load and render (the parent sets it on the form's first focus). */

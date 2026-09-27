@@ -18,7 +18,6 @@
 .page-block { padding-top: 72px; }   /* top only: .wrap owns the side padding */
 @media (max-width: 767px) { .page-block { padding-top: 56px; } }
 .block-h { margin: 0 0 24px; }
-.block-lead { max-width: 60ch; margin: -8px 0 32px; color: var(--text-muted); }
 .prose { max-width: 65ch; }
 .prose p { margin: 0 0 16px; }
 

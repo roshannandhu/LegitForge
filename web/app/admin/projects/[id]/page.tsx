@@ -1,3 +1,4 @@
+import { requireAdmin } from '@/lib/admin/auth';
 import { notFound } from 'next/navigation';
 import { CATEGORIES, getProjectRow, listImages, STAMPS } from '@/lib/admin/db';
 import { getTeam } from '@/lib/team';
@@ -8,6 +9,7 @@ import { ImageManager } from './image-manager';
 const parse = <T,>(s: string): T[] => { try { return JSON.parse(s); } catch { return []; } };
 
 export default async function EditProject({ params }: { params: Promise<{ id: string }> }) {
+  await requireAdmin();                            // each page checks too: a layout can be skipped
   const { id } = await params;
   const p = await getProjectRow(id);
   if (!p) notFound();

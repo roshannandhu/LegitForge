@@ -1,3 +1,4 @@
+import { requireAdmin } from '@/lib/admin/auth';
 import { listTestimonials } from '@/lib/admin/db';
 import { deleteTestimonialAction, publishTestimonialAction, saveTestimonialAction } from '../actions';
 import { ActionButton, ActionForm, ConfirmSubmit, Submit } from '../ui';
@@ -18,6 +19,7 @@ function Fields({ t }: { t?: Awaited<ReturnType<typeof listTestimonials>>[number
 }
 
 export default async function AdminTestimonials() {
+  await requireAdmin();                            // each page checks too: a layout can be skipped
   const rows = await listTestimonials();
   return (
     <>

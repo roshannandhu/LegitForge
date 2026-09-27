@@ -121,7 +121,7 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
 ## Performance on budget phones (measure at 360px with 4-6x CPU throttling before and after)
 - Never remove or simplify an animation, the intro, the embers or the Archivo font for speed
   (the owner's rule). Improve how the same thing is built and drawn instead.
-- Lite mode: html[data-lite] (LITE_BOOT in lib/boot.ts, lib/lite.ts isLite) for <=3 GB RAM, <=4 cores,
+- Lite mode: html[data-lite] (LITE_BOOT in lib/boot.ts) for <=3 GB RAM, <=4 cores,
   Data Saver or 2G. Same site; only the order of work changes (data-near rules below, GSAP after
   idle). `?lite=1` / `?lite=0` force it. `npm run check` forces it off; `LITE=1 npm run check` audits it.
 - Never write per-frame CSS variables on <html> (the whole page restyles): put them on the element

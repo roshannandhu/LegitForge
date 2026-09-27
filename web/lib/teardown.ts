@@ -64,8 +64,7 @@ export const CALLOUTS = SLOTS.map((s) => ({ x: 14, y: s.y - 22 }));
 export const CALLOUT_W = 184;
 export const ISO_SCALE = 0.72;
 
-/** Scroll story (desktop and tablet): the pin, and the windows on its 0..1 timeline. */
-export const PIN_END = '+=270%';
+/** The hero loop's 0..1 timeline: the windows each layer runs in. */
 export const RUN = { start: 0.26, each: 0.084 } as const;   // 7 windows: 0.26 -> 0.848
 export const ACT_NAMES = ['Tear down', 'Run', 'Snap back'] as const;
 export const actIndex = (p: number) => (p < RUN.start ? 0 : p < RUN.start + RUN.each * LAYERS.length ? 1 : 2);
