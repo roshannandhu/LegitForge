@@ -54,6 +54,7 @@ export function ForgeCanvas() {
 
     const frame = (now: number) => {
       if (small && now - last < 30) { raf = requestAnimationFrame(frame); return; }   // phones: 30 fps
+      if ((window as Window & { __lfSwitching?: boolean }).__lfSwitching) { last = now; raf = requestAnimationFrame(frame); return; }   // the theme reveal owns these frames
       const dt = Math.min((now - last) / 1000, 0.05);
       last = now;
       const en = energy.value;

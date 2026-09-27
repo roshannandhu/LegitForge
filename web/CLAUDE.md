@@ -71,6 +71,12 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
   whole 780 × 760 drawing (phones: callout type sized in screen px). FIT_NOW sets the stage
   scale before first paint; keep its formula in step with fitFor() in lib/teardown.ts.
 - Services named in the hero (the callouts) must stay real text in the served HTML.
+- Theme: follows the device (next-themes "system"). The lever's choice lasts only while browsing
+  (THEME_BOOT: 30 min, renewed per page view, dropped on reload / new visit). The lever swaps
+  class + color-scheme itself in one step (one full restyle; no disableTransitionOnChange), holds
+  GSAP and the embers during the swap, and on lite devices fades a PAGE_BG veil (opacity only)
+  instead of the View Transition circle. Only leaf components may call useTheme (a section that
+  reads it re-renders whole on every switch).
 - Inline <head> scripts live in lib/boot.ts. A string exported from a 'use client' file reaches
   a Server Component as a client reference, not text.
 - Every Server Action and admin route calls requireAdmin()/adminIdentity() itself: actions are

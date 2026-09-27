@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Big_Shoulders_Stencil } from 'next/font/google';
 import localFont from 'next/font/local';
 import { ThemeProvider } from 'next-themes';
+import { PAGE_BG } from '@/lib/theme-colors';
 import { MotionProvider } from '@/components/motion/motion-provider';
 import { MOTION_BOOT_SCRIPT, LITE_BOOT, INTRO_BOOT, CLEAVE_BOOT, THEME_BOOT } from '@/lib/boot';
 import { SmoothScroll } from '@/components/motion/smooth-scroll';
@@ -67,8 +68,8 @@ export const viewport: Viewport = {
   initialScale: 1,
   viewportFit: 'cover',
   themeColor: [
-    { media: '(prefers-color-scheme: dark)', color: '#151A20' },
-    { media: '(prefers-color-scheme: light)', color: '#E8ECEF' },
+    { media: '(prefers-color-scheme: dark)', color: PAGE_BG.dark },
+    { media: '(prefers-color-scheme: light)', color: PAGE_BG.light },
   ],
 };
 
@@ -80,7 +81,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT + MOTION_BOOT_SCRIPT + LITE_BOOT + INTRO_BOOT + CLEAVE_BOOT }} />
       </head>
       <body>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <MotionProvider>
             <SmoothScroll />
             <ForgeCanvas />

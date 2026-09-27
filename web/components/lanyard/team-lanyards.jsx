@@ -86,11 +86,14 @@ export default function TeamLanyards({ people, strip, stage, flipped, onToggleFl
     return () => { ro.disconnect(); el.removeEventListener('scroll', onScroll); cancelAnimationFrame(raf); };
   }, [strip, people.length]);
 
-  // the band texture, and a fresh set of atlases, whenever the theme changes. Wait one frame
-  // first: next-themes swaps the html class in its own effect, which runs AFTER this one.
+  // the band texture, and a fresh set of atlases, whenever the theme changes. Wait until the
+  // page is idle: next-themes swaps the html class in its own effect (after this one), and a
+  // theme switch plays its 0.7 s reveal first; repainting mid-reveal made it stutter.
   useEffect(() => {
     let alive = true;
-    const raf = requestAnimationFrame(() => {
+    const idle = window.requestIdleCallback ?? ((f) => setTimeout(f, 200));
+    const cancelIdle = window.cancelIdleCallback ?? clearTimeout;
+    const raf = idle(() => {
       loadCardFonts().then(() => {
         if (!alive) return;
         atlases.current.forEach((t) => t.dispose());
@@ -98,8 +101,8 @@ export default function TeamLanyards({ people, strip, stage, flipped, onToggleFl
         setBand((prev) => { prev?.dispose(); return drawBand(); });
         setPainted((n) => n + 1);
       });
-    });
-    return () => { alive = false; cancelAnimationFrame(raf); };
+    }, { timeout: 1500 });
+    return () => { alive = false; cancelIdle(raf); };
   }, [theme]);
 
   // paint the atlases of the cards near the view, once each (photos load only for those)

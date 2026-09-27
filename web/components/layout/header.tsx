@@ -40,7 +40,8 @@ export function Header() {
       onToggle: (self) => { header.dataset.solid = String(self.isActive); },
       onUpdate: (self) => {
         if (header.contains(document.activeElement) || menuOpenRef.current) return;
-        header.dataset.hidden = String(self.direction === 1 && self.scroll() > 200);
+        const hidden = String(self.direction === 1 && self.scroll() > 200);
+        if (header.dataset.hidden !== hidden) header.dataset.hidden = hidden;   // same value: no write, no restyle
       },
     });
     ScrollTrigger.create({

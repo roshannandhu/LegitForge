@@ -1,12 +1,25 @@
 'use client';
 
 /** Theme lever (PLAN §5.6.1, animation #4). Flipping it reveals the other world in a
- *  circle from the lever itself — View Transitions, no library. Instant when motion is off. */
+ *  circle from the lever itself — View Transitions, no library. Instant when motion is off.
+ *  For the 0.7 s of the reveal the page holds still underneath it (GSAP paused, the embers skip
+ *  frames: window.__lfSwitching, a JS flag, as any change on <html> restyles the page), and the
+ *  swap is ONE restyle of the page: no "disable transitions" rule (next-themes' own forced two
+ *  more full-page restyles), the few colour transitions just play inside the circle. The choice is remembered only while
+ *  browsing (lib/boot.ts THEME_BOOT).
+ *
+ *  Lite devices (html[data-lite], ≤3 GB) get a fade instead of the circle: the circle is a View
+ *  Transition, which photographs and restyles the whole page mid-animation (a visible stall on
+ *  a 2 GB phone). There a full-screen layer in the new background fades in (opacity only, run by
+ *  the compositor), the colours swap underneath it where the restyle can't be seen, and it fades
+ *  out: an animation that never stutters. */
 
 import { useEffect, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { useTheme } from 'next-themes';
 import { useMotionEnabled } from '@/components/motion/motion-provider';
+import { gsapIfLoaded } from '@/lib/gsap';
+import { PAGE_BG } from '@/lib/theme-colors';
 
 export function ForgeLever() {
   const { resolvedTheme, setTheme } = useTheme();
@@ -17,19 +30,34 @@ export function ForgeLever() {
 
   function toggle(e: React.MouseEvent<HTMLButtonElement>) {
     const next = isDark ? 'light' : 'dark';
+    try { localStorage.setItem('lf-theme-at', String(Date.now())); } catch {}
+    const root = document.documentElement;
+    const w = window as Window & { __lfSwitching?: boolean };
+    w.__lfSwitching = true;                                       // the embers and GSAP hold still
     if (!('startViewTransition' in document) || !motionOn) {
       setTheme(next);
+      requestAnimationFrame(() => requestAnimationFrame(() => { w.__lfSwitching = false; }));
       return;
     }
+    const tl = gsapIfLoaded()?.gsap.globalTimeline;
+    const wasPaused = tl?.paused();
+    tl?.pause();
+    const done = () => { w.__lfSwitching = false; if (!wasPaused) tl?.resume(); };
+    const swap = () => {
+      // class and color-scheme in one go: next-themes then writes the same values (no change),
+      // so the page is restyled once, not twice
+      root.classList.toggle('dark', next === 'dark');
+      root.style.colorScheme = next;
+      flushSync(() => setTheme(next));
+    };
+    if ('lite' in root.dataset) { fadeSwap(PAGE_BG[next], swap, done); return; }
     const r = e.currentTarget.getBoundingClientRect();
     const x = r.left + r.width / 2;
     const y = r.top + r.height / 2;
     const radius = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y));
 
-    const transition = document.startViewTransition(() => {
-      document.documentElement.classList.toggle('dark', next === 'dark');
-      flushSync(() => setTheme(next));
-    });
+    const transition = document.startViewTransition(swap);
+    transition.finished.finally(done);
     transition.ready.then(() => {
       document.documentElement.animate(
         { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${radius}px at ${x}px ${y}px)`] },
@@ -58,4 +86,23 @@ export function ForgeLever() {
       </svg>
     </button>
   );
+}
+
+/** The lite switch: fade a full-screen layer of the new background in, swap underneath, fade it
+ *  out. Opacity animations on their own layer run on the compositor, so they stay smooth while
+ *  the main thread restyles the page; a single-colour layer costs next to no memory. */
+function fadeSwap(bg: string, swap: () => void, done: () => void) {
+  const veil = document.createElement('div');
+  veil.setAttribute('aria-hidden', 'true');
+  veil.style.cssText = `position:fixed;inset:0;z-index:2147483647;pointer-events:none;background:${bg};opacity:0;will-change:opacity`;
+  document.body.appendChild(veil);
+  const fadeIn = veil.animate({ opacity: [0, 1] }, { duration: 250, easing: 'cubic-bezier(0.16, 1, 0.3, 1)', fill: 'forwards' });
+  fadeIn.finished.then(() => {
+    swap();
+    // two frames: the new colours are styled and painted under the veil before it lifts
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      veil.animate({ opacity: [1, 0] }, { duration: 300, easing: 'cubic-bezier(0.16, 1, 0.3, 1)', fill: 'forwards' })
+        .finished.finally(() => { veil.remove(); done(); });
+    }));
+  });
 }

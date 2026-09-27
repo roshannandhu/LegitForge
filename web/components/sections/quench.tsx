@@ -5,7 +5,6 @@
  *  every error sits under its field and is linked with aria-describedby. */
 
 import { useRef, useState } from 'react';
-import { useTheme } from 'next-themes';
 import { CoinMark } from '@/components/ui/icons';
 import { replyByLabel } from '@/lib/business-hours';
 import { BUDGETS, HONEYPOT, NEEDS, validateLead, type LeadErrors, type LeadField } from '@/lib/lead';
@@ -21,7 +20,6 @@ export function Quench() {
   const [replyBy, setReplyBy] = useState('');
   const [armed, setArmed] = useState(false);          // Turnstile loads on the form's first focus
   const turnstile = useRef<TurnstileHandle>(null);
-  const { resolvedTheme } = useTheme();
 
   async function onSubmit(ev: React.FormEvent<HTMLFormElement>) {
     ev.preventDefault();
@@ -137,7 +135,7 @@ export function Quench() {
               <Err f="consent" />
             </div>
 
-            <Turnstile ref={turnstile} armed={armed} theme={resolvedTheme} />
+            <Turnstile ref={turnstile} armed={armed} />
 
             <div className="field-wide form-actions">
               <button type="submit" className="btn btn-primary" data-sending={state === 'sending'}>
