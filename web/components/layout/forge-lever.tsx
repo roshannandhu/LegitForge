@@ -1,12 +1,18 @@
 'use client';
 
 /** Theme lever (PLAN §5.6.1, animation #4). Flipping it reveals the other world in a
- *  circle from the lever itself — View Transitions, no library. Instant when motion is off. */
+ *  circle from the lever itself — View Transitions, no library. Instant when motion is off.
+ *  For the 0.7 s of the reveal the page holds still underneath it (GSAP paused, the embers skip
+ *  frames: window.__lfSwitching, a JS flag, as any change on <html> restyles the page), and the
+ *  swap is ONE restyle of the page: no "disable transitions" rule (next-themes' own forced two
+ *  more full-page restyles), the few colour transitions just play inside the circle. The choice is remembered only while
+ *  browsing (lib/boot.ts THEME_BOOT). */
 
 import { useEffect, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { useTheme } from 'next-themes';
 import { useMotionEnabled } from '@/components/motion/motion-provider';
+import { gsapIfLoaded } from '@/lib/gsap';
 
 export function ForgeLever() {
   const { resolvedTheme, setTheme } = useTheme();
@@ -17,18 +23,33 @@ export function ForgeLever() {
 
   function toggle(e: React.MouseEvent<HTMLButtonElement>) {
     const next = isDark ? 'light' : 'dark';
+    try { localStorage.setItem('lf-theme-at', String(Date.now())); } catch {}
+    const root = document.documentElement;
+    const w = window as Window & { __lfSwitching?: boolean };
+    w.__lfSwitching = true;                                       // the embers and GSAP hold still
     if (!('startViewTransition' in document) || !motionOn) {
       setTheme(next);
+      requestAnimationFrame(() => requestAnimationFrame(() => { w.__lfSwitching = false; }));
       return;
     }
+    const tl = gsapIfLoaded()?.gsap.globalTimeline;
+    const wasPaused = tl?.paused();
+    tl?.pause();
     const r = e.currentTarget.getBoundingClientRect();
     const x = r.left + r.width / 2;
     const y = r.top + r.height / 2;
     const radius = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y));
 
     const transition = document.startViewTransition(() => {
-      document.documentElement.classList.toggle('dark', next === 'dark');
+      // class and color-scheme in one go: next-themes then writes the same values (no change),
+      // so the page is restyled once, not twice
+      root.classList.toggle('dark', next === 'dark');
+      root.style.colorScheme = next;
       flushSync(() => setTheme(next));
+    });
+    transition.finished.finally(() => {
+      w.__lfSwitching = false;
+      if (!wasPaused) tl?.resume();
     });
     transition.ready.then(() => {
       document.documentElement.animate(

@@ -7,6 +7,7 @@
  *  `cf-turnstile-response` input inside this box, so it submits with the form. */
 
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
+import { useTheme } from 'next-themes';
 
 type TurnstileApi = {
   render: (el: HTMLElement, opts: Record<string, unknown>) => string;
@@ -36,7 +37,9 @@ export const turnstileEnabled = !!SITE_KEY;
 export interface TurnstileHandle { reset: () => void }
 
 /** `armed`: load and render (the parent sets it on the form's first focus). */
-export const Turnstile = forwardRef<TurnstileHandle, { armed: boolean; theme?: string }>(function Turnstile({ armed, theme }, ref) {
+// reads the theme itself, so a theme switch re-renders this widget and not the whole form
+export const Turnstile = forwardRef<TurnstileHandle, { armed: boolean }>(function Turnstile({ armed }, ref) {
+  const theme = useTheme().resolvedTheme;
   const box = useRef<HTMLDivElement>(null);
   const id = useRef<string | undefined>(undefined);
 

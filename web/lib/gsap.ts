@@ -12,6 +12,9 @@ import type { ScrollTrigger as ScrollTriggerType } from 'gsap/ScrollTrigger';
 export interface Gs { gsap: typeof Gsap; ScrollTrigger: typeof ScrollTriggerType }
 
 let loading: Promise<Gs> | undefined;
+let ready: Gs | undefined;
+/** GSAP if it has already arrived, without loading it (the theme lever pauses it). */
+export const gsapIfLoaded = () => ready;
 
 /** Weak devices (html[data-lite]) fetch GSAP only once the page has loaded and the main thread
  *  is idle: the first seconds belong to reading and tapping, and the motion follows. */
@@ -27,7 +30,7 @@ export function loadGsap(): Promise<Gs> {
     // phones: the address bar sliding away while scrolling resizes the viewport; re-measuring
     // every trigger each time is a classic mobile stutter, and nothing here depends on it
     ScrollTrigger.config({ ignoreMobileResize: true });
-    return { gsap, ScrollTrigger };
+    return (ready = { gsap, ScrollTrigger });
   }));
 }
 

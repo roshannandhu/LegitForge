@@ -82,6 +82,13 @@ interface SceneProps {
   onReady: () => void;
 }
 
+/** The 3D scene is the only part of the section that needs the theme: reading it here, not in
+ *  Team, keeps a theme switch from re-rendering every card (a long task on a 2 GB phone). */
+function ThemedScene({ Scene, ...props }: Omit<SceneProps, 'theme'> & { Scene: ComponentType<SceneProps> }) {
+  const { resolvedTheme } = useTheme();
+  return <Scene {...props} theme={resolvedTheme} />;
+}
+
 /** `head={false}` on /team, where the page header already carries this heading and lead. */
 export function Team({ team, head = true }: { team: Card[]; head?: boolean }) {
   // stable identity: the 3D scene repaints its textures when this changes
@@ -94,7 +101,6 @@ export function Team({ team, head = true }: { team: Card[]; head?: boolean }) {
   ], [team]);
   const youCode = nextCode(team);
   const motionOn = useMotionEnabled();
-  const { resolvedTheme } = useTheme();
   const sectionRef = useRef<HTMLElement>(null);
   const stripRef = useRef<HTMLUListElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -266,14 +272,14 @@ export function Team({ team, head = true }: { team: Card[]; head?: boolean }) {
           </ul>
 
           {mode === '3d' && Scene && (
-            <Scene
+            <ThemedScene
+              Scene={Scene}
               people={people}
               strip={stripRef}
               stage={stageRef}
               flipped={flipped}
               onToggleFlip={toggle}
               highlighted={highlighted}
-              theme={resolvedTheme}
               visible={visible}
               onReady={onReady}
             />
