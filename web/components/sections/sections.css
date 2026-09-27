@@ -864,7 +864,7 @@
 .trust-plate[data-armed] .press { animation: press-strike 640ms cubic-bezier(.5, 0, .3, 1) calc(var(--t) + 180ms) both paused; }
 .trust-plate[data-armed] .sparks i { animation: spark 560ms cubic-bezier(.1, .7, .3, 1) calc(var(--t) + 520ms) backwards paused; }
 .trust-plate[data-armed] [data-punch] { opacity: 0; animation: none; }   /* scaled up only once it strikes (a 2× mark would stick out of a phone) */
-:is(.trust-plate)[data-armed][data-punched]:is(.cleave[data-open] *, .cleave:not([data-armed]) *) [data-punch] { animation: punch-in 460ms cubic-bezier(.2, .9, .3, 1.2) calc(var(--t) + 470ms) both; }
+.trust-plate[data-armed][data-punched] [data-punch] { animation: punch-in 460ms cubic-bezier(.2, .9, .3, 1.2) calc(var(--t) + 470ms) both; }
 .trust-plate[data-armed] .ti-shackle { animation: ti-shackle 520ms cubic-bezier(.3, 1.6, .5, 1) calc(var(--t) + 1100ms) both paused; }
 .trust-plate[data-armed] .ti-price { animation: ti-rise 500ms var(--ease-forge) calc(var(--t) + 950ms) both paused; }
 .trust-plate[data-armed] .ti-week svg { animation: ti-pop 320ms cubic-bezier(.3, 1.6, .5, 1) calc(var(--t) + 900ms + var(--w) * 160ms) both paused; }
@@ -877,10 +877,12 @@
 .trust-weld[data-armed]::after { animation: weld-glow 1400ms ease-out var(--t) both paused; }
 
 /* go: punched, and its Cleave is open (or there is no armed Cleave around it) */
-:is(.trust-plate, .trust-weld)[data-punched]:is(.cleave[data-open] *, .cleave:not([data-armed]) *),
-:is(.trust-plate, .trust-weld)[data-punched]:is(.cleave[data-open] *, .cleave:not([data-armed]) *) :is(.press, .sparks i, .ti *),
-:is(.trust-plate, .trust-weld)[data-punched]:is(.cleave[data-open] *, .cleave:not([data-armed]) *)::before,
-:is(.trust-plate, .trust-weld)[data-punched]:is(.cleave[data-open] *, .cleave:not([data-armed]) *)::after { animation-play-state: running; }
+/* punch-in.tsx sets data-punched only once the plate is seen AND its Cleave is open, so the
+   plain attribute is the whole condition (no ancestor-walking :is(.cleave[data-open] *)) */
+.trust-plate[data-punched], .trust-weld[data-punched],
+:is(.trust-plate, .trust-weld)[data-punched] :is(.press, .sparks i, .ti *),
+:is(.trust-plate, .trust-weld)[data-punched]::before,
+:is(.trust-plate, .trust-weld)[data-punched]::after { animation-play-state: running; }
 .trust-plate::after { animation: none; }   /* the glint is a hover transition, never a keyframe */
 
 @keyframes plate-cool { 0% { opacity: .95; } 35% { opacity: .7; } 100% { opacity: 0; } }
