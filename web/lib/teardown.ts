@@ -38,11 +38,10 @@ export const LEAD_EVENT = 'lf:lead';
 
 /* ------------------------------------------------------------------ geometry */
 export const DESIGN = { w: 780, h: 760 } as const;
-/** Phones show 610 of the 780 design px, from x = 170: the callout column is cropped (hero.css). */
-export const PHONE_CROP = 610;
-/** Where the crop applies: phones, and portrait tablets (a 2 GB 800 × 1280 tablet showed the
- *  uncropped stage small and off to the right). Keep in step with hero.css. */
-export const CROP_MQ = '(max-width: 767px), (max-width: 1023px) and (orientation: portrait)';
+/** The stage's scale in a box of w × h px: the whole 780 × 760 drawing on every screen (phones
+ *  included since 27 Sep: callouts, stack and hand, as on a laptop). Laptops and tablets keep
+ *  a 14 px margin each side for the leader lines. Used by FIT_NOW and teardown.tsx alike. */
+export const fitFor = (w: number, h: number) => Math.min((w - (w < 700 ? 0 : 28)) / DESIGN.w, h / DESIGN.h, 1.25);
 /** The hand-held phone, and its screen inside the photo (measured from the 1200 × 1653 cut-out). */
 export const PHONE = { cx: 652, cy: 444, w: 240, aspect: 1.3775 } as const;
 const phoneLeft = PHONE.cx - PHONE.w / 2;

@@ -3,7 +3,7 @@
  *  ~350 nodes here are never hydrated: a large share of a budget phone's load time. */
 
 import Image from 'next/image';
-import { CALLOUTS, CALLOUT_W, CROP_MQ, DEFAULT_LEAD, DESIGN, ISO_SCALE, LAYERS, PHONE, PHONE_CROP, SCREEN, SLOTS } from '@/lib/teardown';
+import { CALLOUTS, CALLOUT_W, DEFAULT_LEAD, DESIGN, ISO_SCALE, LAYERS, PHONE, SCREEN, SLOTS } from '@/lib/teardown';
 import { LayerScreen } from './layer-screens';
 import TeardownMotion from './teardown';
 
@@ -17,7 +17,7 @@ const STAGE_VARS = {
 /** Sets --fit during parsing, so the stage never visibly rescales at hydration.
  *  Keep in step with the resize effect in teardown.tsx. */
 const FIT_NOW = `(function(s){var b=s.parentElement.getBoundingClientRect();if(!b.width)return;` +
-  `s.style.setProperty('--fit',(matchMedia('${CROP_MQ}').matches?Math.min(b.width/${PHONE_CROP},b.height/${DESIGN.h}):Math.min((b.width-28)/${DESIGN.w},b.height/${DESIGN.h},1.25)).toFixed(3))})` +
+  `s.style.setProperty('--fit',Math.min((b.width-(b.width<700?0:28))/${DESIGN.w},b.height/${DESIGN.h},1.25).toFixed(3))})` +   // = fitFor() in lib/teardown.ts
   `(document.currentScript.previousElementSibling)`;
 
 const WORD = 'Legit Forge';

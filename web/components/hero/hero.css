@@ -28,9 +28,8 @@
    never widen the page (§4.8). Phones do not use it: see the phone block at the end. */
 .stage-fit { position: relative; min-height: 70svh; overflow: hidden; }
 @media (min-width: 1024px) { .stage-fit { min-height: 78svh; overflow: visible; } }
-/* tablets: copy and chips sit above the stage in one column; the stage takes the height
-   left, so the copy and the whole looping teardown fit one screen */
-@media (min-width: 768px) and (max-width: 1023px) { .stage-fit { min-height: max(420px, calc(100svh - 580px)); } }
+/* tablets: copy and chips sit above the stage in one column */
+@media (min-width: 768px) and (max-width: 1023px) { .stage-fit.td { min-height: 0; aspect-ratio: 780 / 760; } }   /* the drawing's own shape: no empty band */
 .stage {
   position: absolute; left: 50%; top: 50%; width: var(--dw); height: var(--dh);
   transform: translate(-50%, -50%) scale(var(--fit, .8)); transform-origin: center center;   /* .8: the no-JS fallback for the fit script */
@@ -145,25 +144,13 @@
 [data-motion="on"] .td-screen:not([data-live]) .td-word { opacity: 1; }
 
 /* ------------------------------------------------------------------ phones
-   The same exploded stage as on a laptop, scaled to the phone's width. The callouts' column
-   on the left of the design is cropped away (the stage is 610 of its 780 px wide here, from
-   x = 170), the box keeps the stage's shape, and the stage pins in the middle of the screen
-   while the teardown runs (teardown.tsx). Instead of seven callouts, the one being run shows
-   as a caption under the stack. */
+   The whole drawing, as on a laptop (the owner's mockup, 27 Sep): callouts, leader lines, the
+   stack and the hand, scaled to the phone's width (fitFor in lib/teardown.ts). The box takes
+   the drawing's shape, so there is no empty band around it. The callouts' type is sized in
+   screen px (divided by the scale), so it reads at 8 px however small the drawing gets. */
 @media (max-width: 767px) {
-  .stage-fit.td { min-height: 0; aspect-ratio: 610 / 760; overflow: hidden; margin-inline: -8px; }
-}
-/* phones and portrait tablets (CROP_MQ in lib/teardown.ts): the callout column is cropped away */
-@media (max-width: 767px), (max-width: 1023px) and (orientation: portrait) {
-  .td-stage { left: calc(50% - 85px * var(--fit, .55)); }
-  .td-leaders { display: none; }
-  .td-callouts li { display: none; }
-  .td-callouts li[data-active] {
-    display: grid; left: 180px; top: 686px; width: 590px; text-align: left; grid-template-columns: auto 1fr;
-    font-size: calc(15px / var(--fit, .55)); column-gap: calc(8px / var(--fit, .55));
-  }
-  .td-callouts li[data-active] .num { grid-column: 1; }
-  .td-callouts li[data-active] :is(strong, em) { grid-column: 2; }
+  .stage-fit.td { min-height: 0; aspect-ratio: 780 / 760; overflow: hidden; margin-inline: -8px; }
+  .td-callouts li { font-size: calc(8px / var(--fit, .48)); line-height: 1.15; column-gap: calc(4px / var(--fit, .48)); }
 }
 
 /* ------------------------------------------------------------------ the live screens
