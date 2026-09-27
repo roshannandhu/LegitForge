@@ -15,12 +15,12 @@
 import { useEffect, useRef } from 'react';
 import { useLenis } from '@/lib/lenis-store';
 import {
-  DEFAULT_LEAD, DESIGN, FOCUS, PHONE_CROP, ISO_SCALE, LAYERS, LEAD_EVENT, PIN_END, RUN,
+  CROP_MQ, DEFAULT_LEAD, DESIGN, FOCUS, PHONE_CROP, ISO_SCALE, LAYERS, LEAD_EVENT, PIN_END, RUN,
   SCREEN_C, SLOTS, actIndex, isLayerId, type LayerId,
 } from '@/lib/teardown';
 import { useMotionEnabled } from '@/components/motion/motion-provider';
 import { markNearJs } from '@/lib/lite';
-import { useGsap, type Gs } from '@/lib/gsap';
+import { schedule, useGsap, type Gs } from '@/lib/gsap';
 import { buildFlow } from './teardown-flows';
 
 let introPlayed = false;
@@ -44,11 +44,11 @@ export default function TeardownMotion() {
   useEffect(() => {
     const stageEl = stage.current!;
     const box = stageEl.parentElement!;
-    const phoneMq = matchMedia('(max-width: 767px)');
+    const phoneMq = matchMedia(CROP_MQ);
     const ro = new ResizeObserver(() => {
       const r = box.getBoundingClientRect();
       if (!r.width) return;
-      const fit = phoneMq.matches ? r.width / PHONE_CROP : Math.min((r.width - 28) / DESIGN.w, r.height / DESIGN.h, 1.25);
+      const fit = phoneMq.matches ? Math.min(r.width / PHONE_CROP, r.height / DESIGN.h) : Math.min((r.width - 28) / DESIGN.w, r.height / DESIGN.h, 1.25);
       stageEl.style.setProperty('--fit', fit.toFixed(3));
       trigger.current?.refresh();
     });
@@ -107,6 +107,7 @@ export default function TeardownMotion() {
        (the copy above it has scrolled by), so the same teardown plays there too. */
     mm.add({ wide: '(min-width: 768px)', phone: '(max-width: 767px)' }, (mctx) => {
       const onPhone = !!mctx.conditions?.phone;
+      let dead = false;
       if (reduced) {                                        // the finished stack, told in one frame
         layers.forEach((l) => l.setAttribute('data-lit', ''));
         setScreen('final'); setAct(2);
@@ -136,9 +137,15 @@ export default function TeardownMotion() {
         tl.set(el, { zIndex: 30 }, w0).set(el, { zIndex: 10 - i }, w0 + E * 0.98)   // the reader's layer is in front
           .to(others, { '--dim': 0.4, duration: E * 0.13 }, w0)
           .to(el, { '--dim': 1, '--x': FOCUS.x, '--y': FOCUS.y, '--tilt': 0, '--s': FOCUS.s, duration: E * 0.22, ease: 'power2.inOut' }, w0);
-        const flow = buildFlow(LAYERS[i].id, el, gsap);
-        flow.timeScale(flow.duration() / (E * 0.565));
-        tl.add(flow, w0 + E * 0.22);
+        // each layer's flow is built in its own task (seven at once was one long task on a
+        // 2 GB tablet), and joins the timeline long before the reader scrolls to its window
+        schedule(() => {
+          if (dead) return;
+          const flow = buildFlow(LAYERS[i].id, el, gsap);
+          flow.timeScale(flow.duration() / (E * 0.565));
+          tl.add(flow, w0 + E * 0.22);
+          tl.totalTime(tl.totalTime(), true);                              // render it at the current scroll
+        });
         tl.to(el, { '--x': SLOTS[i].x, '--y': SLOTS[i].y, '--tilt': 1, '--s': ISO_SCALE, duration: E * 0.17, ease: 'power2.inOut' }, w0 + E * 0.81);
         const to = SLOTS[i + 1] ?? SCREEN_C;
         tl.fromTo(pulse, { '--px': SLOTS[i].x, '--py': SLOTS[i].y, opacity: 1 },
@@ -182,6 +189,21 @@ export default function TeardownMotion() {
       }
       const stopIdle = st ? idleJourney(st, win, tl) : () => {};
 
+      // warm the seven glass layers while the page is idle: each is shown at a near-zero opacity
+      // for a frame, so the browser builds and paints its layer now, not on the first scroll
+      // into the teardown (that first frame was a 168 ms hitch on a real 2 GB tablet)
+      const idle = (fn: () => void) => ('requestIdleCallback' in window ? requestIdleCallback(fn, { timeout: 2000 }) : setTimeout(fn, 200));
+      const warm = (k: number) => {
+        if (dead || k >= layers.length || tl.progress() > 0.02) return;
+        const el = layers[k];
+        el.style.opacity = '0.002';
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          if (el.style.opacity === '0.002') el.style.opacity = '0';
+          idle(() => warm(k + 1));
+        }));
+      };
+      idle(() => warm(0));
+
       // a chip was picked: that layer leads (the phone ends on it) and the page glides to it
       const onLead = (e: Event) => {
         const { id, replay } = (e as CustomEvent<{ id: LayerId; replay: boolean }>).detail;
@@ -194,7 +216,7 @@ export default function TeardownMotion() {
         if (l) l.scrollTo(y, { duration: 2.4, force: true }); else window.scrollTo({ top: y, behavior: 'smooth' });
       };
       window.addEventListener(LEAD_EVENT, onLead);
-      return () => { window.removeEventListener(LEAD_EVENT, onLead); stopIdle(); };
+      return () => { dead = true; window.removeEventListener(LEAD_EVENT, onLead); stopIdle(); };
     });
 
     /** Scroll leads; stop and it carries on by itself (tablet and desktop). Once the reader has

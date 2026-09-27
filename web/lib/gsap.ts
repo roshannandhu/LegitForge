@@ -46,7 +46,8 @@ async function pump() {
   while (queue.length) { await yieldTask(); queue.shift()!(); }
   pumping = false;
 }
-function schedule(fn: () => void) {
+/** Run fn in its own task, after the setups queued before it (one per task, never a long one). */
+export function schedule(fn: () => void) {
   queue.push(fn);
   if (!pumping) pump();
 }

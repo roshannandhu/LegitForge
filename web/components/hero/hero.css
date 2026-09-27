@@ -86,6 +86,16 @@
 
 /* the five layers: position, tilt and scale are custom properties GSAP animates.
    Default (no JS, motion off) = the finished isometric stack. */
+/* not inherited: GSAP writes these every frame, and an inherited custom property restyles the
+   layer's whole live screen each time; registered, only the layer itself is recalculated.
+   (The demos' --x/--y and the sparks' --s are read on the element that sets them, so unaffected.) */
+@property --x { syntax: "*"; inherits: false; }
+@property --y { syntax: "*"; inherits: false; }
+@property --tilt { syntax: "*"; inherits: false; }
+@property --s { syntax: "*"; inherits: false; }
+@property --dim { syntax: "*"; inherits: false; }
+@property --px { syntax: "*"; inherits: false; }
+@property --py { syntax: "*"; inherits: false; }
 .td-layers { position: absolute; inset: 0; margin: 0; padding: 0; list-style: none; perspective: 1400px; perspective-origin: 30% 40%; }
 .td-layer {
   --x: var(--sx); --y: var(--sy); --tilt: 1; --s: var(--iso-s); --dim: 1;
@@ -142,6 +152,9 @@
    as a caption under the stack. */
 @media (max-width: 767px) {
   .stage-fit.td { min-height: 0; aspect-ratio: 610 / 760; overflow: hidden; margin-inline: -8px; }
+}
+/* phones and portrait tablets (CROP_MQ in lib/teardown.ts): the callout column is cropped away */
+@media (max-width: 767px), (max-width: 1023px) and (orientation: portrait) {
   .td-stage { left: calc(50% - 85px * var(--fit, .55)); }
   .td-leaders { display: none; }
   .td-callouts li { display: none; }

@@ -89,11 +89,13 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
   Importing content.ts into a 'use client' file ships all of it to the browser.
 - Inner pages: app/pages.css + components/pages (PageHead with breadcrumbs, CtaBand, JsonLd).
   Blocks use .page-block on a .wrap: set padding-top only, or you erase .wrap's side padding.
-- Home #work is the project rail (components/work/project-rail.tsx, sections.css "work rail"):
-  portrait cards chosen in Admin → Projects (★ "Show on the home page", admin order; none starred
-  → all published: lib/work.ts getHomeProjects). ≥768px with motion: the section pins and the row
-  slides with the scroll, the centred card grows and faces you (transform only). Phones / motion
-  off: a native swipe row. Cards keep data-project-card + .project-cover for the Cleave.
+- Home #work is the React Bits AccordionGallery (JS-CSS, vendored: components/react-bits/
+  accordion-gallery.jsx, keep its `LF:` additions if you swap in the official file) wired in
+  components/work/work-gallery.tsx: defaultIndex 2, expandRatio 0.52, trigger "hover". Mouse:
+  hover opens, one click opens the project. Touch: first tap opens, a tap on the open panel opens
+  the project. The open panel shows a brief description only (client, title, 2-line summary).
+  Projects are chosen in Admin → Projects (★ "Show on the home page", admin order; none starred
+  → all published: lib/work.ts getHomeProjects). Panels keep data-project-card + .project-cover.
 - Team: any number of people (Admin → Team: add, reorder, remove). One full-bleed strip scrolls
   sideways in every layer. The 3D canvas is full width with headroom (sections.css
   .team-canvas, HEAD in team-lanyards.jsx: keep them equal), its camera follows the strip's
