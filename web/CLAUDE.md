@@ -100,6 +100,10 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
   `import()` of browser-only code (three.js, Rapier, FlipCard) sits inside
   `if (!process.env.NEXT_RUNTIME)` (team.tsx), or the server bundle takes it too (+1.1 MB).
   Measure: `npx opennextjs-cloudflare build && npx wrangler deploy --dry-run --outdir <tmp>`.
+- The public address is legitforge.pages.dev: the Pages project in cf-pages/ serves the static
+  folders in cf-pages/_routes.json and forwards the rest to the Worker (service binding SITE).
+  A new top-level folder in public/ belongs in that exclude list, or every file in it costs a
+  Worker request.
 - Binding types: cf-typegen runs with --include-runtime=false. Wrangler's full runtime types
   redeclare fetch, Response and DOM Element and break the browser code. The binding types
   come from cloudflare-bindings.d.ts instead; add a line there for any new binding kind.

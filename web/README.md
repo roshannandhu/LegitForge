@@ -27,9 +27,9 @@ guard in components/sections/team.tsx; without it the Worker is 3.7 MB and needs
 ($5/month, PLAN §8.3), which also lifts Free's 10 ms CPU limit per request.
 
 `.github/workflows/deploy-cloudflare.yml` deploys on every push to `main-exh9xw` (or by hand:
-Actions → Deploy to Cloudflare → Run workflow). Its first run creates the D1 database and both R2
-buckets, applies the migrations and sets a random `HASH_SALT` (`scripts/cf-setup.mjs`); later runs
-reuse them. Once:
+Actions → Deploy to Cloudflare → Run workflow). Its first run creates the D1 database, both R2
+buckets and the Pages project, applies the migrations and sets a random `HASH_SALT`
+(`scripts/cf-setup.mjs`); later runs reuse them. Once:
 
 1. Cloudflare → My Profile → API Tokens → Create Token → template **Edit Cloudflare Workers**,
    and add **Account → D1 → Edit**.
@@ -37,12 +37,14 @@ reuse them. Once:
 3. GitHub → Settings → Secrets and variables → Actions → add the secrets `CLOUDFLARE_API_TOKEN`
    and `CLOUDFLARE_ACCOUNT_ID`.
 
-The site goes live at `https://legitforge-web.<your-subdomain>.workers.dev`, kept out of search
-(noindex) while it is on that temporary address. For the real domain: add it to the Worker
-(Workers → legitforge-web → Settings → Domains), then add the repository **variable** `SITE_URL`
-(e.g. `https://legitforge.in`) and re-run the workflow: canonicals, the sitemap and share images
-switch to it and search engines are allowed. The other secrets below (Turnstile, n8n, Access,
-GitHub) are still set with `npx wrangler secret put`.
+The site is **https://legitforge.pages.dev**: the Pages project `legitforge` (`cf-pages/`) serves
+the static files itself (`_routes.json`) and hands everything else (pages, API, admin, media) to
+the Worker `legitforge-web` through a service binding. Storage is R2 and D1. The Worker also
+answers at `legitforge-web.<subdomain>.workers.dev`; its canonical tags point to pages.dev. For a
+real domain later: add it to the Pages project (Workers & Pages → legitforge → Custom domains),
+then add the repository **variable** `SITE_URL` (e.g. `https://legitforge.in`) and re-run the
+workflow: canonicals, the sitemap and share images switch to it. The other secrets below
+(Turnstile, n8n, Access, GitHub) are still set with `npx wrangler secret put`.
 
 ### Manual deploy (fallback, from a laptop)
 

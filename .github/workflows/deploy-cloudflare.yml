@@ -1,7 +1,8 @@
-# Deploys web/ to Cloudflare Workers (OpenNext) on every push to main-exh9xw, or by hand
-# (Actions → Deploy to Cloudflare → Run workflow). First run creates D1 and R2 itself.
+# Deploys web/ on every push to main-exh9xw, or by hand (Actions → Deploy to Cloudflare → Run
+# workflow): the backend Worker (OpenNext), then the frontend Pages project in front of it
+# (legitforge.pages.dev, web/cf-pages/). First run creates D1, R2 and the Pages project itself.
 # Needs two repository secrets: CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID (web/README.md).
-# Optional repository variable SITE_URL: the real domain, once it points at the Worker.
+# Optional repository variable SITE_URL: the real domain, once it is on the Pages project.
 # Optional repository variable ADMIN_EMAIL (+ secrets GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET for a
 # Google sign-in): locks /admin to that account with Cloudflare Access (scripts/cf-access.mjs).
 name: Deploy to Cloudflare
@@ -57,6 +58,12 @@ jobs:
 
       - name: Build and deploy
         run: npm run deploy
+
+      - name: Frontend on Pages
+        run: |
+          rm -rf .open-next/pages && cp -r .open-next/assets .open-next/pages
+          cp cf-pages/_worker.js cf-pages/_routes.json .open-next/pages/
+          cd cf-pages && npx wrangler pages deploy --branch main --commit-dirty=true
 
       - name: Worker secrets (first run only)
         run: node scripts/cf-setup.mjs --post

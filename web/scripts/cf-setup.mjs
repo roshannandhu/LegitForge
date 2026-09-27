@@ -2,7 +2,7 @@
 /** First-time Cloudflare setup for the deploy workflow (.github/workflows/deploy-cloudflare.yml).
  *  Idempotent: finds or creates what wrangler.jsonc names, so every run can call it.
  *
- *    node scripts/cf-setup.mjs            before the build: D1, R2, the site URL
+ *    node scripts/cf-setup.mjs            before the build: D1, R2, the Pages project, the site URL
  *    node scripts/cf-setup.mjs --post     after the deploy: the HASH_SALT Worker secret, once
  *    node scripts/cf-setup.mjs --dry-run  print what it would do (no token needed)
  *
@@ -16,6 +16,7 @@ import { cf, putSecret, requireCredentials, WORKER } from './cf-api.mjs';
 
 const D1 = 'legitforge';
 const BUCKETS = ['legitforge-media', 'legitforge-next-cache'];
+const PAGES = 'legitforge';                       // the frontend, cf-pages/wrangler.jsonc "name"
 const ZERO_ID = '00000000-0000-0000-0000-000000000000';
 
 const post = process.argv.includes('--post');
@@ -25,8 +26,8 @@ const { GITHUB_ENV, SITE_URL } = process.env;
 if (dry) {
   console.log(post
     ? `would set the HASH_SALT secret on ${WORKER} if it is missing`
-    : `would find or create D1 "${D1}" and R2 ${BUCKETS.join(', ')}, write the D1 id and SITE_URL into wrangler.jsonc,\n` +
-      `and export NEXT_PUBLIC_SITE_URL (${SITE_URL || `https://${WORKER}.<subdomain>.workers.dev`}) to the build`);
+    : `would find or create D1 "${D1}", R2 ${BUCKETS.join(', ')} and Pages "${PAGES}", write the D1 id and SITE_URL into wrangler.jsonc,\n` +
+      `and export NEXT_PUBLIC_SITE_URL (${SITE_URL || `https://${PAGES}.pages.dev`}) to the build`);
   process.exit(0);
 }
 requireCredentials();
@@ -53,13 +54,13 @@ for (const name of BUCKETS) {
   else { await cf('POST', '/r2/buckets', { name }); console.log(`R2 ${name}: created`); }
 }
 
-// The site's address: the real domain once the SITE_URL repo variable is set, else workers.dev
-let url = (SITE_URL ?? '').replace(/\/+$/, '');
-if (!url) {
-  const sub = (await cf('GET', '/workers/subdomain'))?.subdomain;
-  if (!sub) throw new Error('This account has no workers.dev subdomain yet: open Workers & Pages once in the dashboard to create it.');
-  url = `https://${WORKER}.${sub}.workers.dev`;
-}
+// Pages: the frontend (cf-pages/), deployed after the Worker by the workflow
+let pages;
+try { pages = await cf('GET', `/pages/projects/${PAGES}`); console.log(`Pages ${PAGES}: exists`); }
+catch { pages = await cf('POST', '/pages/projects', { name: PAGES, production_branch: 'main' }); console.log(`Pages ${PAGES}: created`); }
+
+// The site's address: the real domain once the SITE_URL repo variable is set, else <project>.pages.dev
+const url = (SITE_URL || `https://${pages.subdomain}`).replace(/\/+$/, '');
 const noindex = url.endsWith('.workers.dev');
 
 let cfg = await readFile('wrangler.jsonc', 'utf8');
