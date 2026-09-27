@@ -21,6 +21,8 @@
  *    from the DOM; the camera follows the strip's scrollLeft, so the 3D cards scroll with it.
  *    Only cards within a column of the view have a band (and a painted atlas), so 50 people
  *    cost what 5 do. The canvas ignores the pointer; events come from the stage element.
+ *  - Phones too (27 Sep): touch taps flip a card but never drag it (a finger scrolls the page
+ *    and the row); phones draw at up to 1.5× pixel density, lite devices at 1×.
  */
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, extend, useFrame, useThree } from '@react-three/fiber';
@@ -38,6 +40,10 @@ const PX = 136;           // pixels per world unit (sections.css sizes the 2D ca
 const HEAD = 160;         // px of canvas above the strip (sections.css .team-canvas top)
 const TOP = 0.25;         // anchors sit this far below the strip's top (world units)
 const FOV = 20;
+/** Lite devices (≤3 GB RAM, html[data-lite]) draw at 1× and phones at up to 1.5×: the same
+ *  scene and motion, fewer pixels for a budget GPU to fill. */
+const maxDpr = () => (typeof document === 'undefined' ? 2
+  : 'lite' in document.documentElement.dataset ? 1 : window.innerWidth < 768 ? 1.5 : 2);
 const zFor = (h) => h / PX / 2 / Math.tan((FOV / 2) * Math.PI / 180);   // camera distance for 136px/unit
 
 export default function TeamLanyards({ people, strip, stage, flipped, onToggleFlip, highlighted, theme, visible, onReady }) {
@@ -133,7 +139,7 @@ export default function TeamLanyards({ people, strip, stage, flipped, onToggleFl
       <Suspense fallback={null}>
       <Canvas
         camera={{ position: [0, 0, zFor(1000)], fov: FOV }}
-        dpr={[1, 2]}
+        dpr={[1, maxDpr()]}
         frameloop={visible ? 'always' : 'never'}
         gl={{ alpha: true }}
         eventSource={stage.current ?? undefined}
@@ -328,12 +334,14 @@ function Band({ anchor, atlas, bandTexture, flipped, highlighted, onToggleFlip, 
           onPointerDown={(e) => {
             // events come from the whole stage: a press on a name tag, button or link is theirs, not the card's
             if (e.nativeEvent.target?.closest?.('.name-tag, button, a')) return;
-            e.target.setPointerCapture(e.pointerId);
             down.current = { x: e.clientX, y: e.clientY, t: performance.now() };
+            if (e.pointerType === 'touch') return;                // a finger taps to flip; its swipes scroll
+            e.target.setPointerCapture(e.pointerId);
             drag(new THREE.Vector3().copy(e.point).sub(vec.copy(card.current.translation())));
           }}
+          onPointerCancel={() => { drag(false); down.current = null; }}   // the browser took the gesture (a scroll)
           onPointerUp={(e) => {
-            e.target.releasePointerCapture(e.pointerId);
+            if (e.target.hasPointerCapture?.(e.pointerId)) e.target.releasePointerCapture(e.pointerId);
             drag(false);
             const d = down.current;
             down.current = null;
