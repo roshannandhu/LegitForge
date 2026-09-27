@@ -1,5 +1,5 @@
 import { listProjects } from '@/lib/admin/db';
-import { createProjectAction, moveProjectAction, publishProjectAction } from '../actions';
+import { createProjectAction, featureProjectAction, moveProjectAction, publishProjectAction } from '../actions';
 import { ActionButton, ActionForm, Submit } from '../ui';
 import { GithubAdd } from './github-add';
 
@@ -9,8 +9,9 @@ export default async function AdminProjects() {
     <>
       <h1 className="type-h2">Projects</h1>
       <p className="admin-lead">
-        Published projects replace the placeholders on the home page and /work, in this order.
-        Drafts stay private: open one and use Preview.
+        Published projects replace the placeholders on /work, in this order. Star ★ the ones for the
+        home page's rail (it shows them in this order; with none starred it shows them all). Drafts stay
+        private: open one and use Preview.
       </p>
 
       <GithubAdd />
@@ -31,7 +32,7 @@ export default async function AdminProjects() {
         ) : (
           <div className="admin-table-wrap">
             <table className="admin-table">
-              <thead><tr><th>Order</th><th>Project</th><th>Images</th><th>Status</th><th>Actions</th></tr></thead>
+              <thead><tr><th>Order</th><th>Home</th><th>Project</th><th>Images</th><th>Status</th><th>Actions</th></tr></thead>
               <tbody>
                 {rows.map((p, i) => (
                   <tr key={p.id}>
@@ -40,6 +41,12 @@ export default async function AdminProjects() {
                         <form action={moveProjectAction.bind(null, p.id, -1)}><button className="btn btn-ghost btn-sm" disabled={i === 0} aria-label={`Move ${p.title} up`}>↑</button></form>
                         <form action={moveProjectAction.bind(null, p.id, 1)}><button className="btn btn-ghost btn-sm" disabled={i === rows.length - 1} aria-label={`Move ${p.title} down`}>↓</button></form>
                       </div>
+                    </td>
+                    <td>
+                      <form action={featureProjectAction.bind(null, p.id, !p.is_featured)}>
+                        <button className={`btn btn-ghost btn-sm star${p.is_featured ? ' is-on' : ''}`} aria-pressed={!!p.is_featured}
+                          aria-label={`${p.is_featured ? 'Remove' : 'Show'} ${p.title} ${p.is_featured ? 'from' : 'on'} the home page`}>{p.is_featured ? '★' : '☆'}</button>
+                      </form>
                     </td>
                     <td><a className="text-link" href={`/admin/projects/${p.id}`}>{p.title}</a><br /><span className="muted">/work/{p.slug}</span></td>
                     <td>{p.image_count ?? 0}</td>

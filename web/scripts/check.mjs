@@ -36,7 +36,7 @@ const RUNS = [
 /** Runs in the page. The §4.8 gate, measured rather than eyeballed. */
 function audit() {
   const vw = innerWidth;
-  const skip = '.projects, .lanyards, .stage-fit, .hp, .skip-link, .phone-menu, .sr-only, .team-canvas, .intro, .logoloop, .work-gallery';   // a clipped marquee, a sideways card row
+  const skip = '.projects, .lanyards, .stage-fit, .hp, .skip-link, .phone-menu, .sr-only, .team-canvas, .intro, .logoloop, .rail-viewport';   // a clipped marquee, the work rail's row
   const name = (el) => el.tagName.toLowerCase() + (el.classList.length ? '.' + [...el.classList].join('.') : '');
   const escapees = [];
   document.querySelectorAll('body *').forEach((el) => {

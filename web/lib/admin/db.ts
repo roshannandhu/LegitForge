@@ -66,6 +66,10 @@ export async function updateProject(id: string, v: ProjectInput) {
     v.live_url, v.status_stamp, v.tags, v.built, v.results, v.team, v.is_featured, v.launched_on, v.proof_before, v.proof_after, id).run();
 }
 
+export async function setFeatured(id: string, featured: boolean) {
+  await (await adminDb()).prepare(`UPDATE projects SET is_featured = ?, updated_at = datetime('now') WHERE id = ?`).bind(featured ? 1 : 0, id).run();
+}
+
 export async function setPublished(id: string, published: boolean) {
   await (await adminDb()).prepare(`UPDATE projects SET is_published = ?, updated_at = datetime('now') WHERE id = ?`).bind(published ? 1 : 0, id).run();
 }

@@ -11,7 +11,7 @@ import { getEnv } from './cf';
  *  'projects': the admin's updateTag('projects') re-renders them from D1. */
 
 export type CaseStudy = (typeof CASE_STUDIES)[string];
-export type WorkProject = Project & { category: WorkCategory; study: CaseStudy; published: boolean; updatedAt?: string };
+export type WorkProject = Project & { category: WorkCategory; study: CaseStudy; published: boolean; updatedAt?: string; featured?: boolean };
 
 const EMPTY: CaseStudy = { category: 'static', challenge: '', built: [], results: [], stack: [], team: [] };
 
@@ -24,7 +24,7 @@ type Row = {
   slug: string; title: string; client_type: string; category: WorkCategory; summary: string;
   challenge: string | null; result_value: string | null; result_label: string | null; stack: string;
   live_url: string | null; status_stamp: 'live' | 'in-use' | 'none'; tags: string; built: string;
-  results: string; team: string; is_published: number; updated_at: string;
+  results: string; team: string; is_published: number; is_featured: number; updated_at: string;
   proof_before: string | null; proof_after: string | null;
   r2_key: string | null; cover_alt: string | null; width: number | null; height: number | null; dominant_color: string | null;
 };
@@ -44,7 +44,7 @@ function toWork(r: Row): WorkProject {
     resultValue: r.result_value ?? '', resultLabel: r.result_label ?? '',
     tags: list<string>(r.tags), stamp: r.status_stamp, liveUrl: r.live_url ?? undefined,
     ...(r.proof_before && r.proof_after ? { before: r.proof_before, after: r.proof_after } : {}),
-    initials: initials(r.title), cover, category: r.category, published: r.is_published === 1,
+    initials: initials(r.title), cover, category: r.category, published: r.is_published === 1, featured: r.is_featured === 1,
     updatedAt: r.updated_at.replace(' ', 'T') + 'Z',          // D1 datetime('now') is UTC
     study: {
       category: r.category, challenge: r.challenge ?? r.summary, built: list(r.built), results: list(r.results),
@@ -88,6 +88,14 @@ const getProjectsCached = unstable_cache(
  *  builds, and a list cached by a LOCAL server (test rows) would be baked into production pages. */
 export const getProjects: typeof getProjectsCached = (...args) =>
   process.env.NEXT_PHASE === 'phase-production-build' ? Promise.resolve(FALLBACK) : getProjectsCached(...args);
+
+/** The home page's rail: the projects starred "Show on the home page" in the admin, in admin order;
+ *  none starred → every published one (else the placeholders). `total` is for "See all N". */
+export async function getHomeProjects() {
+  const all = await getProjects();
+  const starred = all.filter((p) => p.featured);
+  return { projects: starred.length ? starred : all, total: all.length };
+}
 
 export async function getProject(slug: string) {
   return (await getProjects()).find((p) => p.slug === slug);

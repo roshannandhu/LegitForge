@@ -135,6 +135,14 @@ export async function publishProjectAction(id: string, published: boolean): Prom
   return { ok: published ? 'Published.' : 'Unpublished.' };
 }
 
+/** The star in Admin → Projects: show this project on the home page's rail (or not). */
+export async function featureProjectAction(id: string, featured: boolean) {
+  await requireAdmin();
+  await db.setFeatured(id, featured);
+  refreshPublic();
+  revalidatePath('/admin/projects');
+}
+
 export async function moveProjectAction(id: string, dir: -1 | 1) {
   await requireAdmin();
   await db.moveProject(id, dir);

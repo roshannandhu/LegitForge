@@ -85,3 +85,5 @@
 .gh-add .admin-form { margin-top: 16px; }
 .admin-subhead { margin: 48px 0 16px; }
 .admin-empty > form, .admin-empty > p + form { margin-top: 16px; }
+.star { font-size: 18px; min-width: 44px; }
+.star.is-on { color: var(--heat-ink); border-color: var(--heat-color); }
