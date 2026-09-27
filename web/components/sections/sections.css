@@ -1280,82 +1280,31 @@
 .logoloop__item:hover .tool-name { color: var(--text); }
 @media (max-width: 767px) { .tools { padding-block: 32px 0; } .tools-loop { --logoloop-gap: 28px !important; } .tool-name { font-size: 14px; } }
 
-/* ============================================================ work rail (project-rail.tsx, plan N)
-   Portrait, phone-shaped project cards in one row. Pinned (≥768px, motion on): the list slides
-   with the scroll and each card is set by the rail (scale, turn, depth, opacity; transform only).
-   Otherwise: a native swipe row with snap points. */
-#work { overflow-x: clip; }
-.rail { --card-h: min(62svh, 540px); --card-w: calc(var(--card-h) * 9 / 16); }
-.rail-viewport {
-  overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory; scrollbar-width: none;
-  padding: 24px max(16px, calc((100vw - 1240px) / 2 + 24px)) 16px; perspective: 1400px;
+/* ============================================================ work: AccordionGallery (work-gallery.tsx, plan P)
+   React Bits' Accordion Gallery (components/react-bits/accordion-gallery.css) with the owner's
+   settings: the third panel open, the open one 52 % of the row. Collapsed panels read their name
+   up the side, so the row takes any number of projects. The open panel: the screenshot in full
+   colour, a heat gradient from the foot and a brief description. Phones: the vertical accordion. */
+.ag.work-gallery { --ag-h: clamp(460px, 42vw, 580px); }
+.ag.work-gallery .ag-img { object-position: top; }
+.ag.work-gallery .ag-item { cursor: pointer; }
+.ag.work-gallery .ag-label small { display: block; font-size: 13px; font-weight: 500; opacity: .8; }
+.ag.work-gallery .ag-shade::after {
+  content: ""; position: absolute; inset: 0; opacity: 0; transition: opacity .5s;
+  background: linear-gradient(to top, color-mix(in oklab, var(--heat-color) 55%, rgb(8 10 14 / .9)) 0%, color-mix(in oklab, var(--heat-color) 18%, transparent) 55%, transparent 80%);
 }
-.rail-viewport::-webkit-scrollbar { display: none; }
-.rail[data-pinned] .rail-viewport { overflow: hidden; scroll-snap-type: none; padding-inline: calc(50vw - var(--card-w) / 2); }
-.rail-list { display: flex; gap: 24px; width: max-content; margin: 0; padding: 0; list-style: none; transform-style: preserve-3d; }
-.rail-card {
-  --card-heat: 0; position: relative; flex: none; width: var(--card-w); height: var(--card-h); scroll-snap-align: center;
-  border-radius: 22px; transform-origin: 50% 60%;
+.ag.work-gallery .ag-item[data-open] .ag-shade::after { opacity: 1; }
+.ag.work-gallery .ag-item[data-open] { box-shadow: 0 18px 40px -18px color-mix(in oklab, var(--heat-color) 60%, transparent); }
+/* the whole panel is its link: the description lets taps and clicks through to it */
+.ag.work-gallery .ag-item[data-open] .ag-content { pointer-events: none; }
+.ag.work-gallery .ag-link:focus-visible { outline: 2px solid var(--heat-hi); outline-offset: -4px; border-radius: 16px; }
+.ag-item .ag-media { position: absolute; inset: 0; aspect-ratio: auto; border: 0; background: none; }
+.ag-item .ag-media::after { display: none; }
+.wg { display: grid; gap: 6px; max-width: 520px; }
+.wg-client { margin: 0; font-size: 14px; opacity: .85; }
+.wg-title { margin: 0; font-size: clamp(20px, 2vw, 26px); font-weight: 700; line-height: 1.15; }
+.wg-brief {
+  margin: 0; font-size: 15px; line-height: 1.45; opacity: .9;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden;
 }
-.rail-link {
-  position: absolute; inset: 0; display: block; overflow: hidden; border-radius: inherit; color: #F4F1EA; text-decoration: none;
-  background: var(--surface-2); border: 1px solid var(--line);
-  box-shadow: 0 18px 40px -22px rgb(0 0 0 / .6);
-  transition: translate 400ms var(--ease-forge), border-color 300ms, box-shadow 400ms;
-}
-.rail-cover { position: absolute; inset: 0; aspect-ratio: auto; border: 0; }
-.rail-cover::after { display: none; }
-.rail-cover img { width: 100%; height: 100%; object-fit: cover; object-position: top; filter: saturate(.55) brightness(.75); transition: filter 500ms; }
-.rail-blueprint {
-  position: absolute; inset: 0; display: grid; place-items: center;
-  background:
-    linear-gradient(color-mix(in oklab, var(--quench) 35%, transparent) 1px, transparent 1px) 0 0 / 24px 24px,
-    linear-gradient(90deg, color-mix(in oklab, var(--quench) 35%, transparent) 1px, transparent 1px) 0 0 / 24px 24px,
-    color-mix(in oklab, var(--quench) 14%, var(--surface-2));
-}
-.rail-blueprint span { font-size: clamp(48px, 5vw, 76px); font-weight: 800; font-stretch: 112%; color: color-mix(in oklab, var(--quench) 70%, var(--text)); }
-/* the foot of the card: always a readable shade; when active, the heat rises under the details */
-.rail-shade { position: absolute; inset: 0; background: linear-gradient(to top, rgb(8 10 14 / .92) 0%, rgb(8 10 14 / .35) 45%, transparent 70%); }
-.rail-shade::after {
-  content: ""; position: absolute; inset: 0; opacity: 0; transition: opacity 500ms;
-  background: linear-gradient(to top, color-mix(in oklab, var(--heat-color) 60%, rgb(8 10 14 / .9)) 0%, color-mix(in oklab, var(--heat-color) 22%, transparent) 55%, transparent 85%);
-}
-.rail-num { position: absolute; left: 18px; top: 16px; font-size: 14px; font-weight: 700; letter-spacing: .08em; color: rgb(244 241 234 / .75); }
-.rail-stamp { position: absolute; right: 16px; top: 14px; }
-.rail-info { position: absolute; left: 0; right: 0; bottom: 0; display: grid; gap: 4px; padding: 20px; }
-.rail-client { font-size: 14px; opacity: .8; }
-.rail-title { font-size: clamp(19px, 1.6vw, 24px); font-weight: 700; line-height: 1.15; }
-.rail-more { display: grid; gap: 6px; max-height: 0; overflow: hidden; opacity: 0; transform: translateY(8px); transition: opacity 350ms, transform 450ms var(--ease-forge); }
-.rail-result { font-size: 15px; } .rail-result b { color: #FFD27A; font-size: 1.35em; font-weight: 800; }
-.rail-proof { font-size: 14px; } .rail-proof s { opacity: .7; text-decoration-color: var(--heat-hi); }
-.rail-tags { font-size: 14px; opacity: .8; }
-.rail-cta { margin-top: 4px; font-size: 14px; font-weight: 700; text-decoration: underline; text-underline-offset: 4px; }
-.rail-live {
-  position: absolute; right: 12px; bottom: 12px; z-index: 2; display: inline-flex; align-items: center; gap: 4px; min-height: 44px; padding: 0 12px;
-  border-radius: 999px; background: rgb(8 10 14 / .55); color: #F4F1EA; font-size: 14px; font-weight: 600; text-decoration: none; opacity: 0; transition: opacity 300ms;
-}
-/* active: the one in the middle (rail) or pointed at / focused */
-.rail-card:is([data-active], :hover, :focus-within) .rail-cover img { filter: none; }
-.rail-card:is([data-active], :hover, :focus-within) .rail-shade::after { opacity: 1; }
-.rail-card:is([data-active], :hover, :focus-within) .rail-more { max-height: 240px; opacity: 1; transform: none; }
-.rail-card:is([data-active], :hover, :focus-within) .rail-live { opacity: 1; }
-.rail-card:is([data-active], :hover, :focus-within) .rail-info { padding-bottom: 64px; }
-.rail-card:is([data-active], :hover, :focus-within) .rail-link { border-color: color-mix(in oklab, var(--heat-color) 55%, var(--line)); box-shadow: 0 28px 60px -24px color-mix(in oklab, var(--heat-color) 55%, transparent); }
-@media (hover: hover) and (pointer: fine) { .rail-card:hover .rail-link { translate: 0 -8px; } }
-/* the last card: the way to everything */
-.rail-all .rail-link { display: grid; align-content: center; justify-items: start; gap: 8px; padding: 28px; color: var(--text);
-  background: repeating-linear-gradient(90deg, rgb(255 255 255 / .03) 0 1px, transparent 1px 3px), linear-gradient(160deg, var(--surface-2), var(--surface) 70%); }
-.rail-all-n { font-size: clamp(64px, 7vw, 104px); font-weight: 800; line-height: 1; color: var(--heat-ink); }
-.rail-all-t { font-size: 20px; font-weight: 700; }
-.rail-all-s { color: var(--text-muted); font-size: 15px; }
-/* the counter and progress under the row */
-.rail-foot { display: flex; align-items: center; gap: 16px; max-width: 1240px; margin: 8px auto 0; padding: 0 24px; color: var(--text-muted); font-size: 14px; }
-.rail-bar { position: relative; flex: 1; max-width: 240px; height: 2px; background: var(--line); overflow: hidden; }
-.rail-bar span { position: absolute; inset: 0; background: var(--heat-color); transform: scaleX(0); transform-origin: left; }
-.rail:not([data-pinned]) .rail-bar { display: none; }
-@media (max-width: 767px) {
-  .rail { --card-h: min(70svh, 560px); --card-w: min(76vw, calc(var(--card-h) * 9 / 16)); }
-  .rail-list { gap: 14px; }
-  .rail-foot { padding: 0 16px; }
-}
-[data-motion="off"] :is(.rail-link, .rail-cover img, .rail-shade::after, .rail-more, .rail-live) { transition: none; }
+.wg-cta { margin-top: 4px; font-size: 14px; font-weight: 600; color: #FFD27A; }
