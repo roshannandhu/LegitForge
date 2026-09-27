@@ -98,7 +98,7 @@ export default async function Home() {
             <h1 className="type-display">We build the thing, and everything behind it.</h1>
             <p className="lead">
               Websites, apps, WhatsApp automation and the systems that run them.
-              A two-person studio. Scroll and watch what we actually build.
+              A two-person studio. Watch what we actually build.
             </p>
             <div className="ctas">
               <a className="btn btn-primary" href={wa}>Chat on WhatsApp</a>

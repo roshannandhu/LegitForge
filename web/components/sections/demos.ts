@@ -278,9 +278,9 @@ function whatsappFlow(root: Element, gsap: G): TL {
 
 /* n8n: executions keep coming. Each run clears the last one's ticks (as n8n does), then one item
    travels the wires; every node it reaches pulses, gets its tick and says what it did, and the
-   Switch sends it down its branch. Two runs per cycle, an order then a question, so both
-   branches show. The dot follows the visible layout's own path (getPointAtLength), moved with
-   transform only. */
+   Switch sends it down its branch. Two runs per cycle, an order (→ WhatsApp) then a question
+   (→ Team alert), so both branches show; both endings reset to "waiting" as each run starts.
+   The dot follows the visible layout's own path (getPointAtLength), moved with transform only. */
 function n8nFlow(root: Element, gsap: G): TL {
   const tl = gsap.timeline({ repeat: -1, defaults: { ease: 'power2.out' } });
   const canvas = $(root, '.n8c')!, dot = $(root, '.n8c-dot')!;
@@ -309,7 +309,7 @@ function n8nFlow(root: Element, gsap: G): TL {
     tl.call(() => {                                                    // a new execution: last run's ticks clear
       nodes.forEach((el) => el.classList.remove('done'));
       [0, 1, 2, 3, 4].forEach((w) => mark(w, false));
-      txt(out(5), 'waiting');
+      txt(out(4), 'waiting'); txt(out(5), 'waiting');                // both endings wait for this item
     }, [], t);
     const arrive = (i: number, at: number, say: () => string) => {
       tl.call(() => { nodes[i].classList.add('done'); txt(out(i), say()); }, [], at)
@@ -333,8 +333,9 @@ function n8nFlow(root: Element, gsap: G): TL {
     tl.call(() => { txt(runs, (++n).toLocaleString('en-IN')); k++; }, [], t);
     return t + 0.9;                                                    // the finished run rests a moment
   };
-  const mid = run(0, 'question');
-  run(mid, 'order');                                                   // ends on the markup's own frame
+  // the order (→ WhatsApp) runs first: it is what a visitor sees when the demo comes into view
+  const mid = run(0, 'order');
+  run(mid, 'question');
   return tl;
 }
 

@@ -28,8 +28,8 @@
    never widen the page (§4.8). Phones do not use it: see the phone block at the end. */
 .stage-fit { position: relative; min-height: 70svh; overflow: hidden; }
 @media (min-width: 1024px) { .stage-fit { min-height: 78svh; overflow: visible; } }
-/* tablets: copy and chips sit above the stage in one column, and the hero pins; the stage
-   takes exactly the height left, so the whole teardown is on screen while pinned */
+/* tablets: copy and chips sit above the stage in one column; the stage takes the height
+   left, so the copy and the whole looping teardown fit one screen */
 @media (min-width: 768px) and (max-width: 1023px) { .stage-fit { min-height: max(420px, calc(100svh - 580px)); } }
 .stage {
   position: absolute; left: 50%; top: 50%; width: var(--dw); height: var(--dh);

@@ -41,10 +41,22 @@ const yieldTask = () => new Promise<void>((r) => {
   const s = (globalThis as { scheduler?: { yield?: () => Promise<void> } }).scheduler;
   if (s?.yield) s.yield().then(r); else setTimeout(r, 0);
 });
+/** A pinned ScrollTrigger queues a full-page refresh for the next frame (requestAnimationFrame
+ *  inside ScrollTrigger). With setups spread over tasks, each pin got its own refresh, and every
+ *  one re-lays out the whole page (~1 s at 6× CPU). Frames requested while a setup runs are held
+ *  and run once the queue is empty, one per frame; ScrollTrigger drops its own duplicates. */
+const held: FrameRequestCallback[] = [];
+function run(fn: () => void) {
+  const raf = window.requestAnimationFrame;
+  window.requestAnimationFrame = (cb) => { held.push(cb); return 0; };
+  try { fn(); } finally { window.requestAnimationFrame = raf; }
+}
 async function pump() {
   pumping = true;
-  while (queue.length) { await yieldTask(); queue.shift()!(); }
+  while (queue.length) { await yieldTask(); run(queue.shift()!); }
   pumping = false;
+  const next = () => { const cb = held.shift(); if (cb) requestAnimationFrame((t) => { cb(t); next(); }); };
+  next();                                                 // one held frame each, in order
 }
 /** Run fn in its own task, after the setups queued before it (one per task, never a long one). */
 export function schedule(fn: () => void) {
