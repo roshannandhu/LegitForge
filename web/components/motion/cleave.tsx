@@ -44,7 +44,7 @@ export function Cleave({ cover, children, label }: { cover: React.ReactNode; chi
   }, { dependencies: [motionOn] });
 
   return (
-    <div className="cleave" ref={ref}>
+    <div className="cleave" data-heat="0.35" ref={ref}>
       <div className="cleave-inner">{children}</div>
       <div className="cleave-cover" aria-hidden="true" title={label}>
         <div className="cleave-half" data-cleave="l">{cover}</div>

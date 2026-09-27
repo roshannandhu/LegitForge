@@ -134,7 +134,7 @@ export default async function Home() {
       </HydrateWhenNear>
       <HydrateWhenNear><LiveTest /></HydrateWhenNear>
       <Process steps={PROCESS} />
-      <section className="tools" aria-labelledby="tools-h">
+      <section className="tools" data-heat="0.9" aria-labelledby="tools-h">
         <div className="wrap"><h2 id="tools-h" className="tools-h">The tools behind every build</h2></div>
         <HydrateWhenNear><ToolsLoop logos={TOOL_LOGOS} /></HydrateWhenNear>
       </section>

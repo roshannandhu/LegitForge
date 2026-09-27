@@ -155,7 +155,6 @@ export default function TeardownMotion() {
         tl.to(el, { '--x': SCREEN_C.x, '--y': SCREEN_C.y, '--tilt': 0, '--s': 1, duration: 0.05, ease: 'power2.in' }, at)
           .to(el, { opacity: 0, duration: 0.012 }, at + 0.045);
       });
-      tl.to(hero, { '--heat': 0.78, duration: 0.02 }, 0.95).to(hero, { '--heat': 0.35, duration: 0.04 }, 0.97);
 
       // states that are not tweens: screen, focused callout, log, act rail
       const render = () => {

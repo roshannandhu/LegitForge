@@ -10,7 +10,7 @@
   --heat-lo: #D9B45A; --heat-mid: #9A5B22; --heat-hi: #6B4796;
   --quench: #2D6CB5; --focus: #6B4796; --success: #1B6E45; --danger: #B3261E;
 
-  --heat: .35;                                    /* set live by the Heat Director */
+  --heat: .35;                                    /* the default; each [data-heat] section has its own (below) */
   --heat-color: color-mix(in oklab, var(--heat-hi) calc(var(--heat) * 100%), var(--heat-lo));
   /* heat as TEXT on the light surfaces: the same hue, dark enough for 4.5:1 (bars and glows keep --heat-color) */
   --heat-ink: color-mix(in oklab, var(--heat-color) 55%, #1B2129);
@@ -40,6 +40,17 @@
   --quench: #5FA8C9; --focus: #FFC24A; --success: #5CC08A; --danger: #FF7A6B;
   --heat-ink: var(--heat-color);   /* bright heat already reads on the dark surfaces */
 }
+
+/* Heat is scoped (plan R): every [data-heat] section computes its heat colours from its OWN
+   --heat, and only the header, footer and phone menu follow the section in view (the Heat
+   Director writes --heat there). Writing --heat on <html> restyled all ~2,400 elements of the
+   home page at every section boundary (a 200 ms frame on a 2 GB phone, ten times a scroll). */
+[data-heat] { --heat: attr(data-heat type(<number>), .35); }   /* older engines: heat-director.tsx sets it inline */
+:is([data-heat], .site-header, .site-footer, .phone-menu) {
+  --heat-color: color-mix(in oklab, var(--heat-hi) calc(var(--heat) * 100%), var(--heat-lo));
+  --heat-ink: color-mix(in oklab, var(--heat-color) 55%, #1B2129);
+}
+.dark :is([data-heat], .site-header, .site-footer, .phone-menu) { --heat-ink: var(--heat-color); }
 
 @theme inline {
   --color-bg: var(--bg);

@@ -134,8 +134,12 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
   a plain IntersectionObserver sets data-near (teardown.tsx, demo-player.tsx; placeholder heights
   in sections.css: re-measure them if a demo's phone height changes). Safety nets: motion off, and
   data-lite-all 8 s after load if no observer ran (lib/boot.ts).
-- --heat on <html> changes in one step (heat-director.tsx, one IntersectionObserver); only
-  heat.value eases, for the embers. Written only when it changes.
+- Heat is scoped: each [data-heat] section computes --heat-color/--heat-ink from its own
+  --heat (globals.css, attr(data-heat type(<number>)); heat-director.tsx sets it inline where
+  typed attr() is missing). Only .site-header/.site-footer/.phone-menu get the current value
+  (one IntersectionObserver, written when it changes); heat.value eases for the embers. Never
+  write --heat on <html> again: that restyled all ~2,400 elements at every section boundary.
+  A new strip between sections that uses heat colours needs its own data-heat.
 - Below-the-fold client sections (Compare, LiveTest, Team, Quench) are wrapped in
   HydrateWhenNear (components/motion/hydrate-when-near.tsx): server HTML from the first paint,
   React takes over within 600px. Page-wide observers must re-observe on `lf:hydrated`.
