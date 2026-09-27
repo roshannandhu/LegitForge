@@ -23,7 +23,7 @@ export default async function AdminTestimonials() {
     <>
       <h1 className="type-h2">Testimonials</h1>
       <p className="admin-lead">Only publish a quote the client agreed to in writing. Publishing is refused until the permission box is ticked.</p>
-      <ActionForm action={saveTestimonialAction} className="admin-form">
+      <ActionForm action={saveTestimonialAction} className="admin-form" resetOnOk>
         <Fields />
         <div><Submit>Add testimonial</Submit></div>
       </ActionForm>

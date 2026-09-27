@@ -3,18 +3,31 @@
 /** Small client pieces the admin forms share: a form that shows its Server Action's answer,
  *  and a submit button that says when it is working. */
 
-import { useActionState } from 'react';
+import { createContext, startTransition, useActionState, useContext, useEffect, useRef } from 'react';
 import { useFormStatus } from 'react-dom';
 import { usePathname } from 'next/navigation';
 import type { FormState } from './actions';
 
-export function ActionForm({ action, children, className }: {
-  action: (s: FormState, f: FormData) => Promise<FormState>; children: React.ReactNode; className?: string;
+const Busy = createContext<boolean | null>(null);
+
+/** A form that shows its Server Action's answer. It submits by hand (onSubmit), not through
+ *  <form action>: React resets a form after its action runs, so a refused save ("the live URL
+ *  must start with https://") used to wipe everything the owner had typed. `resetOnOk` clears
+ *  it after a success, for "add another" forms. */
+export function ActionForm({ action, children, className, resetOnOk = false }: {
+  action: (s: FormState, f: FormData) => Promise<FormState>; children: React.ReactNode; className?: string; resetOnOk?: boolean;
 }) {
-  const [state, run] = useActionState(action, undefined);
+  const [state, run, busy] = useActionState(action, undefined);
+  const form = useRef<HTMLFormElement>(null);
+  useEffect(() => { if (resetOnOk && state?.ok) form.current?.reset(); }, [state, resetOnOk]);
   return (
-    <form action={run} className={className}>
-      {children}
+    <form ref={form} className={className} onSubmit={(e) => {
+      e.preventDefault();
+      if (busy) return;
+      const data = new FormData(e.currentTarget);
+      startTransition(() => run(data));
+    }}>
+      <Busy.Provider value={busy}>{children}</Busy.Provider>
       {state?.error && <p className="admin-msg is-error" role="alert">{state.error}</p>}
       {state?.ok && <p className="admin-msg is-ok" role="status">{state.ok}</p>}
     </form>
@@ -24,7 +37,9 @@ export function ActionForm({ action, children, className }: {
 export function Submit({ children, className = 'btn btn-primary', pending = 'Saving…' }: {
   children: React.ReactNode; className?: string; pending?: string;
 }) {
-  const { pending: busy } = useFormStatus();
+  const ctx = useContext(Busy);
+  const { pending: status } = useFormStatus();
+  const busy = ctx ?? status;
   return <button type="submit" className={className} disabled={busy} aria-busy={busy}>{busy ? pending : children}</button>;
 }
 
