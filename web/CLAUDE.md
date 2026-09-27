@@ -67,9 +67,9 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
 - Screen UIs are sized in cqw: the container is the glass / phone screen, never the .ls itself.
 - The hero never pins and has no scroll animation (the owner's call): its one timeline plays on
   a clock (teardown.tsx `driver`: tear down, 4.2 s per layer, snap back, hold, loop), only while
-  on screen and the tab is visible; a chip seeks the loop to its layer. Phones and portrait
-  tablets crop the stage (CROP_MQ). FIT_NOW sets the stage scale before first paint; keep its
-  formula in step with the resize effect in teardown.tsx.
+  on screen and the tab is visible; a chip seeks the loop to its layer. Every screen shows the
+  whole 780 × 760 drawing (phones: callout type sized in screen px). FIT_NOW sets the stage
+  scale before first paint; keep its formula in step with fitFor() in lib/teardown.ts.
 - Services named in the hero (the callouts) must stay real text in the served HTML.
 - Inline <head> scripts live in lib/boot.ts. A string exported from a 'use client' file reaches
   a Server Component as a client reference, not text.

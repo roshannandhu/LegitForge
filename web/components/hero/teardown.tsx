@@ -16,7 +16,7 @@
 
 import { useEffect, useRef } from 'react';
 import {
-  CROP_MQ, DEFAULT_LEAD, DESIGN, FOCUS, PHONE_CROP, ISO_SCALE, LAYERS, LEAD_EVENT, RUN,
+  DEFAULT_LEAD, FOCUS, ISO_SCALE, LAYERS, LEAD_EVENT, RUN, fitFor,
   SCREEN_C, SLOTS, actIndex, isLayerId, type LayerId,
 } from '@/lib/teardown';
 import { useMotionEnabled } from '@/components/motion/motion-provider';
@@ -42,11 +42,10 @@ export default function TeardownMotion() {
   useEffect(() => {
     const stageEl = stage.current!;
     const box = stageEl.parentElement!;
-    const phoneMq = matchMedia(CROP_MQ);
     const ro = new ResizeObserver(() => {
       const r = box.getBoundingClientRect();
       if (!r.width) return;
-      const fit = phoneMq.matches ? Math.min(r.width / PHONE_CROP, r.height / DESIGN.h) : Math.min((r.width - 28) / DESIGN.w, r.height / DESIGN.h, 1.25);
+      const fit = fitFor(r.width, r.height);
       stageEl.style.setProperty('--fit', fit.toFixed(3));
       trigger.current?.refresh();
     });
