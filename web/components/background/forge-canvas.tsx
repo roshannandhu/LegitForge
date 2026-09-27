@@ -97,15 +97,25 @@ export function ForgeCanvas() {
     };
     const onPointer = (e: PointerEvent) => { pointer.x = e.clientX; pointer.y = e.clientY; };
 
-    resize();
-    sync();
+    // start one frame after the page has painted: reading the size and the heat colours while
+    // hydration still has the page's style dirty forced a full restyle and layout (~390 ms at 6×)
     const themeObserver = new MutationObserver(sync);
-    themeObserver.observe(root, { attributes: true, attributeFilter: ['class'] });
-    window.addEventListener('resize', resize);
-    document.addEventListener('visibilitychange', sync);
-    if (finePointer) window.addEventListener('pointermove', onPointer, { passive: true });
+    let started = false;
+    const start = () => {
+      started = true;
+      resize();
+      sync();
+      themeObserver.observe(root, { attributes: true, attributeFilter: ['class'] });
+      window.addEventListener('resize', resize);
+      document.addEventListener('visibilitychange', sync);
+      if (finePointer) window.addEventListener('pointermove', onPointer, { passive: true });
+    };
+    let timer = 0;
+    const kick = requestAnimationFrame(() => { timer = window.setTimeout(start, 0); });
 
     return () => {
+      cancelAnimationFrame(kick); clearTimeout(timer);
+      if (!started) return;
       stop();
       themeObserver.disconnect();
       window.removeEventListener('resize', resize);

@@ -1,10 +1,11 @@
 'use client';
 
 /** The home #work gallery: React Bits AccordionGallery (JS-CSS, vendored in components/react-bits)
- *  with the owner's settings: defaultIndex 2, expandRatio 0.52, trigger "hover". Laptop: pointing
- *  at a panel opens it, one click opens the project. Touch: one tap opens a panel, a second tap
- *  opens the project. The open panel shows only a brief description. Items come from the server
- *  (Projects), with that description already rendered. */
+ *  with the owner's settings: expandRatio 0.52, trigger "hover", and every panel the same size
+ *  until pointed at (defaultIndex -1, the owner's change to the sample's 2). Laptop: pointing at a
+ *  panel extends it, leaving the row makes them equal again, one click opens the project. Touch:
+ *  one tap extends a panel, a second tap opens the project. The open panel shows only a brief
+ *  description. Items come from the server (Projects), with that description already rendered. */
 
 import AccordionGalleryJs from '@/components/react-bits/accordion-gallery';
 import { useMotionEnabled } from '@/components/motion/motion-provider';
@@ -31,7 +32,7 @@ export function WorkGallery({ items }: { items: GalleryItem[] }) {
   return (
     <AccordionGallery
       items={items}
-      defaultIndex={Math.min(2, items.length - 1)}
+      defaultIndex={-1}
       expandRatio={0.52}
       trigger="hover"
       reduceMotion={!motionOn}

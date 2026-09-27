@@ -32,7 +32,7 @@ export function Cleave({ cover, children, label }: { cover: React.ReactNode; chi
       gsap.timeline({
         defaults: { ease: 'none' },
         scrollTrigger: pin
-          ? { trigger: el, start: 'top top', end: '+=80%', pin: true, scrub: 0.8, invalidateOnRefresh: true, onUpdate }
+          ? { trigger: el, start: 'top top', end: '+=80%', pin: true, scrub: 0.8, onUpdate }
           : { trigger: el, start: 'top 75%', end: 'top 5%', scrub: 0.6, onUpdate },
       })
         .fromTo(q('[data-seam]'), { opacity: 0, scaleY: 0.2 }, { opacity: 1, scaleY: 1, duration: 0.18 }, 0)   // the chisel bites

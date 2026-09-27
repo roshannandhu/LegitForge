@@ -1,21 +1,22 @@
 'use client';
 
-/** The Teardown — PLAN §6.2c. The phone in the hand comes apart into five live glass layers
- *  (website, WhatsApp, n8n, quote, warranty) standing in an isometric exploded stack with
- *  technical-drawing callouts. Scrolling runs each layer's flow in turn while a pulse carries
- *  the customer down the stack, then everything snaps back into the phone.
+/** The Teardown — PLAN §6.2c. The phone in the hand comes apart into seven live glass layers
+ *  standing in an isometric exploded stack with technical-drawing callouts. The teardown plays
+ *  by itself, on a loop (the owner's call, 27 Sep: no scroll animation, nothing pins): it comes
+ *  apart, each layer comes forward and runs its flow while a pulse carries the customer down
+ *  the stack, everything snaps back into the phone, a short hold, then again.
  *
  *  Real 3D with no WebGL: each layer's position, tilt and scale are CSS variables
  *  (--x --y --tilt --s) that GSAP animates, so the no-JS frame is plain CSS and exact.
- *  One pinned, scrubbed timeline on every screen: tablets and laptops pin the hero, phones pin
- *  the stage (scaled to the phone's width, the callout column cropped; the layer being run is
- *  named in a caption). Motion off: the finished stack. Stop scrolling and it carries on by
- *  itself (idleJourney), and the phone in the hand mirrors the layer being run. */
+ *  One timeline (tl, in fractions of the story) played by a clock (driver). Phones show the
+ *  stage scaled to their width, the callout column cropped, the running layer named in a
+ *  caption. It runs only while the hero is on screen and the tab is visible. Motion off: the
+ *  finished stack. A chip jumps the loop to its layer; the phone in the hand mirrors the layer
+ *  being run. */
 
 import { useEffect, useRef } from 'react';
-import { useLenis } from '@/lib/lenis-store';
 import {
-  CROP_MQ, DEFAULT_LEAD, DESIGN, FOCUS, PHONE_CROP, ISO_SCALE, LAYERS, LEAD_EVENT, PIN_END, RUN,
+  CROP_MQ, DEFAULT_LEAD, DESIGN, FOCUS, PHONE_CROP, ISO_SCALE, LAYERS, LEAD_EVENT, RUN,
   SCREEN_C, SLOTS, actIndex, isLayerId, type LayerId,
 } from '@/lib/teardown';
 import { useMotionEnabled } from '@/components/motion/motion-provider';
@@ -37,9 +38,6 @@ export default function TeardownMotion() {
   }, []);
   const trigger = useRef<Gs['ScrollTrigger']>(undefined);
   const lead = useRef<LayerId>(DEFAULT_LEAD);
-  const lenis = useLenis();
-  const lenisRef = useRef(lenis);
-  lenisRef.current = lenis;
 
   useEffect(() => {
     const stageEl = stage.current!;
@@ -102,11 +100,9 @@ export default function TeardownMotion() {
 
     const mm = gsap.matchMedia();
 
-    /* ---------------------------------------------------- every screen: one scrubbed timeline
-       Tablets and laptops pin the whole hero; phones pin the stage in the middle of the screen
-       (the copy above it has scrolled by), so the same teardown plays there too. */
-    mm.add({ wide: '(min-width: 768px)', phone: '(max-width: 767px)' }, (mctx) => {
-      const onPhone = !!mctx.conditions?.phone;
+    /* ---------------------------------------------------- every screen: one timeline, on a clock
+       (matchMedia: rebuilt when the phone crop starts or stops applying) */
+    mm.add({ wide: '(min-width: 768px)', phone: '(max-width: 767px)' }, () => {
       let dead = false;
       if (reduced) {                                        // the finished stack, told in one frame
         layers.forEach((l) => l.setAttribute('data-lit', ''));
@@ -178,16 +174,27 @@ export default function TeardownMotion() {
       };
       tl.eventCallback('onUpdate', render);
 
-      let st: ReturnType<typeof ScrollTrigger.create> | undefined;
+      /* the clock: tear down, 4.2 s per layer, snap back, hold, again. It drives tl's progress,
+         so every tween and flow plays exactly as the scrubbed timeline did. */
+      const PER_LAYER = 4.2;
+      const o = { p: 0 };
+      const driver = gsap.timeline({ paused: true, repeat: -1, repeatDelay: 1.4, onUpdate: () => { tl.progress(o.p); } });
+      driver.to(o, { p: RUN.start, duration: 2.8, ease: 'none' });
+      LAYERS.forEach((_, i) => driver.addLabel(`l${i}`).to(o, { p: win(i + 1), duration: PER_LAYER, ease: 'none' }));
+      driver.to(o, { p: 1, duration: 2.6, ease: 'none' });
+
+      let onScreen = true, started = false;
+      const sync = () => { if (started && onScreen && !document.hidden) driver.play(); else driver.pause(); };
+      const vis = new IntersectionObserver(([e]) => { onScreen = e.isIntersecting; sync(); });
       const qa = Number(params.get('qa') ?? NaN);
       if (Number.isFinite(qa)) tl.progress(Math.min(1, Math.max(0, qa)));
       else {
         render();
-        st = ScrollTrigger.create(onPhone
-          ? { trigger: host, start: 'center center', end: '+=240%', pin: true, scrub: 0.8, invalidateOnRefresh: true, animation: tl }
-          : { trigger: hero, start: 'top top', end: PIN_END, pin: true, scrub: 0.8, invalidateOnRefresh: true, animation: tl });
+        vis.observe(host);
+        document.addEventListener('visibilitychange', sync);
+        // after the wordmark (and the Hallmark Strike, if it plays): the stack comes apart
+        gsap.delayedCall(introWait + 1.6, () => { started = true; sync(); });
       }
-      const stopIdle = st ? idleJourney(st, win, tl) : () => {};
 
       // warm the seven glass layers while the page is idle: each is shown at a near-zero opacity
       // for a frame, so the browser builds and paints its layer now, not on the first scroll
@@ -204,57 +211,19 @@ export default function TeardownMotion() {
       };
       idle(() => warm(0));
 
-      // a chip was picked: that layer leads (the phone ends on it) and the page glides to it
+      // a chip was picked: that layer leads (the phone ends on it) and the loop jumps to it
       const onLead = (e: Event) => {
         const { id, replay } = (e as CustomEvent<{ id: LayerId; replay: boolean }>).detail;
         if (!isLayerId(id)) return;
         lead.current = id; setLead();
-        if (!replay || !st) return;
-        const i = LAYERS.findIndex((l) => l.id === id);
-        const y = st.start + (win(i) + 0.07) * (st.end - st.start);
-        const l = lenisRef.current;
-        if (l) l.scrollTo(y, { duration: 2.4, force: true }); else window.scrollTo({ top: y, behavior: 'smooth' });
+        if (!replay || !started) return;
+        driver.seek(`l${LAYERS.findIndex((l) => l.id === id)}`);
+        sync();
       };
       window.addEventListener(LEAD_EVENT, onLead);
-      return () => { dead = true; window.removeEventListener(LEAD_EVENT, onLead); stopIdle(); };
+      return () => { dead = true; window.removeEventListener(LEAD_EVENT, onLead); vis.disconnect(); document.removeEventListener('visibilitychange', sync); driver.kill(); };
     });
 
-    /** Scroll leads; stop and it carries on by itself (tablet and desktop). Once the reader has
-     *  torn the phone down and then leaves the wheel alone for IDLE ms inside the pin, the page
-     *  glides on through the run at a reading pace, so every layer plays exactly as if scrolled
-     *  (it IS the scrolled timeline). After NFC it rewinds to SEO and goes again. Any wheel,
-     *  touch, key or click hands control straight back. Only while the hero is pinned. */
-    function idleJourney(st: ReturnType<typeof ScrollTrigger.create>, win: (i: number) => number, tl: gsap.core.Timeline) {
-      const IDLE = 1600, PER_LAYER = 4.2;                              // seconds of glide per layer
-      let timer = 0, raf = 0, last = 0, pauseUntil = 0;
-      const y = (p: number) => st.start + p * (st.end - st.start);
-      const scrollTo = (to: number, duration = 0) => {
-        const l = lenisRef.current;
-        if (l) l.scrollTo(to, duration ? { duration, force: true } : { immediate: true, force: true });
-        else window.scrollTo({ top: to, behavior: duration ? 'smooth' : 'instant' });
-      };
-      const stop = () => { cancelAnimationFrame(raf); raf = 0; };
-      const step = (t: number) => {
-        raf = requestAnimationFrame(step);
-        const dt = Math.min(0.05, (t - (last || t)) / 1000); last = t;
-        if (t < pauseUntil || !st.isActive) return;
-        const from = y(win(0) - 0.02), to = y(win(LAYERS.length));
-        const cur = window.scrollY;
-        if (cur >= to) { scrollTo(from, 1.6); pauseUntil = t + 2400; return; }   // rewind, then again
-        scrollTo(Math.max(cur, from - 1) + ((to - from) / (LAYERS.length * PER_LAYER)) * dt);
-      };
-      const arm = () => {
-        clearTimeout(timer); stop();
-        timer = window.setTimeout(() => {
-          // only after the reader has torn it down themselves, and never past the run
-          if (!st.isActive || tl.progress() < 0.12 || tl.progress() > win(LAYERS.length)) return;
-          last = 0; pauseUntil = 0; raf = requestAnimationFrame(step);
-        }, IDLE);
-      };
-      const events = ['wheel', 'touchstart', 'pointerdown', 'keydown'] as const;
-      events.forEach((e) => window.addEventListener(e, arm, { passive: true }));
-      return () => { clearTimeout(timer); stop(); events.forEach((e) => window.removeEventListener(e, arm)); };
-    }
 
   }, { scope: root, dependencies: [motionOn] });
 

@@ -64,8 +64,11 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
 - Live screens (layer-screens.tsx) are FINAL frames; flows play them from start states. Hide
   things until their turn with set(), never a short from() (it snaps back to visible).
 - Screen UIs are sized in cqw: the container is the glass / phone screen, never the .ls itself.
-- Tablets and laptops pin the hero; phones never pin (swipe row). FIT_NOW sets the stage scale
-  before first paint; keep its formula in step with the resize effect in teardown.tsx.
+- The hero never pins and has no scroll animation (the owner's call): its one timeline plays on
+  a clock (teardown.tsx `driver`: tear down, 4.2 s per layer, snap back, hold, loop), only while
+  on screen and the tab is visible; a chip seeks the loop to its layer. Phones and portrait
+  tablets crop the stage (CROP_MQ). FIT_NOW sets the stage scale before first paint; keep its
+  formula in step with the resize effect in teardown.tsx.
 - Services named in the hero (the callouts) must stay real text in the served HTML.
 - Inline <head> scripts live in lib/boot.ts. A string exported from a 'use client' file reaches
   a Server Component as a client reference, not text.
@@ -91,8 +94,9 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
   Blocks use .page-block on a .wrap: set padding-top only, or you erase .wrap's side padding.
 - Home #work is the React Bits AccordionGallery (JS-CSS, vendored: components/react-bits/
   accordion-gallery.jsx, keep its `LF:` additions if you swap in the official file) wired in
-  components/work/work-gallery.tsx: defaultIndex 2, expandRatio 0.52, trigger "hover". Mouse:
-  hover opens, one click opens the project. Touch: first tap opens, a tap on the open panel opens
+  components/work/work-gallery.tsx: expandRatio 0.52, trigger "hover", all panels equal until
+  pointed at (defaultIndex -1, the owner's rule). Mouse: hover extends, leaving the row makes them
+  equal again, one click opens the project. Touch: first tap opens, a tap on the open panel opens
   the project. The open panel shows a brief description only (client, title, 2-line summary).
   Projects are chosen in Admin → Projects (★ "Show on the home page", admin order; none starred
   → all published: lib/work.ts getHomeProjects). Panels keep data-project-card + .project-cover.
@@ -114,8 +118,11 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
 - Lenis only on fine-pointer screens, imported on demand; use lib/lenis-store.ts, never lenis/react.
 - No container queries in the hero: live screens size in --cq (1 % of their screen width).
 - No backdrop-filter on phones; no permanent will-change on unpinned layers.
-- useGsap setups run one per task (lib/gsap.ts queue). DemoPlayer and the phone hero flows build
-  their timelines only when near the screen.
+- useGsap setups run one per task (lib/gsap.ts queue). Frames a setup requests (ScrollTrigger's
+  full-page refresh after a pin) are held and run one per frame once the queue is empty, so
+  pins share one refresh. DemoPlayer builds its timelines only when near the screen.
+- The embers canvas starts one frame after first paint (forge-canvas.tsx): reading sizes and
+  colours during hydration forced a full restyle. lib/business-hours.ts reuses one formatter.
 - Lite phones keep hero cards 3–7 (≤767px) and every demo (≤479px) out of the first layout until
   a plain IntersectionObserver sets data-near (teardown.tsx, demo-player.tsx; placeholder heights
   in sections.css: re-measure them if a demo's phone height changes). Safety nets: motion off, and

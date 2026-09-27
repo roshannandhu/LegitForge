@@ -1,11 +1,16 @@
 import { SITE } from './site';
 
+/** One formatter, built on first use: creating an Intl.DateTimeFormat with a time zone is slow
+ *  on budget phones, and three components ask for "now" as the page starts. */
+let fmt: Intl.DateTimeFormat | undefined;
+const partsOf = (now: Date) => (fmt ??= new Intl.DateTimeFormat('en-GB', {
+  timeZone: SITE.hours.timeZone, weekday: 'short', hour: 'numeric', minute: 'numeric', hourCycle: 'h23',
+})).formatToParts(now);
+
 /** Computed in the browser only: pages are cached, so the server can't know "now" (PLAN §6.2). */
 export function isOpenNow(now = new Date()) {
-  const { days, from, to, timeZone } = SITE.hours;
-  const parts = new Intl.DateTimeFormat('en-GB', {
-    timeZone, weekday: 'short', hour: 'numeric', hourCycle: 'h23',
-  }).formatToParts(now);
+  const { days, from, to } = SITE.hours;
+  const parts = partsOf(now);
   const weekday = parts.find((p) => p.type === 'weekday')?.value ?? '';
   const day = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(weekday);
   const hour = Number(parts.find((p) => p.type === 'hour')?.value);
@@ -30,10 +35,8 @@ export function opensNextLabel(now = new Date()) {
 }
 
 function nextLabel(now: Date, within: number, whileOpen: boolean) {
-  const { days, from, to, timeZone } = SITE.hours;
-  const parts = new Intl.DateTimeFormat('en-GB', {
-    timeZone, weekday: 'short', hour: 'numeric', minute: 'numeric', hourCycle: 'h23',
-  }).formatToParts(now);
+  const { days, from, to } = SITE.hours;
+  const parts = partsOf(now);
   const get = (t: string) => parts.find((p) => p.type === t)?.value ?? '';
   const names = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const long = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
