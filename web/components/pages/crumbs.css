@@ -1,0 +1,6 @@
+/* Breadcrumbs (components/pages/page-head.tsx): inner pages and the legal pages. */
+.crumbs { display: flex; flex-wrap: wrap; gap: 4px 8px; margin: 0 0 24px; padding: 0; list-style: none; font-size: 14px; color: var(--text-muted); }
+.crumbs li + li::before { content: "/"; margin-right: 8px; opacity: .6; }
+.crumbs a { color: inherit; text-underline-offset: 3px; }
+.crumbs a:hover { color: var(--text); }
+.crumbs [aria-current] { color: var(--text); }

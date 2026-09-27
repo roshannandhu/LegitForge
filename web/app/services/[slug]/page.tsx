@@ -103,7 +103,7 @@ export default async function ServicePage({ params }: { params: Promise<{ slug: 
         name: s.name,
         description: s.description,
         url: `${SITE.url}/services/${s.slug}`,
-        areaServed: SITE.city,
+        ...(SITE.city ? { areaServed: SITE.city } : {}),
         provider: orgRef,
       }} />
       <JsonLd data={{

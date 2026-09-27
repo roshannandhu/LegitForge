@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
-import { SITE } from '@/lib/site';
-import '../legal.css';
+import { SITE, legalLine } from '@/lib/site';
+import { Breadcrumbs } from '@/components/pages/page-head';
 
 export const metadata: Metadata = {
   title: 'Terms',
@@ -13,6 +13,7 @@ export const metadata: Metadata = {
 export default function Terms() {
   return (
     <article className="legal wrap">
+      <Breadcrumbs crumbs={[{ name: 'Terms', href: '/terms' }]} />
       <p className="legal-draft">Draft — to be reviewed by a lawyer before launch.</p>
       <h1 className="type-h2">Terms</h1>
       <p className="type-lead">The plain rules for this website, and how working with us works.</p>
@@ -24,7 +25,7 @@ export default function Terms() {
       <p>Every project starts with a written, fixed quote after a short call. The quote lists exactly what is included. If the scope grows, we tell you and agree a new price <em>before</em> doing the extra work.</p>
 
       <h2>Payments</h2>
-      <p>[Payment schedule, for example: 50% to start, 50% at launch.] No payment is due until you approve a written quote.</p>
+      <p>Payments follow the schedule written in your quote. No payment is due until you approve a written quote.</p>
 
       <h2>Ownership</h2>
       <p>When the project is paid, you own it: the code, the domain, the hosting account, your WhatsApp number and every workflow. We keep no hidden licences or lock-ins.</p>
@@ -33,7 +34,7 @@ export default function Terms() {
       <p>We fix anything that doesn’t work as agreed, free of charge, for 30 days after launch.</p>
 
       <h2>Contact</h2>
-      <p>{SITE.legalName}, {SITE.city}, {SITE.country}. <a href={`mailto:${SITE.email}`}>{SITE.email}</a></p>
+      <p>{legalLine(false) && <>{legalLine(false)}. </>}<a href={`mailto:${SITE.email}`}>{SITE.email}</a></p>
     </article>
   );
 }

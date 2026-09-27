@@ -23,10 +23,19 @@ export default async function WorkIndex() {
       <PageHead
         crumbs={[{ name: 'Work', href: '/work' }]}
         title="Work that’s live right now"
-        lead="Every project here is running for a real business. Each card shows the one number the client cared about, and where that number came from."
+        lead={items.length
+          ? 'Every project here is running for a real business. Each card shows the one number the client cared about, and where that number came from.'
+          : 'Websites, apps and automations running for real businesses. Each case study will show the one number the client cared about.'}
       />
       <section className="page-block wrap" aria-label="Projects">
-        <WorkGrid items={items} filters={WORK_FILTERS} waHref={waLink('Hi Legit Forge, I have a project like the ones on your site.')} />
+        {items.length ? (
+          <WorkGrid items={items} filters={WORK_FILTERS} waHref={waLink('Hi Legit Forge, I have a project like the ones on your site.')} />
+        ) : (
+          <div className="work-empty">
+            <p className="type-lead">Our case studies are being written up. Ask us on WhatsApp and we’ll show you what we’ve built.</p>
+            <a className="btn btn-primary" href={waLink('Hi Legit Forge, can you show me examples of your work?')}>Ask for examples</a>
+          </div>
+        )}
       </section>
       <CtaBand />
     </>

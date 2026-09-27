@@ -21,6 +21,10 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
 - Logo: the coin seal (LEGIT FORGE on the rim and across the centre, no symbol), CoinMark in components/ui/icons.tsx (also app/icon.svg and mark() in lib/card-art.ts;
   keep all three in step). Its gold and steel are fixed hex in both themes, like a real coin: the
   one allowed exception to the token rule.
+- SEO files: app/robots.ts, app/sitemap.ts, app/llms.txt/route.ts (llmstxt.org summary: services,
+  published work and posts), app/icon.svg + app/apple-icon.tsx (the seal), app/not-found.tsx
+  (noindex, no canonical). Every inner page has breadcrumbs (Breadcrumbs / PageHead in
+  components/pages/page-head.tsx). Legal-page CSS lives in globals.css: the root 404 imports it.
 - Share images: lib/og.tsx draws every card (1200 × 630, next/og); each route has an
   opengraph-image.tsx and twitter-image.tsx, except case studies: an uploaded cover, else /og/work/<slug>. They must stay static (generateStaticParams +
   dynamicParams = false): the font files in assets/og are read at build time, never on Workers.
@@ -30,8 +34,11 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
   draft project; the brief is lib/admin/github.ts repoBrief (GitHub data only, no AI; numbers are
   never invented). GITHUB_TOKEN secret for private repos. The cloud sandbox's proxy blocks
   api.github.com: test with a fixture server via GITHUB_API_BASE (honoured only with ADMIN_DEV_BYPASS).
-- Projects on public pages come from lib/work.ts: published D1 rows, else the placeholders in
-  content.ts/pages.ts. Never import PROJECTS/CASE_STUDIES in a page again; use getProjects().
+- Projects on public pages come from lib/work.ts: published D1 rows, else nothing (sections hide,
+  /work shows an empty state). The placeholders in content.ts/pages.ts show only in a build made
+  with SHOW_PLACEHOLDERS=1 (local design work; `SHOW_PLACEHOLDERS=1 npm run check` covers the
+  work and 3D team tests). Public pages never print [bracketed] text (lib/placeholder.ts: isPh,
+  priceText; empty SITE fields are left out); `npm run check` ONLY=seo fails if any shows. Never import PROJECTS/CASE_STUDIES in a page again; use getProjects().
   People the same way: lib/team.ts getTeam() (tag 'team'), never TEAM/MEMBER_DETAILS in a page.
   Client components get toCards(team) only, so bios stay on the server.
 

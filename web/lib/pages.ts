@@ -4,6 +4,7 @@
  *  [Bracketed] text is a placeholder and must be replaced before launch. */
 
 import type { DemoKind } from './content';
+import { priceText } from './placeholder';
 
 /* ------------------------------------------------------------ services §7.1 */
 export type ServiceSlug = 'website-development' | 'whatsapp-automation' | 'n8n-automation' | 'seo' | 'nfc';
@@ -55,7 +56,7 @@ export const SERVICE_PAGES: ServicePage[] = [
       'Hosting set up in your own Cloudflare account',
       'A short training video, and 30 days of free fixes after launch',
     ],
-    price: 'Static from [price] · web apps from [price]',
+    price: priceText('Static from [price] · web apps from [price]'),
     timeline: 'Static sites 1–2 weeks · web apps 3–6 weeks',
     categories: ['static', 'dynamic'],
     faq: [
@@ -91,7 +92,7 @@ export const SERVICE_PAGES: ServicePage[] = [
       'Lead capture into your sheet, CRM or database',
       'Monthly care: we watch the bot, fix what breaks and adjust flows',
     ],
-    price: '[price] setup + [price]/month · Meta’s message fees at cost',
+    price: priceText('[price] setup + [price]/month · Meta’s message fees at cost'),
     timeline: '1–2 weeks, plus Meta’s business verification',
     categories: ['whatsapp'],
     faq: [
@@ -127,7 +128,7 @@ export const SERVICE_PAGES: ServicePage[] = [
       'Plain-language documentation of what runs, when and why',
       'n8n on your own server or n8n Cloud account — you hold the keys',
     ],
-    price: 'From [price] per workflow',
+    price: priceText('From [price] per workflow'),
     timeline: '2–5 days per workflow',
     categories: ['n8n'],
     faq: [
@@ -163,7 +164,7 @@ export const SERVICE_PAGES: ServicePage[] = [
       'Review requests you can send by WhatsApp in one tap',
       'A monthly one-page report with calls, clicks and next steps',
     ],
-    price: 'From [price]/month · setup from [price]',
+    price: priceText('From [price]/month · setup from [price]'),
     timeline: 'Set up in 1–2 weeks · results build over 2–3 months',
     categories: ['static', 'dynamic'],
     faq: [
@@ -199,7 +200,7 @@ export const SERVICE_PAGES: ServicePage[] = [
       'Change where a tag points any time, with no reprinting',
       'A simple count of taps each month',
     ],
-    price: 'From [price] · cards from [price] each',
+    price: priceText('From [price] · cards from [price] each'),
     timeline: 'About a week, including printing',
     categories: ['dynamic'],
     faq: [

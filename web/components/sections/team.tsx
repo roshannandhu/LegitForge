@@ -25,7 +25,7 @@ import { useMotionEnabled } from '@/components/motion/motion-provider';
 import { CardBack, CardFront } from '@/components/team/card-faces';
 import type { CardPerson } from '@/lib/card-art';
 import type { Card } from '@/lib/team';
-import { SITE } from '@/lib/site';
+import { SITE, capacityLine } from '@/lib/site';
 
 // The next free card is yours (003 while there are two of us): two cards look sparse, and a
 // hiring ad from a two-person studio
@@ -187,8 +187,7 @@ export function Team({ team, head = true }: { team: Card[]; head?: boolean }) {
             <h2 className="type-h2">Two people. Both of us build.</h2>
             <p className="type-lead">
               No account managers, no juniors, no handoffs. The person who answers your first WhatsApp
-              message is the person writing your code. We take {SITE.projectsAtATime} projects at a time,
-              which is why we can tell you exactly what you’ll get and when.
+              message is the person writing your code.{capacityLine()}
             </p>
           </header>
         )}
