@@ -9,7 +9,7 @@ import { SmoothScroll } from '@/components/motion/smooth-scroll';
 import { ForgeCanvas } from '@/components/background/forge-canvas';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
-import { SITE } from '@/lib/site';
+import { NOINDEX, SITE } from '@/lib/site';
 import './globals.css';
 import '@/components/layout/layout.css';
 
@@ -54,6 +54,7 @@ export const metadata: Metadata = {
     'Two-person studio building fast websites, web apps, quotation and warranty systems, ' +
     'WhatsApp automation and n8n workflows. Fixed quotes; you own everything.',
   alternates: { canonical: '/' },
+  ...(NOINDEX ? { robots: { index: false, follow: false } } : {}),
   openGraph: {
     type: 'website',
     siteName: SITE.name,

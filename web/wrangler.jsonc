@@ -27,7 +27,7 @@
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["DOQueueHandler"] }],
   "triggers": { "crons": ["0 3 * * *"] },     // daily cleanup at 03:00 UTC (worker.ts)
   "vars": {
-    "SITE_URL": "https://legitforge.example"   // TODO: real domain, same as lib/site.ts
+    "SITE_URL": "https://legitforge.example"   // set per deploy by scripts/cf-setup.mjs (repo variable SITE_URL, else workers.dev)
   },
   "observability": { "enabled": true }
 }

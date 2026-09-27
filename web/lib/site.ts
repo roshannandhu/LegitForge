@@ -4,7 +4,9 @@
 
 export const SITE = {
   name: 'Legit Forge',
-  url: 'https://legitforge.example',          // TODO: real domain (also update robots/sitemap)
+  /** Set at build time by the deploy workflow (scripts/cf-setup.mjs): the real domain once the
+   *  SITE_URL repo variable exists, else the workers.dev address. */
+  url: process.env.NEXT_PUBLIC_SITE_URL || 'https://legitforge.example',
   /** Empty = not printed anywhere (footer, legal pages, structured data) until filled in. */
   city: '',
   country: '',
@@ -26,6 +28,9 @@ export const SITE = {
 } as const;
 
 /** The studio's node in structured data: pages point at it by @id instead of repeating it. */
+/** The temporary workers.dev address stays out of search until the real domain is live. */
+export const NOINDEX = process.env.NEXT_PUBLIC_NOINDEX === '1';
+
 export const ORG_ID = `${SITE.url}/#org`;
 export const orgRef = { '@type': 'ProfessionalService', '@id': ORG_ID, name: SITE.name, url: SITE.url, logo: `${SITE.url}/icon.svg` };
 
