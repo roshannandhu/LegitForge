@@ -1277,6 +1277,33 @@
   .ag.work-gallery .ag-item { transition: flex-grow .6s var(--ag-ease), flex-basis .6s var(--ag-ease), border-color .3s; }
   .ag.work-gallery:not([data-any-open]) .ag-item { flex: 1 1 0; }
 }
+/* many projects (work-gallery.tsx, more than MANY): the same panels in one row that scrolls
+   sideways on every screen. Closed panels are fixed strips with the name up the side, the open
+   one a fixed wider panel (the same flex transition as the fitted row). */
+.ag-scroll { position: relative; }
+.ag-viewport { overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; margin-inline: -24px; padding-inline: 24px; }
+.ag-viewport::-webkit-scrollbar { display: none; }
+.ag-scroll .ag.work-gallery { --col: 150px; --open: min(560px, 46vw); width: max-content; }
+.ag-scroll .ag.work-gallery .ag-item { flex: 0 0 var(--col); transition: flex-basis .7s var(--ag-ease), border-color .3s; }
+.ag-scroll .ag.work-gallery .ag-item[data-open] { flex-basis: var(--open); }
+.ag-scroll .ag.work-gallery .ag-content { width: var(--open); }
+.ag-bar { display: flex; align-items: center; gap: 16px; margin-top: 16px; }
+.ag-count { margin: 0; color: var(--text-muted); font-size: 14px; white-space: nowrap; }
+.ag-progress { position: relative; flex: 1; height: 2px; overflow: hidden; border-radius: 2px; background: var(--line); }
+.ag-progress > span { position: absolute; inset: 0; background: var(--heat-color); transform-origin: 0 50%; transform: scaleX(.04); }
+.ag-arrows { display: flex; gap: 8px; }
+@media (max-width: 767px) {
+  .ag-viewport { margin-inline: -16px; padding-inline: 16px; }
+  .ag-scroll .ag.work-gallery { --col: 88px; --open: 76vw; --ag-h: 460px; flex-direction: row; height: var(--ag-h); }
+  .ag-scroll .ag.work-gallery .ag-item, .ag-scroll .ag.work-gallery:not([data-any-open]) .ag-item { flex: 0 0 var(--col); }
+  .ag-scroll .ag.work-gallery .ag-item[data-open] { flex: 0 0 var(--open); }
+  .ag-scroll .ag.work-gallery .ag-label {   /* back to the name reading up the strip */
+    left: 50%; bottom: 20px; max-width: none; max-height: calc(100% - 40px);
+    writing-mode: vertical-rl; transform: translateX(-50%) rotate(180deg);
+  }
+  .ag-scroll .ag.work-gallery .ag-shade { background: linear-gradient(to top, rgb(8 10 14 / .88) 0%, rgb(8 10 14 / .35) 45%, transparent 75%); }
+}
+
 .wg { display: grid; gap: 6px; max-width: 520px; }
 .wg-client { margin: 0; font-size: 14px; opacity: .85; }
 .wg-title { margin: 0; font-size: clamp(20px, 2vw, 26px); font-weight: 700; line-height: 1.15; }

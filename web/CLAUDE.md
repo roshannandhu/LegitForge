@@ -107,6 +107,10 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
   the project. The open panel shows a brief description only (client, title, 2-line summary).
   Projects are chosen in Admin → Projects (★ "Show on the home page", admin order; none starred
   → all published: lib/work.ts getHomeProjects). Panels keep data-project-card + .project-cover.
+  More than 5 (MANY in work-gallery.tsx): the same panels in one sideways-scrolling row
+  (.ag-scroll/.ag-viewport, fixed strip and open widths) that drifts left to right while on
+  screen (pauses on hover, keyboard focus, touch and the ← → buttons; rests at the end, glides
+  back), with a progress bar and arrows under it. Motion off: no drift.
 - Team: any number of people (Admin → Team: add, reorder, remove). One full-bleed strip scrolls
   sideways in every layer. The 3D canvas is full width with headroom (sections.css
   .team-canvas, HEAD in team-lanyards.jsx: keep them equal), its camera follows the strip's
