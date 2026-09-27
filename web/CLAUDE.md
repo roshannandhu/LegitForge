@@ -89,12 +89,11 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
   Importing content.ts into a 'use client' file ships all of it to the browser.
 - Inner pages: app/pages.css + components/pages (PageHead with breadcrumbs, CtaBand, JsonLd).
   Blocks use .page-block on a .wrap: set padding-top only, or you erase .wrap's side padding.
-- Home #work is the React Bits Accordion Gallery (components/react-bits/accordion-gallery.jsx, a
-  reimplementation of its API: reactbits.dev is blocked from the sandbox; keep its `LF:` props)
-  shaped as portrait cards (sections.css "work: portrait cards"): nothing open until pointed at,
-  the open card gets a heat gradient and its details, a click opens the case study; phones get a
-  sideways row of portrait cards. Its flex-grow transition is the one allowed layout animation
-  (the row's box never changes size). Panels keep data-project-card + .project-cover (Cleave).
+- Home #work is the project rail (components/work/project-rail.tsx, sections.css "work rail"):
+  portrait cards chosen in Admin → Projects (★ "Show on the home page", admin order; none starred
+  → all published: lib/work.ts getHomeProjects). ≥768px with motion: the section pins and the row
+  slides with the scroll, the centred card grows and faces you (transform only). Phones / motion
+  off: a native swipe row. Cards keep data-project-card + .project-cover for the Cleave.
 - Team: any number of people (Admin → Team: add, reorder, remove). One full-bleed strip scrolls
   sideways in every layer. The 3D canvas is full width with headroom (sections.css
   .team-canvas, HEAD in team-lanyards.jsx: keep them equal), its camera follows the strip's

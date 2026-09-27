@@ -71,7 +71,7 @@ export default async function EditProject({ params }: { params: Promise<{ id: st
             <label className="field"><span>Status stamp <small>(n8n updates it daily)</small></span>
               <select name="status_stamp" defaultValue={p.status_stamp}>{STAMPS.map((s) => <option key={s} value={s}>{s}</option>)}</select></label>
             <label className="field"><span>Launched on</span><input name="launched_on" type="date" defaultValue={p.launched_on ?? ''} /></label>
-            <label className="check"><input type="checkbox" name="is_featured" defaultChecked={!!p.is_featured} /> Featured</label>
+            <label className="check"><input type="checkbox" name="is_featured" defaultChecked={!!p.is_featured} /> Show on the home page ★</label>
           </div>
           <label className="field"><span>One-line summary</span><input name="summary" defaultValue={p.summary} required maxLength={300} /></label>
           <label className="field"><span>The challenge <small>(in the client’s words)</small></span><textarea name="challenge" defaultValue={p.challenge ?? ''} /></label>
