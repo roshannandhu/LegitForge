@@ -37,7 +37,10 @@ const FLOWS: Record<LayerId, (r: Element, gsap: G) => TL> = {
       .fromTo(res, { y: -step }, { y: 0, duration: 0.55, ease: 'power3.inOut', immediateRender: false }, 1.0)
       .to(f(r, 'tag'), { opacity: 1, duration: 0.2 }, 1.55)
       .to(f(r, 'toast'), { opacity: 1, duration: 0.25 }, 1.8)
-      .from(f(r, 'toast'), { y: 8, duration: 0.25 }, 1.8);
+      .from(f(r, 'toast'), { y: 8, duration: 0.25 }, 1.8)
+      .set(f(r, 'pin'), { opacity: 0, y: -6 }, 0)
+      .to(f(r, 'pin'), { opacity: (i) => (i === 2 ? 1 : 0.75), y: 0, duration: 0.3, stagger: 0.08, ease: 'bounce.out' }, 0.7)
+      .fromTo(f(r, 'call'), { scale: 1 }, { scale: 1.35, duration: 0.15, yoyo: true, repeat: 1, immediateRender: false }, 1.75);
     return tl;
   },
   nfc(r, gsap) {
@@ -84,16 +87,33 @@ const FLOWS: Record<LayerId, (r: Element, gsap: G) => TL> = {
     return tl;
   },
   n8n(r, gsap) {
+    // one enquiry runs the canvas: each node wakes as the item reaches it, its wire turns green,
+    // its tick lands; the Switch sends the order to WhatsApp (the team branch waits)
     const tl = gsap.timeline({ defaults: { ease: 'power2.out' } });
-    const nodes = f(r, 'node'), outs = f(r, 'out'), packet = f(r, 'packet')[0];
-    tl.set(nodes, { opacity: 0.35 }, 0).set(outs, { opacity: 0, x: -4 }, 0);
-    if (packet) tl.set(packet, { opacity: 1, y: 0 }, 0);
-    nodes.forEach((n, i) => {
-      const at = 0.15 + i * 0.45;
-      if (packet && i) tl.to(packet, { y: () => n.offsetTop - nodes[0].offsetTop, duration: 0.3, ease: 'power1.inOut' }, at - 0.3);
-      tl.to(n, { opacity: 1, duration: 0.15 }, at).to(outs[i], { opacity: 1, x: 0, duration: 0.25 }, at + 0.05);
+    const nodes = f(r, 'node'), outs = f(r, 'out'), ticks = f(r, 'tick');
+    const wires = [...r.querySelectorAll<SVGPathElement>('[data-f="wire"]')];
+    const item = r.querySelector<SVGCircleElement>('[data-f="item"]');
+    tl.set(nodes, { opacity: 0.35 }, 0).set(outs, { opacity: 0 }, 0)
+      .set(ticks, { opacity: 0, scale: 0, transformOrigin: '50% 50%' }, 0).set(wires, { opacity: 0 }, 0);
+    const wake = (i: number, at: number) => tl.to(nodes[i], { opacity: 1, duration: 0.15 }, at)
+      .to(outs[i], { opacity: 1, duration: 0.2 }, at + 0.05)
+      .to(ticks[i], { opacity: 1, scale: 1, duration: 0.25, ease: 'back.out(3)' }, at + 0.1);
+    wake(0, 0.1);
+    wires.forEach((w, i) => {
+      const at = 0.35 + i * 0.42, o = { t: 0 };
+      if (item) {
+        tl.set(item, { opacity: 1 }, at)
+          .fromTo(o, { t: 0 }, { t: 1, duration: 0.3, ease: 'power1.inOut', immediateRender: false, onUpdate: () => {
+            const p = w.getPointAtLength(o.t * w.getTotalLength());
+            item.setAttribute('transform', `translate(${p.x} ${p.y})`);
+          } }, at);
+      }
+      tl.to(w, { opacity: 1, duration: 0.2 }, at + 0.1);
+      wake(i + 1, at + 0.3);
     });
-    if (packet) tl.to(packet, { opacity: 0, duration: 0.2 }, 1.95);
+    if (item) tl.to(item, { opacity: 0, duration: 0.2 }, 0.35 + wires.length * 0.42);
+    tl.to(nodes[5] ?? [], { opacity: 1, duration: 0.2 }, 0.35 + wires.length * 0.42)
+      .to(outs[5] ?? [], { opacity: 1, duration: 0.2 }, 0.35 + wires.length * 0.42);
     return tl;
   },
   quote(r, gsap) {

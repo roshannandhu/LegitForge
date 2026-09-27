@@ -20,20 +20,30 @@ export function LayerScreen({ id }: { id: LayerId }) {
   );
 }
 
+/* SEO: the Google results page on her phone (dark mode, as the glass is): the query, the tabs,
+   the Maps pack with its pins, and three local listings; CoolAir on top, a Call button. */
 function Seo() {
+  const res = [['CoolAir Services', '4.9', '212', 'Open now'], ['City AC Repairs', '4.1', '38', 'Closes 7 pm'], ['FrostFix Kochi', '3.8', '19', 'Opens 10 am']];
   return (
     <>
       <p className="ls-search" data-f="search"><GoogleG className="ls-mag" /><span data-f="q">ac installation kochi</span></p>
+      <p className="ls-tabs"><b>All</b><span>Maps</span><span>Images</span><span>News</span></p>
+      <div className="ls-map" aria-hidden="true">
+        <i className="ls-road" /><i className="ls-road r2" /><i className="ls-water" />
+        <i className="ls-pin" data-f="pin" /><i className="ls-pin p2" data-f="pin" /><i className="ls-pin you" data-f="pin" />
+      </div>
       <ol className="ls-results">
-        <li className="ls-res is-top" data-f="top">
-          <span className="ls-res-tag" data-f="tag">Top result</span>
-          <b>CoolAir Services</b>
-          <span>coolair.in · ★ 4.9 (212)</span>
-        </li>
-        <li className="ls-res" data-f="res"><b>City AC Repairs</b><span>★ 4.1 (38)</span></li>
-        <li className="ls-res" data-f="res"><b>FrostFix Kochi</b><span>★ 3.8 (19)</span></li>
+        {res.map(([name, rate, n, note], i) => (
+          <li key={name} className={`ls-res${i === 0 ? ' is-top' : ''}`} data-f={i === 0 ? 'top' : 'res'}>
+            {i === 0 && <span className="ls-res-tag" data-f="tag">#1 on Maps</span>}
+            <b>{name}</b>
+            <span>{rate} <i className="ls-stars">★★★★★</i> ({n})</span>
+            <span className={i === 0 ? 'ls-open' : undefined}>{note}</span>
+            <i className="ls-call" data-f={i === 0 ? 'call' : undefined} />
+          </li>
+        ))}
       </ol>
-      <span className="ls-toast" data-f="toast">Priya taps CoolAir</span>
+      <span className="ls-toast" data-f="toast">Priya taps Call</span>
     </>
   );
 }
@@ -80,17 +90,38 @@ function Wa() {
   );
 }
 
+/* n8n: the canvas as in the editor, top to bottom: the form trigger, the sheet, the AI step and a
+   Switch that sends an order to a WhatsApp reply (the question branch waits). One SVG in a
+   100 × 150 box: nodes, curved wires, ticks and the travelling item. */
+const N8N_NODES: [string, string, number, number, string, string][] = [
+  // label, output, x, y (node centre), colour, glyph (24 × 24)
+  ['Form', 'new enquiry', 50, 14, '#FF6D5A', 'M7 4h8l3 3v13H7zM10 10h5M10 13h5M10 16h3'],
+  ['Sheets', 'row #214', 50, 46, '#1FA463', 'M6 5h12v14H6zM6 10h12M6 14.5h12M11 5v14'],
+  ['AI Agent', 'intent: order', 50, 78, '#FFFFFF', 'M12 4l1.6 4.4L18 10l-4.4 1.6L12 16l-1.6-4.4L6 10l4.4-1.6z'],
+  ['Switch', '→ order', 50, 106, '#3B8BD9', 'M5 12h5l4-5h5M14 17h5M10 12l4 5'],
+  ['WhatsApp', 'reply sent', 24, 136, '#25D366', 'M5 19l1.2-3.4A7.3 7.3 0 1 1 9 18.3z'],
+  ['Team', 'waiting', 76, 136, '#8B5CF6', 'M7 16v-5a5 5 0 0 1 10 0v5l1.5 2h-13z'],
+];
+const N8N_WIRES = ['M50 21 C50 30 50 30 50 39', 'M50 53 C50 62 50 62 50 71', 'M50 85 C50 92 50 92 50 99', 'M50 113 C50 122 24 120 24 129', 'M50 113 C50 122 76 120 76 129'];
+
 function N8n() {
-  const nodes = [['WhatsApp', 'reply in'], ['Sheet', 'row #214'], ['Price rules', '₹45,800'], ['PDF', 'Q-2041.pdf']];
   return (
     <>
-      <p className="ls-title">Workflow · new quote</p>
-      <ol className="ls-flow">
-        {nodes.map(([n, o]) => (
-          <li key={n} data-f="node"><span className="ls-node-dot" /><span className="ls-node-name">{n}</span><span className="ls-node-out" data-f="out">{o}</span></li>
+      <p className="ls-title">New enquiry → reply <span className="ls-active">Active</span></p>
+      <svg className="ls-n8n" viewBox="0 0 100 150" aria-hidden="true">
+        {N8N_WIRES.map((d, i) => <path key={i} d={d} className="ls-wire" />)}
+        {N8N_WIRES.slice(0, 4).map((d, i) => <path key={i} d={d} className="ls-wire ran" data-f="wire" />)}
+        {N8N_NODES.map(([label, out, x, y, color, glyph], i) => (
+          <g key={label} data-f="node" transform={`translate(${x} ${y})`}>
+            <rect x="-7" y="-7" width="14" height="14" rx={i === 0 ? 7 : 3} className={`ls-tile${i === 2 ? ' dark' : ''}`} />
+            <path d={glyph} transform="translate(-4.2 -4.2) scale(.35)" fill="none" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+            {i < 5 && <circle cx="7" cy="-7" r="2.4" className="ls-tick" data-f="tick" />}
+            <text x={x === 50 ? 10 : 0} y={x === 50 ? 1.6 : 13} textAnchor={x === 50 ? 'start' : 'middle'} className="ls-n8n-name">{label}</text>
+            <text x={x === 50 ? 10 : 0} y={x === 50 ? 7 : 18.5} textAnchor={x === 50 ? 'start' : 'middle'} className="ls-n8n-out" data-f="out">{out}</text>
+          </g>
         ))}
-      </ol>
-      <span className="ls-packet" data-f="packet" />
+        <circle r="2.6" className="ls-item" data-f="item" />
+      </svg>
     </>
   );
 }
