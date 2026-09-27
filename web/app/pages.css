@@ -4,11 +4,6 @@
 /* ---------------------------------------------------------------- page head */
 .page-head { padding-top: 136px; padding-bottom: 8px; }
 @media (max-width: 767px) { .page-head { padding-top: 104px; } }
-.crumbs { display: flex; flex-wrap: wrap; gap: 4px 8px; margin: 0 0 24px; padding: 0; list-style: none; font-size: 14px; color: var(--text-muted); }
-.crumbs li + li::before { content: "/"; margin-right: 8px; opacity: .6; }
-.crumbs a { color: inherit; text-underline-offset: 3px; }
-.crumbs a:hover { color: var(--text); }
-.crumbs [aria-current] { color: var(--text); }
 .page-title { max-width: 22ch; margin: 0; }
 .page-lead { max-width: 60ch; margin: 20px 0 0; }
 .page-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 32px; }
@@ -18,7 +13,6 @@
 .page-block { padding-top: 72px; }   /* top only: .wrap owns the side padding */
 @media (max-width: 767px) { .page-block { padding-top: 56px; } }
 .block-h { margin: 0 0 24px; }
-.block-lead { max-width: 60ch; margin: -8px 0 32px; color: var(--text-muted); }
 .prose { max-width: 65ch; }
 .prose p { margin: 0 0 16px; }
 
@@ -161,3 +155,7 @@
 .post-service .type-label { color: var(--text-muted); }
 .post-service h2 { margin: 8px 0; }
 .post-service p { color: var(--text-muted); }
+
+/* /work before any project is published */
+.work-empty { display: grid; justify-items: start; gap: 24px; max-width: 60ch; padding-block: 16px 32px; }
+.work-empty .type-lead { margin: 0; }

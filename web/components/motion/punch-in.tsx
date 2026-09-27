@@ -18,13 +18,23 @@ export function PunchIn({ children, className, as: Tag = 'div', threshold = 0.5,
     if (!motionOn) { delete el.dataset.armed; delete el.dataset.punched; return; }
     if (el.dataset.punched) return;
     el.dataset.armed = '';
+    // Inside a Cleave that is still closed (armed, not open), a strike can't be seen and its
+    // animations stay paused, but flipping data-punched still restyled every part of the plate
+    // (a 135 ms frame on a 2 GB tablet, mid-swipe). So there it waits for the Cleave to open:
+    // one restyle, at the moment it plays.
+    const cleave = el.closest<HTMLElement>('.cleave');
+    const shut = () => !!cleave && 'armed' in cleave.dataset && !('open' in cleave.dataset);
+    let seen = false;
+    const punch = () => { if (seen && !shut() && !('punched' in el.dataset)) { el.dataset.punched = ''; stop(); } };
     const io = new IntersectionObserver(([e]) => {
       if (!e.isIntersecting) return;
-      io.disconnect();
-      el.dataset.punched = '';
+      seen = true; io.disconnect(); punch();
     }, { threshold });
+    const mo = cleave ? new MutationObserver(punch) : null;
+    const stop = () => { io.disconnect(); mo?.disconnect(); };
     io.observe(el);
-    return () => io.disconnect();
+    mo?.observe(cleave!, { attributes: true, attributeFilter: ['data-open', 'data-armed'] });
+    return stop;
   }, [motionOn, threshold]);
 
   return <Tag ref={ref as never} className={className} style={style} aria-hidden={hidden}>{children}</Tag>;

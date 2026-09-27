@@ -157,6 +157,7 @@ export async function deleteProjectAction(id: string, f: FormData) {
   const media = (await getEnv())?.MEDIA;
   if (media && keys.length) await media.delete(keys);
   refreshPublic();
+  revalidatePath('/admin/projects');
   redirect('/admin/projects');
 }
 
@@ -259,11 +260,14 @@ export async function saveMemberAction(id: string, _: FormState, f: FormData): P
   if (bio.length < 40) return { error: 'Write a bio of at least a couple of sentences.' };
   const before = await db.getMember(id);
   if (!before) return { error: 'That person no longer exists.' };
+  // the favourite must still exist (a project deleted in another tab would fail the foreign key)
+  const fav = opt(f, 'favorite_project_id', 40);
+  const favOk = !fav || (await db.projectTitles()).some((p) => p.id === fav);
   await db.updateMember(id, {
     slug, name: str(f, 'name', 80), role: str(f, 'role', 80), id_code: idCode, bio,
     skills: JSON.stringify(csv(f, 'skills').slice(0, 6)), tools: JSON.stringify(csv(f, 'tools').slice(0, 12)),
     linkedin_url: httpsOrNull(opt(f, 'linkedin_url', 300)), github_url: httpsOrNull(opt(f, 'github_url', 300)),
-    website_url: httpsOrNull(opt(f, 'website_url', 300)), favorite_project_id: opt(f, 'favorite_project_id', 40),
+    website_url: httpsOrNull(opt(f, 'website_url', 300)), favorite_project_id: favOk ? fav : null,
     initials: str(f, 'initials', 3).toUpperCase() || null,
     building: opt(f, 'building', 60),
   });

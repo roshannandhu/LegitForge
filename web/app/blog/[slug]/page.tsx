@@ -95,7 +95,7 @@ export default async function BlogPost({ params }: { params: Promise<{ slug: str
         image: `${SITE.url}/blog/${p.slug}/opengraph-image`,
         url: `${SITE.url}/blog/${p.slug}`,
         mainEntityOfPage: `${SITE.url}/blog/${p.slug}`,
-        author: author ? { '@type': 'Person', name: author.name, url: `${SITE.url}/team/${author.slug}` } : undefined,
+        author: author ? { '@type': 'Person', name: author.name, url: `${SITE.url}/team/${author.slug}` } : orgRef,                 // no published author yet: the studio
         publisher: orgRef,
       }} />
     </>

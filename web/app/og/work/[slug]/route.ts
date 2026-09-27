@@ -5,10 +5,12 @@
 
 import { ogImage } from '@/lib/og';
 import { PROJECTS } from '@/lib/content';
+import { SHOW_PH } from '@/lib/placeholder';
 
 export const dynamic = 'force-static';
 export const dynamicParams = false;
-export const generateStaticParams = () => PROJECTS.map((p) => ({ slug: p.slug }));
+// only built with SHOW_PLACEHOLDERS=1: otherwise the placeholder projects are not on the site
+export const generateStaticParams = () => (SHOW_PH ? PROJECTS : []).map((p) => ({ slug: p.slug }));
 
 export async function GET(_: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;

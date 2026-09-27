@@ -10,6 +10,7 @@ import { WorkGallery, type GalleryItem } from '@/components/work/work-gallery';
  *  /work keeps the full filterable grid with results and tags. */
 export async function Projects() {
   const { projects, total } = await getHomeProjects();
+  if (!projects.length) return null;                 // nothing published yet: no section
   const items: GalleryItem[] = projects.map((p) => ({
     image: p.cover?.src,
     alt: p.cover?.alt,

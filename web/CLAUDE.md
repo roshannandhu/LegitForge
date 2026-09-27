@@ -21,6 +21,10 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
 - Logo: the coin seal (LEGIT FORGE on the rim and across the centre, no symbol), CoinMark in components/ui/icons.tsx (also app/icon.svg and mark() in lib/card-art.ts;
   keep all three in step). Its gold and steel are fixed hex in both themes, like a real coin: the
   one allowed exception to the token rule.
+- SEO files: app/robots.ts, app/sitemap.ts, app/llms.txt/route.ts (llmstxt.org summary: services,
+  published work and posts), app/icon.svg + app/apple-icon.tsx (the seal), app/not-found.tsx
+  (noindex, no canonical). Every inner page has breadcrumbs (Breadcrumbs / PageHead in
+  components/pages/page-head.tsx). Legal-page CSS lives in globals.css: the root 404 imports it.
 - Share images: lib/og.tsx draws every card (1200 × 630, next/og); each route has an
   opengraph-image.tsx and twitter-image.tsx, except case studies: an uploaded cover, else /og/work/<slug>. They must stay static (generateStaticParams +
   dynamicParams = false): the font files in assets/og are read at build time, never on Workers.
@@ -30,8 +34,11 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
   draft project; the brief is lib/admin/github.ts repoBrief (GitHub data only, no AI; numbers are
   never invented). GITHUB_TOKEN secret for private repos. The cloud sandbox's proxy blocks
   api.github.com: test with a fixture server via GITHUB_API_BASE (honoured only with ADMIN_DEV_BYPASS).
-- Projects on public pages come from lib/work.ts: published D1 rows, else the placeholders in
-  content.ts/pages.ts. Never import PROJECTS/CASE_STUDIES in a page again; use getProjects().
+- Projects on public pages come from lib/work.ts: published D1 rows, else nothing (sections hide,
+  /work shows an empty state). The placeholders in content.ts/pages.ts show only in a build made
+  with SHOW_PLACEHOLDERS=1 (local design work; `SHOW_PLACEHOLDERS=1 npm run check` covers the
+  work and 3D team tests). Public pages never print [bracketed] text (lib/placeholder.ts: isPh,
+  priceText; empty SITE fields are left out); `npm run check` ONLY=seo fails if any shows. Never import PROJECTS/CASE_STUDIES in a page again; use getProjects().
   People the same way: lib/team.ts getTeam() (tag 'team'), never TEAM/MEMBER_DETAILS in a page.
   Client components get toCards(team) only, so bios stay on the server.
 
@@ -107,6 +114,10 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
   the project. The open panel shows a brief description only (client, title, 2-line summary).
   Projects are chosen in Admin → Projects (★ "Show on the home page", admin order; none starred
   → all published: lib/work.ts getHomeProjects). Panels keep data-project-card + .project-cover.
+  More than 5 (MANY in work-gallery.tsx): the same panels in one sideways-scrolling row
+  (.ag-scroll/.ag-viewport, fixed strip and open widths) that drifts left to right while on
+  screen (pauses on hover, keyboard focus, touch and the ← → buttons; rests at the end, glides
+  back), with a progress bar and arrows under it. Motion off: no drift.
 - Team: any number of people (Admin → Team: add, reorder, remove). One full-bleed strip scrolls
   sideways in every layer. The 3D canvas is full width with headroom (sections.css
   .team-canvas, HEAD in team-lanyards.jsx: keep them equal), its camera follows the strip's
@@ -117,7 +128,7 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
 ## Performance on budget phones (measure at 360px with 4-6x CPU throttling before and after)
 - Never remove or simplify an animation, the intro, the embers or the Archivo font for speed
   (the owner's rule). Improve how the same thing is built and drawn instead.
-- Lite mode: html[data-lite] (LITE_BOOT in lib/boot.ts, lib/lite.ts isLite) for <=3 GB RAM, <=4 cores,
+- Lite mode: html[data-lite] (LITE_BOOT in lib/boot.ts) for <=3 GB RAM, <=4 cores,
   Data Saver or 2G. Same site; only the order of work changes (data-near rules below, GSAP after
   idle). `?lite=1` / `?lite=0` force it. `npm run check` forces it off; `LITE=1 npm run check` audits it.
 - Never write per-frame CSS variables on <html> (the whole page restyles): put them on the element
@@ -134,8 +145,12 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
   a plain IntersectionObserver sets data-near (teardown.tsx, demo-player.tsx; placeholder heights
   in sections.css: re-measure them if a demo's phone height changes). Safety nets: motion off, and
   data-lite-all 8 s after load if no observer ran (lib/boot.ts).
-- --heat on <html> changes in one step (heat-director.tsx, one IntersectionObserver); only
-  heat.value eases, for the embers. Written only when it changes.
+- Heat is scoped: each [data-heat] section computes --heat-color/--heat-ink from its own
+  --heat (globals.css, attr(data-heat type(<number>)); heat-director.tsx sets it inline where
+  typed attr() is missing). Only .site-header/.site-footer/.phone-menu get the current value
+  (one IntersectionObserver, written when it changes); heat.value eases for the embers. Never
+  write --heat on <html> again: that restyled all ~2,400 elements at every section boundary.
+  A new strip between sections that uses heat colours needs its own data-heat.
 - Below-the-fold client sections (Compare, LiveTest, Team, Quench) are wrapped in
   HydrateWhenNear (components/motion/hydrate-when-near.tsx): server HTML from the first paint,
   React takes over within 600px. Page-wide observers must re-observe on `lf:hydrated`.

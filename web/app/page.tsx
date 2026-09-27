@@ -21,6 +21,7 @@ import { Quench } from '@/components/sections/quench';
 import { HallmarkStrike } from '@/components/intro/hallmark-strike';
 import { PROCESS, SERVICES } from '@/lib/content';
 import { getTeam, toCards } from '@/lib/team';
+import { getProjects } from '@/lib/work';
 import { ORG_ID, SITE, waLink } from '@/lib/site';
 import { LAYERS } from '@/lib/teardown';
 import '@/components/hero/hero.css';
@@ -65,8 +66,9 @@ const orgLd = {
   email: SITE.email,
   description:
     'A two-person studio building websites, web apps, quotation and warranty systems, WhatsApp automation and n8n workflows.',
-  areaServed: SITE.city,
-  address: { '@type': 'PostalAddress', addressLocality: SITE.city, addressCountry: SITE.country },
+  ...(SITE.city ? { areaServed: SITE.city } : {}),
+  ...(SITE.city || SITE.country ? { address: { '@type': 'PostalAddress',
+    ...(SITE.city ? { addressLocality: SITE.city } : {}), ...(SITE.country ? { addressCountry: SITE.country } : {}) } } : {}),
   ...(SITE.whatsappNumber ? { telephone: `+${SITE.whatsappNumber}` } : {}),
   ...(() => { const same = Object.values(SITE.social).filter(Boolean); return same.length ? { sameAs: same } : {}; })(),
   openingHoursSpecification: {
@@ -88,6 +90,7 @@ const orgLd = {
 
 export default async function Home() {
   const team = toCards(await getTeam());
+  const hasWork = (await getProjects()).length > 0;
   const wa = waLink();
   return (
     <>
@@ -102,7 +105,9 @@ export default async function Home() {
             </p>
             <div className="ctas">
               <a className="btn btn-primary" href={wa}>Chat on WhatsApp</a>
-              <a className="btn btn-ghost" href="#work">See our work</a>
+              {hasWork
+                ? <a className="btn btn-ghost" href="#work">See our work</a>
+                : <a className="btn btn-ghost" href="#services">See what we build</a>}
             </div>
             <HeroStatus />
           </div>
@@ -134,12 +139,12 @@ export default async function Home() {
       </HydrateWhenNear>
       <HydrateWhenNear><LiveTest /></HydrateWhenNear>
       <Process steps={PROCESS} />
-      <section className="tools" aria-labelledby="tools-h">
+      <section className="tools" data-heat="0.9" aria-labelledby="tools-h">
         <div className="wrap"><h2 id="tools-h" className="tools-h">The tools behind every build</h2></div>
         <HydrateWhenNear><ToolsLoop logos={TOOL_LOGOS} /></HydrateWhenNear>
       </section>
       <Projects />
-      <HydrateWhenNear><Team team={team} /></HydrateWhenNear>
+      {team.length > 0 && <HydrateWhenNear><Team team={team} /></HydrateWhenNear>}
       <Hallmarks />
       <PricingFaq />
       <HydrateWhenNear><Quench /></HydrateWhenNear>

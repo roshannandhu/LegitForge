@@ -1,7 +1,9 @@
+import { requireAdmin } from '@/lib/admin/auth';
 import { LEAD_STATUSES, listLeads, type LeadStatus } from '@/lib/admin/db';
 import { leadStatusAction } from '../actions';
 
 export default async function AdminLeads({ searchParams }: { searchParams: Promise<{ status?: string }> }) {
+  await requireAdmin();                            // each page checks too: a layout can be skipped
   const q = (await searchParams).status;
   const status = LEAD_STATUSES.includes(q as LeadStatus) ? (q as LeadStatus) : undefined;
   const leads = await listLeads(status);

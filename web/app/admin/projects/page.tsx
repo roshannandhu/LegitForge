@@ -1,9 +1,11 @@
+import { requireAdmin } from '@/lib/admin/auth';
 import { listProjects } from '@/lib/admin/db';
 import { createProjectAction, featureProjectAction, moveProjectAction, publishProjectAction } from '../actions';
 import { ActionButton, ActionForm, Submit } from '../ui';
 import { GithubAdd } from './github-add';
 
 export default async function AdminProjects() {
+  await requireAdmin();                            // each page checks too: a layout can be skipped
   const rows = await listProjects();
   return (
     <>

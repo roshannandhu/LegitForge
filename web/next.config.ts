@@ -28,6 +28,9 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   images: { formats: ['image/avif', 'image/webp'] },
+  productionBrowserSourceMaps: false,               // no source maps shipped to browsers
+  // production bundles keep only console.error / console.warn (real failures)
+  compiler: { removeConsole: process.env.NODE_ENV === 'production' ? { exclude: ['error', 'warn'] } : false },
   async headers() {
     return [{ source: '/:path*', headers: securityHeaders }];
   },

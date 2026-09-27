@@ -1,7 +1,7 @@
 import { CoinMark } from '@/components/ui/icons';
 import { MotionSwitch } from './motion-switch';
 import { ForgeStatus } from './forge-status';
-import { SITE, waLink } from '@/lib/site';
+import { SITE, legalLine, waLink } from '@/lib/site';
 
 /** Footer (PLAN §6.12). Only links that resolve; only social accounts we keep active. */
 export function Footer() {
@@ -16,7 +16,7 @@ export function Footer() {
             <CoinMark className="logo-mark" />
             <span className="logo-word">Legit Forge</span>
           </a>
-          <p>Websites, apps, quotation and warranty systems, WhatsApp automation and n8n workflows — built by two people in {SITE.city}.</p>
+          <p>Websites, apps, quotation and warranty systems, WhatsApp automation and n8n workflows — built by two people{SITE.city ? ` in ${SITE.city}` : ''}.</p>
           <ForgeStatus />
         </div>
 
@@ -54,7 +54,7 @@ export function Footer() {
       </div>
 
       <div className="wrap footer-base">
-        <p className="footer-legal">{SITE.legalName}, {SITE.taxId}, {SITE.city}, {SITE.country}</p>
+        {legalLine() && <p className="footer-legal">{legalLine()}</p>}
         <p className="footer-speed">
           This site runs on Cloudflare.{' '}
           <a href={`https://pagespeed.web.dev/report?url=${encodeURIComponent(SITE.url)}`} target="_blank" rel="noopener">

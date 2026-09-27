@@ -113,13 +113,13 @@ export function Quench() {
               <Err f="need" />
             </div>
 
-            <div className="field">
+            {BUDGETS.length > 1 && <div className="field">
               <label htmlFor="budget">Budget <span className="optional">(optional)</span></label>
               <select id="budget" name="budget" defaultValue="">
                 <option value="">Choose a range</option>
                 {BUDGETS.map((b) => <option key={b} value={b}>{b}</option>)}
               </select>
-            </div>
+            </div>}
 
             <div className="field field-wide">
               <label htmlFor="message">Message <span className="optional">(optional)</span></label>

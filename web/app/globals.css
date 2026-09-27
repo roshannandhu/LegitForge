@@ -10,7 +10,7 @@
   --heat-lo: #D9B45A; --heat-mid: #9A5B22; --heat-hi: #6B4796;
   --quench: #2D6CB5; --focus: #6B4796; --success: #1B6E45; --danger: #B3261E;
 
-  --heat: .35;                                    /* set live by the Heat Director */
+  --heat: .35;                                    /* the default; each [data-heat] section has its own (below) */
   --heat-color: color-mix(in oklab, var(--heat-hi) calc(var(--heat) * 100%), var(--heat-lo));
   /* heat as TEXT on the light surfaces: the same hue, dark enough for 4.5:1 (bars and glows keep --heat-color) */
   --heat-ink: color-mix(in oklab, var(--heat-color) 55%, #1B2129);
@@ -40,6 +40,17 @@
   --quench: #5FA8C9; --focus: #FFC24A; --success: #5CC08A; --danger: #FF7A6B;
   --heat-ink: var(--heat-color);   /* bright heat already reads on the dark surfaces */
 }
+
+/* Heat is scoped (plan R): every [data-heat] section computes its heat colours from its OWN
+   --heat, and only the header, footer and phone menu follow the section in view (the Heat
+   Director writes --heat there). Writing --heat on <html> restyled all ~2,400 elements of the
+   home page at every section boundary (a 200 ms frame on a 2 GB phone, ten times a scroll). */
+[data-heat] { --heat: attr(data-heat type(<number>), .35); }   /* older engines: heat-director.tsx sets it inline */
+:is([data-heat], .site-header, .site-footer, .phone-menu) {
+  --heat-color: color-mix(in oklab, var(--heat-hi) calc(var(--heat) * 100%), var(--heat-lo));
+  --heat-ink: color-mix(in oklab, var(--heat-color) 55%, #1B2129);
+}
+.dark :is([data-heat], .site-header, .site-footer, .phone-menu) { --heat-ink: var(--heat-color); }
 
 @theme inline {
   --color-bg: var(--bg);
@@ -160,3 +171,27 @@ html:active-view-transition-type(cleave)::view-transition-group(project-cover) {
    layout into scrolling and made both load and scroll slower on this page. */
 
 
+
+/* ------------------------------------------------------------------ legal pages and the 404
+   Here, not in their own file: the root not-found boundary's CSS is preloaded on every page. */
+.legal { max-width: calc(65ch + 48px); padding-top: 136px; padding-bottom: 96px; }
+@media (max-width: 767px) { .legal { padding-top: 104px; } }
+.legal h1 { margin: 0 0 16px; }
+.legal .type-lead { margin: 0 0 40px; }
+.legal h2 { margin: 40px 0 12px; font-size: var(--step-h3); font-weight: 600; line-height: 1.2; }
+.legal p, .legal li { max-width: 65ch; }
+.legal ul { display: grid; gap: 10px; padding-left: 1.2em; }
+.legal a:not(.btn) { color: var(--accent); text-underline-offset: 3px; }
+.legal-draft {
+  display: inline-block; margin: 0 0 24px; padding: 6px 12px; border-radius: 8px;
+  border: 1px dashed var(--danger); color: var(--danger); font-size: 14px; font-weight: 600;
+}
+.legal-table { width: 100%; border-collapse: collapse; font-size: 15px; }
+.legal-table th, .legal-table td { padding: 12px 0; text-align: left; vertical-align: top; border-bottom: 1px solid var(--line); }
+.legal-table thead th { font-size: 14px; color: var(--text-muted); font-weight: 600; }
+.legal-table tbody th { padding-right: 24px; font-weight: 600; }
+
+/* 404 (§7.7) */
+.not-found { min-height: 70svh; }
+.not-found > .num:first-child { margin: 0 0 8px; color: var(--text-muted); }
+.not-found .ctas { display: flex; flex-wrap: wrap; gap: 12px; }

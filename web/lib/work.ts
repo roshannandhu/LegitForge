@@ -4,9 +4,10 @@ import type { Cover, Project } from '@/components/work/project-card';
 import { PROJECTS } from './content';
 import { CASE_STUDIES, type WorkCategory } from './pages';
 import { getEnv } from './cf';
+import { SHOW_PH } from './placeholder';
 
 /** Projects for the public pages (PLAN §7.8): published rows from D1 once the admin has
- *  published any, otherwise the placeholders in lib/content.ts + lib/pages.ts. `next build`
+ *  published any, otherwise none (the placeholders in lib/content.ts + lib/pages.ts with SHOW_PLACEHOLDERS=1). `next build`
  *  has no database, so the build renders the placeholders, and each page is tagged
  *  'projects': the admin's updateTag('projects') re-renders them from D1. */
 
@@ -15,10 +16,12 @@ export type WorkProject = Project & { category: WorkCategory; study: CaseStudy; 
 
 const EMPTY: CaseStudy = { category: 'static', challenge: '', built: [], results: [], stack: [], team: [] };
 
-const FALLBACK: WorkProject[] = PROJECTS.map((p) => {
+const PLACEHOLDERS: WorkProject[] = PROJECTS.map((p) => {
   const study = CASE_STUDIES[p.slug] ?? EMPTY;
   return { ...p, category: study.category, study, published: true };
 });
+/** No published projects yet: nothing (the sections hide), or the placeholders when SHOW_PH. */
+const FALLBACK: WorkProject[] = SHOW_PH ? PLACEHOLDERS : [];
 
 type Row = {
   slug: string; title: string; client_type: string; category: WorkCategory; summary: string;
@@ -103,5 +106,5 @@ export async function getProject(slug: string) {
 
 /** For the admin preview: drafts included, never cached. */
 export async function getProjectForPreview(slug: string) {
-  return (await projectsFromDb(true))?.find((p) => p.slug === slug) ?? FALLBACK.find((p) => p.slug === slug);
+  return (await projectsFromDb(true))?.find((p) => p.slug === slug) ?? PLACEHOLDERS.find((p) => p.slug === slug);
 }

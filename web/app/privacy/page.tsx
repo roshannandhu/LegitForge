@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
-import { SITE } from '@/lib/site';
-import '../legal.css';
+import { SITE, legalLine } from '@/lib/site';
+import { Breadcrumbs } from '@/components/pages/page-head';
 
 export const metadata: Metadata = {
   title: 'Privacy policy',
@@ -14,6 +14,7 @@ export const metadata: Metadata = {
 export default function Privacy() {
   return (
     <article className="legal wrap">
+      <Breadcrumbs crumbs={[{ name: 'Privacy policy', href: '/privacy' }]} />
       <p className="legal-draft">Draft — to be reviewed by a lawyer before launch.</p>
       <h1 className="type-h2">Privacy policy</h1>
       <p className="type-lead">Short version: we collect only what we need to reply to you, we never sell it, and you can ask us to delete it at any time.</p>
@@ -40,7 +41,7 @@ export default function Privacy() {
       <table className="legal-table">
         <thead><tr><th scope="col">Data</th><th scope="col">Kept for</th></tr></thead>
         <tbody>
-          <tr><th scope="row">Enquiries (leads)</th><td>[24 months] after our last contact, then deleted</td></tr>
+          <tr><th scope="row">Enquiries (leads)</th><td>Until we no longer need them to answer or follow up your enquiry, then deleted</td></tr>
           <tr><th scope="row">Live-test sessions</th><td>24 hours</td></tr>
           <tr><th scope="row">Rate-limit records</th><td>24 hours</td></tr>
           <tr><th scope="row">Analytics</th><td>13 months, with no personal data</td></tr>
@@ -51,11 +52,11 @@ export default function Privacy() {
       <h2>Your choices</h2>
       <ul>
         <li><strong>Stop WhatsApp messages:</strong> reply <strong>STOP</strong> at any time. Reply START to resume.</li>
-        <li><strong>See or delete your data:</strong> email <a href={`mailto:${SITE.email}`}>{SITE.email}</a> and we will do it within [30 days].</li>
+        <li><strong>See or delete your data:</strong> email <a href={`mailto:${SITE.email}`}>{SITE.email}</a> and we will do it without undue delay.</li>
       </ul>
 
       <h2>Who we are</h2>
-      <p>{SITE.legalName}, {SITE.taxId}, {SITE.city}, {SITE.country}. Contact: <a href={`mailto:${SITE.email}`}>{SITE.email}</a>.</p>
+      <p>{legalLine() ? `${legalLine()}. ` : `${SITE.name}. `}Contact: <a href={`mailto:${SITE.email}`}>{SITE.email}</a>.</p>
     </article>
   );
 }

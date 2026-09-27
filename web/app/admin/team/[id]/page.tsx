@@ -1,3 +1,4 @@
+import { requireAdmin } from '@/lib/admin/auth';
 import { notFound } from 'next/navigation';
 import { getMember, projectTitles } from '@/lib/admin/db';
 import { deleteMemberAction, regenerateCardAction, removeMemberPhotoAction, saveMemberAction } from '../../actions';
@@ -7,6 +8,7 @@ import { ImageManager } from '../../projects/[id]/image-manager';
 const parse = (s: string): string[] => { try { return JSON.parse(s); } catch { return []; } };
 
 export default async function EditMember({ params }: { params: Promise<{ id: string }> }) {
+  await requireAdmin();                            // each page checks too: a layout can be skipped
   const { id } = await params;
   const m = await getMember(id);
   if (!m) notFound();

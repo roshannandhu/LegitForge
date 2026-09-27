@@ -1,8 +1,9 @@
 'use client';
 
-/** One global --heat (0..1) set from the section in view (PLAN §4.2, §5.6.3).
- *  Sections opt in with data-heat="0.55". The ember canvas reads `heat.value` every frame (eased);
- *  the CSS variable changes in one step.
+/** Heat (0..1) follows the section in view (PLAN §4.2, §5.6.3). Sections opt in with
+ *  data-heat="0.55" and colour themselves from it (globals.css); the header, footer and phone
+ *  menu take the current section's value here, in one step. The ember canvas reads `heat.value`
+ *  every frame (eased).
  *
  *  One IntersectionObserver on a line 55 % down the screen, not a ScrollTrigger per section:
  *  the same moments (a section's top or bottom crossing that line), but the browser tracks
@@ -14,13 +15,23 @@ import { HYDRATED_EVENT } from './hydrate-when-near';
 
 export const heat = { value: 0.35 };
 
-let written = '0.350';   // the CSS default (globals.css --heat)
-/** Writes --heat only when it changes: each write restyles the whole page. */
+let written = '';
+/** The chrome outside the sections (header, footer, phone menu) follows the section in view:
+ *  --heat is written on those three only. Sections carry their own heat (globals.css), so a
+ *  boundary no longer restyles the whole page. Written only when it changes. */
 export const writeHeatVar = (v = heat.value) => {
   const t = v.toFixed(3);
   if (t === written) return;
   written = t;
-  document.documentElement.style.setProperty('--heat', t);
+  document.querySelectorAll<HTMLElement>('.site-header, .site-footer, .phone-menu').forEach((el) => el.style.setProperty('--heat', t));
+};
+/** Engines without typed attr() get each section's heat inline, once. */
+const attrOk = () => typeof CSS !== 'undefined' && CSS.supports('opacity', 'attr(data-heat type(<number>), 1)');
+const inlineHeat = () => {
+  if (attrOk()) return;
+  document.querySelectorAll<HTMLElement>('[data-heat]').forEach((el) => {
+    if (!el.style.getPropertyValue('--heat')) el.style.setProperty('--heat', el.dataset.heat!);
+  });
 };
 
 export function HeatDirector() {
@@ -39,13 +50,11 @@ export function HeatDirector() {
       const hit = entries.filter((e) => e.isIntersecting).pop();
       if (!hit) return;
       target = Number((hit.target as HTMLElement).dataset.heat);
-      // --heat on <html> restyles the whole page, so CSS takes the new value in one step
-      // (one restyle, not 70: on a phone each was a 200 ms frame)
-      writeHeatVar(target);
+      writeHeatVar(target);                           // header, footer and phone menu only
       if (!motionOn) { heat.value = target; return; }
       if (!raf) raf = requestAnimationFrame(ease);
     }, { rootMargin: '-55% 0px -45% 0px' });   // a one-line band at 55 % of the viewport
-    const observeAll = () => { io.disconnect(); document.querySelectorAll('[data-heat]').forEach((s) => io.observe(s)); };
+    const observeAll = () => { inlineHeat(); io.disconnect(); document.querySelectorAll('[data-heat]').forEach((s) => io.observe(s)); };
     observeAll();
     // a section hydrated late (HydrateWhenNear) is a new element: observe again
     window.addEventListener(HYDRATED_EVENT, observeAll);

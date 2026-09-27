@@ -1,3 +1,4 @@
+import { requireAdmin } from '@/lib/admin/auth';
 import { notFound } from 'next/navigation';
 import { CaseStudy } from '@/components/work/case-study';
 import { getProjectForPreview } from '@/lib/work';
@@ -8,6 +9,7 @@ import '../../../pages.css';
  *  included. It lives under /admin so Cloudflare Access guards it too, and the public
  *  /work pages stay static. */
 export default async function Preview({ params }: { params: Promise<{ slug: string }> }) {
+  await requireAdmin();                            // each page checks too: a layout can be skipped
   const p = await getProjectForPreview((await params).slug);
   if (!p) notFound();
   return (

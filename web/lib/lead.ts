@@ -1,14 +1,18 @@
+import { isPh } from './placeholder';
+
 /** Lead validation, shared by the form (instant feedback) and the API route (the real
  *  check — never trust the client). Messages are PLAN §6.11 verbatim. */
 
-/** Form options (placeholders in [brackets]). Kept here, not in content.ts: whatever the
+/** Form options. Kept here, not in content.ts: whatever the
  *  form imports ships to the browser, and content.ts holds every page's copy. */
 export const NEEDS = [
   'Website (static)', 'Website (dynamic)', 'Web app', 'Quotation or warranty system',
   'WhatsApp automation', 'n8n workflow', 'SEO', 'NFC cards or tags', 'Not sure yet',
 ] as const;
 
-export const BUDGETS = ['[range 1]', '[range 2]', '[range 3]', 'Not sure yet'] as const;
+/** Fill in the ranges to show the Budget field; [bracketed] ones are left out, and with none
+ *  left the field is hidden (it is optional). */
+export const BUDGETS = ['[range 1]', '[range 2]', '[range 3]', 'Not sure yet'].filter((b) => !isPh(b));
 
 export type LeadField = 'name' | 'phone' | 'need' | 'message' | 'consent';
 export type LeadErrors = Partial<Record<LeadField, string>>;

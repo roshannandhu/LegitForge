@@ -47,6 +47,18 @@ function Seal({ d }: { d: number }) {
   );
 }
 
+/** The home-screen icon (app/apple-icon.tsx): the seal on the Forge Night ground, 180 × 180. */
+export async function sealIcon(px: number) {
+  return new ImageResponse(
+    (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', backgroundColor: T.bg, fontFamily: 'Archivo' }}>
+        <Seal d={Math.round(px * 0.86)} />
+      </div>
+    ),
+    { width: px, height: px, fonts: await loadFonts() },
+  );
+}
+
 /** label: "Service", "Case study", "Blog", or empty for the site card. */
 export async function ogImage({ label, title }: { label?: string; title: string }) {
   const titleSize = title.length > 70 ? 56 : title.length > 44 ? 66 : 78;

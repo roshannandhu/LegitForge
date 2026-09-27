@@ -19,9 +19,30 @@ Cloudflare-specific. `npm run check` is the headless-Chrome gate (see `CLAUDE.md
 `next dev`, `next build` and `next start` print a warning that `DOQueueHandler` is not exported.
 It comes from OpenNext's dev-bindings helper, which never loads `worker.ts`. It is expected and harmless.
 
-## First deploy (once)
+## Deploy (GitHub Actions)
 
-Needs a Cloudflare account on **Workers Paid** (PLAN §8.3).
+Needs a Cloudflare account on **Workers Paid** (PLAN §8.3): the Worker is about 3.7 MB compressed,
+over the free plan's 3 MB limit.
+
+`.github/workflows/deploy-cloudflare.yml` deploys on every push to `main-exh9xw` (or by hand:
+Actions → Deploy to Cloudflare → Run workflow). Its first run creates the D1 database and both R2
+buckets, applies the migrations and sets a random `HASH_SALT` (`scripts/cf-setup.mjs`); later runs
+reuse them. Once:
+
+1. Cloudflare → My Profile → API Tokens → Create Token → template **Edit Cloudflare Workers**,
+   and add **Account → D1 → Edit**.
+2. Cloudflare → R2 → enable it (once per account). Workers & Pages → note the **Account ID**.
+3. GitHub → Settings → Secrets and variables → Actions → add the secrets `CLOUDFLARE_API_TOKEN`
+   and `CLOUDFLARE_ACCOUNT_ID`.
+
+The site goes live at `https://legitforge-web.<your-subdomain>.workers.dev`, kept out of search
+(noindex) while it is on that temporary address. For the real domain: add it to the Worker
+(Workers → legitforge-web → Settings → Domains), then add the repository **variable** `SITE_URL`
+(e.g. `https://legitforge.in`) and re-run the workflow: canonicals, the sitemap and share images
+switch to it and search engines are allowed. The other secrets below (Turnstile, n8n, Access,
+GitHub) are still set with `npx wrangler secret put`.
+
+### Manual deploy (fallback, from a laptop)
 
 ```bash
 npx wrangler login
@@ -38,13 +59,12 @@ npx wrangler secret put TURNSTILE_SECRET_KEY       # from the Turnstile widget (
 npm run deploy
 ```
 
-Then, in the Cloudflare dashboard:
+Then add your domain to the Worker in the dashboard and set it with `NEXT_PUBLIC_SITE_URL` at build
+time and `vars.SITE_URL` in `wrangler.jsonc` (the workflow does both from the `SITE_URL` variable).
 
-1. Add your domain to the Worker.
-2. Set the same domain in `lib/site.ts` (`SITE.url`) and in `wrangler.jsonc` (`vars.SITE_URL`).
-3. Connect the GitHub repo with **Workers Builds**, with the deploy command `npm run deploy`, so every push to `main` deploys.
-   Add the build variable `NEXT_PUBLIC_TURNSTILE_SITE_KEY` (the widget's site key). Set it together with the
-   `TURNSTILE_SECRET_KEY` secret, never one without the other: with only the secret, every form submission fails.
+**Turnstile:** add the repository variable `NEXT_PUBLIC_TURNSTILE_SITE_KEY` (the widget's site key;
+the workflow passes it to the build) together with the `TURNSTILE_SECRET_KEY` secret, never one
+without the other: with only the secret, every form submission fails.
 
 ## Database changes
 

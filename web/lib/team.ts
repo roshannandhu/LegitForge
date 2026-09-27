@@ -3,6 +3,7 @@ import { unstable_cache } from 'next/cache';
 import { TEAM } from './content';
 import { MEMBER_DETAILS } from './pages';
 import { getEnv } from './cf';
+import { SHOW_PH } from './placeholder';
 
 /** The team for the public pages (PLAN §7.8): published team_members rows once the admin
  *  has any, otherwise TEAM + MEMBER_DETAILS. Same rules as lib/work.ts: never read during
@@ -16,7 +17,9 @@ export type Member = Card & {
   bio: string; tools: string[]; links: { label: string; href: string }[]; cardVersion: number;
 };
 
-const FALLBACK: Member[] = TEAM.map((m) => ({ ...m, ...(MEMBER_DETAILS[m.slug] ?? { bio: '', tools: [], links: [] }), cardVersion: 1 }));
+const PLACEHOLDERS: Member[] = TEAM.map((m) => ({ ...m, ...(MEMBER_DETAILS[m.slug] ?? { bio: '', tools: [], links: [] }), cardVersion: 1 }));
+/** No published members yet: nobody (the sections hide), or the placeholders when SHOW_PH. */
+const FALLBACK: Member[] = SHOW_PH ? PLACEHOLDERS : [];
 
 type Row = {
   slug: string; name: string; role: string; id_code: string; bio: string; skills: string; tools: string;
@@ -72,4 +75,4 @@ export const toCards = (team: Member[]): Card[] =>
   team.map(({ slug, idCode, name, role, initials, photo, skills, shipped, favorite, building }) => ({ slug, idCode, name, role, initials, photo, skills, shipped, favorite, building }));
 
 /** Defaults the admin imports as its starting rows. */
-export const TEAM_DEFAULTS = FALLBACK;
+export const TEAM_DEFAULTS = PLACEHOLDERS;
