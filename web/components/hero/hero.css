@@ -152,6 +152,13 @@
   .stage-fit.td { min-height: 0; aspect-ratio: 780 / 760; overflow: hidden; margin-inline: -8px; }
   .td-callouts li { font-size: calc(8px / var(--fit, .48)); line-height: 1.15; column-gap: calc(4px / var(--fit, .48)); }
 }
+/* PHONE_FIT: a touch phone's scale, in CSS so FIT_NOW (teardown-view.tsx) reads no layout before
+   first paint. The box is the page width less 16 px, in the drawing's shape: fitFor() = w / 780
+   there. tan(atan2()) turns the length ratio into a number. From ~640 px the box stops growing
+   and FIT_NOW measures; a fine pointer's scrollbar takes width, so it measures too. */
+@media (max-width: 639px) and (pointer: coarse) {
+  .td-stage { --fit: tan(atan2(100vw - 16px, 780px)); }
+}
 
 /* ------------------------------------------------------------------ the live screens
    Sized in --cq, 1 % of the screen they sit in (glass layer or phone screen): the same markup

@@ -10,7 +10,7 @@ export function Services() {
       <div className="wrap">
         <header className="section-head">
           <h2 className="type-h2">What we build</h2>
-          <p className="type-lead">Four things we build for businesses — each one shown working, not described.</p>
+          <p className="type-lead">Everything we build for businesses — each one shown working, not described.</p>
         </header>
 
         <ol className="fires">

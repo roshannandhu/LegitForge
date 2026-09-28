@@ -27,6 +27,9 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // CSS ships inside the HTML: no render-blocking stylesheet requests on first paint (PSI:
+  // ~650 ms on slow 4G mobile). Most visitors are first-time, so a separate cache helps little.
+  experimental: { inlineCss: true },
   images: { formats: ['image/avif', 'image/webp'] },
   productionBrowserSourceMaps: false,               // no source maps shipped to browsers
   // production bundles keep only console.error / console.warn (real failures)

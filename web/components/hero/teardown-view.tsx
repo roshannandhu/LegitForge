@@ -15,8 +15,11 @@ const STAGE_VARS = {
 } as unknown as React.CSSProperties;
 
 /** Sets --fit during parsing, so the stage never visibly rescales at hydration.
- *  Keep in step with the resize effect in teardown.tsx. */
-const FIT_NOW = `(function(s){var b=s.parentElement.getBoundingClientRect();if(!b.width)return;` +
+ *  Keep in step with the resize effect in teardown.tsx. Phones skip it: hero.css computes their
+ *  --fit (PHONE_FIT), because any size read here (even innerWidth) forces a layout mid-parse,
+ *  ~0.5 s before first paint on a phone. The query must match the one in hero.css. */
+const FIT_NOW = `(function(s){if(matchMedia('(max-width: 639px) and (pointer: coarse)').matches)return;` +
+  `var b=s.parentElement.getBoundingClientRect();if(!b.width)return;` +
   `s.style.setProperty('--fit',Math.min((b.width-(b.width<700?0:28))/${DESIGN.w},b.height/${DESIGN.h},1.25).toFixed(3))})` +   // = fitFor() in lib/teardown.ts
   `(document.currentScript.previousElementSibling)`;
 
@@ -42,7 +45,7 @@ export default function Teardown() {
         </ol>
 
         <div className="td-phone">
-          <Image src="/hero/phone@2x.avif" alt="A hand holding a phone: the device the diagram takes apart, layer by layer" width={1200} height={1653} priority sizes="(max-width: 767px) 40vw, 30vw" />
+          <Image src="/hero/phone@2x.avif" alt="A hand holding a phone: the device the diagram takes apart, layer by layer" width={1200} height={1653} priority sizes="(max-width: 1023px) 31vw, 200px" />
           <div className="td-screen" data-state="final" data-lead={DEFAULT_LEAD} aria-hidden="true">
             <p className="td-word">{[...WORD].map((c, i) => <span key={i}>{c === ' ' ? ' ' : c}</span>)}</p>
             {LAYERS.map((l) => <div key={l.id} className="td-final" data-for={l.id}><LayerScreen id={l.id} /></div>)}

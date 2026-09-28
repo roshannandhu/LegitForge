@@ -358,7 +358,10 @@ if (!only || only === 'admin') {
   else {
     const page = await fetch(locked + '/admin');
     const html = await page.text();
-    page.status === 404 && !html.includes('admin-nav') ? pass('/admin is a 404 without Access') : fail('admin', `/admin answered ${page.status} without Access`);
+    // markup only: the admin's stylesheet rides along in the page data (inlineCss; before it, a
+    // <link> to the same CSS), so class names in <style>/<script> are not a rendered admin
+    const markup = html.replace(/<style[\s\S]*?<\/style>|<script[\s\S]*?<\/script>/g, '');
+    page.status === 404 && !markup.includes('admin-nav') ? pass('/admin is a 404 without Access') : fail('admin', `/admin answered ${page.status} without Access`);
     /<meta name="robots" content="[^"]*noindex/.test(html) ? pass('/admin is noindex') : fail('admin', '/admin has no noindex');
     const forged = await fetch(locked + '/admin', { headers: { 'cf-access-jwt-assertion': 'e30.e30.AAAA' } });
     forged.status === 404 ? pass('/admin rejects a forged Access token') : fail('admin', `forged token got ${forged.status}`);
