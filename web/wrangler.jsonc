@@ -15,8 +15,8 @@
   "d1_databases": [
     // TODO: paste the id printed by `npx wrangler d1 create legitforge` into BOTH entries.
     // Local development and `npm run preview` work without it.
-    { "binding": "DB", "database_name": "legitforge", "database_id": "00000000-0000-0000-0000-000000000000", "migrations_dir": "migrations" },
-    { "binding": "NEXT_TAG_CACHE_D1", "database_name": "legitforge", "database_id": "00000000-0000-0000-0000-000000000000" }
+    { "binding": "DB", "database_name": "legitforge", "database_id": "24ac4e48-1dec-4e8f-a86b-f71a330c2b71", "migrations_dir": "migrations" },
+    { "binding": "NEXT_TAG_CACHE_D1", "database_name": "legitforge", "database_id": "24ac4e48-1dec-4e8f-a86b-f71a330c2b71" }
   ],
   "r2_buckets": [
     { "binding": "MEDIA", "bucket_name": "legitforge-media" },
@@ -28,7 +28,7 @@
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["DOQueueHandler"] }],
   "triggers": { "crons": ["0 3 * * *"] },     // daily cleanup at 03:00 UTC (worker.ts)
   "vars": {
-    "SITE_URL": "https://legitforge.example"   // set per deploy by scripts/cf-setup.mjs (repo variable SITE_URL, else workers.dev)
+    "SITE_URL": "https://legitforge.pages.dev"   // set per deploy by scripts/cf-setup.mjs (repo variable SITE_URL, else workers.dev)
   },
   "observability": { "enabled": true }
 }

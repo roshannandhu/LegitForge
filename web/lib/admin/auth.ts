@@ -17,12 +17,16 @@ import { GOOGLE_CLIENT_ID } from './google';
  *  the admin) plus the emails added in Admin → Access (D1 admin_emails). Nobody when both are
  *  empty. The session key is the ADMIN_SESSION_KEY secret (random; scripts/cf-setup.mjs).
  *
- *  Local development: ADMIN_DEV_BYPASS=1 in .dev.vars, and only on localhost or 127.0.0.1,
- *  so it can never pass on a real domain. */
+ *  Each Google token signs in once only (D1 admin_sign_ins, also the sign-in log), and "Sign out
+ *  everywhere" (D1 admin_security) ends every session at once. Only owners manage Access.
+ *
+ *  Local development: ADMIN_DEV_BYPASS=1 in .dev.vars, only under `next dev` and only on
+ *  localhost or 127.0.0.1, so it can never pass on a real domain or in a production build. */
 
 export const SESSION_COOKIE = '__Host-lf_admin';
 export const NONCE_COOKIE = '__Host-lf_nonce';
 export const SESSION_HOURS = 12;
+const DEV_ADMIN = 'dev@localhost';
 
 const enc = new TextEncoder(), dec = new TextDecoder();
 const b64u = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -30,22 +34,22 @@ const unb64u = (s: string) => Uint8Array.from(atob(s.replace(/-/g, '+').replace(
 const hmacKey = (secret: string) =>
   crypto.subtle.importKey('raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign', 'verify']);
 
-/** The session cookie: base64url JSON { e: email, x: expiry in ms } + "." + its HMAC-SHA256. */
+/** The session cookie: base64url JSON { e: email, i: issued, x: expiry, both ms } + "." + its HMAC-SHA256. */
 export async function signSession(email: string, secret: string, now = Date.now()) {
-  const payload = b64u(enc.encode(JSON.stringify({ e: email, x: now + SESSION_HOURS * 3600_000 })));
+  const payload = b64u(enc.encode(JSON.stringify({ e: email, i: now, x: now + SESSION_HOURS * 3600_000 })));
   const sig = new Uint8Array(await crypto.subtle.sign('HMAC', await hmacKey(secret), enc.encode(payload)));
   return `${payload}.${b64u(sig)}`;
 }
 
-/** The email in a session cookie we signed and that has not expired, else null. */
+/** A session cookie we signed and that has not expired: its email and when it was issued, else null. */
 export async function readSession(value: string | undefined, secret: string | undefined, now = Date.now()) {
   if (!value || !secret) return null;
   const [payload, sig, extra] = value.split('.');
   if (!payload || !sig || extra !== undefined) return null;
   try {
     if (!(await crypto.subtle.verify('HMAC', await hmacKey(secret), unb64u(sig), enc.encode(payload)))) return null;
-    const { e, x } = JSON.parse(dec.decode(unb64u(payload))) as { e?: unknown; x?: unknown };
-    return typeof e === 'string' && typeof x === 'number' && x > now ? e : null;
+    const { e, i, x } = JSON.parse(dec.decode(unb64u(payload))) as { e?: unknown; i?: unknown; x?: unknown };
+    return typeof e === 'string' && typeof x === 'number' && x > now ? { email: e, issued: typeof i === 'number' ? i : 0 } : null;
   } catch {
     return null;
   }
@@ -98,6 +102,11 @@ export async function ownerEmails() {
   return (env?.ADMIN_EMAILS || process.env.ADMIN_EMAILS || '').split(',').map((e) => e.trim().toLowerCase()).filter(Boolean);
 }
 
+/** Only owners may change who can sign in (Admin → Access). The dev bypass counts as one. */
+export async function isOwner(email: string) {
+  return (process.env.NODE_ENV === 'development' && email === DEV_ADMIN) || (await ownerEmails()).includes(email);
+}
+
 /** An owner, or an email added in Admin → Access. */
 export async function isAllowed(email: string) {
   if ((await ownerEmails()).includes(email)) return true;
@@ -107,14 +116,21 @@ export async function isAllowed(email: string) {
 
 /** The admin's email, or null. For route handlers: answer 403 on null. */
 export const adminIdentity = cache(async (): Promise<string | null> => {
-  const h = await headers();
   const env = await getEnv();
-  const host = (h.get('host') ?? '').replace(/:\d+$/, '');
-  const bypass = env?.ADMIN_DEV_BYPASS || process.env.ADMIN_DEV_BYPASS;
-  if (bypass === '1' && (host === 'localhost' || host === '127.0.0.1')) return 'dev@localhost';
+  // `next dev` only. NODE_ENV is inlined at build time, so a production bundle has no bypass at
+  // all, whatever .env files or variables it was built or deployed with.
+  if (process.env.NODE_ENV === 'development') {
+    const host = ((await headers()).get('host') ?? '').replace(/:\d+$/, '');
+    const bypass = env?.ADMIN_DEV_BYPASS || process.env.ADMIN_DEV_BYPASS;
+    if (bypass === '1' && (host === 'localhost' || host === '127.0.0.1')) return DEV_ADMIN;
+  }
 
-  const email = await readSession((await cookies()).get(SESSION_COOKIE)?.value, env?.ADMIN_SESSION_KEY);
-  return email && (await isAllowed(email)) ? email : null;
+  const session = await readSession((await cookies()).get(SESSION_COOKIE)?.value, env?.ADMIN_SESSION_KEY);
+  if (!session || !env?.DB) return null;
+  // "Sign out everywhere" refuses every session issued before it
+  const after = (await env.DB.prepare('SELECT sessions_after FROM admin_security WHERE id = 1').first<number>('sessions_after')) ?? 0;
+  if (session.issued <= after) return null;
+  return (await isAllowed(session.email)) ? session.email : null;
 });
 
 /** For pages and Server Actions: anyone not signed in goes to the Google sign-in page. */

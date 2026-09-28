@@ -377,6 +377,9 @@ if (!only || only === 'admin') {
       ? pass('the sign-in page shows the Google button and nothing of the admin') : fail('admin', `/admin/sign-in answered ${page.status}`);
     /<meta name="robots" content="[^"]*noindex/.test(html) ? pass('/admin/sign-in is noindex') : fail('admin', '/admin/sign-in has no noindex');
     page.headers.get('x-frame-options') === 'DENY' ? pass('no other site can frame the admin') : fail('admin', '/admin/sign-in has no X-Frame-Options: DENY');
+    const csp = page.headers.get('content-security-policy') ?? '';
+    csp.includes("frame-ancestors 'none'") && csp.includes("form-action 'self'") && !csp.includes("'unsafe-eval'")
+      ? pass('the admin enforces its content security policy') : fail('admin', `/admin/sign-in CSP: ${csp || 'none'}`);
     const up = await fetch(locked + '/api/admin/upload', { method: 'POST', body: new FormData() });
     up.status === 403 ? pass('POST /api/admin/upload is 403 signed out') : fail('admin', `upload answered ${up.status}`);
     const csv = await fetch(locked + '/admin/leads/export');

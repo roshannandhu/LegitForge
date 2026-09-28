@@ -159,6 +159,10 @@ export async function listLeads(status?: LeadStatus) {
   return (await q.all<LeadRow>()).results;
 }
 
+export async function deleteLead(id: string) {
+  await (await adminDb()).prepare('DELETE FROM leads WHERE id = ?').bind(id).run();
+}
+
 export async function setLeadStatus(id: string, status: LeadStatus) {
   await (await adminDb()).prepare('UPDATE leads SET status = ? WHERE id = ?').bind(status, id).run();
 }
@@ -366,4 +370,18 @@ export async function addAdminEmail(email: string, by: string) {
 export async function removeAdminEmail(email: string) {
   const db = await adminDb();
   await db.prepare('DELETE FROM admin_emails WHERE email = ?').bind(email).run();
+}
+
+export interface SignInRow { email: string; at: string }
+
+/** The sign-in log (one row per Google sign-in, kept 90 days), newest first. */
+export async function listSignIns(limit = 20) {
+  const db = await adminDb();
+  return (await db.prepare('SELECT email, at FROM admin_sign_ins ORDER BY at DESC LIMIT ?').bind(limit).all<SignInRow>()).results;
+}
+
+/** Refuse every session issued until now (lib/admin/auth.ts adminIdentity). */
+export async function signOutEverywhere() {
+  const db = await adminDb();
+  await db.prepare('UPDATE admin_security SET sessions_after = ? WHERE id = 1').bind(Date.now()).run();
 }

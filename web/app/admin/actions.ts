@@ -7,7 +7,7 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { revalidatePath, updateTag } from 'next/cache';
-import { ownerEmails, requireAdmin, SESSION_COOKIE } from '@/lib/admin/auth';
+import { isOwner, ownerEmails, requireAdmin, SESSION_COOKIE } from '@/lib/admin/auth';
 import * as db from '@/lib/admin/db';
 import { getEnv } from '@/lib/cf';
 import { getTeam, TEAM_DEFAULTS } from '@/lib/team';
@@ -41,7 +41,9 @@ export async function projectFromGithubAction(url: string): Promise<GithubResult
   const env = await getEnv();
   const token = env?.GITHUB_TOKEN || process.env.GITHUB_TOKEN || undefined;
   // a test fixture server, honoured only with the local admin bypass (never in production)
-  const apiBase = (env?.ADMIN_DEV_BYPASS || process.env.ADMIN_DEV_BYPASS) ? (env?.GITHUB_API_BASE || process.env.GITHUB_API_BASE || undefined) : undefined;
+  // a fixture server for local tests only: `next dev` with the bypass (production builds drop this)
+  const apiBase = process.env.NODE_ENV === 'development' && (env?.ADMIN_DEV_BYPASS || process.env.ADMIN_DEV_BYPASS)
+    ? (env?.GITHUB_API_BASE || process.env.GITHUB_API_BASE || undefined) : undefined;
   let b: Brief;
   try { b = await repoBrief(ref, { token, apiBase }); }
   catch (e) { return { error: e instanceof BriefError ? e.message : 'Couldn’t read that repository. Try again.' }; }
@@ -186,6 +188,14 @@ export async function leadStatusAction(id: string, f: FormData) {
   revalidatePath('/admin/leads');
 }
 
+/** Delete a lead for good (spam, tests). The button asks first. */
+export async function deleteLeadAction(id: string) {
+  await requireAdmin();
+  await db.deleteLead(id);
+  revalidatePath('/admin/leads');
+  revalidatePath('/admin');    // the overview's counts
+}
+
 /* ------------------------------------------------------------------ testimonials */
 export async function saveTestimonialAction(_: FormState, f: FormData): Promise<FormState> {
   await requireAdmin();
@@ -240,6 +250,7 @@ export async function refreshSiteAction(): Promise<FormState> {
 export async function importTeamAction() {
   await requireAdmin();
   await db.importMembers(TEAM_DEFAULTS);
+  updateTag('team');           // the imported people are published: the public pages show them now
   revalidatePath('/admin/team');
 }
 
@@ -381,11 +392,13 @@ export async function captureCoverAction(projectId: string): Promise<FormState> 
 
 /* ------------------------------------------------------------------ access */
 /** Admin → Access: the Google accounts that may sign in besides the owners (ADMIN_EMAILS).
- *  lib/admin/auth.ts checks this list on every request, so a removal takes effect at once. */
+ *  lib/admin/auth.ts checks this list on every request, so a removal takes effect at once.
+ *  Only owners may change it: an added admin can't add more people or lock others out. */
 const EMAIL = /^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/;
 
 export async function addAdminEmailAction(_: FormState, f: FormData): Promise<FormState> {
   const who = await requireAdmin();
+  if (!(await isOwner(who))) return { error: 'Only the owners can change who can sign in.' };
   const email = str(f, 'email', 254).toLowerCase();
   if (!EMAIL.test(email)) return { error: 'Enter the Google account’s email, like name@gmail.com.' };
   if ((await ownerEmails()).includes(email)) return { error: `${email} is an owner: it can always sign in.` };
@@ -395,7 +408,7 @@ export async function addAdminEmailAction(_: FormState, f: FormData): Promise<Fo
 }
 
 export async function removeAdminEmailAction(email: string) {
-  await requireAdmin();
+  if (!(await isOwner(await requireAdmin()))) return;
   await db.removeAdminEmail(email);
   revalidatePath('/admin/access');
 }
@@ -404,4 +417,11 @@ export async function removeAdminEmailAction(email: string) {
 export async function signOutAction() {
   (await cookies()).set(SESSION_COOKIE, '', { httpOnly: true, secure: true, sameSite: 'strict', path: '/', maxAge: 0 });
   redirect('/admin/sign-in');
+}
+
+/** Owners: end every admin session on every device (a lost phone, a shared computer), this one too. */
+export async function signOutEverywhereAction() {
+  if (!(await isOwner(await requireAdmin()))) return;
+  await db.signOutEverywhere();
+  await signOutAction();
 }

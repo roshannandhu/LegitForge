@@ -35,9 +35,13 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
   lib/admin/google.ts, email_verified, the nonce from its GET) and sets the HMAC-signed
   __Host-lf_admin cookie (ADMIN_SESSION_KEY secret). Allowed: owners in the ADMIN_EMAILS secret
   plus D1 admin_emails (Admin → Access). Every request re-checks the cookie AND the allow-list.
+  Each Google token signs in once (D1 admin_sign_ins, keyed by nonce; also the sign-in log), and
+  "Sign out everywhere" (D1 admin_security) refuses older sessions. Only owners manage Access.
+  /admin/* sends an ENFORCED CSP (next.config.ts adminCsp) and X-Frame-Options: DENY. The dev
+  bypass exists only under `next dev` (NODE_ENV check): laptop builds embed .env.local values.
   Deploy: .github/workflows/deploy-cloudflare.yml runs scripts/cf-setup.mjs (D1, R2, site URL),
-  the migrations, `npm run deploy`, the Pages deploy, then cf-setup.mjs --post (HASH_SALT and
-  ADMIN_SESSION_KEY, once).
+  the migrations, `npm run deploy`, marks the data tags changed for the new build ("Live data on
+  the new pages"), the Pages deploy, then cf-setup.mjs --post (HASH_SALT, ADMIN_SESSION_KEY, once).
   "Add from GitHub" (app/admin/projects/github-add.tsx + projectFromGithubAction): image + repo link →
   draft project; the brief is lib/admin/github.ts repoBrief (GitHub data only, no AI; numbers are
   never invented). GITHUB_TOKEN secret for private repos. The cloud sandbox's proxy blocks
@@ -98,7 +102,9 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
   public POST endpoints. Route handlers use revalidateTag('projects', { expire: 0 }); only
   actions may call updateTag.
 - lib/work.ts never reads D1 during `next build`: the dev bindings would bake local test data
-  into production pages.
+  into production pages. But the build must still TAG the pages: getProjects/getTeam/
+  getTestimonials go through atBuild (lib/build-cache.ts) at build, or updateTag() never
+  re-renders the prerendered home, /work and /team (the admin's edits never showed).
 - Never add `export const runtime = 'edge'` (OpenNext uses the Node.js runtime).
 - The Worker runs on Workers Free (3 MB compressed limit, ~2.4 MB now). A client component's
   `import()` of browser-only code (three.js, Rapier, FlipCard) sits inside

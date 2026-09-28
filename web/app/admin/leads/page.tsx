@@ -1,6 +1,7 @@
 import { requireAdmin } from '@/lib/admin/auth';
 import { LEAD_STATUSES, listLeads, type LeadStatus } from '@/lib/admin/db';
-import { leadStatusAction } from '../actions';
+import { deleteLeadAction, leadStatusAction } from '../actions';
+import { ConfirmSubmit } from '../ui';
 
 export default async function AdminLeads({ searchParams }: { searchParams: Promise<{ status?: string }> }) {
   await requireAdmin();                            // each page checks too: a layout can be skipped
@@ -24,7 +25,11 @@ export default async function AdminLeads({ searchParams }: { searchParams: Promi
             <tbody>
               {leads.map((l) => (
                 <tr key={l.id}>
-                  <td className="muted">{l.created_at.slice(0, 16).replace('T', ' ')}<br />{l.source}</td>
+                  <td className="muted">{l.created_at.slice(0, 16).replace('T', ' ')}<br />{l.source}
+                    {/* first column: on a phone the table scrolls sideways, and this stays in view */}
+                    <form action={deleteLeadAction.bind(null, l.id)} className="admin-inline admin-lead-delete">
+                      <ConfirmSubmit message={`Delete the lead from ${l.name ?? 'this person'}? This can't be undone (Export CSV first to keep a copy).`}>Delete</ConfirmSubmit>
+                    </form></td>
                   <td>{l.name ?? '—'}<br />{l.phone ? <a className="text-link" href={`https://wa.me/${l.phone.replace(/\D/g, '')}`}>{l.phone}</a> : <span className="muted">no phone</span>}
                     {l.whatsapp_consent ? <><br /><span className="pill is-on">WhatsApp OK</span></> : null}</td>
                   <td>{l.service ?? '—'}<br /><span className="muted">{l.budget ?? ''}</span></td>

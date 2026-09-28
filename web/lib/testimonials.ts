@@ -2,6 +2,7 @@ import 'server-only';
 import { unstable_cache } from 'next/cache';
 import { TESTIMONIALS } from './content';
 import { getEnv } from './cf';
+import { atBuild } from './build-cache';
 
 /** Testimonials for the Hallmarks wall (plan D #10): published rows from Admin → Testimonials,
  *  only ones the client gave written permission for, else TESTIMONIALS in lib/content.ts.
@@ -37,7 +38,8 @@ const getTestimonialsCached = unstable_cache(
   { tags: ['testimonials'] },
 );
 
-/** During `next build` the placeholders, without touching the cache: .next/cache survives between
- *  builds, and a list cached by a LOCAL server (test rows) would be baked into production pages. */
+/** During `next build` the placeholders, never D1 or a runtime cache entry (a LOCAL server's test
+ *  rows would be baked into production pages), but still tagged (lib/build-cache.ts), so the
+ *  admin's updateTag('testimonials') re-renders the prerendered pages. */
 export const getTestimonials: typeof getTestimonialsCached = (...args) =>
-  process.env.NEXT_PHASE === 'phase-production-build' ? Promise.resolve(TESTIMONIALS) : getTestimonialsCached(...args);
+  process.env.NEXT_PHASE === 'phase-production-build' ? atBuild('testimonials', TESTIMONIALS) : getTestimonialsCached(...args);

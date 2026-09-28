@@ -58,6 +58,14 @@ jobs:
       - name: Build and deploy
         run: npm run deploy
 
+      - name: Live data on the new pages
+        # The build renders no database data (lib/build-cache.ts). Marking the data tags as changed
+        # for this build (OpenNext's D1 tag cache, keyed "<build id>/<tag>") makes the first visit
+        # to each page re-render it from D1, so a deploy never hides the admin's projects or team.
+        run: |
+          NOW=$(date +%s)000; B=$(cat .next/BUILD_ID)
+          npx wrangler d1 execute legitforge --remote --command "INSERT INTO revalidations (tag, revalidatedAt, stale, expire) VALUES ('$B/projects', $NOW, $NOW, NULL), ('$B/team', $NOW, $NOW, NULL), ('$B/testimonials', $NOW, $NOW, NULL)"
+
       - name: Frontend on Pages
         run: |
           rm -rf .open-next/pages && cp -r .open-next/assets .open-next/pages

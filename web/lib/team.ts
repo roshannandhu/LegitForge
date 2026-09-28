@@ -4,6 +4,7 @@ import { TEAM } from './content';
 import { MEMBER_DETAILS } from './pages';
 import { getEnv } from './cf';
 import { SHOW_PH } from './placeholder';
+import { atBuild } from './build-cache';
 
 /** The team for the public pages (PLAN §7.8): published team_members rows once the admin
  *  has any, otherwise TEAM + MEMBER_DETAILS. Same rules as lib/work.ts: never read during
@@ -65,10 +66,11 @@ const getTeamCached = unstable_cache(
   { tags: ['team'] },
 );
 
-/** During `next build` the placeholders, without touching the cache: .next/cache survives between
- *  builds, and a list cached by a LOCAL server (test rows) would be baked into production pages. */
+/** During `next build` the placeholders, never D1 or a runtime cache entry (a LOCAL server's test
+ *  rows would be baked into production pages), but still tagged (lib/build-cache.ts), so the
+ *  admin's updateTag('team') re-renders the prerendered pages. */
 export const getTeam: typeof getTeamCached = (...args) =>
-  process.env.NEXT_PHASE === 'phase-production-build' ? Promise.resolve(FALLBACK) : getTeamCached(...args);
+  process.env.NEXT_PHASE === 'phase-production-build' ? atBuild('team', FALLBACK) : getTeamCached(...args);
 
 /** Only the fields the card components need: bios and links stay on the server. */
 export const toCards = (team: Member[]): Card[] =>

@@ -27,6 +27,23 @@ const securityHeaders = [
   },
 ];
 
+/** The admin's own policy, ENFORCED (lib/admin/auth.ts): scripts, frames and connections only from
+ *  this site and Google's sign-in, so injected code can't load or send anything elsewhere; no site
+ *  may frame it; forms post only here. `next dev` also needs 'unsafe-eval' (React's dev tools). */
+const adminCsp = [
+  "default-src 'self'",
+  `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'${process.env.NODE_ENV === 'development' ? " 'unsafe-eval'" : ''} https://accounts.google.com/gsi/client https://static.cloudflareinsights.com`,
+  'frame-src https://accounts.google.com/gsi/',
+  "img-src 'self' data: blob:",
+  "connect-src 'self' blob: https://accounts.google.com/gsi/ https://cloudflareinsights.com",
+  "style-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/style",
+  "font-src 'self'",
+  "frame-ancestors 'none'",
+  "form-action 'self'",
+  "base-uri 'none'",
+  "object-src 'none'",
+].join('; ');
+
 const nextConfig: NextConfig = {
   // CSS ships inside the HTML: no render-blocking stylesheet requests on first paint (PSI:
   // ~650 ms on slow 4G mobile). Most visitors are first-time, so a separate cache helps little.
@@ -38,8 +55,8 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       { source: '/:path*', headers: securityHeaders },
-      // no other site may frame the admin (clickjacking)
-      { source: '/admin/:path*', headers: [{ key: 'X-Frame-Options', value: 'DENY' }] },
+      // no other site may frame the admin (clickjacking), and its policy is enforced
+      { source: '/admin/:path*', headers: [{ key: 'X-Frame-Options', value: 'DENY' }, { key: 'Content-Security-Policy', value: adminCsp }] },
     ];
   },
 };

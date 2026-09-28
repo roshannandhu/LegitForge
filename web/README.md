@@ -98,7 +98,8 @@ repos; permissions: Contents and Metadata, read-only) and set it: `npx wrangler 
 Public repos work without it (GitHub allows 60 reads an hour without a token).
 
 **Locally:** run `npm run db:migrate:local`, set `ADMIN_DEV_BYPASS=1` in `.dev.vars`, run
-`npm run dev`, then open http://localhost:3000/admin. The bypass only works on localhost. To try
+`npm run dev`, then open http://localhost:3000/admin. The bypass only works under `npm run dev`
+and on localhost: production builds don't contain it. To try
 the real Google sign-in instead, leave the bypass empty and set `ADMIN_EMAILS` and
 `ADMIN_SESSION_KEY` in `.dev.vars` (the Google client allows http://localhost:3000).
 
@@ -110,8 +111,15 @@ page, Server Action and route checks that cookie and the allow-list again.
 
 - **Owners:** the Worker secret `ADMIN_EMAILS` (comma-separated). They can always sign in and
   can't be removed in the admin. Change them with `npx wrangler secret put ADMIN_EMAILS`.
-- **Everyone else:** Admin → Access. Any admin can add or remove a Google account there; a
-  removed account is out on its next click.
+- **Everyone else:** Admin → Access. The owners add or remove Google accounts there (added
+  admins can use everything else, but can't change who gets in); a removed account is out on its
+  next click.
+- **Sign-in log and "Sign out everywhere":** Admin → Access lists every sign-in of the last 90
+  days. Don't recognise one? Remove that account, or press "Sign out everywhere" (every session on
+  every device ends; everyone signs in with Google again).
+- **Hardening:** each Google sign-in token works once (a copied one is refused), the admin can't be
+  framed by other sites, and its pages enforce a content security policy that blocks scripts and
+  connections to anywhere but this site and Google's sign-in.
 - **Session key:** the Worker secret `ADMIN_SESSION_KEY`, random, set once by the deploy workflow
   (`scripts/cf-setup.mjs --post`). Replacing it signs everyone out.
 - **Google client:** Google Cloud project `legitforge-admin`, OAuth client "Legit Forge admin

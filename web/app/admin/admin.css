@@ -99,3 +99,5 @@
 .admin-access .muted { grid-column: 1; }
 .admin-access form { grid-column: 2; grid-row: 1 / span 2; }
 .admin-access .pill.is-on { color: var(--success); }   /* beats .admin-card span:last-child */
+.admin-signins { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; overflow-wrap: anywhere; }
+.admin-lead-delete { display: flex; margin-top: 8px; }
