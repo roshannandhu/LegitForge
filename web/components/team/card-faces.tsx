@@ -9,7 +9,7 @@ export function CardFront({ p }: { p: CardPerson }) {
   return (
     <div className="id-face-inner">
       <div className="id-top"><CoinMark className="id-mark" /><span className="id-code num">{p.idCode}</span></div>
-      <div className={`id-photo${p.visitor ? ' id-photo-empty' : ''}`}>
+      <div className="id-photo">
         {p.photo ? <img src={p.photo} alt="" loading="lazy" decoding="async" /> : <span>{p.initials}</span>}
       </div>
       <p className="id-name">{p.name}</p>
@@ -21,14 +21,6 @@ export function CardFront({ p }: { p: CardPerson }) {
 }
 
 export function CardBack({ p }: { p: CardPerson }) {
-  if (p.visitor) {
-    return (
-      <div className="id-face-inner id-back-inner id-back-you">
-        <p className="id-you-line">Every project starts as a blank card.</p>
-        <p className="id-you-sub">Tell us what you’re building.</p>
-      </div>
-    );
-  }
   return (
     <div className="id-face-inner id-back-inner">
       <p className="id-back-h">Skills</p>

@@ -24,7 +24,6 @@ export interface CardPerson {
   building?: string;
   /** path under /public, e.g. /team/member-one.jpg; empty = monogram */
   photo?: string;
-  visitor?: boolean;
 }
 
 const ATLAS = 2048;
@@ -88,17 +87,6 @@ function fitFont(ctx: CanvasRenderingContext2D, text: string, weight: number, px
   setFont(ctx, weight, size, family, stretch);
   while (size > 24 && ctx.measureText(text).width > max) setFont(ctx, weight, (size -= 4), family, stretch);
   return size;
-}
-
-function wrap(ctx: CanvasRenderingContext2D, text: string, max: number) {
-  const lines: string[] = [];
-  let line = '';
-  for (const word of text.split(' ')) {
-    const next = line ? `${line} ${word}` : word;
-    if (ctx.measureText(next).width > max && line) { lines.push(line); line = word; } else line = next;
-  }
-  if (line) lines.push(line);
-  return lines;
 }
 
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
@@ -176,20 +164,12 @@ function drawFront(ctx: CanvasRenderingContext2D, r: typeof FRONT, p: CardPerson
     ctx.strokeStyle = t.line;
     ctx.stroke();
   } else {
-    if (p.visitor) {
-      ctx.setLineDash([26, 18]);
-      ctx.lineWidth = 6;
-      ctx.strokeStyle = t.line;
-      ctx.stroke();
-      ctx.setLineDash([]);
-    } else {
-      ctx.fillStyle = t.surface2;
-      ctx.fill();
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = t.line;
-      ctx.stroke();
-    }
-    ctx.fillStyle = p.visitor ? t.muted : t.quench;
+    ctx.fillStyle = t.surface2;
+    ctx.fill();
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = t.line;
+    ctx.stroke();
+    ctx.fillStyle = t.quench;
     ctx.textAlign = 'center';
     setFont(ctx, 800, 300, f.sans, 'semi-expanded');
     ctx.fillText(p.initials, r.x + r.w / 2, py + ph / 2 + 8);
@@ -243,19 +223,6 @@ function drawBack(ctx: CanvasRenderingContext2D, r: typeof BACK, p: CardPerson, 
   ctx.fillStyle = t.surface;
   ctx.fillRect(r.x, r.y, r.w, r.h);
   ctx.textBaseline = 'alphabetic';
-
-  if (p.visitor) {
-    ctx.fillStyle = t.text;
-    setFont(ctx, 800, 96, f.sans, 'semi-expanded');
-    const lines = wrap(ctx, 'Every project starts as a blank card.', inner);
-    lines.forEach((l, i) => ctx.fillText(l, x0, 420 + i * 112));
-    ctx.fillStyle = t.muted;
-    setFont(ctx, 500, 54, f.sans);
-    wrap(ctx, 'Tell us what you’re building.', inner).forEach((l, i) =>
-      ctx.fillText(l, x0, 440 + lines.length * 112 + 40 + i * 66));
-    mark(ctx, x0, r.h - pad - 120, 88);
-    return;
-  }
 
   ctx.fillStyle = t.muted;
   setFont(ctx, 600, 40, f.sans);
