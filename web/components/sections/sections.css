@@ -717,58 +717,73 @@
 [data-motion="off"] .faq-item summary::after { transition: none; }
 
 /* ================================================================= quench */
+/* The two-tap brief (quench.tsx): a chat card in WhatsApp's shape. One fixed height, the thread
+   scrolls inside it, so a new message never moves the page. Transform and opacity only. */
 .quench { text-align: center; }
 .quench-inner { display: grid; justify-items: center; }
 .quench h2 { margin: 0; max-width: 18ch; }
 .quench .type-lead { margin: 16px 0 28px; max-width: 48ch; }
-.quench-or { margin: 24px 0 8px; font-size: 14px; color: var(--text-muted); }
-.lead-form {
-  position: relative; display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px;
-  width: 100%; max-width: 640px; margin-top: 16px; padding: 28px; text-align: left;
-  background: var(--surface); border: 1px solid var(--line); border-radius: 16px;
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / .06);
+.bc {
+  display: grid; grid-template-rows: auto minmax(0, 1fr) auto; width: 100%; max-width: 560px; height: 520px;
+  text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: 20px; overflow: hidden;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .06), 0 18px 40px rgb(0 0 0 / .16);
 }
-@media (min-width: 768px) { .lead-form { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 767px) { .lead-form { padding: 20px; } }
-.field { display: grid; gap: 6px; align-content: start; }
-.field-wide { grid-column: 1 / -1; }
-.field label { font-size: 15px; font-weight: 600; }
-.optional { font-weight: 400; color: var(--text-muted); }
-.field input[type="text"], .field input[type="tel"], .field select, .field textarea {
-  width: 100%; min-height: 48px; padding: 10px 14px; border-radius: 8px;
-  border: 1px solid var(--line); background: var(--bg); color: var(--text);
-  font: inherit; font-size: 16px;                /* 16px minimum: below this iOS zooms on focus (§4.8) */
+@media (max-width: 767px) { .bc { height: 500px; border-radius: 16px; } }
+.bc-head { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: var(--surface-2); border-bottom: 1px solid var(--line); }
+.bc-avatar { width: 40px; height: 40px; flex: none; border-radius: 50%; }
+.bc-avatar svg { display: block; width: 100%; height: 100%; }
+.bc[data-done] .bc-avatar { animation: bc-flip 700ms cubic-bezier(.3, .7, .3, 1) 250ms both; }   /* the seal turns once: brief ready */
+.bc-who { display: grid; line-height: 1.3; }
+.bc-who b { font-size: 16px; }
+.bc-who span { font-size: 14px; color: var(--success); }
+.bc-log { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 16px; list-style: none; overflow-y: auto; overscroll-behavior: contain; }
+.bc-msg {
+  max-width: 85%; padding: 10px 14px; border-radius: 16px; font-size: 16px; line-height: 1.4; text-wrap: pretty;
+  animation: bc-in 280ms cubic-bezier(.2, .9, .3, 1.2) both;
 }
-.field textarea { min-height: 112px; resize: vertical; }
-.field input:focus-visible, .field select:focus-visible, .field textarea:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
-.field [aria-invalid="true"] { border-color: var(--danger); }
-.field-error { margin: 0; font-size: 14px; color: var(--danger); }
-.field-check { grid-template-columns: auto minmax(0, 1fr); align-items: start; column-gap: 12px; }
-.field-check input { width: 22px; height: 22px; margin: 1px 0 0; accent-color: var(--accent); }
-.field-check label { padding: 1px 0 12px; font-weight: 400; }   /* label extends the checkbox's target */
-.field-check .field-error { grid-column: 1 / -1; }
-.form-actions { display: grid; justify-items: start; gap: 10px; }
-.form-promise { margin: 0; font-size: 14px; color: var(--text-muted); }
-.form-alert { grid-column: 1 / -1; margin: 0; padding: 12px 16px; border: 1px solid var(--danger); border-radius: 8px; font-size: 15px; }
-.form-sent { display: grid; justify-items: center; gap: 16px; max-width: 520px; margin-top: 16px; }
-.form-sent p { margin: 0; }
-/* the quench (plan D #12): steam rises, the seal lands, RECEIVED is stamped across it */
-.sent-seal { position: relative; display: grid; place-items: center; width: 160px; height: 120px; }
-.sent-coin { width: 84px; height: 84px; border-radius: 50%; box-shadow: 0 0 0 6px color-mix(in oklab, var(--heat-color) 16%, transparent), 0 10px 24px rgb(0 0 0 / .3);
-  animation: seal-land 520ms cubic-bezier(.3, 1.4, .5, 1) 250ms both; }
-.sent-coin svg { display: block; width: 100%; height: 100%; }
-.sent-stamp { position: absolute; bottom: 4px; padding: 4px 12px 3px; font-size: 16px; background: var(--bg); animation: stamp-hit 380ms cubic-bezier(.2, .9, .3, 1.3) 700ms both; }
-.steam { position: absolute; top: 18px; width: 38px; height: 38px; border-radius: 50%; background: radial-gradient(closest-side, color-mix(in oklab, var(--text) 30%, transparent), transparent);
-  filter: blur(6px); opacity: 0; animation: steam-rise 1400ms ease-out both; }
-.steam:nth-child(1) { left: 40px; } .steam:nth-child(2) { left: 64px; animation-delay: 120ms; } .steam:nth-child(3) { left: 88px; animation-delay: 240ms; }
-@keyframes steam-rise { 0% { opacity: 0; transform: translateY(20px) scale(.6); } 30% { opacity: .9; } 100% { opacity: 0; transform: translateY(-40px) scale(1.6); } }
-@keyframes seal-land { from { opacity: 0; transform: scale(1.8) rotate(-30deg); } to { opacity: 1; transform: none; } }
-@keyframes stamp-hit { from { opacity: 0; transform: scale(2); } to { opacity: 1; transform: none; } }
-[data-motion="off"] :is(.sent-coin, .sent-stamp) { animation: none; }
-[data-motion="off"] .steam { display: none; }
-.sent-by { font-size: var(--step-lead); }
-.sent-note { color: var(--text-muted); font-size: 15px; }
-.hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+.bc-bot { align-self: flex-start; background: var(--bg); border: 1px solid var(--line); border-bottom-left-radius: 4px; transform-origin: 0 100%; }
+.bc-me { align-self: flex-end; background: var(--accent); color: var(--accent-ink); font-weight: 600; border-bottom-right-radius: 4px; transform-origin: 100% 100%; }
+.bc-log > .bc-msg:first-child { animation: none; }                      /* the greeting is there from the first paint */
+.bc-ticks { margin-left: 8px; font-size: 14px; font-weight: 700; letter-spacing: -.12em; opacity: .55; transition: opacity 200ms, color 200ms; }
+.bc-ticks.read { opacity: 1; color: #A8DDFF; }                          /* read: on the light theme's blue bubble */
+.dark .bc-ticks.read { color: #0B4A8F; }                                /* ... and on the dark theme's orange one */
+.bc-typing {
+  align-self: flex-start; display: flex; gap: 4px; padding: 15px 16px; background: var(--bg);
+  border: 1px solid var(--line); border-radius: 16px; border-bottom-left-radius: 4px; animation: bc-in 200ms ease-out both;
+}
+.bc-typing i { width: 7px; height: 7px; border-radius: 50%; background: var(--text-muted); animation: bc-dot 1s ease-in-out infinite; }
+.bc-typing i:nth-of-type(2) { animation-delay: 150ms; }
+.bc-typing i:nth-of-type(3) { animation-delay: 300ms; }
+.bc-replies { display: grid; gap: 8px; padding: 12px 16px 16px; border-top: 1px solid var(--line); }
+.bc-replies:empty { display: none; }
+.bc-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.bc-chips button {
+  min-height: 44px; padding: 0 16px; border: 1px solid color-mix(in oklab, var(--accent) 55%, var(--line)); border-radius: 999px;
+  background: transparent; color: var(--text); font: inherit; font-size: 15px; font-weight: 600; cursor: pointer;
+  animation: bc-chip 300ms ease-out both; animation-delay: calc(var(--i) * 35ms);
+  transition: background-color 150ms, transform 120ms var(--ease-forge);
+}
+.bc-chips button:hover { background: color-mix(in oklab, var(--accent) 14%, transparent); }
+.bc-chips button:active { transform: scale(.96); }
+.bc-chips button:focus-visible, .bc-restart:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.bc-send { display: flex; width: 100%; animation: bc-strike 420ms cubic-bezier(.2, .9, .3, 1.3) both; }
+.bc-send svg { width: 20px; height: 20px; flex: none; }
+.bc-send::after {                                                       /* one sheen across it as it lands */
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(100deg, transparent 30%, rgb(255 255 255 / .35) 50%, transparent 70%);
+  transform: translateX(-120%); animation: bc-sheen 1100ms ease-out 450ms both;
+}
+.bc-restart { justify-self: center; min-height: 44px; padding: 0 12px; border: 0; background: none; color: var(--text-muted); font: inherit; font-size: 15px; text-decoration: underline; cursor: pointer; }
+.quench-direct { margin: 20px 0 0; font-size: 15px; color: var(--text-muted); }
+.quench-direct a { color: var(--text); text-decoration: underline; text-underline-offset: 3px; }
+@keyframes bc-in { from { opacity: 0; transform: translateY(8px) scale(.96); } }
+@keyframes bc-dot { 0%, 60%, 100% { opacity: .4; transform: none; } 30% { opacity: 1; transform: translateY(-3px); } }
+@keyframes bc-chip { from { opacity: 0; transform: translateY(6px); } }
+@keyframes bc-strike { 0% { opacity: 0; transform: scale(.92); } 60% { opacity: 1; transform: scale(1.03); } 100% { transform: none; } }
+@keyframes bc-sheen { to { transform: translateX(120%); } }
+@keyframes bc-flip { to { transform: rotateY(360deg); } }
+[data-motion="off"] .bc :is(.bc-msg, .bc-typing, .bc-typing i, .bc-chips button, .bc-send, .bc-avatar) { animation: none; }
+[data-motion="off"] .bc-send::after { display: none; }
 
 /* ============================================================ trust strip */
 /* Four promises forged as the Cleave opens (trust-strip.tsx). "go" = the list was punched AND

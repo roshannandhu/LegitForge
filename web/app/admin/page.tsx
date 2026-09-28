@@ -12,7 +12,7 @@ export default async function AdminHome() {
   return (
     <>
       <h1 className="type-h2">Admin</h1>
-      <p className="admin-lead">Add a project in under two minutes: create it, paste a screenshot, publish. Leads from the contact form land here first.</p>
+      <p className="admin-lead">Add a project in under two minutes: create it, paste a screenshot, publish. New enquiries arrive on WhatsApp; Leads keeps the ones the old form saved.</p>
       <ul className="admin-cards">
         {cards.map((c) => (
           <li key={c.href}><a className="admin-card" href={c.href}><span className="num">{c.n}</span><span>{c.label}</span></a></li>

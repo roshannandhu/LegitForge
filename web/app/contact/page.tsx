@@ -7,11 +7,11 @@ import '../pages.css';
 
 export const metadata: Metadata = {
   title: 'Contact',
-  description: `Chat with us on WhatsApp or send your project details. We reply within ${SITE.replyWithin} during working hours, and every project starts with a fixed quote.`,
+  description: `Tell us what you need in two taps and the chat opens in WhatsApp. We reply within ${SITE.replyWithin} during working hours, and every project starts with a fixed quote.`,
   alternates: { canonical: '/contact' },
 };
 
-/** /contact (PLAN §7.5): the quench form plus hours and the reply promise. */
+/** /contact (PLAN §7.5): the two-tap WhatsApp brief (Quench) plus hours and the reply promise. */
 export default function Contact() {
   return (
     <>

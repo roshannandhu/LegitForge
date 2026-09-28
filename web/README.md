@@ -43,7 +43,11 @@ the Worker `legitforge-web` through a service binding. Storage is R2 and D1. The
 public address of its own (`workers_dev: false` in wrangler.jsonc). For a real domain later: add it to the Pages project (Workers & Pages → legitforge → Custom domains),
 then add the repository **variable** `SITE_URL` (e.g. `https://legitforge.in`) and re-run the
 workflow: canonicals, the sitemap and share images switch to it. The other secrets below
-(Turnstile, n8n, Access, GitHub) are still set with `npx wrangler secret put`.
+(Access, GitHub) are still set with `npx wrangler secret put`.
+
+**Contact** is WhatsApp only: the two-tap brief (components/sections/quench.tsx) opens WhatsApp
+with the visitor's answers, and nothing is stored on the site. It needs `whatsappNumber` in
+lib/site.ts (digits only, with the country code); without it every WhatsApp link is a dead end.
 
 ### Manual deploy (fallback, from a laptop)
 
@@ -55,19 +59,12 @@ npx wrangler r2 bucket create legitforge-next-cache
 npm run db:migrate:remote
 
 npx wrangler secret put HASH_SALT                  # any long random string
-npx wrangler secret put N8N_LEAD_WEBHOOK_URL       # optional until n8n WF-2 exists
-npx wrangler secret put N8N_SHARED_KEY             # optional until n8n WF-2 exists
-npx wrangler secret put TURNSTILE_SECRET_KEY       # from the Turnstile widget (dashboard → Turnstile)
 
 npm run deploy
 ```
 
 Then add your domain to the Worker in the dashboard and set it with `NEXT_PUBLIC_SITE_URL` at build
 time and `vars.SITE_URL` in `wrangler.jsonc` (the workflow does both from the `SITE_URL` variable).
-
-**Turnstile:** add the repository variable `NEXT_PUBLIC_TURNSTILE_SITE_KEY` (the widget's site key;
-the workflow passes it to the build) together with the `TURNSTILE_SECRET_KEY` secret, never one
-without the other: with only the secret, every form submission fails.
 
 ## Database changes
 

@@ -327,6 +327,31 @@ if (!only || only === 'flow') {
   await ctx.close();
 }
 
+// The two-tap brief (quench.tsx), on a phone: two taps, then "Open in WhatsApp" goes to wa.me with
+// both answers written out, and the card never changes height. Fails while SITE.whatsappNumber is
+// empty: WhatsApp is the only way to reach us.
+if (!only || only === 'brief') {
+  console.log('\ncontact brief');
+  const ctx = await browser.newContext({ viewport: { width: 375, height: 812 }, isMobile: true, hasTouch: true });
+  await ctx.addInitScript(() => localStorage.setItem('lf-intro-seen', '1'));
+  await ctx.addInitScript(LITE_INIT, LITE);
+  const page = await ctx.newPage();
+  await page.goto(BASE + '/contact', { waitUntil: 'networkidle' });
+  const card = page.locator('.bc');
+  const before = await card.boundingBox();
+  await page.locator('.bc-chips button', { hasText: 'WhatsApp bot' }).click();
+  await page.locator('.bc-chips button', { hasText: 'This month' }).click();   // waits out the bot's typing
+  const send = page.locator('a.bc-send');
+  await send.waitFor({ timeout: 5000 });
+  const href = (await send.getAttribute('href')) ?? '';
+  const after = await card.boundingBox();
+  const msg = decodeURIComponent(href.split('text=')[1] ?? '');
+  /^https:\/\/wa\.me\/\d{8,15}\?text=/.test(href) ? pass('opens WhatsApp (wa.me and a number)') : fail('brief', `the send link is "${href}": set SITE.whatsappNumber in lib/site.ts`);
+  msg.includes('a WhatsApp bot') && msg.includes('this month') ? pass('the message carries both answers') : fail('brief', `message: ${JSON.stringify(msg)}`);
+  before && after && Math.abs(before.height - after.height) < 1 ? pass('the card keeps its height (nothing below moves)') : fail('brief', `card height ${before?.height} → ${after?.height}`);
+  await ctx.close();
+}
+
 // Font coverage: Archivo is one self-hosted subset (app/fonts/archivo-latin.woff2). Every Latin
 // character a page shows must be in it, or it would silently render in the fallback font.
 // Symbols Google never served in Archivo (arrows, ★, ✓, box drawing) stay system glyphs, as before.

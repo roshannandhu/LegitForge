@@ -21,7 +21,7 @@ export default function Privacy() {
 
       <h2>What we collect</h2>
       <ul>
-        <li><strong>The contact form:</strong> your name, WhatsApp number, what you need, an optional budget and message, and your consent to be contacted on WhatsApp.</li>
+        <li><strong>The quick brief:</strong> the two answers you tap (what you need and when) stay in your browser. They reach us only if you send them to us on WhatsApp.</li>
         <li><strong>WhatsApp conversations:</strong> your number and the messages you send us.</li>
         <li><strong>Site analytics:</strong> anonymous page views through Cloudflare Web Analytics, which uses no cookies and stores no personal data.</li>
       </ul>
@@ -41,9 +41,8 @@ export default function Privacy() {
       <table className="legal-table">
         <thead><tr><th scope="col">Data</th><th scope="col">Kept for</th></tr></thead>
         <tbody>
-          <tr><th scope="row">Enquiries (leads)</th><td>Until we no longer need them to answer or follow up your enquiry, then deleted</td></tr>
+          <tr><th scope="row">WhatsApp enquiries</th><td>Until we no longer need them to answer or follow up your enquiry, then deleted</td></tr>
           <tr><th scope="row">Live-test sessions</th><td>24 hours</td></tr>
-          <tr><th scope="row">Rate-limit records</th><td>24 hours</td></tr>
           <tr><th scope="row">Analytics</th><td>13 months, with no personal data</td></tr>
           <tr><th scope="row">IP addresses and phone numbers in logs</th><td>Never stored in raw form</td></tr>
         </tbody>

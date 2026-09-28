@@ -13,7 +13,7 @@ export function CtaBand({ title = 'Tell us what you want to build.', text, waTex
         </p>
         <div className="page-actions">
           <a className="btn btn-primary" href={waLink(waText)}>Chat on WhatsApp</a>
-          <a className="btn btn-ghost" href="/contact">Send project details</a>
+          <a className="btn btn-ghost" href="/contact">Start a quick brief</a>
         </div>
       </div>
     </section>
