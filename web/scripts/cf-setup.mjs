@@ -3,7 +3,7 @@
  *  Idempotent: finds or creates what wrangler.jsonc names, so every run can call it.
  *
  *    node scripts/cf-setup.mjs            before the build: D1, R2, the Pages project, the site URL
- *    node scripts/cf-setup.mjs --post     after the deploy: the HASH_SALT Worker secret, once
+ *    node scripts/cf-setup.mjs --post     after the deploy: the HASH_SALT and ADMIN_SESSION_KEY Worker secrets, once
  *    node scripts/cf-setup.mjs --dry-run  print what it would do (no token needed)
  *
  *  Needs CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID. Writes the D1 id and SITE_URL into
@@ -25,7 +25,7 @@ const { GITHUB_ENV, SITE_URL } = process.env;
 
 if (dry) {
   console.log(post
-    ? `would set the HASH_SALT secret on ${WORKER} if it is missing`
+    ? `would set the HASH_SALT and ADMIN_SESSION_KEY secrets on ${WORKER} if they are missing`
     : `would find or create D1 "${D1}", R2 ${BUCKETS.join(', ')} and Pages "${PAGES}", write the D1 id and SITE_URL into wrangler.jsonc,\n` +
       `and export NEXT_PUBLIC_SITE_URL (${SITE_URL || `https://${PAGES}.pages.dev`}) to the build`);
   process.exit(0);
@@ -33,11 +33,14 @@ if (dry) {
 requireCredentials();
 
 if (post) {
-  const secrets = await cf('GET', `/workers/scripts/${WORKER}/secrets`);
-  if (secrets.some((s) => s.name === 'HASH_SALT')) console.log('HASH_SALT: already set');
-  else {
-    await putSecret('HASH_SALT', randomBytes(32).toString('hex'));
-    console.log('HASH_SALT: set (random, never printed)');
+  const set = new Set((await cf('GET', `/workers/scripts/${WORKER}/secrets`)).map((s) => s.name));
+  // random, set once: HASH_SALT (rate limiter), ADMIN_SESSION_KEY (signs the admin sign-in cookie)
+  for (const name of ['HASH_SALT', 'ADMIN_SESSION_KEY']) {
+    if (set.has(name)) console.log(`${name}: already set`);
+    else {
+      await putSecret(name, randomBytes(32).toString('hex'));
+      console.log(`${name}: set (random, never printed)`);
+    }
   }
   process.exit(0);
 }

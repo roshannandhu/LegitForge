@@ -30,10 +30,14 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
   dynamicParams = false): the font files in assets/og are read at build time, never on Workers.
 - Admin (PLAN §7.8): app/admin (pages, Server Actions in actions.ts), lib/admin (auth, D1 queries),
   app/api/admin/upload (R2), app/media (serves R2 images). Setup: README "Admin".
+  Sign-in is Google only (lib/admin/auth.ts; no Cloudflare Access): /admin/sign-in renders
+  Google's button, POST /api/admin/session verifies the ID token (Google's keys, the client ID in
+  lib/admin/google.ts, email_verified, the nonce from its GET) and sets the HMAC-signed
+  __Host-lf_admin cookie (ADMIN_SESSION_KEY secret). Allowed: owners in the ADMIN_EMAILS secret
+  plus D1 admin_emails (Admin → Access). Every request re-checks the cookie AND the allow-list.
   Deploy: .github/workflows/deploy-cloudflare.yml runs scripts/cf-setup.mjs (D1, R2, site URL),
-  the migrations, `npm run deploy`, then scripts/cf-access.mjs (Access app + one-email policy on
-  /admin and /api/admin, and the ACCESS_* / ADMIN_EMAILS secrets). The app re-checks the Access
-  JWT and ADMIN_EMAILS in lib/admin/auth.ts.
+  the migrations, `npm run deploy`, the Pages deploy, then cf-setup.mjs --post (HASH_SALT and
+  ADMIN_SESSION_KEY, once).
   "Add from GitHub" (app/admin/projects/github-add.tsx + projectFromGithubAction): image + repo link →
   draft project; the brief is lib/admin/github.ts repoBrief (GitHub data only, no AI; numbers are
   never invented). GITHUB_TOKEN secret for private repos. The cloud sandbox's proxy blocks

@@ -1,4 +1,4 @@
-/** The Cloudflare REST API for the deploy scripts (cf-setup.mjs, cf-access.mjs), with
+/** The Cloudflare REST API for the deploy scripts (cf-setup.mjs), with
  *  CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID from the environment. Never logs a body. */
 
 export const WORKER = 'legitforge-web';

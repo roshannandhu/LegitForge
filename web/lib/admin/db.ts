@@ -349,3 +349,21 @@ export async function renameCredits(from: string, to: string | null) {
   });
   if (updates.length) await db.batch(updates);
 }
+
+/* ------------------------------------------------------------------ access */
+export interface AdminEmailRow { email: string; added_by: string; added_at: string }
+
+export async function listAdminEmails() {
+  const db = await adminDb();
+  return (await db.prepare('SELECT email, added_by, added_at FROM admin_emails ORDER BY added_at, email').all<AdminEmailRow>()).results;
+}
+
+export async function addAdminEmail(email: string, by: string) {
+  const db = await adminDb();
+  await db.prepare('INSERT INTO admin_emails (email, added_by) VALUES (?, ?) ON CONFLICT (email) DO NOTHING').bind(email, by).run();
+}
+
+export async function removeAdminEmail(email: string) {
+  const db = await adminDb();
+  await db.prepare('DELETE FROM admin_emails WHERE email = ?').bind(email).run();
+}

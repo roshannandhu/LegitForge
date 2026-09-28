@@ -6,7 +6,8 @@ import createMDX from '@next/mdx';
  *  check` (ONLY=seo) fails on any violation on every page, so switching to enforcing is then one
  *  line: rename the key to 'Content-Security-Policy'.
  *  'wasm-unsafe-eval' and connect-src blob: are for the 3D team cards (Rapier's WebAssembly
- *  physics, and three.js loading the card model and textures from blob URLs). */
+ *  physics, and three.js loading the card model and textures from blob URLs).
+ *  accounts.google.com/gsi: Google's sign-in button on /admin/sign-in (lib/admin/auth.ts). */
 const securityHeaders = [
   { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains' },
   { key: 'X-Content-Type-Options', value: 'nosniff' },
@@ -16,11 +17,11 @@ const securityHeaders = [
     key: 'Content-Security-Policy-Report-Only',
     value: [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://challenges.cloudflare.com https://static.cloudflareinsights.com",
-      'frame-src https://challenges.cloudflare.com',
+      "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://challenges.cloudflare.com https://static.cloudflareinsights.com https://accounts.google.com/gsi/client",
+      'frame-src https://challenges.cloudflare.com https://accounts.google.com/gsi/',
       "img-src 'self' data: blob:",
-      "connect-src 'self' blob: https://cloudflareinsights.com",
-      "style-src 'self' 'unsafe-inline'",
+      "connect-src 'self' blob: https://cloudflareinsights.com https://accounts.google.com/gsi/",
+      "style-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/style",
       "font-src 'self'",
     ].join('; '),
   },
@@ -35,7 +36,11 @@ const nextConfig: NextConfig = {
   // production bundles keep only console.error / console.warn (real failures)
   compiler: { removeConsole: process.env.NODE_ENV === 'production' ? { exclude: ['error', 'warn'] } : false },
   async headers() {
-    return [{ source: '/:path*', headers: securityHeaders }];
+    return [
+      { source: '/:path*', headers: securityHeaders },
+      // no other site may frame the admin (clickjacking)
+      { source: '/admin/:path*', headers: [{ key: 'X-Frame-Options', value: 'DENY' }] },
+    ];
   },
 };
 

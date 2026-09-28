@@ -98,25 +98,28 @@ repos; permissions: Contents and Metadata, read-only) and set it: `npx wrangler 
 Public repos work without it (GitHub allows 60 reads an hour without a token).
 
 **Locally:** run `npm run db:migrate:local`, set `ADMIN_DEV_BYPASS=1` in `.dev.vars`, run
-`npm run dev`, then open http://localhost:3000/admin. The bypass only works on localhost.
+`npm run dev`, then open http://localhost:3000/admin. The bypass only works on localhost. To try
+the real Google sign-in instead, leave the bypass empty and set `ADMIN_EMAILS` and
+`ADMIN_SESSION_KEY` in `.dev.vars` (the Google client allows http://localhost:3000).
 
-**In production,** Cloudflare Access protects it, and the app checks the Access token again.
-The deploy workflow sets it all up (`scripts/cf-access.mjs`) once the site has its own domain:
+**In production,** only approved Google accounts get in (`lib/admin/auth.ts`). /admin sends
+everyone else to `/admin/sign-in`, which shows Google's own "Sign in with Google" button. The
+server checks Google's signed ID token itself (Google's keys, this site's client ID, a verified
+email, a one-time nonce), then sets a signed, HttpOnly session cookie for 12 hours. Every admin
+page, Server Action and route checks that cookie and the allow-list again.
 
-1. Cloudflare → Zero Trust: open it once, choose a team name and the Free plan.
-2. Add **Access: Apps and Policies → Edit** and **Access: Organizations, Identity Providers, and
-   Groups → Edit** to the `CLOUDFLARE_API_TOKEN` (My Profile → API Tokens → edit the token).
-3. GitHub → Settings → Secrets and variables → Actions → Variables: add `ADMIN_EMAIL` (your Google
-   address; comma-separate several) and `SITE_URL` (your domain). Re-run the workflow.
+- **Owners:** the Worker secret `ADMIN_EMAILS` (comma-separated). They can always sign in and
+  can't be removed in the admin. Change them with `npx wrangler secret put ADMIN_EMAILS`.
+- **Everyone else:** Admin → Access. Any admin can add or remove a Google account there; a
+  removed account is out on its next click.
+- **Session key:** the Worker secret `ADMIN_SESSION_KEY`, random, set once by the deploy workflow
+  (`scripts/cf-setup.mjs --post`). Replacing it signs everyone out.
+- **Google client:** Google Cloud project `legitforge-admin`, OAuth client "Legit Forge admin
+  sign-in" (Web application). Its client ID is public and lives in `lib/admin/google.ts`; no client
+  secret is used. A new address for the site (a custom domain) must be added to the client's
+  Authorised JavaScript origins, or the button won't load there.
 
-Sign-in is a one-time PIN sent to that email. For a "Sign in with Google" button instead, create an
-OAuth client in Google Cloud Console (APIs & Services → Credentials → OAuth client ID → Web
-application; redirect URI `https://<team>.cloudflareaccess.com/cdn-cgi/access/callback`; keep the
-consent screen in Testing with your address as the only test user) and add its ID and secret as
-the repository **secrets** `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`. Either way only
-`ADMIN_EMAIL` gets in: the Access policy allows only it, and the app checks `ADMIN_EMAILS` again.
-
-Without both secrets, /admin is a 404 for everyone. If you change data outside the admin
+With no owners and no one added in Access, nobody can sign in. If you change data outside the admin
 (for example with `wrangler d1 execute`), press Admin → Site → "Refresh site content". Published projects replace the
 placeholders on the home page and /work. Draft previews are at `/admin/preview/<slug>`.
 

@@ -347,8 +347,8 @@ if (!only || only === 'glyphs') {
     : fail('glyphs', `not in app/fonts/archivo-latin.woff2: ${[...missing].map(([ch, p]) => `"${ch}" U+${ch.codePointAt(0).toString(16).toUpperCase()} (${p})`).join(', ')} — regenerate it (README "Fonts")`);
 }
 
-// Admin (PLAN §7.8): locked to anyone without a valid Cloudflare Access JWT. The dev bypass
-// only works on localhost, so these requests go to this machine's network address instead.
+// Admin (PLAN §7.8): Google sign-in only (lib/admin/auth.ts). The dev bypass only works on
+// localhost, so these requests go to this machine's network address instead.
 if (!only || only === 'admin') {
   console.log('\nadmin access');
   const { networkInterfaces } = await import('node:os');
@@ -356,21 +356,39 @@ if (!only || only === 'admin') {
   const locked = ip ? BASE.replace(/localhost|127\.0\.0\.1/, ip) : null;
   if (!locked || locked === BASE) console.log('  · skipped: no network address to test from (the bypass allows localhost)');
   else {
-    const page = await fetch(locked + '/admin');
+    const toSignIn = async (path, init = {}) => {
+      const r = await fetch(locked + path, { ...init, redirect: 'manual' });
+      return r.status === 307 && (r.headers.get('location') ?? '').endsWith('/admin/sign-in') ? true : `${r.status} ${r.headers.get('location') ?? ''}`;
+    };
+    for (const path of ['/admin', '/admin/access', '/admin/projects', '/admin/preview/project-one']) {
+      const r = await toSignIn(path);
+      r === true ? pass(`${path} sends visitors to the Google sign-in`) : fail('admin', `${path} answered ${r} when signed out`);
+    }
+    // a session cookie we didn't sign (any email, far-off expiry) is worth nothing
+    const forged = `__Host-lf_admin=${Buffer.from(JSON.stringify({ e: 'roshannandhu1100@gmail.com', x: 9e12 })).toString('base64url')}.AAAA`;
+    const f = await toSignIn('/admin', { headers: { cookie: forged } });
+    f === true ? pass('/admin rejects a forged session cookie') : fail('admin', `forged cookie got ${f}`);
+    const page = await fetch(locked + '/admin/sign-in');
     const html = await page.text();
-    // markup only: the admin's stylesheet rides along in the page data (inlineCss; before it, a
-    // <link> to the same CSS), so class names in <style>/<script> are not a rendered admin
+    // markup only: the admin's stylesheet rides along in the page data (inlineCss), so class
+    // names in <style>/<script> are not a rendered admin
     const markup = html.replace(/<style[\s\S]*?<\/style>|<script[\s\S]*?<\/script>/g, '');
-    page.status === 404 && !markup.includes('admin-nav') ? pass('/admin is a 404 without Access') : fail('admin', `/admin answered ${page.status} without Access`);
-    /<meta name="robots" content="[^"]*noindex/.test(html) ? pass('/admin is noindex') : fail('admin', '/admin has no noindex');
-    const forged = await fetch(locked + '/admin', { headers: { 'cf-access-jwt-assertion': 'e30.e30.AAAA' } });
-    forged.status === 404 ? pass('/admin rejects a forged Access token') : fail('admin', `forged token got ${forged.status}`);
+    page.status === 200 && markup.includes('admin-google') && !markup.includes('admin-nav')
+      ? pass('the sign-in page shows the Google button and nothing of the admin') : fail('admin', `/admin/sign-in answered ${page.status}`);
+    /<meta name="robots" content="[^"]*noindex/.test(html) ? pass('/admin/sign-in is noindex') : fail('admin', '/admin/sign-in has no noindex');
+    page.headers.get('x-frame-options') === 'DENY' ? pass('no other site can frame the admin') : fail('admin', '/admin/sign-in has no X-Frame-Options: DENY');
     const up = await fetch(locked + '/api/admin/upload', { method: 'POST', body: new FormData() });
-    up.status === 403 ? pass('POST /api/admin/upload is 403 without Access') : fail('admin', `upload answered ${up.status}`);
+    up.status === 403 ? pass('POST /api/admin/upload is 403 signed out') : fail('admin', `upload answered ${up.status}`);
     const csv = await fetch(locked + '/admin/leads/export');
-    csv.status === 403 ? pass('/admin/leads/export is 403 without Access') : fail('admin', `export answered ${csv.status}`);
-    const prev = await fetch(locked + '/admin/preview/project-one');
-    prev.status === 404 ? pass('draft preview is a 404 without Access') : fail('admin', `preview answered ${prev.status}`);
+    csv.status === 403 ? pass('/admin/leads/export is 403 signed out') : fail('admin', `export answered ${csv.status}`);
+    const signIn = (origin, credential) => fetch(locked + '/api/admin/session', {
+      method: 'POST', headers: { origin, 'content-type': 'application/json' }, body: JSON.stringify({ credential }),
+    });
+    const fake = await signIn(locked, 'eyJhbGciOiJSUzI1NiIsImtpZCI6IngifQ.e30.AAAA');
+    fake.status === 401 && !fake.headers.get('set-cookie')?.includes('lf_admin=e')
+      ? pass('a forged Google token gets no session') : fail('admin', `forged Google token got ${fake.status}`);
+    const cross = await signIn('https://evil.example', 'x');
+    cross.status === 403 ? pass('sign-in refuses posts from other sites') : fail('admin', `cross-site sign-in got ${cross.status}`);
   }
 }
 

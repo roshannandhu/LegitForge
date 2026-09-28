@@ -4,9 +4,10 @@
  *  public POST endpoints, whatever page they are rendered on. Writes that change the public
  *  site call updateTag('projects') so the pages re-render from D1. */
 
+import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { revalidatePath, updateTag } from 'next/cache';
-import { requireAdmin } from '@/lib/admin/auth';
+import { ownerEmails, requireAdmin, SESSION_COOKIE } from '@/lib/admin/auth';
 import * as db from '@/lib/admin/db';
 import { getEnv } from '@/lib/cf';
 import { getTeam, TEAM_DEFAULTS } from '@/lib/team';
@@ -376,4 +377,31 @@ export async function captureCoverAction(projectId: string): Promise<FormState> 
   refreshPublic();
   revalidatePath(`/admin/projects/${projectId}`);
   return { ok: 'Captured: the laptop view is now the cover, and the phone view is in the gallery.' };
+}
+
+/* ------------------------------------------------------------------ access */
+/** Admin → Access: the Google accounts that may sign in besides the owners (ADMIN_EMAILS).
+ *  lib/admin/auth.ts checks this list on every request, so a removal takes effect at once. */
+const EMAIL = /^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/;
+
+export async function addAdminEmailAction(_: FormState, f: FormData): Promise<FormState> {
+  const who = await requireAdmin();
+  const email = str(f, 'email', 254).toLowerCase();
+  if (!EMAIL.test(email)) return { error: 'Enter the Google account’s email, like name@gmail.com.' };
+  if ((await ownerEmails()).includes(email)) return { error: `${email} is an owner: it can always sign in.` };
+  await db.addAdminEmail(email, who);
+  revalidatePath('/admin/access');
+  return { ok: `${email} can now sign in with Google.` };
+}
+
+export async function removeAdminEmailAction(email: string) {
+  await requireAdmin();
+  await db.removeAdminEmail(email);
+  revalidatePath('/admin/access');
+}
+
+/** Sign out. The one action without requireAdmin(): it only ever removes access. */
+export async function signOutAction() {
+  (await cookies()).set(SESSION_COOKIE, '', { httpOnly: true, secure: true, sameSite: 'strict', path: '/', maxAge: 0 });
+  redirect('/admin/sign-in');
 }
