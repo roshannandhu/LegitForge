@@ -145,5 +145,5 @@ export const FAQ = [
     a: 'Yes, for some routine code, the same way we use any tool. Every line is read, tested and owned by one of us, and nothing ships that we could not explain to you.' },
 ];
 
-/* quench §6.11: the brief's replies (NEEDS, WHEN) live in components/sections/quench.tsx,
-   because it ships them to the browser and this file must not. */
+/* quench §6.11: the form options (NEEDS, BUDGETS) live in lib/lead.ts, next to their
+   validator, because the form ships them to the browser and this file must not. */

@@ -19,7 +19,7 @@ export default function ServicesIndex() {
       <PageHead
         crumbs={[{ name: 'Services', href: '/services' }]}
         title="What we build, and who it’s for"
-        lead="Often combined: the website or app your customers see, the WhatsApp that answers them, and the workflows that move the data behind both."
+        lead="Three kinds of work, often combined: the website or app your customers see, the WhatsApp that answers them, and the workflows that move the data behind both."
       />
 
       <section className="page-block wrap" aria-label="Services">

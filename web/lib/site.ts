@@ -5,7 +5,7 @@
 export const SITE = {
   name: 'Legit Forge',
   /** Set at build time by the deploy workflow (scripts/cf-setup.mjs): the real domain once the
-   *  SITE_URL repo variable exists, else the Pages address (legitforge.pages.dev). */
+   *  SITE_URL repo variable exists, else the workers.dev address. */
   url: process.env.NEXT_PUBLIC_SITE_URL || 'https://legitforge.example',
   /** Empty = not printed anywhere (footer, legal pages, structured data) until filled in. */
   city: '',
@@ -13,8 +13,7 @@ export const SITE = {
   legalName: '',
   taxId: '',
   email: 'hello@legitforge.example',          // TODO
-  /** E.164 digits only, e.g. "919876543210". Required: WhatsApp is the only way in (the brief in
-   *  quench.tsx opens it). Empty = every WhatsApp link falls back to /#contact, a dead end. */
+  /** E.164 digits only, e.g. "919876543210". Empty = WhatsApp links fall back to /#contact. */
   whatsappNumber: '',
   whatsappText: "Hi Legit Forge, I'd like to talk about a project.",
   /** Must stay true — it is printed as a promise (§18.6). */

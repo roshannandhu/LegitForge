@@ -111,11 +111,8 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
 - D1 enforces foreign keys: clear what points at a row before deleting it (lib/admin/db.ts
   deleteProject clears favourites and credits). Image R2 keys are content hashes and can be
   shared by two rows: delete the object only when no row still uses it. One cover per project.
-- Contact is WhatsApp only (the owner's call, 28 Sep): the Quench section is a two-tap brief
-  (quench.tsx) that opens WhatsApp with the answers written out. Nothing is stored and there is
-  no form or lead API; D1's leads table and Admin → Leads keep what the old form saved. The
-  card has a fixed height (the thread scrolls inside it) so a message never shifts the page.
-  SITE.whatsappNumber must be set: `npm run check` fails the brief without it.
+- A lead is stored before anything else happens to it. Alerts (n8n) run in ctx.waitUntil
+  after the response, so an outage there never loses a lead.
 - Copy lives in lib/content.ts (home) and lib/pages.ts (inner pages: services, case studies,
   member bios); pages pass it to client components as props.
   Importing content.ts into a 'use client' file ships all of it to the browser.
