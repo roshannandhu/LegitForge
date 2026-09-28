@@ -11,9 +11,10 @@ import { discardDraftAction, projectFromGithubAction } from '../actions';
 import { fetchRepoData, parseRepo } from '@/lib/admin/github';
 import { measure, type Picked } from './[id]/image-manager';
 
-/** The repo's data read by THIS browser, as JSON for the server; undefined when it can't be (a
- *  private repo, or a network or limit problem), and the server reads GitHub itself. The admin's
- *  own connection has its own GitHub allowance; the Worker's shared Cloudflare IPs rarely do. */
+/** The repo's data read by THIS browser from GitHub's API (it adds the languages), as JSON for the
+ *  server; undefined when it can't be (a private repo, or the API is out of requests, as it often
+ *  is on a shared mobile network), and the server reads the public repo page instead
+ *  (lib/admin/github.ts serverRepoData). A limit is never shown to the owner. */
 async function readInBrowser(url: string) {
   const ref = parseRepo(url);
   if (!ref) return undefined;
@@ -31,6 +32,7 @@ export function GithubAdd() {
   const [url, setUrl] = useState('');
   const [step, setStep] = useState<'' | 'reading' | 'uploading' | 'opening'>('');
   const [error, setError] = useState('');
+  const [offerName, setOfferName] = useState(false);   // GitHub can't be read: "Create from the name only"
   const fileRef = useRef<HTMLInputElement>(null);
 
   const take = async (file: File | null | undefined) => {
@@ -55,14 +57,14 @@ export function GithubAdd() {
     return () => document.removeEventListener('paste', onPaste);
   }, []);
 
-  const create = async () => {
-    setError('');
+  const create = async (fromName = false) => {
+    setError(''); setOfferName(false);
     if (!picked) { setError('Add the project’s image first: paste a screenshot or choose a file.'); fileRef.current?.focus(); return; }
     if (!url.trim()) { setError('Paste the GitHub link.'); return; }
     setStep('reading');
-    const fetched = await readInBrowser(url.trim());
-    const made = await projectFromGithubAction(url.trim(), fetched).catch(() => ({ error: 'Couldn’t reach the server. Try again.' }));
-    if ('error' in made) { setError(made.error); setStep(''); return; }
+    const fetched = fromName ? undefined : await readInBrowser(url.trim());
+    const made = await projectFromGithubAction(url.trim(), fetched, fromName).catch(() => ({ error: 'Couldn’t reach the server. Try again.', nameOnly: false }));
+    if ('error' in made) { setError(made.error); setOfferName(!!made.nameOnly); setStep(''); return; }
 
     setStep('uploading');
     const f = new FormData();
@@ -116,12 +118,17 @@ export function GithubAdd() {
             onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if (!busy) create(); } }} disabled={busy} />
         </label>
         <div className="admin-actions">
-          <button type="button" className="btn btn-primary" onClick={create} disabled={busy} aria-busy={busy}>
+          <button type="button" className="btn btn-primary" onClick={() => create()} disabled={busy} aria-busy={busy}>
             {step === 'reading' ? 'Reading GitHub…' : step === 'uploading' ? 'Uploading image…' : step === 'opening' ? 'Opening…' : 'Create project'}
           </button>
         </div>
       </div>
       {error && <p className="admin-msg is-error" role="alert">{error}</p>}
+      {offerName && !busy && (
+        <div className="admin-actions">
+          <button type="button" className="btn btn-ghost" onClick={() => create(true)}>Create from the name only</button>
+        </div>
+      )}
     </section>
   );
 }

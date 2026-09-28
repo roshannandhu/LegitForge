@@ -166,31 +166,97 @@ async function gh<T>(path: string, o: BriefOptions, raw = false): Promise<{ stat
   return { status: res.status, data: !raw && res.ok ? (JSON.parse(text) as T) : null, text };
 }
 
-export class BriefError extends Error {}
+/** A message for the owner. `nameOnly`: the repo can't be read, so offer "Create from the name only". */
+export class BriefError extends Error {
+  nameOnly: boolean;
+  constructor(message: string, nameOnly = false) { super(message); this.nameOnly = nameOnly; }
+}
+/** The API is out of requests (403/429) or unreachable. Never shown: the caller reads the repo page. */
+class ApiBusy extends BriefError {}
 
-/** Reads the repo and writes the brief. Throws BriefError with a message for the owner. */
+/** Reads the repo and writes the brief (server). Throws BriefError with a message for the owner. */
 export async function repoBrief(ref: RepoRef, o: BriefOptions = {}): Promise<Brief> {
-  return briefFrom(await fetchRepoData(ref, o));
+  return briefFrom(await serverRepoData(ref, o));
 }
 
-/** The three GitHub answers for a repo. Works on the server (with GITHUB_TOKEN) and in the
- *  admin's browser. Why the browser: without a token GitHub allows 60 requests an hour PER IP
- *  ADDRESS, and a Worker's outgoing IPs are shared with other Cloudflare customers, so they are
- *  nearly always used up ("rate-limiting us"). The admin's own connection has its own 60.
- *  Throws BriefError with a message for the owner. */
+/** On the server: the API only with GITHUB_TOKEN (5,000 an hour; private repos too), else
+ *  GitHub's public repo page (fetchRepoPage), which the API's hourly limit doesn't cover. Without
+ *  a token the API allows 60 an hour PER IP, and the Worker's IPs are shared by every Cloudflare
+ *  customer (and a phone's by everyone on its mobile network), so the API is usually out: never
+ *  make the owner wait for it. */
+export async function serverRepoData(ref: RepoRef, o: BriefOptions = {}): Promise<RepoData> {
+  if (o.token || o.apiBase) {
+    try { return await fetchRepoData(ref, o); }
+    catch (e) { if (!(e instanceof ApiBusy)) throw e; }
+  }
+  let page: RepoData | null;
+  try { page = await fetchRepoPage(ref, o.fetchImpl); }
+  catch { throw new BriefError('GitHub didn’t answer just now. Try again, or create the project from its name and fill in the rest.', true); }
+  if (!page) throw new BriefError(`GitHub shows no public repository at ${ref.owner}/${ref.repo}: it is private, or the link is wrong. Make it public on GitHub and try again, or create the project from its name and fill in the rest.`, true);
+  return page;
+}
+
+/** A public repo without the API: the repo page's own data (the embedded JSON GitHub's page is
+ *  built from: description, website, topics, created date, README file name) and the raw README
+ *  (raw.githubusercontent.com). Neither counts against the API's hourly limit. No languages
+ *  there: the stack comes from the topics and the README. null when GitHub has no public repo
+ *  at that address (private or missing); throws when the page can't be read. Server only:
+ *  github.com sends no CORS headers. */
+export async function fetchRepoPage(ref: RepoRef, fetchImpl: typeof fetch = fetch): Promise<RepoData | null> {
+  const res = await fetchImpl(`https://github.com/${ref.owner}/${ref.repo}`, {
+    headers: { accept: 'text/html', 'user-agent': 'legitforge-admin' }, cache: 'no-store',
+  });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`github.com answered ${res.status}`);
+  const json = /<script type="application\/json" data-target="react-app\.embeddedData">([\s\S]*?)<\/script>/.exec(await res.text())?.[1];
+  const p = json ? (JSON.parse(json) as { payload?: Record<string, any> }).payload : null; // eslint-disable-line @typescript-eslint/no-explicit-any
+  const about = p?.sidebarAbout, r = p?.codeViewLayoutRoute?.repo;
+  const name = str(r?.name, 100), owner = str(r?.ownerLogin, 39);
+  if (!about || !name || !owner) throw new Error('GitHub’s page has changed');
+  if (r.private === true || about.repo?.isPrivate === true) return null;
+
+  const files: unknown[] = Array.isArray(p?.codeViewRepoRoute?.tree?.items) ? p.codeViewRepoRoute.tree.items : [];
+  const readmeName = files.map((i) => str((i as { name?: unknown })?.name, 100)).find((n) => n && /^readme(\.(md|markdown|mdx|txt))?$/i.test(n));
+  const readme = readmeName
+    ? await fetchImpl(`https://raw.githubusercontent.com/${owner}/${name}/HEAD/${encodeURIComponent(readmeName)}`, { cache: 'no-store' })
+        .then((x) => (x.ok ? x.text() : '')).catch(() => '')
+    : '';
+  const topics = Array.isArray(about.topics) ? about.topics.map((t: { name?: unknown }) => str(t?.name, 50)).filter(Boolean).slice(0, 20) as string[] : [];
+  return {
+    repo: {
+      name, full_name: `${owner}/${name}`, html_url: `https://github.com/${owner}/${name}`, private: false,
+      description: str(about.description, 1000), homepage: str(about.website, 300), topics, language: null,
+      created_at: str(r.createdAt, 40) ?? '',
+    },
+    languages: null,
+    readme: readme.slice(0, 200_000),
+  };
+}
+
+/** When GitHub can't be read (a private repo): a brief from the link alone, for the owner to fill in. */
+export const nameOnly = (ref: RepoRef): RepoData => ({
+  repo: { name: ref.repo, full_name: `${ref.owner}/${ref.repo}`, html_url: `https://github.com/${ref.owner}/${ref.repo}`,
+    description: null, homepage: null, topics: [], language: null, created_at: '', private: true },
+  languages: null,
+  readme: '',
+});
+
+/** The three GitHub API answers for a repo: in the admin's browser (public repos; its own
+ *  connection may still have API requests left, and the API adds the languages), or on the server
+ *  with GITHUB_TOKEN (serverRepoData). Throws BriefError; ApiBusy when the API is out or down. */
 export async function fetchRepoData(ref: RepoRef, o: BriefOptions = {}): Promise<RepoData> {
   const { token } = o;
   const base = `/repos/${ref.owner}/${ref.repo}`;
   let repo: Awaited<ReturnType<typeof gh<Repo>>>;
   try { repo = await gh<Repo>(base, o); }
-  catch { throw new BriefError('Couldn’t reach GitHub. Check the connection and try again.'); }
+  catch { throw new ApiBusy('GitHub’s API is unreachable.'); }
   if (repo.status === 404 || repo.status === 401) {
     throw new BriefError(token
-      ? `GitHub can't find ${ref.owner}/${ref.repo}, or the token can't read it. Check the link and the token's repository access.`
-      : `GitHub can't find ${ref.owner}/${ref.repo}. If it is private, add the GITHUB_TOKEN secret (README → Admin).`);
+      ? `GitHub can't find ${ref.owner}/${ref.repo}, or the token can't read it. Check the link and the token's repository access, or create the project from its name and fill in the rest.`
+      : `GitHub can't find ${ref.owner}/${ref.repo}: it is private, or the link is wrong.`, true);
   }
-  if (repo.status === 403 || repo.status === 429) throw new BriefError('GitHub is limiting requests right now. Try again in a few minutes, or set GITHUB_TOKEN (README → Admin) so it never happens.');
-  if (!repo.data) throw new BriefError(`GitHub answered ${repo.status}. Try again in a moment.`);
+  if (repo.status === 403 || repo.status === 429 || repo.status >= 500) throw new ApiBusy(`GitHub’s API answered ${repo.status}.`);
+  if (!repo.data) throw new ApiBusy(`GitHub’s API answered ${repo.status}.`);
 
   const [langs, readme] = await Promise.all([
     gh<Record<string, number>>(`${base}/languages`, o).catch(() => ({ status: 0, data: null, text: '' })),

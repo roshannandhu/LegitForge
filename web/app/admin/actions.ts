@@ -12,7 +12,7 @@ import * as db from '@/lib/admin/db';
 import { getEnv } from '@/lib/cf';
 import { getTeam, TEAM_DEFAULTS } from '@/lib/team';
 import type { WorkCategory } from '@/lib/pages';
-import { BriefError, briefFrom, parseRepo, repoBrief, repoDataFrom, type Brief } from '@/lib/admin/github';
+import { BriefError, briefFrom, nameOnly, parseRepo, repoBrief, repoDataFrom, type Brief } from '@/lib/admin/github';
 import { companyFromForm } from '@/lib/company';
 
 const str = (f: FormData, k: string, max = 2000) => String(f.get(k) ?? '').trim().slice(0, max);
@@ -33,25 +33,28 @@ function refreshPublic() {
 /** "Add from GitHub": the repo link becomes a DRAFT project with its brief filled in
  *  (lib/admin/github.ts). The browser then uploads the cover to /api/admin/upload and opens
  *  the editor; the owner checks it and presses Publish. */
-export type GithubResult = { id: string; title: string; alt: string } | { error: string };
+export type GithubResult = { id: string; title: string; alt: string } | { error: string; nameOnly?: boolean };
 
 /** `fetched`: the repo's data as the admin's browser read it from GitHub (github-add.tsx), used
- *  when it checks out (repoDataFrom); else the server reads GitHub itself (needed for private
- *  repos, with GITHUB_TOKEN). */
-export async function projectFromGithubAction(url: string, fetched?: string): Promise<GithubResult> {
+ *  when it checks out (repoDataFrom); else the server reads GitHub itself (serverRepoData: the
+ *  public repo page, or the API with GITHUB_TOKEN for private repos). `fromName`: the owner chose
+ *  "Create from the name only" after GitHub couldn't be read (a private repo). */
+export async function projectFromGithubAction(url: string, fetched?: string, fromName = false): Promise<GithubResult> {
   await requireAdmin();
   const ref = parseRepo(String(url ?? ''));
   if (!ref) return { error: 'That isn’t a GitHub repository link. It looks like https://github.com/owner/repo.' };
   const given = typeof fetched === 'string' && fetched.length < 400_000 ? repoDataFrom(fetched, ref) : null;
   const env = await getEnv();
   const token = env?.GITHUB_TOKEN || process.env.GITHUB_TOKEN || undefined;
-  // a test fixture server, honoured only with the local admin bypass (never in production)
   // a fixture server for local tests only: `next dev` with the bypass (production builds drop this)
   const apiBase = process.env.NODE_ENV === 'development' && (env?.ADMIN_DEV_BYPASS || process.env.ADMIN_DEV_BYPASS)
     ? (env?.GITHUB_API_BASE || process.env.GITHUB_API_BASE || undefined) : undefined;
   let b: Brief;
-  try { b = given ? briefFrom(given) : await repoBrief(ref, { token, apiBase }); }
-  catch (e) { return { error: e instanceof BriefError ? e.message : 'Couldn’t read that repository. Try again.' }; }
+  try { b = fromName === true ? briefFrom(nameOnly(ref)) : given ? briefFrom(given) : await repoBrief(ref, { token, apiBase }); }
+  catch (e) {
+    return e instanceof BriefError ? { error: e.message, nameOnly: e.nameOnly }
+      : { error: 'Couldn’t read that repository. Try again, or create the project from its name.', nameOnly: true };
+  }
 
   let slug = b.slugBase;
   for (let n = 2; await db.slugTaken(slug); n++) slug = `${b.slugBase.slice(0, 55)}-${n}`;

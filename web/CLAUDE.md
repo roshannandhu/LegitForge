@@ -45,10 +45,13 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
   "Add from GitHub" (app/admin/projects/github-add.tsx + projectFromGithubAction): image + repo link →
   draft project; the brief is lib/admin/github.ts repoBrief (GitHub data only, no AI; numbers are
   never invented). The ADMIN'S BROWSER reads public repos (fetchRepoData, browser: true) and sends
-  the data; the server checks it (repoDataFrom) and writes the brief (briefFrom). A Worker's shared
-  Cloudflare IPs are nearly always over GitHub's 60/hour unauthenticated limit, so never move the
-  fetch back to the server without a token. The server reads GitHub itself only when the browser
-  can't (private repos, with the GITHUB_TOKEN secret). The cloud sandbox's proxy blocks
+  the data; the server checks it (repoDataFrom) and writes the brief (briefFrom). When the browser
+  can't (API out of requests: a phone's mobile network shares one IP), the server reads GitHub
+  itself (serverRepoData): the API only with GITHUB_TOKEN, else the public repo PAGE (fetchRepoPage:
+  its embedded react-app JSON + the raw README), which the API's 60/hour limit doesn't cover. The
+  owner must never see a rate-limit message (their rule): an unreadable or private repo offers
+  "Create from the name only" (BriefError.nameOnly). If GitHub reshapes the page, fetchRepoPage
+  throws and that offer appears; re-probe sidebarAbout / codeViewLayoutRoute. The cloud sandbox's proxy blocks
   api.github.com: test with a fixture server via GITHUB_API_BASE (only `next dev` with ADMIN_DEV_BYPASS).
 - Projects on public pages come from lib/work.ts: published D1 rows, else nothing (sections hide,
   /work shows an empty state). The placeholders in content.ts/pages.ts show only in a build made

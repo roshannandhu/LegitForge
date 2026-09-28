@@ -31,7 +31,7 @@ export default async function AdminAccess() {
               <span className="pill is-on">Owner</span>
             </li>
           ))}
-          {added.map((a) => (
+          {added.filter((a) => !owners.includes(a.email)).map((a) => (   // an owner also added here shows once
             <li key={a.email} className="admin-card admin-access">
               <strong>{a.email}</strong>
               <span className="muted">Added by {a.added_by}, {a.added_at.slice(0, 10)}</span>
