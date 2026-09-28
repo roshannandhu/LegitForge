@@ -51,7 +51,8 @@ const RUNS = [
 /** Runs in the page. The §4.8 gate, measured rather than eyeballed. */
 function audit(PH) {
   const vw = innerWidth;
-  const skip = '.projects, .lanyards, .stage-fit, .hp, .skip-link, .phone-menu, .sr-only, .team-canvas, .intro, .logoloop, .ag';   // a clipped marquee; accordion panels clip their details
+  // a clipped marquee; accordion panels clip their details; the compare frame clips its static half (slid by transform)
+  const skip = '.projects, .lanyards, .stage-fit, .hp, .skip-link, .phone-menu, .sr-only, .team-canvas, .intro, .logoloop, .ag, .compare-static';
   const name = (el) => el.tagName.toLowerCase() + (el.classList.length ? '.' + [...el.classList].join('.') : '');
   const escapees = [];
   document.querySelectorAll('body *').forEach((el) => {

@@ -27,6 +27,9 @@ export interface CardPerson {
 }
 
 const ATLAS = 2048;
+/** Where a portrait photo is cropped from, top 0 to bottom 1: 0.22 keeps a headshot's hair and
+ *  face in the card's wide frame. Keep in step with .id-photo img object-position (sections.css). */
+const FACE_Y = 0.22;
 const FRONT = { x: 0, y: 0, w: ATLAS / 2, h: Math.round(ATLAS * 0.755) };
 const BACK = { x: ATLAS / 2, y: 0, w: ATLAS / 2, h: Math.round(ATLAS * 0.757) };
 
@@ -149,7 +152,9 @@ function drawFront(ctx: CanvasRenderingContext2D, r: typeof FRONT, p: CardPerson
   ctx.fillText(p.idCode, r.x + r.w - pad, 212);
   ctx.textAlign = 'left';
 
-  // photo frame: the photo, cover-fit, or a monogram until one exists
+  // photo frame: the photo, cover-fit, or a monogram until one exists. The frame is wider than
+  // tall, so a portrait photo is cropped vertically: around its upper part (FACE_Y), where a
+  // headshot's face is, never its middle (a tall photo lost the eyes and forehead that way)
   const py = 300, ph = 640;
   roundRect(ctx, x0, py, inner, ph, 40);
   if (photo) {
@@ -157,7 +162,7 @@ function drawFront(ctx: CanvasRenderingContext2D, r: typeof FRONT, p: CardPerson
     const w = photo.naturalWidth * s, h = photo.naturalHeight * s;
     ctx.save();
     ctx.clip();
-    ctx.drawImage(photo, x0 + (inner - w) / 2, py + (ph - h) / 2, w, h);
+    ctx.drawImage(photo, x0 + (inner - w) / 2, py + (ph - h) * FACE_Y, w, h);
     ctx.restore();
     roundRect(ctx, x0, py, inner, ph, 40);
     ctx.lineWidth = 3;

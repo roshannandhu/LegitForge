@@ -3,7 +3,7 @@ import { unstable_cache } from 'next/cache';
 import { TEAM } from './content';
 import { MEMBER_DETAILS } from './pages';
 import { getEnv } from './cf';
-import { SHOW_PH } from './placeholder';
+import { isPh, SHOW_PH } from './placeholder';
 import { atBuild } from './build-cache';
 
 /** The team for the public pages (PLAN §7.8): published team_members rows once the admin
@@ -43,11 +43,16 @@ export async function teamFromDb(includeHidden: boolean): Promise<Member[] | nul
     ]);
     const shipped = (slug: string) => (projects.results as { team: string }[])
       .filter((p) => { try { return (JSON.parse(p.team) as { slug: string }[]).some((t) => t.slug === slug); } catch { return false; } }).length;
-    return (members.results as Row[]).map((r) => ({
-      slug: r.slug, idCode: r.id_code, name: r.name, role: r.role, initials: r.initials || monogram(r.name),
+    // public pages never print [bracketed] placeholders (lib/placeholder.ts): an imported default
+    // the owner hasn't filled in yet ("[Role]") shows as empty, and an unnamed person not at all
+    const real = (s: string | null | undefined) => (s && !isPh(s) ? s : '');
+    const rows = (members.results as Row[]).filter((r) => includeHidden || !isPh(r.name));
+    return rows.map((r) => ({
+      slug: r.slug, idCode: r.id_code, name: r.name, role: includeHidden ? r.role : real(r.role), initials: r.initials || monogram(r.name),
       photo: r.photo_key ? `/media/${r.photo_key}?v=${r.card_version}` : '',
-      skills: list(r.skills), shipped: String(shipped(r.slug)), favorite: r.favorite ?? '—', building: r.building ?? '',
-      bio: r.bio, tools: list(r.tools), cardVersion: r.card_version,
+      skills: list(r.skills).filter((s) => includeHidden || !isPh(s)), shipped: String(shipped(r.slug)), favorite: r.favorite ?? '—',
+      building: includeHidden ? r.building ?? '' : real(r.building),
+      bio: includeHidden ? r.bio : real(r.bio), tools: list(r.tools).filter((s) => includeHidden || !isPh(s)), cardVersion: r.card_version,
       links: ([['LinkedIn', r.linkedin_url], ['GitHub', r.github_url], ['Website', r.website_url]] as const)
         .filter(([, href]) => href).map(([label, href]) => ({ label, href: href! })),
     }));

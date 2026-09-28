@@ -209,7 +209,7 @@ export function Team({ team, head = true }: { team: Card[]; head?: boolean }) {
                       back={<CardBack p={p} />}
                       draggable={fine}
                       tiltMax={8}
-                      glareOpacity={0.18}
+                      glareOpacity={0.06}
                       hoverScale={1.02}
                       perspective={1100}
                       stiffness={170}

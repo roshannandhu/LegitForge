@@ -54,8 +54,14 @@ export default function TeamLanyards({ people, strip, stage, flipped, onToggleFl
   const [range, setRange] = useState([0, Math.min(people.length, 6) - 1]);
   // plan D #9: once the cards have dropped in, every card swings the same way together, once
   const [wave, setWave] = useState(0);
+  // How the cards arrive, decided once, when the first cards are ready. Off screen: they swing in
+  // the first time the section appears (the entrance). ON screen (a phone that reached the team
+  // before its 3D was ready, 28 Sep): the 2D cards are already there, so the 3D ones appear
+  // hanging still in the same place and the 400 ms cross-fade is the whole change. Swinging in
+  // over the 2D cards read as one ID card flickering into another.
+  const arrival = useRef(null);
   useEffect(() => {
-    if (!visible || !band || wave) return;
+    if (!visible || !band || wave || arrival.current !== 'swing') return;
     const t = setTimeout(() => setWave(1), 1400);
     return () => clearTimeout(t);
   }, [visible, band, wave]);
@@ -73,7 +79,8 @@ export default function TeamLanyards({ people, strip, stage, flipped, onToggleFl
     const inView = () => {
       raf = 0;
       const lis = el.querySelectorAll('.lanyard');
-      const w = lis[0]?.offsetWidth || 280;
+      // one card's column plus the gap between columns (laptops have a 64px gap)
+      const w = lis.length > 1 ? lis[1].offsetLeft - lis[0].offsetLeft : lis[0]?.offsetWidth || 280;
       const first = Math.max(0, Math.floor(el.scrollLeft / w) - 1);
       const last = Math.min(people.length - 1, Math.ceil((el.scrollLeft + el.clientWidth) / w) + 1);
       setRange((r) => (r[0] === first && r[1] === last ? r : [first, last]));
@@ -134,6 +141,7 @@ export default function TeamLanyards({ people, strip, stage, flipped, onToggleFl
     const p = people[i];
     if (p && atlases.current.has(p.id) && cols[i] != null) shown.push({ p, i });
   }
+  if (arrival.current === null && band && shown.length) arrival.current = visible ? 'still' : 'swing';
 
   return (
     <div className="team-canvas" aria-hidden="true">
@@ -167,7 +175,7 @@ export default function TeamLanyards({ people, strip, stage, flipped, onToggleFl
         <Physics gravity={[0, -40, 0]} timeStep={1 / 60} paused={!visible}>
           {band && shown.length > 0 && (
             <Suspense fallback={null}>
-              <Bands shown={shown} cols={cols} atlases={atlases.current} band={band} flipped={flipped} onToggleFlip={onToggleFlip} highlighted={highlighted} wave={wave} />
+              <Bands shown={shown} cols={cols} atlases={atlases.current} band={band} flipped={flipped} onToggleFlip={onToggleFlip} highlighted={highlighted} wave={wave} still={visible} />
               <Ready onReady={onReady} />
             </Suspense>
           )}
@@ -207,7 +215,7 @@ function Ready({ onReady }) {
 /** One band per card near the view, anchored over the centre of its column. The strip's
  *  content starts at the canvas's left edge, so column px map straight to world x (the camera
  *  adds the scroll). */
-function Bands({ shown, cols, atlases, band, flipped, onToggleFlip, highlighted, wave }) {
+function Bands({ shown, cols, atlases, band, flipped, onToggleFlip, highlighted, wave, still }) {
   const size = useThree((s) => s.size);
   const y = size.height / 2 / PX - HEAD / PX - TOP;
   return shown.map(({ p, i }) => (
@@ -220,18 +228,23 @@ function Bands({ shown, cols, atlases, band, flipped, onToggleFlip, highlighted,
       highlighted={highlighted === p.id}
       onToggleFlip={() => onToggleFlip(p.id)}
       wave={wave}
+      still={still}
     />
   ));
 }
 
-function Band({ anchor, atlas, bandTexture, flipped, highlighted, onToggleFlip, wave, maxSpeed = 50, minSpeed = 0 }) {
+function Band({ anchor, atlas, bandTexture, flipped, highlighted, onToggleFlip, wave, still, maxSpeed = 50, minSpeed = 0 }) {
   const band = useRef(), fixed = useRef(), j1 = useRef(), j2 = useRef(), j3 = useRef(), card = useRef();
   const vec = useMemo(() => new THREE.Vector3(), []);
   const dir = useMemo(() => new THREE.Vector3(), []);
   const segmentProps = { type: 'dynamic', canSleep: true, colliders: false, angularDamping: 4, linearDamping: 4 };
   const { nodes, materials } = useGLTF(CARD_URL, false); // false: no Draco, so no decoder fetched from a CDN
-  // bodies start laid out sideways from the anchor; when physics un-pauses they swing down
+  // bodies start laid out sideways from the anchor, so when physics un-pauses they swing down
+  // (the entrance); a card that mounts while the section is on screen starts hanging at rest
+  // instead, straight down from its anchor, where its 2D card already is (no swing-in)
   const [start] = useState(() => anchor);
+  const [hang] = useState(() => !!still);
+  const at = (n) => (hang ? [start[0], start[1] - SEG * n, 0] : [start[0] + SEG * n, start[1], 0]);
   const [curve] = useState(
     () => new THREE.CatmullRomCurve3([new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()]),
   );
@@ -318,16 +331,17 @@ function Band({ anchor, atlas, bandTexture, flipped, highlighted, onToggleFlip, 
   return (
     <>
       <RigidBody ref={fixed} {...segmentProps} type="fixed" position={start} />
-      <RigidBody position={[start[0] + SEG, start[1], 0]} ref={j1} {...segmentProps}>
+      <RigidBody position={at(1)} ref={j1} {...segmentProps}>
         <BallCollider args={[0.1]} />
       </RigidBody>
-      <RigidBody position={[start[0] + SEG * 2, start[1], 0]} ref={j2} {...segmentProps}>
+      <RigidBody position={at(2)} ref={j2} {...segmentProps}>
         <BallCollider args={[0.1]} />
       </RigidBody>
-      <RigidBody position={[start[0] + SEG * 3, start[1], 0]} ref={j3} {...segmentProps}>
+      <RigidBody position={at(3)} ref={j3} {...segmentProps}>
         <BallCollider args={[0.1]} />
       </RigidBody>
-      <RigidBody position={[start[0] + SEG * 4, start[1], 0]} ref={card} {...segmentProps} type={dragged ? 'kinematicPosition' : 'dynamic'}>
+      {/* hanging: the card's pivot (1.5 above its centre, useSphericalJoint above) sits on j3 */}
+      <RigidBody position={hang ? [start[0], start[1] - SEG * 3 - 1.5, 0] : at(4)} ref={card} {...segmentProps} type={dragged ? 'kinematicPosition' : 'dynamic'}>
         <CuboidCollider args={[0.8, 1.125, 0.01]} />
         <group
           scale={2.25}
@@ -353,8 +367,9 @@ function Band({ anchor, atlas, bandTexture, flipped, highlighted, onToggleFlip, 
           }}
         >
           <mesh geometry={nodes.card.geometry}>
-            {/* satin, not mirror: a glossier card catches the studio light and washes out its face */}
-            <meshPhysicalMaterial map={atlas} map-anisotropy={16} clearcoat={0.6} clearcoatRoughness={0.35} roughness={0.8} metalness={0.3} />
+            {/* matte, not mirror: a glossier card catches the studio light and washes out its face
+                and photo (the owner asked for less glare, 28 Sep: clearcoat .6 → .15, metalness .3 → .08) */}
+            <meshPhysicalMaterial map={atlas} map-anisotropy={16} clearcoat={0.15} clearcoatRoughness={0.6} roughness={0.85} metalness={0.08} />
           </mesh>
           <mesh geometry={nodes.clip.geometry} material={materials.metal} material-roughness={0.3} />
           <mesh geometry={nodes.clamp.geometry} material={materials.metal} />
