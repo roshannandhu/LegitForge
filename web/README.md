@@ -39,9 +39,8 @@ buckets and the Pages project, applies the migrations and sets a random `HASH_SA
 
 The site is **https://legitforge.pages.dev**: the Pages project `legitforge` (`cf-pages/`) serves
 the static files itself (`_routes.json`) and hands everything else (pages, API, admin, media) to
-the Worker `legitforge-web` through a service binding. Storage is R2 and D1. The Worker also
-answers at `legitforge-web.<subdomain>.workers.dev`; its canonical tags point to pages.dev. For a
-real domain later: add it to the Pages project (Workers & Pages → legitforge → Custom domains),
+the Worker `legitforge-web` through a service binding. Storage is R2 and D1. The Worker has no
+public address of its own (`workers_dev: false` in wrangler.jsonc). For a real domain later: add it to the Pages project (Workers & Pages → legitforge → Custom domains),
 then add the repository **variable** `SITE_URL` (e.g. `https://legitforge.in`) and re-run the
 workflow: canonicals, the sitemap and share images switch to it. The other secrets below
 (Turnstile, n8n, Access, GitHub) are still set with `npx wrangler secret put`.
