@@ -1,11 +1,14 @@
 import { CoinMark } from '@/components/ui/icons';
 import { MotionSwitch } from './motion-switch';
 import { ForgeStatus } from './forge-status';
-import { SITE, legalLine, waLink } from '@/lib/site';
+import { SITE, activeSocial, legalLine, shownEmail, waLink, type Company } from '@/lib/site';
 
-/** Footer (PLAN §6.12). Only links that resolve; only social accounts we keep active. */
-export function Footer() {
-  const social = Object.entries(SITE.social).filter(([, url]) => url);
+/** Footer (PLAN §6.12). Only links that resolve; only the social accounts switched on in
+ *  Admin → Company (the root layout passes the details in). */
+export function Footer({ company: c }: { company: Company }) {
+  const social = activeSocial(c);
+  const email = shownEmail(c);
+  const legal = legalLine(c);
   const year = new Date().getFullYear();
 
   return (
@@ -16,15 +19,18 @@ export function Footer() {
             <CoinMark className="logo-mark" />
             <span className="logo-word">Legit Forge</span>
           </a>
-          <p>Websites, apps, quotation and warranty systems, WhatsApp automation and n8n workflows — built by two people{SITE.city ? ` in ${SITE.city}` : ''}.</p>
+          <p>Websites, apps, quotation and warranty systems, WhatsApp automation and n8n workflows — built by two people{c.city ? ` in ${c.city}` : ''}.</p>
           <ForgeStatus />
         </div>
 
         <div>
           <h2 className="footer-h">Contact</h2>
           <ul className="footer-list">
-            <li><a href={waLink()}>Chat on WhatsApp</a></li>
-            <li><a href={`mailto:${SITE.email}`}>{SITE.email}</a></li>
+            <li><a href={waLink(c)}>Chat on WhatsApp</a></li>
+            {email && <li><a href={`mailto:${email}`}>{email}</a></li>}
+            {social.map((s) => (
+              <li key={s.key}><a href={s.url} rel="me noopener" target="_blank">{s.label}</a></li>
+            ))}
             <li>{SITE.hours.label}</li>
           </ul>
         </div>
@@ -46,15 +52,12 @@ export function Footer() {
           <ul className="footer-list">
             <li><a href="/privacy">Privacy</a></li>
             <li><a href="/terms">Terms</a></li>
-            {social.map(([name, url]) => (
-              <li key={name}><a href={url} rel="me noopener" target="_blank">{name[0].toUpperCase() + name.slice(1)}</a></li>
-            ))}
           </ul>
         </div>
       </div>
 
       <div className="wrap footer-base">
-        {legalLine() && <p className="footer-legal">{legalLine()}</p>}
+        {legal && <p className="footer-legal">{legal}</p>}
         <p className="footer-speed">
           This site runs on Cloudflare.{' '}
           <a href={`https://pagespeed.web.dev/report?url=${encodeURIComponent(SITE.url)}`} target="_blank" rel="noopener">

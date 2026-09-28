@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
-import { SITE, legalLine } from '@/lib/site';
+import { legalLine, shownEmail, waLink } from '@/lib/site';
+import { getCompany } from '@/lib/company';
 import { Breadcrumbs } from '@/components/pages/page-head';
 
 export const metadata: Metadata = {
@@ -10,7 +11,10 @@ export const metadata: Metadata = {
 
 /** PLAN §7.6: website use, and how quotes and payments work.
  *  DRAFT: replace with, or link to, your reviewed service agreement before launch. */
-export default function Terms() {
+export default async function Terms() {
+  const company = await getCompany();
+  const email = shownEmail(company);
+  const legal = legalLine(company, false);
   return (
     <article className="legal wrap">
       <Breadcrumbs crumbs={[{ name: 'Terms', href: '/terms' }]} />
@@ -34,7 +38,7 @@ export default function Terms() {
       <p>We fix anything that doesn’t work as agreed, free of charge, for 30 days after launch.</p>
 
       <h2>Contact</h2>
-      <p>{legalLine(false) && <>{legalLine(false)}. </>}<a href={`mailto:${SITE.email}`}>{SITE.email}</a></p>
+      <p>{legal && <>{legal}. </>}{email ? <a href={`mailto:${email}`}>{email}</a> : <a href={waLink(company)}>Message us on WhatsApp</a>}</p>
     </article>
   );
 }

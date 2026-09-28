@@ -2,6 +2,7 @@ import 'server-only';
 import { getEnv } from '@/lib/cf';
 import type { D1Result } from '@cloudflare/workers-types';
 import type { WorkCategory } from '@/lib/pages';
+import type { Company } from '@/lib/site';
 
 /** D1 queries for the admin (PLAN §7.8). Callers check requireAdmin() first. */
 
@@ -370,4 +371,13 @@ export async function listSignIns(limit = 20) {
 export async function signOutEverywhere() {
   const db = await adminDb();
   await db.prepare('UPDATE admin_security SET sessions_after = ? WHERE id = 1').bind(Date.now()).run();
+}
+
+/* ------------------------------------------------------------------ company */
+/** The one company row (Admin → Company); the caller checked the details (lib/company.ts). */
+export async function saveCompany(c: Company) {
+  await (await adminDb()).prepare(
+    `INSERT INTO company (id, data, updated_at) VALUES (1, ?, datetime('now'))
+       ON CONFLICT (id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at`,
+  ).bind(JSON.stringify(c)).run();
 }

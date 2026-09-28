@@ -13,6 +13,7 @@ import { getEnv } from '@/lib/cf';
 import { getTeam, TEAM_DEFAULTS } from '@/lib/team';
 import type { WorkCategory } from '@/lib/pages';
 import { BriefError, briefFrom, parseRepo, repoBrief, repoDataFrom, type Brief } from '@/lib/admin/github';
+import { companyFromForm } from '@/lib/company';
 
 const str = (f: FormData, k: string, max = 2000) => String(f.get(k) ?? '').trim().slice(0, max);
 const opt = (f: FormData, k: string, max = 2000) => str(f, k, max) || null;
@@ -235,6 +236,7 @@ export async function deleteTestimonialAction(id: string) {
 export async function refreshSiteAction(): Promise<FormState> {
   await requireAdmin();
   refreshPublic();
+  updateTag('company');
   revalidatePath('/', 'layout');
   return { ok: 'Done. Pages update on their next visit.' };
 }
@@ -417,4 +419,19 @@ export async function signOutEverywhereAction() {
   if (!(await isOwner(await requireAdmin()))) return;
   await db.signOutEverywhere();
   await signOutAction();
+}
+
+/* ------------------------------------------------------------------ company */
+/** Admin → Company: email, WhatsApp, social links, legal details (lib/company.ts checks them).
+ *  Owners only: the WhatsApp number is where every customer chat goes, so an added admin can't
+ *  redirect it. Every page re-renders with the new details on its next visit. */
+export async function saveCompanyAction(_: FormState, f: FormData): Promise<FormState> {
+  const who = await requireAdmin();
+  if (!(await isOwner(who))) return { error: 'Only the owners can change the company details.' };
+  const r = companyFromForm(f);
+  if ('error' in r) return { error: r.error };
+  await db.saveCompany(r.company);
+  updateTag('company');
+  revalidatePath('/admin/company');
+  return { ok: 'Saved. Every page shows the new details on its next visit.' };
 }

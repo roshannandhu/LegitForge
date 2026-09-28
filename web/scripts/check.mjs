@@ -17,7 +17,7 @@
  *  Screenshots go to .check/. Exits 1 on any failure. */
 
 import { chromium } from 'playwright-core';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, readdir, readFile } from 'node:fs/promises';
 
 const BASE = process.env.BASE ?? 'http://localhost:3000';
 const CHROME = process.env.CHROME ?? 'C:/Program Files/Google/Chrome/Application/chrome.exe';
@@ -121,6 +121,17 @@ const browser = await chromium.launch({
 });
 
 const only = process.env.ONLY;
+
+// Every page reads tagged data (the root layout reads 'company'). Next 16 answers 404
+// (NoFallbackError) for a dynamicParams = false page once its tag expires, which each deploy
+// and each admin save does: /services/* and the blog post were 404 live until 2026-09-29.
+if (!only || only === 'seo') {
+  console.log('\nsource');
+  const pages = (await readdir('app', { recursive: true })).filter((p) => /(^|[\\/])page\.tsx$/.test(p));
+  const bad = [];
+  for (const p of pages) if (/export const dynamicParams\s*=\s*false/.test(await readFile(`app/${p}`, 'utf8'))) bad.push(p);
+  bad.length ? fail('source', `dynamicParams = false in ${bad.join(', ')} (404 after a data change)`) : pass('no page sets dynamicParams = false');
+}
 const settle = Number(process.env.SETTLE ?? 2200);
 
 for (const run of RUNS.filter((r) => !only || r.name.includes(only))) {
@@ -361,7 +372,7 @@ if (!only || only === 'admin') {
       const r = await fetch(locked + path, { ...init, redirect: 'manual' });
       return r.status === 307 && (r.headers.get('location') ?? '').endsWith('/admin/sign-in') ? true : `${r.status} ${r.headers.get('location') ?? ''}`;
     };
-    for (const path of ['/admin', '/admin/access', '/admin/projects', '/admin/preview/project-one']) {
+    for (const path of ['/admin', '/admin/access', '/admin/company', '/admin/projects', '/admin/preview/project-one']) {
       const r = await toSignIn(path);
       r === true ? pass(`${path} sends visitors to the Google sign-in`) : fail('admin', `${path} answered ${r} when signed out`);
     }

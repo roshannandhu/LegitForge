@@ -10,6 +10,8 @@ import { ForgeCanvas } from '@/components/background/forge-canvas';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import { NOINDEX, SITE } from '@/lib/site';
+import { getCompany } from '@/lib/company';
+import { CompanyProvider } from '@/components/company-context';
 import './globals.css';
 import '@/components/layout/layout.css';
 
@@ -74,7 +76,10 @@ export const viewport: Viewport = {
   ],
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // Admin → Company: read once here, so every page carries the 'company' tag and re-renders
+  // when the details are saved; client components get them from the provider
+  const company = await getCompany();
   return (
     <html lang="en" className={`${archivo.variable} ${stencil.variable}`} suppressHydrationWarning>
       <head>
@@ -84,12 +89,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <MotionProvider>
-            <SmoothScroll />
-            <ForgeCanvas />
-            <Header />
-            <main id="main">{children}</main>
-            <Footer />
-            <div className="vt-seam" aria-hidden="true" />
+            <CompanyProvider value={{ whatsapp: company.whatsapp, whatsappText: company.whatsappText }}>
+              <SmoothScroll />
+              <ForgeCanvas />
+              <Header />
+              <main id="main">{children}</main>
+              <Footer company={company} />
+              <div className="vt-seam" aria-hidden="true" />
+            </CompanyProvider>
           </MotionProvider>
         </ThemeProvider>
       </body>

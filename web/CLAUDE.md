@@ -57,6 +57,12 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
   priceText; empty SITE fields are left out); `npm run check` ONLY=seo fails if any shows. Never import PROJECTS/CASE_STUDIES in a page again; use getProjects().
   People the same way: lib/team.ts getTeam() (tag 'team'), never TEAM/MEMBER_DETAILS in a page.
   Client components get toCards(team) only, so bios stay on the server.
+- Company details (email, WhatsApp number and greeting, social links, legal name, city, GSTIN)
+  live in D1 `company` (one row, Admin → Company, owners only; lib/company.ts, tag 'company').
+  Server components: `await getCompany()`; client components: `useCompany()`
+  (components/company-context.tsx, provided by the root layout). Build links with waLink(company)
+  and shownEmail(company) from lib/site.ts. SITE holds only fixed facts (name, url, hours):
+  never add contact fields back to it.
 
 ## Commands
 - npm run dev              local development (port 3000)
@@ -109,6 +115,10 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
   into production pages. But the build must still TAG the pages: getProjects/getTeam/
   getTestimonials go through atBuild (lib/build-cache.ts) at build, or updateTag() never
   re-renders the prerendered home, /work and /team (the admin's edits never showed).
+- No page may set `dynamicParams = false`: every page carries a data tag (the root layout reads
+  'company'), and once a tag expires (each deploy, each admin save) Next 16 answers such a page
+  with 404 (NoFallbackError). Use `dynamicParams = true` + notFound(). `npm run check` fails on
+  it. OG image routes are the exception (they read no data, so nothing expires them).
 - Never add `export const runtime = 'edge'` (OpenNext uses the Node.js runtime).
 - The Worker runs on Workers Free (3 MB compressed limit, ~2.4 MB now). A client component's
   `import()` of browser-only code (three.js, Rapier, FlipCard) sits inside

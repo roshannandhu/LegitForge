@@ -79,7 +79,14 @@ and, when deploying, `npm run db:migrate:remote`. After changing `wrangler.jsonc
 ## Admin (/admin)
 
 Projects (paste a screenshot to upload, or capture the live site), team profiles and ID
-cards, leads with CSV export and delete, testimonials, and who can sign in. PLAN §7.8.
+cards, leads with CSV export and delete, testimonials, company details and who can sign in. PLAN §7.8.
+
+**Company:** Admin → Company holds what the site prints about the business: the email (with a
+"show on the site" switch), the WhatsApp number every "Chat on WhatsApp" button opens (empty: they
+open the contact section), the chat greeting, social links (each with a Show switch), and the legal
+name, city, country and GSTIN. Only the owners can save it (whoever sets the WhatsApp number
+receives every customer chat); other admins see it read-only. A WhatsApp bot (Cloud API / n8n)
+must use the same number.
 
 **Team:** open Admin → Team and choose "Import the current team" once. From then on the site
 reads the people from the database. "Regenerate ID card" redraws the flip and 3D cards.

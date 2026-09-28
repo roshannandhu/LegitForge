@@ -9,11 +9,13 @@ import { CoinMark } from '@/components/ui/icons';
 import { replyByLabel } from '@/lib/business-hours';
 import { BUDGETS, HONEYPOT, NEEDS, validateLead, type LeadErrors, type LeadField } from '@/lib/lead';
 import { SITE, waLink } from '@/lib/site';
+import { useCompany } from '@/components/company-context';
 import { Turnstile, type TurnstileHandle } from './turnstile';
 
 type State = 'idle' | 'sending' | 'sent' | 'error' | 'limited' | 'unverified';
 
 export function Quench() {
+  const company = useCompany();
   const formRef = useRef<HTMLFormElement>(null);
   const [errors, setErrors] = useState<LeadErrors>({});
   const [state, setState] = useState<State>('idle');
@@ -66,7 +68,7 @@ export function Quench() {
       <div className="wrap quench-inner">
         <h2 className="type-h2">Tell us what you want to build.</h2>
         <p className="type-lead">Most projects start with a 20-minute chat. No pressure, no jargon.</p>
-        <a className="btn btn-primary quench-wa" href={waLink()}>Chat on WhatsApp</a>
+        <a className="btn btn-primary quench-wa" href={waLink(company)}>Chat on WhatsApp</a>
         <p className="quench-or">or send the details</p>
 
         {state === 'sent' ? (
@@ -81,7 +83,7 @@ export function Quench() {
               {replyBy ? <>We’ll reply on WhatsApp by <strong>{replyBy}</strong>{replyBy.endsWith('.') ? '' : '.'}</> : <>We’ll reply on WhatsApp within <strong>{SITE.replyWithin}</strong>.</>}
             </p>
             <p className="sent-note">Details received. We usually reply within {SITE.replyWithin} during working hours.</p>
-            <a className="btn btn-ghost" href={waLink()}>Open WhatsApp now</a>
+            <a className="btn btn-ghost" href={waLink(company)}>Open WhatsApp now</a>
           </div>
         ) : (
           <form ref={formRef} className="lead-form" onSubmit={onSubmit} onFocus={() => setArmed(true)} noValidate>
@@ -147,18 +149,18 @@ export function Quench() {
             {state === 'error' && (
               <p className="form-alert" role="alert">
                 Your details didn’t send because our server didn’t respond. Try again, or{' '}
-                <a href={waLink()}>message us on WhatsApp</a>.
+                <a href={waLink(company)}>message us on WhatsApp</a>.
               </p>
             )}
             {state === 'unverified' && (
               <p className="form-alert" role="alert">
                 We couldn’t confirm you’re human. Refresh the page and try again, or{' '}
-                <a href={waLink()}>message us on WhatsApp</a>.
+                <a href={waLink(company)}>message us on WhatsApp</a>.
               </p>
             )}
             {state === 'limited' && (
               <p className="form-alert" role="alert">
-                You’ve sent several requests in the last hour. <a href={waLink()}>Message us on WhatsApp</a> instead.
+                You’ve sent several requests in the last hour. <a href={waLink(company)}>Message us on WhatsApp</a> instead.
               </p>
             )}
           </form>

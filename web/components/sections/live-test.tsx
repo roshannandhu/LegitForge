@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useMotionEnabled } from '@/components/motion/motion-provider';
 import { CheckIcon } from '@/components/ui/icons';
 import { waLink } from '@/lib/site';
+import { useCompany } from '@/components/company-context';
 
 const STEPS = [
   { key: 'received',   label: 'Our server got your message', at: 0.0 },
@@ -28,6 +29,7 @@ const makeCode = () => {
 };
 
 export function LiveTest() {
+  const company = useCompany();
   const motionOn = useMotionEnabled();
   const [status, setStatus] = useState<Status>('idle');
   const [lit, setLit] = useState(0);
@@ -126,7 +128,7 @@ export function LiveTest() {
           {status === 'done' && (
             <div className="live-done">
               <p>That message took <strong className="num">{total} seconds</strong> from arrival to reply and team alert. Want this for your business?</p>
-              <a className="btn btn-ghost" href={waLink('Hi Legit Forge, I saw the WhatsApp demo and want this for my business.')}>Chat on WhatsApp</a>
+              <a className="btn btn-ghost" href={waLink(company, 'Hi Legit Forge, I saw the WhatsApp demo and want this for my business.')}>Chat on WhatsApp</a>
             </div>
           )}
           <p className="sr-only" aria-live="polite">{announce}</p>

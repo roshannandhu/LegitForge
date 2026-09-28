@@ -101,3 +101,6 @@
 .admin-access .pill.is-on { color: var(--success); }   /* beats .admin-card span:last-child */
 .admin-signins { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; overflow-wrap: anywhere; }
 .admin-lead-delete { display: flex; margin-top: 8px; }
+/* Admin → Company: a social link and its "Show" switch on one line */
+.social-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 12px; }
+.admin-fieldset > .muted { margin: 0; }

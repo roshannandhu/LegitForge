@@ -18,6 +18,7 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { useMotionEnabled } from '@/components/motion/motion-provider';
 import { waLink } from '@/lib/site';
+import { useCompany } from '@/components/company-context';
 
 type Fact = { price: string; time: string };
 
@@ -56,6 +57,7 @@ const QUESTIONS = [
 type QId = (typeof QUESTIONS)[number]['id'];
 
 export function Compare({ facts }: { facts: { static: Fact; dynamic: Fact } }) {
+  const company = useCompany();
   const motionOn = useMotionEnabled();
   const [tick, setTick] = useState(STILL);
   const [answers, setAnswers] = useState<Partial<Record<QId, boolean>>>({});
@@ -200,7 +202,7 @@ export function Compare({ facts }: { facts: { static: Fact; dynamic: Fact } }) {
             {verdict === 'static' && <p><b>A static site is enough.</b> Fast, low cost, {facts.static.price.toLowerCase()} · {facts.static.time.toLowerCase()}. You can add one live piece later.</p>}
             {verdict === 'dynamic' && <p><b>You need a dynamic site</b> for {needs.map((n) => n.why).join(' and ')}. {facts.dynamic.price} · {facts.dynamic.time.toLowerCase()}. The rest can stay static and fast.</p>}
             {!verdict && <p className="picker-wait">{answered ? 'One more…' : 'Your answer appears here, and the slider moves to the side that fits.'}</p>}
-            <a className="btn btn-ghost btn-sm" href={waLink(waText)}>{verdict ? 'Send this to us on WhatsApp' : 'Not sure? Ask us on WhatsApp'}</a>
+            <a className="btn btn-ghost btn-sm" href={waLink(company, waText)}>{verdict ? 'Send this to us on WhatsApp' : 'Not sure? Ask us on WhatsApp'}</a>
           </div>
         </div>
       </div>
