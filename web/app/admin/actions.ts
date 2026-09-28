@@ -12,7 +12,7 @@ import * as db from '@/lib/admin/db';
 import { getEnv } from '@/lib/cf';
 import { getTeam, TEAM_DEFAULTS } from '@/lib/team';
 import type { WorkCategory } from '@/lib/pages';
-import { BriefError, parseRepo, repoBrief, type Brief } from '@/lib/admin/github';
+import { BriefError, briefFrom, parseRepo, repoBrief, repoDataFrom, type Brief } from '@/lib/admin/github';
 
 const str = (f: FormData, k: string, max = 2000) => String(f.get(k) ?? '').trim().slice(0, max);
 const opt = (f: FormData, k: string, max = 2000) => str(f, k, max) || null;
@@ -34,10 +34,14 @@ function refreshPublic() {
  *  the editor; the owner checks it and presses Publish. */
 export type GithubResult = { id: string; title: string; alt: string } | { error: string };
 
-export async function projectFromGithubAction(url: string): Promise<GithubResult> {
+/** `fetched`: the repo's data as the admin's browser read it from GitHub (github-add.tsx), used
+ *  when it checks out (repoDataFrom); else the server reads GitHub itself (needed for private
+ *  repos, with GITHUB_TOKEN). */
+export async function projectFromGithubAction(url: string, fetched?: string): Promise<GithubResult> {
   await requireAdmin();
   const ref = parseRepo(String(url ?? ''));
   if (!ref) return { error: 'That isn’t a GitHub repository link. It looks like https://github.com/owner/repo.' };
+  const given = typeof fetched === 'string' && fetched.length < 400_000 ? repoDataFrom(fetched, ref) : null;
   const env = await getEnv();
   const token = env?.GITHUB_TOKEN || process.env.GITHUB_TOKEN || undefined;
   // a test fixture server, honoured only with the local admin bypass (never in production)
@@ -45,7 +49,7 @@ export async function projectFromGithubAction(url: string): Promise<GithubResult
   const apiBase = process.env.NODE_ENV === 'development' && (env?.ADMIN_DEV_BYPASS || process.env.ADMIN_DEV_BYPASS)
     ? (env?.GITHUB_API_BASE || process.env.GITHUB_API_BASE || undefined) : undefined;
   let b: Brief;
-  try { b = await repoBrief(ref, { token, apiBase }); }
+  try { b = given ? briefFrom(given) : await repoBrief(ref, { token, apiBase }); }
   catch (e) { return { error: e instanceof BriefError ? e.message : 'Couldn’t read that repository. Try again.' }; }
 
   let slug = b.slugBase;

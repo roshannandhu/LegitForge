@@ -35,7 +35,8 @@ const adminCsp = [
   `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'${process.env.NODE_ENV === 'development' ? " 'unsafe-eval'" : ''} https://accounts.google.com/gsi/client https://static.cloudflareinsights.com`,
   'frame-src https://accounts.google.com/gsi/',
   "img-src 'self' data: blob:",
-  "connect-src 'self' blob: https://accounts.google.com/gsi/ https://cloudflareinsights.com",
+  // api.github.com: "Add from GitHub" reads public repos from the admin's own browser (lib/admin/github.ts)
+  "connect-src 'self' blob: https://accounts.google.com/gsi/ https://cloudflareinsights.com https://api.github.com",
   "style-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/style",
   "font-src 'self'",
   "frame-ancestors 'none'",

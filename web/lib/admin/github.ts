@@ -143,13 +143,19 @@ export type BriefOptions = {
   /** tests only: a fixture server instead of GitHub */
   apiBase?: string;
   fetchImpl?: typeof fetch;
+  /** in the admin's browser: only CORS-safelisted headers (no preflight), never a token */
+  browser?: boolean;
 };
 
+/** What the brief is written from: the three GitHub answers. */
+export type RepoData = { repo: Repo; languages: Record<string, number> | null; readme: string };
+
 async function gh<T>(path: string, o: BriefOptions, raw = false): Promise<{ status: number; data: T | null; text: string }> {
-  const { token, apiBase = 'https://api.github.com', fetchImpl = fetch } = o;
+  const { token, apiBase = 'https://api.github.com', fetchImpl = fetch, browser } = o;
+  const accept = raw ? 'application/vnd.github.raw' : 'application/vnd.github+json';
   const res = await fetchImpl(`${apiBase}${path}`, {
-    headers: {
-      accept: raw ? 'application/vnd.github.raw' : 'application/vnd.github+json',
+    headers: browser ? { accept } : {
+      accept,
       'user-agent': 'legitforge-admin',
       'x-github-api-version': '2022-11-28',
       ...(token ? { authorization: `Bearer ${token}` } : {}),
@@ -164,6 +170,15 @@ export class BriefError extends Error {}
 
 /** Reads the repo and writes the brief. Throws BriefError with a message for the owner. */
 export async function repoBrief(ref: RepoRef, o: BriefOptions = {}): Promise<Brief> {
+  return briefFrom(await fetchRepoData(ref, o));
+}
+
+/** The three GitHub answers for a repo. Works on the server (with GITHUB_TOKEN) and in the
+ *  admin's browser. Why the browser: without a token GitHub allows 60 requests an hour PER IP
+ *  ADDRESS, and a Worker's outgoing IPs are shared with other Cloudflare customers, so they are
+ *  nearly always used up ("rate-limiting us"). The admin's own connection has its own 60.
+ *  Throws BriefError with a message for the owner. */
+export async function fetchRepoData(ref: RepoRef, o: BriefOptions = {}): Promise<RepoData> {
   const { token } = o;
   const base = `/repos/${ref.owner}/${ref.repo}`;
   let repo: Awaited<ReturnType<typeof gh<Repo>>>;
@@ -174,15 +189,50 @@ export async function repoBrief(ref: RepoRef, o: BriefOptions = {}): Promise<Bri
       ? `GitHub can't find ${ref.owner}/${ref.repo}, or the token can't read it. Check the link and the token's repository access.`
       : `GitHub can't find ${ref.owner}/${ref.repo}. If it is private, add the GITHUB_TOKEN secret (README → Admin).`);
   }
-  if (repo.status === 403 || repo.status === 429) throw new BriefError('GitHub is rate-limiting us. Try again in a minute (a GITHUB_TOKEN raises the limit).');
+  if (repo.status === 403 || repo.status === 429) throw new BriefError('GitHub is limiting requests right now. Try again in a few minutes, or set GITHUB_TOKEN (README → Admin) so it never happens.');
   if (!repo.data) throw new BriefError(`GitHub answered ${repo.status}. Try again in a moment.`);
-  const r = repo.data;
 
   const [langs, readme] = await Promise.all([
     gh<Record<string, number>>(`${base}/languages`, o).catch(() => ({ status: 0, data: null, text: '' })),
     gh<string>(`${base}/readme`, o, true).catch(() => ({ status: 0, data: null, text: '' })),
   ]);
-  const md = readme.status === 200 ? readme.text.slice(0, 200_000) : '';
+  return { repo: repo.data, languages: langs.data, readme: readme.status === 200 ? readme.text.slice(0, 200_000) : '' };
+}
+
+const str = (v: unknown, max: number) => (typeof v === 'string' ? v.slice(0, max) : null);
+
+/** RepoData the admin's browser fetched (JSON), checked before the server uses it: the right repo,
+ *  the right types, bounded sizes. null when it doesn't hold up (the server then fetches itself). */
+export function repoDataFrom(json: string, ref: RepoRef): RepoData | null {
+  try {
+    const d = JSON.parse(json) as { repo?: Record<string, unknown>; languages?: unknown; readme?: unknown };
+    const r = d.repo;
+    if (!r || typeof r !== 'object') return null;
+    const full = str(r.full_name, 200), html = str(r.html_url, 300), name = str(r.name, 100), created = str(r.created_at, 40);
+    if (!full || full.toLowerCase() !== `${ref.owner}/${ref.repo}`.toLowerCase()) return null;
+    if (!html?.startsWith('https://github.com/') || !name || !created) return null;
+    const langs = d.languages && typeof d.languages === 'object' && !Array.isArray(d.languages)
+      ? Object.fromEntries(Object.entries(d.languages as Record<string, unknown>).slice(0, 50)
+          .filter((e): e is [string, number] => typeof e[1] === 'number').map(([k, v]) => [k.slice(0, 40), v]))
+      : null;
+    return {
+      repo: {
+        name, full_name: full, html_url: html, created_at: created, private: r.private === true,
+        description: str(r.description, 1000), homepage: str(r.homepage, 300), language: str(r.language, 40),
+        topics: Array.isArray(r.topics) ? r.topics.filter((t): t is string => typeof t === 'string').slice(0, 20).map((t) => t.slice(0, 50)) : [],
+      },
+      languages: langs,
+      readme: typeof d.readme === 'string' ? d.readme.slice(0, 200_000) : '',
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** Writes the brief from the repo's data (no network). */
+export function briefFrom({ repo: r, languages, readme }: RepoData): Brief {
+  const langs = { data: languages };
+  const md = readme;
   const topics = r.topics ?? [];
   const haystack = [r.description ?? '', topics.join(' '), md.slice(0, 20_000)].join('\n');
 

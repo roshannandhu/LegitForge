@@ -8,7 +8,22 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { discardDraftAction, projectFromGithubAction } from '../actions';
+import { fetchRepoData, parseRepo } from '@/lib/admin/github';
 import { measure, type Picked } from './[id]/image-manager';
+
+/** The repo's data read by THIS browser, as JSON for the server; undefined when it can't be (a
+ *  private repo, or a network or limit problem), and the server reads GitHub itself. The admin's
+ *  own connection has its own GitHub allowance; the Worker's shared Cloudflare IPs rarely do. */
+async function readInBrowser(url: string) {
+  const ref = parseRepo(url);
+  if (!ref) return undefined;
+  try {
+    const d = await fetchRepoData(ref, { browser: true });
+    return JSON.stringify({ ...d, readme: d.readme.slice(0, 100_000) });
+  } catch {
+    return undefined;
+  }
+}
 
 export function GithubAdd() {
   const router = useRouter();
@@ -45,7 +60,8 @@ export function GithubAdd() {
     if (!picked) { setError('Add the project’s image first: paste a screenshot or choose a file.'); fileRef.current?.focus(); return; }
     if (!url.trim()) { setError('Paste the GitHub link.'); return; }
     setStep('reading');
-    const made = await projectFromGithubAction(url.trim()).catch(() => ({ error: 'Couldn’t reach the server. Try again.' }));
+    const fetched = await readInBrowser(url.trim());
+    const made = await projectFromGithubAction(url.trim(), fetched).catch(() => ({ error: 'Couldn’t reach the server. Try again.' }));
     if ('error' in made) { setError(made.error); setStep(''); return; }
 
     setStep('uploading');
