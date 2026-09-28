@@ -212,20 +212,6 @@ export async function deleteTestimonial(id: string) {
   ]);
 }
 
-/* ------------------------------------------------------------------ site stats */
-export const STAT_KEYS = ['projects_live', 'median_reply_minutes', 'last_launch'] as const;
-
-export async function listStats() {
-  return (await (await adminDb()).prepare('SELECT key, value, updated_at FROM site_stats ORDER BY key').all<{ key: string; value: string; updated_at: string }>()).results;
-}
-
-export async function setStat(key: string, value: string) {
-  await (await adminDb()).prepare(
-    `INSERT INTO site_stats (key, value, updated_at) VALUES (?, ?, datetime('now'))
-       ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
-  ).bind(key, value).run();
-}
-
 /* ------------------------------------------------------------------ overview */
 export async function overview() {
   const db = await adminDb();

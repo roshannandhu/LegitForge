@@ -227,18 +227,7 @@ export async function deleteTestimonialAction(id: string) {
 }
 
 /* ------------------------------------------------------------------ site */
-export async function saveStatAction(_: FormState, f: FormData): Promise<FormState> {
-  await requireAdmin();
-  const key = str(f, 'key', 60), value = str(f, 'value', 200);
-  if (!/^[a-z_]+$/.test(key)) return { error: 'Keys use lowercase letters and underscores.' };
-  if (!value) return { error: 'Enter a value.' };
-  await db.setStat(key, value);
-  revalidatePath('/admin/site');
-  revalidatePath('/', 'layout');
-  return { ok: `Saved ${key}.` };
-}
-
-/** "Refresh site content": every page that reads D1 re-renders on its next visit. */
+/** "Refresh site content" (Admin → Overview): every page that reads D1 re-renders on its next visit. */
 export async function refreshSiteAction(): Promise<FormState> {
   await requireAdmin();
   refreshPublic();

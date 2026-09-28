@@ -79,7 +79,7 @@ and, when deploying, `npm run db:migrate:remote`. After changing `wrangler.jsonc
 ## Admin (/admin)
 
 Projects (paste a screenshot to upload, or capture the live site), team profiles and ID
-cards, leads with CSV export, testimonials and site numbers. PLAN §7.8.
+cards, leads with CSV export and delete, testimonials, and who can sign in. PLAN §7.8.
 
 **Team:** open Admin → Team and choose "Import the current team" once. From then on the site
 reads the people from the database. "Regenerate ID card" redraws the flip and 3D cards.
@@ -128,7 +128,7 @@ page, Server Action and route checks that cookie and the allow-list again.
   Authorised JavaScript origins, or the button won't load there.
 
 With no owners and no one added in Access, nobody can sign in. If you change data outside the admin
-(for example with `wrangler d1 execute`), press Admin → Site → "Refresh site content". Published projects replace the
+(for example with `wrangler d1 execute`), press Admin → Overview → "Refresh site content". Published projects replace the
 placeholders on the home page and /work. Draft previews are at `/admin/preview/<slug>`.
 
 ## Fonts
