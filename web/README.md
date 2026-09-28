@@ -95,7 +95,9 @@ languages and homepage (no AI, no cost). It opens as a draft: check it, add the 
 number (numbers are never made up), then Publish. For private repos, create a fine-grained GitHub
 token (GitHub → Settings → Developer settings → Fine-grained tokens; repository access: your project
 repos; permissions: Contents and Metadata, read-only) and set it: `npx wrangler secret put GITHUB_TOKEN`.
-Public repos work without it (GitHub allows 60 reads an hour without a token).
+Public repos work without it: your browser reads them from GitHub over your own connection (GitHub
+allows 60 reads an hour per connection without a token; Cloudflare's shared addresses have usually
+used theirs up, so the server only reads GitHub itself for private repos, with the token).
 
 **Locally:** run `npm run db:migrate:local`, set `ADMIN_DEV_BYPASS=1` in `.dev.vars`, run
 `npm run dev`, then open http://localhost:3000/admin. The bypass only works under `npm run dev`
