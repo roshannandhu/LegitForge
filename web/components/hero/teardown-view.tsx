@@ -45,7 +45,9 @@ export default function Teardown() {
         </ol>
 
         <div className="td-phone">
-          <Image src="/hero/phone@2x.avif" alt="A hand holding a phone: the device the diagram takes apart, layer by layer" width={1200} height={1653} priority sizes="(max-width: 1023px) 31vw, 200px" />
+          {/* sizes: about twice the drawn width (31vw / 200px), so a 1.75-2x screen gets enough pixels
+              (Lighthouse "Serves images with low resolution"); still a 9-20 KB AVIF */}
+          <Image src="/hero/phone@2x.avif" alt="A hand holding a phone: the device the diagram takes apart, layer by layer" width={1200} height={1653} priority sizes="(max-width: 1023px) 50vw, 360px" />
           <div className="td-screen" data-state="final" data-lead={DEFAULT_LEAD} aria-hidden="true">
             <p className="td-word">{[...WORD].map((c, i) => <span key={i}>{c === ' ' ? ' ' : c}</span>)}</p>
             {LAYERS.map((l) => <div key={l.id} className="td-final" data-for={l.id}><LayerScreen id={l.id} /></div>)}

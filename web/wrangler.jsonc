@@ -5,6 +5,9 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "legitforge-web",
   "main": "worker.ts",                         // our entry: OpenNext + the daily cron
+  // esbuild's keepNames wraps functions in __name(): next-themes turns its function into an inline
+  // <script>, which then threw "__name is not defined" in every browser (Lighthouse: console error)
+  "keep_names": false,
   "workers_dev": false,                         // no public address of its own: legitforge.pages.dev (cf-pages/) reaches it by service binding
   "compatibility_date": "2026-09-25",
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],

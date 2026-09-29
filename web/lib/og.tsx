@@ -1,10 +1,11 @@
 /** Share images (PLAN §22.4 step 1): one 1200 × 630 card design for every page type.
- *  Forge Night tokens (app/globals.css, .dark) on the blueprint grid, the coin seal (CoinMark
+ *  Tempered Steel night tokens (app/globals.css, .dark) on the blueprint grid, the coin seal (CoinMark
  *  in components/ui/icons.tsx, drawn in boxes: Satori has no curved text, so the rim is
  *  reeded like app/icon.svg), a label, the title and the domain.
  *
  *  Every route that uses this is static, so the font files are read at build time only; the
- *  Worker never renders an image. Archivo is OFL (assets/og/OFL.txt). */
+ *  Worker never renders an image. Anybody at 112 % width, the site's face (scripts/og-fonts.py cuts
+ *  the two static weights from app/fonts/anybody-latin.woff2); OFL (assets/og/OFL.txt). */
 
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -26,8 +27,8 @@ let fonts: Promise<{ name: string; data: Buffer; weight: 600 | 800; style: 'norm
 function loadFonts() {
   const dir = join(process.cwd(), 'assets/og');
   return (fonts ??= Promise.all([
-    readFile(join(dir, 'Archivo-SemiExpanded-ExtraBold.ttf')).then((data) => ({ name: 'Archivo', data, weight: 800 as const, style: 'normal' as const })),
-    readFile(join(dir, 'Archivo-SemiExpanded-SemiBold.ttf')).then((data) => ({ name: 'Archivo', data, weight: 600 as const, style: 'normal' as const })),
+    readFile(join(dir, 'Anybody-Wide-ExtraBold.ttf')).then((data) => ({ name: 'Anybody', data, weight: 800 as const, style: 'normal' as const })),
+    readFile(join(dir, 'Anybody-Wide-SemiBold.ttf')).then((data) => ({ name: 'Anybody', data, weight: 600 as const, style: 'normal' as const })),
   ]));
 }
 
@@ -51,7 +52,7 @@ function Seal({ d }: { d: number }) {
 export async function sealIcon(px: number) {
   return new ImageResponse(
     (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', backgroundColor: T.bg, fontFamily: 'Archivo' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', backgroundColor: T.bg, fontFamily: 'Anybody' }}>
         <Seal d={Math.round(px * 0.86)} />
       </div>
     ),
@@ -67,7 +68,7 @@ export async function ogImage({ label, title }: { label?: string; title: string 
     (
       <div style={{
         display: 'flex', flexDirection: 'column', justifyContent: 'space-between', width: '100%', height: '100%',
-        padding: '64px 72px', backgroundColor: T.bg, color: T.text, fontFamily: 'Archivo',
+        padding: '64px 72px', backgroundColor: T.bg, color: T.text, fontFamily: 'Anybody',
         backgroundImage: `linear-gradient(${T.grid} 1px, transparent 1px), linear-gradient(90deg, ${T.grid} 1px, transparent 1px)`,
         backgroundSize: '32px 32px',
       }}>
