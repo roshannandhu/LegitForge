@@ -7,7 +7,7 @@ import { ProjectCard } from '@/components/work/project-card';
 import { getProjects } from '@/lib/work';
 import type { Member } from '@/lib/team';
 import { SITE, waLink } from '@/lib/site';
-import { fit, personKeywords, personLd } from '@/lib/team-seo';
+import { fit, joinNames, personKeywords, personLd, servedCities } from '@/lib/team-seo';
 import { getCompany } from '@/lib/company';
 import '@/components/sections/sections.css';
 import '@/app/pages.css';
@@ -20,7 +20,8 @@ import '@/app/pages.css';
 export async function memberMetadata(m: Member): Promise<Metadata> {
   const { city } = await getCompany();
   const skills = m.skills.slice(0, 4);
-  const about = `${m.name}${m.role ? `, ${m.role},` : ''} at ${SITE.name}${city ? ` in ${city}` : ''}.`
+  const cities = servedCities(city);
+  const about = `${m.name}${m.role ? `, ${m.role},` : ''} at ${SITE.name}${cities.length ? ` in ${joinNames(cities)}` : ''}.`
     + `${skills.length ? ` Builds with ${skills.join(', ')}.` : ''}`;
   const more = `${about} Projects, skills and how to work together.`;
   return {

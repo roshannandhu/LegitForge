@@ -99,8 +99,8 @@ const orgLd = (c: Company, team: Member[]) => ({
 export async function generateMetadata(): Promise<Metadata> {
   const [team, { city }] = await Promise.all([getTeam(), getCompany()]);
   const cities = servedCities(city);
-  const [, also] = cityNames(city);
-  const where = joinNames(cities.map((c) => (c === city && also && !/^(Kerala|Karnataka)$/.test(also) ? `${c} (${also})` : c)));
+  // "Calicut (Kozhikode) and Bangalore (Bengaluru)": each city with the other name people search
+  const where = joinNames(cities.map((c) => { const [, also] = cityNames(c); return also && !/^(Kerala|Karnataka)$/.test(also) ? `${c} (${also})` : c; }));
   const about = `Freelance web developers in ${where}: websites, web apps, WhatsApp and AI automation and local SEO for small businesses.`;
   const more = `${about} Fixed quotes; you own it.`;
   const title = `${SITE.name}: freelance web developers in ${joinNames(cities)}`;

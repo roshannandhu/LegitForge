@@ -10,10 +10,10 @@ Admin → Company to each one ("website design Calicut"). Use the rest for team 
 the Google Business Profile, and track them in Search Console → Performance. Each group names the
 page that should rank for it.
 
-The studio is in **Calicut (Kozhikode)**: set City = Calicut and Country = India in Admin → Company
-(owners only). We also take clients in **Bangalore (Bengaluru)**: `SITE.alsoServes` in
-`web/lib/site.ts`. Titles, descriptions and keywords then say Calicut, Kozhikode, Kerala,
-Bangalore, Bengaluru and Karnataka.
+We focus on **Calicut (Kozhikode)** and **Bangalore (Bengaluru)** equally: `SITE.alsoServes` in
+`web/lib/site.ts`. Titles, descriptions and keywords say Calicut, Kozhikode, Kerala, Bangalore,
+Bengaluru and Karnataka. Also set City = Calicut and Country = India in Admin → Company (owners
+only): that is the address in the studio's structured data and footer.
 
 ## Top 10 (in page titles and the Google Business Profile)
 
