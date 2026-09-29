@@ -209,10 +209,16 @@ names, and put the role words from section 2 in each bio.
 
 ## 10. Location modifiers
 
-Add these to the keywords above (e.g. "web developer" + "India" → "web developer India").
-Once the studio's city is filled in under Admin → Company, add "<city>" and "in <city>" to the
-same list.
+Add these to the keywords above (e.g. "web developer" + "Kochi" → "web developer in Kochi").
+The studio is in Kochi: set City = Kochi and Country = India in Admin → Company so Google's
+business details say so too (only owners can edit it).
 
+- Kochi
+- in Kochi
+- Cochin
+- Ernakulam
+- Kerala
+- in Kerala
 - India
 - in India
 - near me
@@ -221,13 +227,60 @@ same list.
 - affordable
 - hire
 
-## 11. Questions for blog posts → `/blog`
+## 11. Kochi and Kerala → home, `/services/*`, Google Business Profile
+
+Local searches are the easiest to win. Use them in service-page copy, the Google Business Profile
+and blog posts.
+
+- web developer Kochi
+- web developer in Kochi
+- website developer Kochi
+- website design Kochi
+- website development company Kochi
+- web design company Kochi
+- web developer Ernakulam
+- website design Ernakulam
+- web developer Kerala
+- website development Kerala
+- freelance developer Kochi
+- freelance web developer Kochi
+- freelance developer Kerala
+- software developer Kochi
+- software company Kochi
+- app developer Kochi
+- app development Kochi
+- mobile app developer Kerala
+- full stack developer Kochi
+- frontend developer Kochi
+- backend developer Kochi
+- WhatsApp automation Kochi
+- WhatsApp automation Kerala
+- WhatsApp chatbot Kerala
+- n8n automation Kochi
+- business automation Kerala
+- AI integration Kochi
+- AI automation Kerala
+- SEO Kochi
+- SEO services Kochi
+- local SEO Kochi
+- SEO company Kerala
+- Google Business Profile Kochi
+- NFC business card Kochi
+- digital business card Kerala
+- quotation software Kochi
+- warranty management system Kerala
+- Roshan Raj Kochi
+- Midhun Vijay Kochi
+- Legit Forge Kochi
+
+## 12. Questions for blog posts → `/blog`
 
 Long-tail searches, each a good blog post.
 
 - static or dynamic website: which do I need
 - what can a WhatsApp bot do for my business
 - how much does a website cost in India
+- how much does a website cost in Kochi
 - how long does it take to build a website
 - how to automate WhatsApp replies
 - what is n8n and what can it automate
