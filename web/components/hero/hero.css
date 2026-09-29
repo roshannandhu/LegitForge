@@ -193,7 +193,7 @@
 .ls-ticks { color: #8B98A5; } .ls-ticks.read { color: #53B7F0; }
 
 /* n8n: the mini canvas (one SVG, 100 × 150) */
-.ls-active { margin-left: calc(2 * var(--cq)); padding: calc(.6 * var(--cq)) calc(2.4 * var(--cq)); border-radius: 99px; background: #1F4D3A; color: #5CC08A; font-size: calc(5.4 * var(--cq)); font-weight: 700; vertical-align: middle; }
+.ls-active { margin-left: calc(2 * var(--cq)); padding: calc(.6 * var(--cq)) calc(2.4 * var(--cq)); border-radius: 99px; background: #1F4D3A; color: #7FD9A6; font-size: calc(5.4 * var(--cq)); font-weight: 700; vertical-align: middle; }
 .ls-n8n { flex: 1; width: 100%; min-height: 0; overflow: visible;
   background: radial-gradient(circle, rgb(255 255 255 / .09) .4px, transparent .6px) 0 0 / 6px 6px; }
 .ls-wire { fill: none; stroke: #3A4552; stroke-width: .9; }

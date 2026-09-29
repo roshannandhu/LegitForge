@@ -989,7 +989,8 @@
 .wa-typing { display: none; align-self: flex-start; gap: 3px; margin: 0; padding: 8px 10px; border-radius: 10px; background: var(--surface); border: 1px solid var(--line); }
 .wa-typing i { width: 5px; height: 5px; border-radius: 50%; background: var(--text-muted); }
 .wa-ticks { margin-left: 4px; color: var(--text-muted); font-weight: 700; }
-.wa-ticks.read { color: #53B7F0; }
+.wa-ticks.read { color: #1570B8; }               /* read-receipt blue, dark enough on the light bubble */
+.dark .wa-ticks.read { color: #53B7F0; }
 
 /* quotation: the QR scan line and the WhatsApp reminder */
 .qm-warranty { position: relative; overflow: hidden; }
@@ -998,7 +999,8 @@
   margin-top: 12px; display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px;
   border-radius: 999px; background: color-mix(in oklab, var(--success) 18%, var(--surface)); color: var(--text); font-size: 14px; font-weight: 600;
 }
-.qm-remind b { color: #53B7F0; }
+.qm-remind b { color: #1570B8; }
+.dark .qm-remind b { color: #53B7F0; }
 
 /* quotation lifecycle (plan F step 5): rail · WhatsApp enquiry · the card (quote front,
    warranty back, flipped in 3D) · the reminder · example stats */
@@ -1065,7 +1067,7 @@
 .cafe-stamp.is-printed { display: inline-block; border: 1.5px dashed var(--text-muted); color: var(--text-muted); rotate: -3deg; }
 .cafe-slots { display: flex; flex-wrap: wrap; gap: .4em; }
 .cafe-slot { padding: .25em .6em; border: 1px solid var(--success); border-radius: 6px; color: var(--success); font-size: .9em; transition: opacity 300ms, border-color 300ms, color 300ms; }
-.cafe-slot.is-taken { border-color: var(--line); color: var(--text-muted); text-decoration: line-through; opacity: .7; }
+.cafe-slot.is-taken { border-color: var(--line); color: var(--text-muted); text-decoration: line-through; }
 @media (min-width: 1024px) { .compare { aspect-ratio: 2 / 1; } .cafe { font-size: clamp(13px, 1.15vw, 16px); } }
 /* chips for the picker (the inner pages' .chip lives in pages.css, not loaded on home) */
 .picker .chip {
@@ -1168,7 +1170,8 @@
 .serp-title { color: var(--g-blue); font-size: 13px; font-weight: 400; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .serp-meta { color: var(--g-muted); font-size: 11px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .serp-rate { color: var(--g-text); }
-.serp-stars { color: #FBBC04; letter-spacing: -1px; }
+.serp-stars { color: #9A5B00; letter-spacing: -1px; }      /* Google's star yellow is unreadable on white */
+.dark .serp-stars { color: #FBBC04; }
 .serp-note { color: var(--g-muted); font-size: 11px; }
 .serp-note.open { color: var(--g-green); }
 .serp-acts { display: flex; gap: 6px; }
@@ -1205,7 +1208,8 @@
 .nfc-phone { display: grid; gap: 4px; align-content: start; width: 160px; min-height: 230px; padding: 16px 12px; border: 6px solid #0E1319; border-radius: 22px; background: var(--bg); font-size: 11.5px; box-shadow: 0 16px 30px -14px rgb(0 0 0 / .6); }
 .nfc-kicker { margin: 0; color: var(--success); font-size: 10.5px; font-weight: 700; }
 .nfc-h { margin: 6px 0 0; font-size: 15px; font-weight: 700; }
-.nfc-stars { margin: 0; color: #F2C14E; font-size: 18px; letter-spacing: 2px; }
+.nfc-stars { margin: 0; color: #8A5A00; font-size: 18px; letter-spacing: 2px; }
+.dark .nfc-stars { color: #F2C14E; }
 .nfc-sub { margin: 0; color: var(--text-muted); }
 .nfc-btn { justify-self: start; margin-top: 8px; padding: 6px 12px; border-radius: 8px; background: var(--accent); color: var(--accent-ink); font-weight: 700; }
 @media (max-width: 479px) { .nfc { gap: 12px; padding: 8px 0; } .nfc-card { width: 112px; height: 72px; } .nfc-phone { width: 150px; min-height: 0; padding: 14px 10px; font-size: 11px; } .nfc-h { font-size: 14px; } }
