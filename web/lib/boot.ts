@@ -36,6 +36,15 @@ export const LITE_BOOT =
 
 /** html[data-intro]: the Hallmark Strike (PLAN §6.1b) plays on a first visit to the home
  *  page with motion on, loaded at the top and not for review links. It clears itself. */
+/** html[data-cv-off]: the home sections that skip layout until near (globals.css, content-visibility)
+ *  all render. A jump to a section (a #link on load, or an in-page link click) must see real heights:
+ *  sections rendering mid-jump used to move the target (Pricing landed 150 px off). One full layout,
+ *  once per visit, and only for a visitor who jumps. */
+export const CV_BOOT =
+  `try{var h=document.documentElement,o=function(){h.dataset.cvOff=''};if(location.hash.length>1)o();` +
+  `document.addEventListener('click',function(e){var a=e.target.closest&&e.target.closest('a[href*="#"]');` +
+  `if(a&&a.hash.length>1&&a.pathname===location.pathname)o()},true)}catch(e){}`;
+
 export const INTRO_BOOT =
   `try{var d=document.documentElement;if(d.dataset.motion==='on'&&location.pathname==='/'&&!location.hash` +
   `&&!/[?&](qa|lead)=/.test(location.search)&&!localStorage.getItem('lf-intro-seen')){` +

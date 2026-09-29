@@ -180,6 +180,9 @@ html:active-view-transition-type(cleave)::view-transition-group(project-cover) {
 #top ~ :is(#services, #quotation, .tools, #work, #proof, #pricing), #top ~ * > :is(#compare, #live-test, #team, #contact) {
   content-visibility: auto; contain-intrinsic-size: auto var(--cv-h, 1000px);
 }
+/* a jump to a section (lib/boot.ts CV_BOOT) renders them all first, so the target can't move */
+html[data-cv-off] #top ~ :is(#services, #quotation, .tools, #work, #proof, #pricing),
+html[data-cv-off] #top ~ * > :is(#compare, #live-test, #team, #contact) { content-visibility: visible; }
 #top ~ #services { --cv-h: 3274px; }    #top ~ #quotation { --cv-h: 1212px; }
 #top ~ * > #compare { --cv-h: 2017px; } #top ~ * > #live-test { --cv-h: 858px; }
 #top ~ .tools { --cv-h: 128px; }        #top ~ #work { --cv-h: 1123px; }

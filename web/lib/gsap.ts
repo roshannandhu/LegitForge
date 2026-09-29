@@ -8,6 +8,7 @@
 import { useEffect, type DependencyList, type RefObject } from 'react';
 import type { gsap as Gsap } from 'gsap';
 import type { ScrollTrigger as ScrollTriggerType } from 'gsap/ScrollTrigger';
+import { lenisStore } from './lenis-store';
 
 export interface Gs { gsap: typeof Gsap; ScrollTrigger: typeof ScrollTriggerType }
 
@@ -41,6 +42,26 @@ export function loadGsap(): Promise<Gs> {
       clearTimeout(wait);
       wait = window.setTimeout(() => ScrollTrigger.refresh(), 150);
     }, true);
+    // a page opened at #section: pins made after load (the Cleave adds 80 % of a screen) push the
+    // section down after the browser has jumped to it (it landed 720 px short on a laptop). Once the
+    // refreshes settle, land again, unless the visitor has scrolled or typed since.
+    const id = decodeURIComponent(location.hash.slice(1));
+    if (id) {
+      let moved = false, settle = 0;
+      const stop = () => { moved = true; };
+      for (const t of ['wheel', 'touchstart', 'keydown', 'pointerdown']) addEventListener(t, stop, { once: true, passive: true });
+      const land = () => {
+        clearTimeout(settle);
+        settle = window.setTimeout(() => {
+          const el = document.getElementById(id);
+          if (moved || !el || Math.abs(el.getBoundingClientRect().top - 88) < 8) return;   // 88: scroll-margin-top
+          const lenis = lenisStore.get();
+          if (lenis) lenis.scrollTo(el, { immediate: true }); else el.scrollIntoView();   // both honour scroll-margin-top
+        }, 250);
+      };
+      ScrollTrigger.addEventListener('refresh', land);
+      setTimeout(() => ScrollTrigger.removeEventListener('refresh', land), 10_000);
+    }
     return (ready = { gsap, ScrollTrigger });
   }));
 }

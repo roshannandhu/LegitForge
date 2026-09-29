@@ -4,7 +4,7 @@ import localFont from 'next/font/local';
 import { ThemeProvider } from 'next-themes';
 import { PAGE_BG } from '@/lib/theme-colors';
 import { MotionProvider } from '@/components/motion/motion-provider';
-import { MOTION_BOOT_SCRIPT, LITE_BOOT, INTRO_BOOT, CLEAVE_BOOT, THEME_BOOT } from '@/lib/boot';
+import { MOTION_BOOT_SCRIPT, LITE_BOOT, INTRO_BOOT, CLEAVE_BOOT, THEME_BOOT, CV_BOOT } from '@/lib/boot';
 import { SmoothScroll } from '@/components/motion/smooth-scroll';
 import { ForgeCanvas } from '@/components/background/forge-canvas';
 import { Header } from '@/components/layout/header';
@@ -86,7 +86,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang="en" className={`${sans.variable} ${stencil.variable}`} suppressHydrationWarning>
       <head>
         {/* sets html[data-motion] before first paint so motion-off visitors never see a flash (§5.5) */}
-        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT + MOTION_BOOT_SCRIPT + LITE_BOOT + INTRO_BOOT + CLEAVE_BOOT }} />
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT + MOTION_BOOT_SCRIPT + LITE_BOOT + INTRO_BOOT + CLEAVE_BOOT + CV_BOOT }} />
       </head>
       <body>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
