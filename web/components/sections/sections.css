@@ -336,7 +336,7 @@
 .cafe-dynamic .cafe-why { grid-column: 1; grid-row: 1; text-align: right; }
 .cafe-static .cafe-why::before { content: "← "; color: var(--heat-ink); }   /* each note points at its feature */
 .cafe-dynamic .cafe-why::after { content: " →"; color: var(--heat-ink); }
-.cafe-nav .cafe-card { display: flex; align-items: center; justify-content: space-between; gap: .6em; padding-inline: 0; border-color: transparent; background: transparent; }
+.cafe-nav .cafe-card { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .4em .6em; padding-inline: 0; border-color: transparent; background: transparent; }   /* narrow: the pill drops under the name, never past the frame */
 .cafe-brand { font-size: 1.2em; font-weight: 800; font-stretch: 100%; white-space: nowrap; }
 .cafe-call, .cafe-account { padding: .35em .8em; border-radius: 999px; font-weight: 600; font-stretch: 94%; white-space: nowrap; }
 .cafe-call { background: var(--accent); color: var(--accent-ink); }

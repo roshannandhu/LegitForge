@@ -27,6 +27,11 @@ export function ForgeLever() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   const isDark = resolvedTheme === 'dark';
+  // the browser bar (theme-color, layout.tsx) follows the device; after a flip it follows the page
+  useEffect(() => {
+    if (resolvedTheme !== 'dark' && resolvedTheme !== 'light') return;
+    document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.setAttribute('content', PAGE_BG[resolvedTheme]));
+  }, [resolvedTheme]);
 
   function toggle(e: React.MouseEvent<HTMLButtonElement>) {
     const next = isDark ? 'light' : 'dark';

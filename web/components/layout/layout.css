@@ -51,6 +51,16 @@
   .header-cta { width: 44px; padding: 0; justify-content: center; }
   .header-cta .cta-short { display: none; }
 }
+/* 320-359 px phones: a smaller mark and word and tighter gaps, or the menu button left the screen
+   (it did on the live site before too, by 47 px) */
+@media (max-width: 359px) {
+  .header-row { gap: 8px; }
+  .logo { gap: 8px; }
+  .logo-mark { width: 34px; height: 34px; }
+  .logo-word { font-size: 16px; }
+  .header-actions { gap: 4px; }
+  .header-actions > .forge-lever { width: 36px; }
+}
 
 .menu-btn {
   display: none; width: 44px; height: 44px; place-items: center; border-radius: 10px;
