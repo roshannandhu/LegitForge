@@ -50,13 +50,13 @@ const unique = (words: string[]) => {
   return words.map((w) => w.trim()).filter((w) => w && !isPh(w) && !seen.has(w.toLowerCase()) && seen.add(w.toLowerCase()));
 };
 
-/** A person's search phrases: full and short name, with the studio, their role and the city. */
+/** A person's search phrases: full and short name, with the studio, their role and each city. */
 export function personKeywords(m: Member, city = '') {
   const n = shortName(m.name);
   return unique([
     m.name, n, `${n} ${SITE.name}`,
     ...(m.role ? [m.role, `${n} ${m.role}`] : []),
-    ...(city ? [`${n} ${city}`] : []),
+    ...servedCities(city).map((c) => `${n} ${c}`),
   ]);
 }
 

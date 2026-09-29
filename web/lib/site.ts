@@ -13,9 +13,10 @@ export const SITE = {
   replyWithin: '2 hours',
   projectsAtATime: '',                        // e.g. '3'; empty = the sentence is left out
   hours: { days: [1, 2, 3, 4, 5, 6], from: 10, to: 19, timeZone: 'Asia/Kolkata', label: 'Monday to Saturday, 10 a.m. to 7 p.m.' },
-  /** Cities we also take clients in, besides the city in Admin → Company (where we are): the home
-   *  title and description, every page's keywords, areaServed and llms.txt (lib/team-seo.ts). */
-  alsoServes: ['Bangalore'] as string[],
+  /** The cities we focus on, equally: the home title and description, person pages, every page's
+   *  keywords, areaServed and llms.txt (lib/team-seo.ts). The city in Admin → Company (where we
+   *  are) is added first if it isn't one of these. */
+  alsoServes: ['Calicut', 'Bangalore'] as string[],
 } as const;
 
 /** The social networks Admin → Company offers, in footer order. `hosts`: the only domains a link
