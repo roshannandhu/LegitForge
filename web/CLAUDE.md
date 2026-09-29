@@ -141,6 +141,12 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
   with 404 (NoFallbackError). Use `dynamicParams = true` + notFound(). `npm run check` fails on
   it. OG image routes are the exception (they read no data, so nothing expires them).
 - Never add `export const runtime = 'edge'` (OpenNext uses the Node.js runtime).
+- Two Cloudflare-only fixes, keep both: wrangler.jsonc "keep_names": false (esbuild's __name() inside
+  next-themes' inline script threw on every page), and worker.ts running HTML through
+  lib/doctype-first.ts (cached pages came out with Next's <script noModule> before <!DOCTYPE html>:
+  quirks mode). Neither shows under `next start`; test with `npx wrangler dev` after a build.
+- Share images use Anybody too: assets/og/Anybody-Wide-*.ttf, cut by scripts/og-fonts.py from
+  app/fonts/anybody-latin.woff2 (rerun both scripts when copy gains a character).
 - The Worker runs on Workers Free (3 MB compressed limit, ~2.4 MB now). A client component's
   `import()` of browser-only code (three.js, Rapier, FlipCard) sits inside
   `if (!process.env.NEXT_RUNTIME)` (team.tsx), or the server bundle takes it too (+1.1 MB).
