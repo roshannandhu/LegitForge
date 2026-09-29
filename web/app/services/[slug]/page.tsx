@@ -10,6 +10,7 @@ import { getProjects } from '@/lib/work';
 import { SERVICE_PAGES, serviceBySlug } from '@/lib/pages';
 import { orgRef, SITE, waLink } from '@/lib/site';
 import { getCompany } from '@/lib/company';
+import { withCity } from '@/lib/team-seo';
 import '@/components/sections/sections.css';
 import '../../pages.css';
 
@@ -22,7 +23,8 @@ export const generateStaticParams = () => SERVICE_PAGES.map((s) => ({ slug: s.sl
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const s = serviceBySlug((await params).slug);
   if (!s) return {};
-  return { title: s.title, description: s.description, alternates: { canonical: `/services/${s.slug}` } };
+  const { city } = await getCompany();
+  return { title: s.title, description: s.description, keywords: withCity(s.keywords, city), alternates: { canonical: `/services/${s.slug}` } };
 }
 
 /** Service page template (PLAN §7.1): problem → what we build → demo → included →

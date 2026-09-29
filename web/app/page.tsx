@@ -22,7 +22,7 @@ import { HallmarkStrike } from '@/components/intro/hallmark-strike';
 import { PROCESS, SERVICES } from '@/lib/content';
 import type { Metadata } from 'next';
 import { getTeam, toCards, type Member } from '@/lib/team';
-import { named, personLd, siteKeywords } from '@/lib/team-seo';
+import { cityNames, fit, named, personLd, siteKeywords } from '@/lib/team-seo';
 import { getProjects } from '@/lib/work';
 import { ORG_ID, SITE, activeSocial, shownEmail, waLink, type Company } from '@/lib/site';
 import { getCompany } from '@/lib/company';
@@ -93,10 +93,19 @@ const orgLd = (c: Company, team: Member[]) => ({
   },
 });
 
-/** Title and description come from the layout; the keywords follow Admin → Team and Company. */
+/** With a city in Admin → Company the title and description name it ("…freelance web developers
+ *  in Calicut"); without one, the layout's. Keywords follow Admin → Team and Company. */
 export async function generateMetadata(): Promise<Metadata> {
-  const [team, company] = await Promise.all([getTeam(), getCompany()]);
-  return { keywords: siteKeywords(team, company.city) };
+  const [team, { city }] = await Promise.all([getTeam(), getCompany()]);
+  const [, also] = cityNames(city);
+  return {
+    ...(city ? {
+      title: { absolute: `${SITE.name}: freelance web developers in ${city}` },
+      description: fit(`Freelance web developers in ${city}${also && also !== 'Kerala' ? ` (${also})` : ''}: websites, web apps, `
+        + 'WhatsApp and AI automation and local SEO for small businesses. Fixed quotes; you own it.'),
+    } : {}),
+    keywords: siteKeywords(team, city),
+  };
 }
 
 export default async function Home() {

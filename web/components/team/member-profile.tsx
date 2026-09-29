@@ -20,10 +20,13 @@ import '@/app/pages.css';
 export async function memberMetadata(m: Member): Promise<Metadata> {
   const { city } = await getCompany();
   const skills = m.skills.slice(0, 4);
+  const about = `${m.name}${m.role ? `, ${m.role},` : ''} at ${SITE.name}${city ? ` in ${city}` : ''}.`
+    + `${skills.length ? ` Builds with ${skills.join(', ')}.` : ''}`;
+  const more = `${about} Projects, skills and how to work together.`;
   return {
     title: m.role ? `${m.name}, ${m.role}` : m.name,
-    description: fit(`${m.name}${m.role ? `, ${m.role},` : ''} at ${SITE.name}${city ? ` in ${city}` : ''}.`
-      + `${skills.length ? ` Builds with ${skills.join(', ')}.` : ''} Projects, skills and how to work together.`),
+    // the closing sentence only when it fits: search results cut at about 160 characters
+    description: more.length <= 160 ? more : fit(about),
     keywords: [...personKeywords(m, city), ...m.skills],
     alternates: { canonical: m.path },
   };
