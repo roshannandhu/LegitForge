@@ -3,15 +3,19 @@ import { SERVICE_PAGES } from '@/lib/pages';
 import { published } from '@/lib/blog';
 import { SITE, shownEmail } from '@/lib/site';
 import { getCompany } from '@/lib/company';
+import { getTeam } from '@/lib/team';
+import { named } from '@/lib/team-seo';
 
 /** /llms.txt (llmstxt.org): the site's structure in Markdown for AI crawlers and assistants.
- *  Static like the sitemap; published projects join when the admin's updateTag('projects') runs. */
+ *  Static like the sitemap; published projects and people join when the admin's updateTag('projects')
+ *  or updateTag('team') runs. */
 export async function GET() {
   const company = await getCompany();
   const email = shownEmail(company);
   const u = (path: string) => `${SITE.url}${path}`;
   const projects = await getProjects();
   const posts = published();
+  const team = named(await getTeam());
   const lines = [
     `# ${SITE.name}`,
     '',
@@ -26,8 +30,10 @@ export async function GET() {
       ...projects.map((p) => `- [${p.title}](${u(`/work/${p.slug}`)}): ${p.client}${p.resultValue ? `, ${p.resultValue} ${p.resultLabel}` : ''}`)] : []),
     ...(posts.length ? ['', '## Blog', ...posts.map((p) => `- [${p.title}](${u(`/blog/${p.slug}`)}): ${p.description}`)] : []),
     '',
+    ...(team.length ? ['## Team', ...team.map((m) => `- [${m.name}](${u(m.path)})${m.role ? `: ${m.role}` : ''}`
+      + (m.links.length ? ` (${m.links.map((l) => `[${l.label}](${l.href})`).join(', ')})` : '')), ''] : []),
     '## About',
-    `- [Team](${u('/team')}): the two people who build every project`,
+    `- [Team](${u('/team')}): the people who build every project`,
     `- [Contact](${u('/contact')}): WhatsApp or the project form`,
     '',
     '## Optional',

@@ -24,7 +24,14 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
 - SEO files: app/robots.ts, app/sitemap.ts, app/llms.txt/route.ts (llmstxt.org summary: services,
   published work and posts), app/icon.svg + app/apple-icon.tsx (the seal), app/not-found.tsx
   (noindex, no canonical). Every inner page has breadcrumbs (Breadcrumbs / PageHead in
-  components/pages/page-head.tsx). Legal-page CSS lives in globals.css: the root 404 imports it.
+  components/pages/page-head.tsx).
+  People's pages are at the site root, from their name (legitforge.pages.dev/roshanraj:
+  lib/team.ts handleFor/withPaths → Member.path, app/[member], components/team/member-profile.tsx);
+  /team/<slug> 308-redirects there, and is the page itself only when the name gives no free
+  handle. Link to a person with m.path, never `/team/${slug}`. A new top-level route or public/
+  folder goes in RESERVED (lib/team.ts), or a person's name could take its address.
+  Titles, descriptions, keywords, JSON-LD (Person, the studio's employee list) and llms.txt are
+  built from Admin → Team and Company by lib/team-seo.ts: never hard-code a name. Legal-page CSS lives in globals.css: the root 404 imports it.
 - Share images: lib/og.tsx draws every card (1200 × 630, next/og); each route has an
   opengraph-image.tsx and twitter-image.tsx, except case studies: an uploaded cover, else /og/work/<slug>. They must stay static (generateStaticParams +
   dynamicParams = false): the font files in assets/og are read at build time, never on Workers.

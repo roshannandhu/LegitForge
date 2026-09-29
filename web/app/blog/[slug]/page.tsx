@@ -45,7 +45,7 @@ export default async function BlogPost({ params }: { params: Promise<{ slug: str
       <PageHead crumbs={[{ name: 'Blog', href: '/blog' }, { name: p.title, href: `/blog/${p.slug}` }]} title={p.title} lead={p.description}>
         <p className="post-byline">
           <time dateTime={p.date}>{formatDate(p.date)}</time>
-          {author && <> · by <a className="text-link" href={`/team/${author.slug}`}>{author.name}</a></>}
+          {author && <> · by <a className="text-link" href={author.path}>{author.name}</a></>}
           {' '}· {stats.minutes} min read
         </p>
       </PageHead>
@@ -98,7 +98,7 @@ export default async function BlogPost({ params }: { params: Promise<{ slug: str
         image: `${SITE.url}/blog/${p.slug}/opengraph-image`,
         url: `${SITE.url}/blog/${p.slug}`,
         mainEntityOfPage: `${SITE.url}/blog/${p.slug}`,
-        author: author ? { '@type': 'Person', name: author.name, url: `${SITE.url}/team/${author.slug}` } : orgRef,                 // no published author yet: the studio
+        author: author ? { '@type': 'Person', name: author.name, url: `${SITE.url}${author.path}` } : orgRef,                 // no published author yet: the studio
         publisher: orgRef,
       }} />
     </>

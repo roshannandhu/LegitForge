@@ -13,12 +13,43 @@ import { atBuild } from './build-cache';
  *  The photo URL carries ?v=<card_version>: "Regenerate ID card" bumps it, so the flip and
  *  3D cards (lib/card-art.ts) load the new photo instead of a cached one. */
 
-export type Card = (typeof TEAM)[number];
+/** `path` is the person's public page (see withPaths). */
+export type Card = (typeof TEAM)[number] & { path: string };
 export type Member = Card & {
   bio: string; tools: string[]; links: { label: string; href: string }[]; cardVersion: number;
 };
 
-const PLACEHOLDERS: Member[] = TEAM.map((m) => ({ ...m, ...(MEMBER_DETAILS[m.slug] ?? { bio: '', tools: [], links: [] }), cardVersion: 1 }));
+/** "Roshan Raj M" → "Roshan Raj": the name people search for, without single-letter initials. */
+export function shortName(name: string) {
+  const short = name.split(/\s+/).filter((w) => w.replace(/\./g, '').length > 1).join(' ');
+  return short || name.trim();
+}
+
+/** Top-level addresses no name may take: the app/ routes and the public/ folders.
+ *  A new top-level route or folder belongs in this list too. */
+const RESERVED = new Set(['admin', 'api', 'blog', 'contact', 'media', 'og', 'privacy', 'services', 'team', 'terms',
+  'work', 'fonts', 'hero', 'lanyard', 'icon', 'apple-icon', 'opengraph-image', 'twitter-image', 'llms', 'robots',
+  'sitemap', 'next', 'cdn-cgi']);
+
+/** "Roshan Raj M" → "roshanraj": a person's address at the root of the site, from their name. */
+export const handleFor = (name: string) =>
+  isPh(name) ? '' : shortName(name).normalize('NFKD').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+/** Each person's public page: /<handle> from their name (legitforge.pages.dev/roshanraj), so every
+ *  person the admin adds gets a page at their own name. /team/<slug> when the name gives no
+ *  handle, a reserved one, or one an earlier person (admin order) already has. /team/<slug>
+ *  otherwise redirects to /<handle> (app/team/[slug]/page.tsx). */
+function withPaths<T extends { slug: string; name: string }>(people: T[]): (T & { path: string })[] {
+  const taken = new Set<string>();
+  return people.map((m) => {
+    const h = handleFor(m.name);
+    const free = !!h && !RESERVED.has(h) && !taken.has(h);
+    if (free) taken.add(h);
+    return { ...m, path: free ? `/${h}` : `/team/${m.slug}` };
+  });
+}
+
+const PLACEHOLDERS: Member[] = withPaths(TEAM.map((m) => ({ ...m, ...(MEMBER_DETAILS[m.slug] ?? { bio: '', tools: [], links: [] }), cardVersion: 1 })));
 /** No published members yet: nobody (the sections hide), or the placeholders when SHOW_PH. */
 const FALLBACK: Member[] = SHOW_PH ? PLACEHOLDERS : [];
 
@@ -47,7 +78,7 @@ export async function teamFromDb(includeHidden: boolean): Promise<Member[] | nul
     // the owner hasn't filled in yet ("[Role]") shows as empty, and an unnamed person not at all
     const real = (s: string | null | undefined) => (s && !isPh(s) ? s : '');
     const rows = (members.results as Row[]).filter((r) => includeHidden || !isPh(r.name));
-    return rows.map((r) => ({
+    return withPaths(rows.map((r) => ({
       slug: r.slug, idCode: r.id_code, name: r.name, role: includeHidden ? r.role : real(r.role), initials: r.initials || monogram(r.name),
       photo: r.photo_key ? `/media/${r.photo_key}?v=${r.card_version}` : '',
       skills: list(r.skills).filter((s) => includeHidden || !isPh(s)), shipped: String(shipped(r.slug)), favorite: r.favorite ?? '—',
@@ -55,7 +86,7 @@ export async function teamFromDb(includeHidden: boolean): Promise<Member[] | nul
       bio: includeHidden ? r.bio : real(r.bio), tools: list(r.tools).filter((s) => includeHidden || !isPh(s)), cardVersion: r.card_version,
       links: ([['LinkedIn', r.linkedin_url], ['GitHub', r.github_url], ['Website', r.website_url]] as const)
         .filter(([, href]) => href).map(([label, href]) => ({ label, href: href! })),
-    }));
+    })));
   } catch (e) {
     console.error('[team] D1 read failed, showing the defaults', e);
     return null;
@@ -79,7 +110,7 @@ export const getTeam: typeof getTeamCached = (...args) =>
 
 /** Only the fields the card components need: bios and links stay on the server. */
 export const toCards = (team: Member[]): Card[] =>
-  team.map(({ slug, idCode, name, role, initials, photo, skills, shipped, favorite, building }) => ({ slug, idCode, name, role, initials, photo, skills, shipped, favorite, building }));
+  team.map(({ slug, path, idCode, name, role, initials, photo, skills, shipped, favorite, building }) => ({ slug, path, idCode, name, role, initials, photo, skills, shipped, favorite, building }));
 
 /** Defaults the admin imports as its starting rows. */
 export const TEAM_DEFAULTS = PLACEHOLDERS;

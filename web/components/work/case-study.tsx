@@ -76,7 +76,7 @@ export async function CaseStudy({ p, next }: { p: WorkProject; next?: WorkProjec
           <ul className="builders">
             {builders.map((b) => (
               <li key={b.slug}>
-                <a className="text-link" href={`/team/${b.slug}`}>{b.m!.name}</a>
+                <a className="text-link" href={b.m!.path}>{b.m!.name}</a>
                 <span>{b.role}</span>
               </li>
             ))}
