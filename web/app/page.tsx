@@ -20,7 +20,9 @@ import { PricingFaq } from '@/components/sections/pricing-faq';
 import { Quench } from '@/components/sections/quench';
 import { HallmarkStrike } from '@/components/intro/hallmark-strike';
 import { PROCESS, SERVICES } from '@/lib/content';
-import { getTeam, toCards } from '@/lib/team';
+import type { Metadata } from 'next';
+import { getTeam, toCards, type Member } from '@/lib/team';
+import { named, personLd, siteKeywords } from '@/lib/team-seo';
 import { getProjects } from '@/lib/work';
 import { ORG_ID, SITE, activeSocial, shownEmail, waLink, type Company } from '@/lib/site';
 import { getCompany } from '@/lib/company';
@@ -55,9 +57,9 @@ const siteLd = [
   },
 ];
 
-/** Organization + the services we sell, for search engines and AI answers (PLAN §10.4). */
-/** The studio in structured data, from the saved company details (Admin → Company). */
-const orgLd = (c: Company) => ({
+/** The studio in structured data, from the saved company details (Admin → Company) and the
+ *  people in Admin → Team, so search engines connect each name to the studio. */
+const orgLd = (c: Company, team: Member[]) => ({
   '@context': 'https://schema.org',
   '@type': 'ProfessionalService',
   '@id': ORG_ID,
@@ -73,6 +75,7 @@ const orgLd = (c: Company) => ({
     ...(c.city ? { addressLocality: c.city } : {}), ...(c.country ? { addressCountry: c.country } : {}) } } : {}),
   ...(c.whatsapp ? { telephone: `+${c.whatsapp}` } : {}),
   ...(activeSocial(c).length ? { sameAs: activeSocial(c).map((s) => s.url) } : {}),
+  ...(named(team).length ? { employee: named(team).map((m) => personLd(m)) } : {}),
   openingHoursSpecification: {
     '@type': 'OpeningHoursSpecification',
     dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
@@ -90,8 +93,15 @@ const orgLd = (c: Company) => ({
   },
 });
 
+/** Title and description come from the layout; the keywords follow Admin → Team and Company. */
+export async function generateMetadata(): Promise<Metadata> {
+  const [team, company] = await Promise.all([getTeam(), getCompany()]);
+  return { keywords: siteKeywords(team, company.city) };
+}
+
 export default async function Home() {
-  const team = toCards(await getTeam());
+  const members = await getTeam();
+  const team = toCards(members);
   const hasWork = (await getProjects()).length > 0;
   const company = await getCompany();
   const wa = waLink(company);
@@ -155,7 +165,7 @@ export default async function Home() {
       <HeatDirector />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify([orgLd(company), ...siteLd]).replace(/</g, '\\u003c') }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify([orgLd(company, members), ...siteLd]).replace(/</g, '\\u003c') }}
       />
     </>
   );
