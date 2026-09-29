@@ -60,11 +60,27 @@ export function personKeywords(m: Member, city = '') {
   ]);
 }
 
-/** The studio's phrases (name, services, city) plus every named person's. */
+/** Other names people search a Kerala city by, and the state: "Calicut" → Kozhikode, Kerala. */
+const CITY_ALSO: Record<string, string[]> = {
+  calicut: ['Kozhikode', 'Kerala'], kozhikode: ['Calicut', 'Kerala'],
+  kochi: ['Cochin', 'Ernakulam', 'Kerala'], cochin: ['Kochi', 'Kerala'], ernakulam: ['Kochi', 'Kerala'],
+  thiruvananthapuram: ['Trivandrum', 'Kerala'], trivandrum: ['Thiruvananthapuram', 'Kerala'],
+  thrissur: ['Kerala'], kannur: ['Kerala'], malappuram: ['Kerala'], kollam: ['Kerala'], palakkad: ['Kerala'],
+};
+
+/** The city from Admin → Company, then its other names: ['Calicut', 'Kozhikode', 'Kerala']. */
+export const cityNames = (city: string) => (city ? [city, ...(CITY_ALSO[city.trim().toLowerCase()] ?? [])] : []);
+
+/** Each phrase alone and with each city name: "website design", "website design Calicut", … */
+export const withCity = (phrases: string[], city = '') =>
+  unique(phrases.flatMap((p) => [p, ...cityNames(city).map((c) => `${p} ${c}`)]));
+
+/** The studio's phrases (name, every service's keywords with the city) plus every named person's. */
 export function siteKeywords(team: Member[], city = '') {
   return unique([
-    SITE.name, 'LegitForge',
-    ...SERVICE_PAGES.flatMap((s) => (city ? [s.name, `${s.name} ${city}`] : [s.name])),
+    SITE.name, 'LegitForge', ...cityNames(city).map((c) => `${SITE.name} ${c}`),
+    ...withCity(['freelance web developer', 'freelance developers'], city),
+    ...withCity(SERVICE_PAGES.map((s) => s.keywords[0]!), city),
     ...named(team).flatMap((m) => personKeywords(m, city)),
   ]);
 }

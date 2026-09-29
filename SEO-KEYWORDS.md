@@ -3,9 +3,33 @@
 What people type into Google that should lead them to legitforge.pages.dev. Built from the site's
 own copy (`web/lib/content.ts`, `web/lib/pages.ts`, the blog posts) plus the team's names and roles.
 
-**How to use it.** Google ignores the `<meta name="keywords">` tag, so this list is not pasted into
-the code. Use it to write page titles, descriptions, headings, team bios and blog posts, and to track
-queries in Search Console → Performance. Each group names the page that should rank for it.
+**How to use it.** Google ranks pages by their titles, descriptions, headings and text, not by the
+`<meta name="keywords">` tag. The site already builds its titles, descriptions and keyword tags
+from these phrases (`web/lib/pages.ts` `keywords`, `web/lib/team-seo.ts`), adding the city from
+Admin → Company to each one ("website design Calicut"). Use the rest for team bios, blog posts and
+the Google Business Profile, and track them in Search Console → Performance. Each group names the
+page that should rank for it.
+
+The studio is in **Calicut (Kozhikode)**: set City = Calicut and Country = India in Admin → Company
+(owners only). Titles, descriptions and keywords then say Calicut, Kozhikode and Kerala.
+
+## Top 10 (in page titles and the Google Business Profile)
+
+| # | Keyword | Page |
+|---|---|---|
+| 1 | Legit Forge | home |
+| 2 | Roshan Raj M | `/roshanraj` |
+| 3 | Midhun Vijay PK | `/midhunvijay` |
+| 4 | freelance web developer in Calicut | home |
+| 5 | website design Calicut | `/services/website-development` |
+| 6 | web development company in Kozhikode | home, `/services/website-development` |
+| 7 | freelance developers near me | Google Business Profile |
+| 8 | automation agency Kerala | `/services/n8n-automation` |
+| 9 | WhatsApp automation Kerala | `/services/whatsapp-automation` |
+| 10 | AI automation for small business | `/services/n8n-automation`, `/services/whatsapp-automation` |
+
+"Best …" searches ("best freelancers in Calicut") are won with Google reviews, not by writing
+"best" on the site: ask every client for a review on the Google Business Profile.
 
 ---
 
@@ -89,7 +113,7 @@ How the site lists Roshan (AI & ML Engineering). Good for the team page and AI-r
 - freelance ML engineer
 - AI developer
 - AI/ML developer India
-- AI engineer Kochi
+- AI engineer Calicut
 - machine learning engineer Kerala
 
 ## 3. Website development → `/services/website-development`
@@ -233,14 +257,13 @@ How the site lists Roshan (AI & ML Engineering). Good for the team page and AI-r
 
 ## 10. Location modifiers
 
-Add these to the keywords above (e.g. "web developer" + "Kochi" → "web developer in Kochi").
-The studio is in Kochi: set City = Kochi and Country = India in Admin → Company so Google's
-business details say so too (only owners can edit it).
+Add these to the keywords above (e.g. "web developer" + "Calicut" → "web developer in Calicut").
+People search both Calicut and Kozhikode, so use both. Nearby towns only if you serve clients there.
 
-- Kochi
-- in Kochi
-- Cochin
-- Ernakulam
+- Calicut
+- in Calicut
+- Kozhikode
+- in Kozhikode
 - Kerala
 - in Kerala
 - India
@@ -251,52 +274,46 @@ business details say so too (only owners can edit it).
 - affordable
 - hire
 
-## 11. Kochi and Kerala → home, `/services/*`, Google Business Profile
+## 11. Calicut, Kozhikode and Kerala → home, `/services/*`, Google Business Profile
 
-Local searches are the easiest to win. Use them in service-page copy, the Google Business Profile
-and blog posts.
+Local searches are the easiest to win. The site adds the city to its titles and keywords itself;
+use these in the Google Business Profile and blog posts too.
 
-- web developer Kochi
-- web developer in Kochi
-- website developer Kochi
-- website design Kochi
-- website development company Kochi
-- web design company Kochi
-- web developer Ernakulam
-- website design Ernakulam
-- web developer Kerala
-- website development Kerala
-- freelance developer Kochi
-- freelance web developer Kochi
-- freelance developer Kerala
-- software developer Kochi
-- software company Kochi
-- app developer Kochi
-- app development Kochi
-- mobile app developer Kerala
-- full stack developer Kochi
-- frontend developer Kochi
-- backend developer Kochi
-- WhatsApp automation Kochi
+- freelance web developer Calicut
+- freelance web developer Kozhikode
+- freelance developers near me
+- freelance app developer Calicut
+- full stack developer Calicut
+- hire freelance developer Kerala
+- freelance software developer Kerala
+- web developer near me
+- affordable web developer Calicut
+- website design Calicut
+- website designers in Calicut
+- website development Kozhikode
+- web development company in Kozhikode
+- small business website Calicut
+- ecommerce website development Calicut
+- website redesign Kerala
+- web app development Calicut
+- custom software development Kozhikode
 - WhatsApp automation Kerala
-- WhatsApp chatbot Kerala
-- n8n automation Kochi
-- business automation Kerala
-- AI integration Kochi
-- AI automation Kerala
-- SEO Kochi
-- SEO services Kochi
-- local SEO Kochi
-- SEO company Kerala
-- Google Business Profile Kochi
-- NFC business card Kochi
+- WhatsApp chatbot for business Kerala
+- WhatsApp Business API Calicut
+- business automation Calicut
+- automation agency Kerala
+- AI chatbot for business Kerala
+- AI integration services Kerala
+- SEO services Calicut
+- local SEO Kozhikode
+- Google Business Profile setup Calicut
+- NFC business card Calicut
 - digital business card Kerala
-- quotation software Kochi
-- warranty management system Kerala
-- Roshan Raj Kochi
-- Roshan Raj M Kochi
-- Midhun Vijay Kochi
-- Legit Forge Kochi
+- Legit Forge Calicut
+- Roshan Raj M Calicut
+- Roshan Raj Calicut
+- Midhun Vijay web developer Calicut
+- Midhun Vijay PK
 
 ## 12. Questions for blog posts → `/blog`
 
@@ -305,7 +322,9 @@ Long-tail searches, each a good blog post.
 - static or dynamic website: which do I need
 - what can a WhatsApp bot do for my business
 - how much does a website cost in India
-- how much does a website cost in Kochi
+- how much does a website cost in Kerala
+- website vs app: which does my business need
+- freelancer vs agency for a website
 - how long does it take to build a website
 - how to automate WhatsApp replies
 - what is n8n and what can it automate

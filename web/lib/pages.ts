@@ -17,6 +17,9 @@ export interface ServicePage {
   demo: DemoKind;
   title: string;              // <title>
   description: string;        // meta description
+  /** What people type into Google for this service (SEO-KEYWORDS.md). The page adds each with
+   *  the city from Admin → Company ("website design Calicut"); lib/team-seo.ts withCity. */
+  keywords: string[];
   h1: string;
   lead: string;
   problem: string[];          // what clients tell us, in their words
@@ -34,8 +37,9 @@ export const SERVICE_PAGES: ServicePage[] = [
     name: 'Websites and web apps',
     topic: 'websites and web apps',
     demo: 'website',
-    title: 'Website development: fast static and dynamic sites',
-    description: 'Static websites that load in about a second, and web apps with logins, bookings and dashboards. Fixed quote, weekly previews, you own everything.',
+    title: 'Website design and development for small businesses',
+    description: 'Website design and web app development: static sites that load in about a second, and apps with logins, bookings and dashboards. Fixed quote; you own it.',
+    keywords: ['website design', 'website development', 'web development company', 'freelance web developer', 'web app development', 'small business website', 'ecommerce website development', 'booking website', 'custom software development'],
     h1: 'Websites that load in a second, and web apps that run your business',
     lead: 'A static site when your content changes a few times a month. A web app when you need logins, bookings or a dashboard. We tell you which one you need — and when the cheaper one is enough.',
     problem: [
@@ -70,8 +74,9 @@ export const SERVICE_PAGES: ServicePage[] = [
     name: 'WhatsApp automation',
     topic: 'WhatsApp automation',
     demo: 'whatsapp',
-    title: 'WhatsApp automation for businesses',
-    description: 'WhatsApp bots that answer customers, take orders and bookings, and alert your team — on the official WhatsApp Business Platform, with a person one tap away.',
+    title: 'WhatsApp automation and chatbots for business',
+    description: 'WhatsApp automation and chatbots that answer customers, take orders and bookings, and alert your team, on the official WhatsApp Business Platform.',
+    keywords: ['WhatsApp automation', 'WhatsApp chatbot for business', 'WhatsApp Business API', 'WhatsApp auto reply for business', 'AI chatbot for business'],
     h1: 'WhatsApp that answers your customers, even at 2 a.m.',
     lead: 'Most of your WhatsApp messages ask the same ten questions. We build a bot on the official WhatsApp Business Platform that answers them instantly, takes orders and bookings, and hands everything else to a person.',
     problem: [
@@ -106,8 +111,9 @@ export const SERVICE_PAGES: ServicePage[] = [
     name: 'n8n workflows',
     topic: 'n8n workflows',
     demo: 'n8n',
-    title: 'n8n automation: connect your apps, stop copy-pasting',
-    description: 'n8n workflows that move data between your forms, sheets, CRM, invoices and WhatsApp — built, tested and documented, on a server you own.',
+    title: 'n8n and AI automation for small businesses',
+    description: 'Business automation with n8n and AI: workflows that move data between your forms, sheets, CRM, invoices and WhatsApp. Built, tested and documented.',
+    keywords: ['automation agency', 'business automation', 'AI automation for small business', 'AI integration services', 'n8n automation expert', 'workflow automation'],
     h1: 'n8n automation: connect your apps and stop copy-pasting',
     lead: 'If someone on your team copies data from one app into another every day, that is a workflow. We build it in n8n so the data moves by itself — tested, documented and running on a server you own.',
     problem: [
@@ -142,8 +148,9 @@ export const SERVICE_PAGES: ServicePage[] = [
     name: 'SEO',
     topic: 'SEO',
     demo: 'seo',
-    title: 'Local SEO: get found on Google, get the call',
+    title: 'Local SEO and Google Business Profile setup',
     description: 'Local SEO for small businesses: Google Business Profile, fast pages, local content and a monthly report of real calls and clicks. No fake promises of #1.',
+    keywords: ['SEO services', 'local SEO', 'Google Business Profile setup', 'rank on Google Maps'],
     h1: 'Get found on Google by the people near you',
     lead: 'Most customers search before they call. We make sure your business shows up for the searches that matter near you, with a fast page that turns the click into a call or a WhatsApp message.',
     problem: [
@@ -178,8 +185,9 @@ export const SERVICE_PAGES: ServicePage[] = [
     name: 'NFC cards and tags',
     topic: 'NFC cards and tags',
     demo: 'nfc',
-    title: 'NFC business cards, review tags and warranty stickers',
-    description: 'NFC cards and tags that open your contact, your Google reviews or a product warranty with one tap. No app needed, and you can change where they point any time.',
+    title: 'NFC business cards and Google review tags',
+    description: 'NFC business cards and Google review tags that open your contact, your reviews or a warranty with one tap. No app needed; change where they point any time.',
+    keywords: ['NFC business card', 'digital business card', 'Google review NFC card', 'NFC warranty sticker'],
     h1: 'One tap: your contact, your reviews, or your warranty',
     lead: 'A card or sticker with an NFC chip opens a page on any modern phone with one tap, no app. We make the cards and the pages they open, and you can change where they point without reprinting.',
     problem: [
