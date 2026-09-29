@@ -57,6 +57,8 @@ export const metadata: Metadata = {
     'WhatsApp automation and n8n workflows. Fixed quotes; you own everything.',
   alternates: { canonical: '/' },
   ...(NOINDEX ? { robots: { index: false, follow: false } } : {}),
+  /** Google Search Console ownership, HTML-tag method. Remove only after DNS verification replaces it. */
+  verification: { google: 'qi4K3Bou7813zfme8K7qm-YjQyajIA5nFwSOySDQLJY' },
   openGraph: {
     type: 'website',
     siteName: SITE.name,
