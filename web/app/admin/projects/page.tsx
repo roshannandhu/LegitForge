@@ -3,9 +3,10 @@ import { listProjects } from '@/lib/admin/db';
 import { createProjectAction, featureProjectAction, moveProjectAction, publishProjectAction } from '../actions';
 import { ActionButton, ActionForm, Submit } from '../ui';
 import { GithubAdd } from './github-add';
+import { PrivateRepos } from './private-repos';
 
 export default async function AdminProjects() {
-  await requireAdmin();                            // each page checks too: a layout can be skipped
+  const who = await requireAdmin();                // each page checks too: a layout can be skipped
   const rows = await listProjects();
   return (
     <>
@@ -17,6 +18,7 @@ export default async function AdminProjects() {
       </p>
 
       <GithubAdd />
+      <PrivateRepos who={who} />
 
       <h2 className="type-h3 admin-subhead">Or start from a title</h2>
       <ActionForm action={createProjectAction} className="admin-form">

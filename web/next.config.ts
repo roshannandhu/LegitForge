@@ -29,7 +29,7 @@ const securityHeaders = [
 
 /** The admin's own policy, ENFORCED (lib/admin/auth.ts): scripts, frames and connections only from
  *  this site and Google's sign-in, so injected code can't load or send anything elsewhere; no site
- *  may frame it; forms post only here. `next dev` also needs 'unsafe-eval' (React's dev tools). */
+ *  may frame it; forms post only here (and to GitHub's create-an-app page). `next dev` also needs 'unsafe-eval' (React's dev tools). */
 const adminCsp = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'${process.env.NODE_ENV === 'development' ? " 'unsafe-eval'" : ''} https://accounts.google.com/gsi/client https://static.cloudflareinsights.com`,
@@ -40,7 +40,8 @@ const adminCsp = [
   "style-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/style",
   "font-src 'self'",
   "frame-ancestors 'none'",
-  "form-action 'self'",
+  // plus GitHub's "create an app" page: Admin → Projects → Connect GitHub (lib/admin/github-app.ts)
+  "form-action 'self' https://github.com/settings/apps/new",
   "base-uri 'none'",
   "object-src 'none'",
 ].join('; ');

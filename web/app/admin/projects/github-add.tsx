@@ -26,6 +26,19 @@ async function readInBrowser(url: string) {
   }
 }
 
+/** A link to send someone (the private-repos approval link), with a Copy button. */
+export function CopyLink({ href }: { href: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <p className="gh-link">
+      <a href={href} target="_blank" rel="noopener noreferrer">{href}</a>
+      <button type="button" className="btn btn-ghost btn-sm" onClick={() => navigator.clipboard?.writeText(href).then(() => setCopied(true), () => {})}>
+        {copied ? 'Copied' : 'Copy link'}
+      </button>
+    </p>
+  );
+}
+
 export function GithubAdd() {
   const router = useRouter();
   const [picked, setPicked] = useState<Picked | null>(null);
@@ -33,6 +46,7 @@ export function GithubAdd() {
   const [step, setStep] = useState<'' | 'reading' | 'uploading' | 'opening'>('');
   const [error, setError] = useState('');
   const [offerName, setOfferName] = useState(false);   // GitHub can't be read: "Create from the name only"
+  const [link, setLink] = useState('');                // the approval link to send a repo's owner
   const fileRef = useRef<HTMLInputElement>(null);
 
   const take = async (file: File | null | undefined) => {
@@ -58,13 +72,13 @@ export function GithubAdd() {
   }, []);
 
   const create = async (fromName = false) => {
-    setError(''); setOfferName(false);
+    setError(''); setOfferName(false); setLink('');
     if (!picked) { setError('Add the project’s image first: paste a screenshot or choose a file.'); fileRef.current?.focus(); return; }
     if (!url.trim()) { setError('Paste the GitHub link.'); return; }
     setStep('reading');
     const fetched = fromName ? undefined : await readInBrowser(url.trim());
-    const made = await projectFromGithubAction(url.trim(), fetched, fromName).catch(() => ({ error: 'Couldn’t reach the server. Try again.', nameOnly: false }));
-    if ('error' in made) { setError(made.error); setOfferName(!!made.nameOnly); setStep(''); return; }
+    const made = await projectFromGithubAction(url.trim(), fetched, fromName).catch(() => ({ error: 'Couldn’t reach the server. Try again.', nameOnly: false, link: '' }));
+    if ('error' in made) { setError(made.error); setOfferName(!!made.nameOnly); setLink(made.link ?? ''); setStep(''); return; }
 
     setStep('uploading');
     const f = new FormData();
@@ -124,6 +138,7 @@ export function GithubAdd() {
         </div>
       </div>
       {error && <p className="admin-msg is-error" role="alert">{error}</p>}
+      {link && !busy && <CopyLink href={link} />}
       {offerName && !busy && (
         <div className="admin-actions">
           <button type="button" className="btn btn-ghost" onClick={() => create(true)}>Create from the name only</button>

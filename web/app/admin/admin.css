@@ -104,3 +104,6 @@
 /* Admin → Company: a social link and its "Show" switch on one line */
 .social-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 12px; }
 .admin-fieldset > .muted { margin: 0; }
+/* the private-repos approval link: wraps on phones, Copy beside it */
+.gh-link { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 12px 0 0; }
+.gh-link a { overflow-wrap: anywhere; font-weight: 600; }

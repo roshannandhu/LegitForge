@@ -102,9 +102,17 @@ languages and homepage (no AI, no cost). It opens as a draft: check it, add the 
 number (numbers are never made up), then Publish. For private repos, create a fine-grained GitHub
 token (GitHub → Settings → Developer settings → Fine-grained tokens; repository access: your project
 repos; permissions: Contents and Metadata, read-only) and set it: `npx wrangler secret put GITHUB_TOKEN`.
-A private repo owned by someone else (a teammate's account) needs a token from an account that can
-read it. Without a token, a private repo gets "Create from the name only": the draft has the title
-and repo link, and you fill in the rest. Public repos never need the token and never hit a limit:
+**Private repos (any team member's):** Admin → Projects → Private repos. Once, an owner presses
+**Connect GitHub**; GitHub shows "Create GitHub App" (a Legit Forge app on that owner's GitHub
+account, read-only: code and details); press it. If GitHub says the name is taken, change it there.
+The panel then shows a link: send it to each team member (roshannandhu, vijay-pk, anyone later).
+They sign in to GitHub, pick the repos Legit Forge may read, and press Install. Their private repos
+then work in "Add from GitHub" like public ones, and the panel lists who has approved. They can
+remove it any time in GitHub → Settings → Applications. If someone pastes a repo its owner hasn't
+approved yet, the message gives the link to send them. Nobody copies a key: GitHub hands the app's
+key straight to the site, which keeps it in D1 encrypted with `ADMIN_SESSION_KEY` (replacing that
+secret means pressing Connect GitHub again). Without it, a private repo still gets "Create from the
+name only": the draft has the title and repo link, and you fill in the rest. Public repos never need the token and never hit a limit:
 your browser tries GitHub's API (60 reads an hour per connection, often used up on mobile networks),
 and when that is out, the server reads the repo's public page and raw README instead, which GitHub
 doesn't count against that limit.

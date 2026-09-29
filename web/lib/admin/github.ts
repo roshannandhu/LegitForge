@@ -145,6 +145,8 @@ export type BriefOptions = {
   fetchImpl?: typeof fetch;
   /** in the admin's browser: only CORS-safelisted headers (no preflight), never a token */
   browser?: boolean;
+  /** server: a token for a private repo its owner approved (lib/admin/github-app.ts), else what to do */
+  privateAccess?: (ref: RepoRef) => Promise<{ token: string } | { error: string; link?: string }>;
 };
 
 /** What the brief is written from: the three GitHub answers. */
@@ -169,7 +171,8 @@ async function gh<T>(path: string, o: BriefOptions, raw = false): Promise<{ stat
 /** A message for the owner. `nameOnly`: the repo can't be read, so offer "Create from the name only". */
 export class BriefError extends Error {
   nameOnly: boolean;
-  constructor(message: string, nameOnly = false) { super(message); this.nameOnly = nameOnly; }
+  link?: string;                                    // a link the message refers to (the approval link)
+  constructor(message: string, nameOnly = false, link?: string) { super(message); this.nameOnly = nameOnly; this.link = link; }
 }
 /** The API is out of requests (403/429) or unreachable. Never shown: the caller reads the repo page. */
 class ApiBusy extends BriefError {}
@@ -192,6 +195,11 @@ export async function serverRepoData(ref: RepoRef, o: BriefOptions = {}): Promis
   let page: RepoData | null;
   try { page = await fetchRepoPage(ref, o.fetchImpl); }
   catch { throw new BriefError('GitHub didn’t answer just now. Try again, or create the project from its name and fill in the rest.', true); }
+  if (!page && o.privateAccess) {                  // private: the GitHub App, if its owner approved it
+    const a = await o.privateAccess(ref);
+    if ('token' in a) return fetchRepoData(ref, { ...o, token: a.token, apiBase: undefined });
+    throw new BriefError(a.error, true, a.link);
+  }
   if (!page) throw new BriefError(`GitHub shows no public repository at ${ref.owner}/${ref.repo}: it is private, or the link is wrong. Make it public on GitHub and try again, or create the project from its name and fill in the rest.`, true);
   return page;
 }

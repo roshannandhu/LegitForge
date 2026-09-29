@@ -13,6 +13,7 @@ import { getEnv } from '@/lib/cf';
 import { getTeam, TEAM_DEFAULTS } from '@/lib/team';
 import type { WorkCategory } from '@/lib/pages';
 import { BriefError, briefFrom, nameOnly, parseRepo, repoBrief, repoDataFrom, type Brief } from '@/lib/admin/github';
+import { ConnectError, checkState, connectApp, privateRepoAccess } from '@/lib/admin/github-app';
 import { companyFromForm } from '@/lib/company';
 
 const str = (f: FormData, k: string, max = 2000) => String(f.get(k) ?? '').trim().slice(0, max);
@@ -33,7 +34,7 @@ function refreshPublic() {
 /** "Add from GitHub": the repo link becomes a DRAFT project with its brief filled in
  *  (lib/admin/github.ts). The browser then uploads the cover to /api/admin/upload and opens
  *  the editor; the owner checks it and presses Publish. */
-export type GithubResult = { id: string; title: string; alt: string } | { error: string; nameOnly?: boolean };
+export type GithubResult = { id: string; title: string; alt: string } | { error: string; nameOnly?: boolean; link?: string };
 
 /** `fetched`: the repo's data as the admin's browser read it from GitHub (github-add.tsx), used
  *  when it checks out (repoDataFrom); else the server reads GitHub itself (serverRepoData: the
@@ -50,9 +51,9 @@ export async function projectFromGithubAction(url: string, fetched?: string, fro
   const apiBase = process.env.NODE_ENV === 'development' && (env?.ADMIN_DEV_BYPASS || process.env.ADMIN_DEV_BYPASS)
     ? (env?.GITHUB_API_BASE || process.env.GITHUB_API_BASE || undefined) : undefined;
   let b: Brief;
-  try { b = fromName === true ? briefFrom(nameOnly(ref)) : given ? briefFrom(given) : await repoBrief(ref, { token, apiBase }); }
+  try { b = fromName === true ? briefFrom(nameOnly(ref)) : given ? briefFrom(given) : await repoBrief(ref, { token, apiBase, privateAccess: privateRepoAccess }); }
   catch (e) {
-    return e instanceof BriefError ? { error: e.message, nameOnly: e.nameOnly }
+    return e instanceof BriefError ? { error: e.message, nameOnly: e.nameOnly, link: e.link }
       : { error: 'Couldn’t read that repository. Try again, or create the project from its name.', nameOnly: true };
   }
 
@@ -67,6 +68,23 @@ export async function projectFromGithubAction(url: string, fetched?: string, fro
   });
   revalidatePath('/admin/projects');
   return { id, title: b.title, alt: `Screenshot of ${b.title}` };
+}
+
+/** GitHub's redirect back after an owner created the private-repos app (app/admin/github):
+ *  owners only, and only the owner who started it within the hour (the signed `state`). */
+export async function connectGithubAppAction(code: string, state: string, fetched?: string): Promise<{ ok: true } | { error: string }> {
+  const who = await requireAdmin();
+  if (!(await isOwner(who))) return { error: 'Only the owners can connect GitHub.' };
+  const key = (await getEnv())?.ADMIN_SESSION_KEY;
+  if (!key || !(await checkState(String(state ?? ''), who, key))) {
+    return { error: 'This link has expired or was started by someone else. Go back to Projects and press Connect GitHub again.' };
+  }
+  try { await connectApp(String(code ?? ''), typeof fetched === 'string' && fetched.length < 20_000 ? fetched : undefined, who); }
+  catch (e) {
+    return { error: e instanceof ConnectError ? e.message : 'Couldn’t finish connecting GitHub. Go back to Projects and press Connect GitHub again.' };
+  }
+  revalidatePath('/admin/projects');
+  return { ok: true };
 }
 
 /** Rollback for "Add from GitHub" when the cover upload fails: drops the draft it just made. */

@@ -51,7 +51,13 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
   its embedded react-app JSON + the raw README), which the API's 60/hour limit doesn't cover. The
   owner must never see a rate-limit message (their rule): an unreadable or private repo offers
   "Create from the name only" (BriefError.nameOnly). If GitHub reshapes the page, fetchRepoPage
-  throws and that offer appears; re-probe sidebarAbout / codeViewLayoutRoute. The cloud sandbox's proxy blocks
+  throws and that offer appears; re-probe sidebarAbout / codeViewLayoutRoute.
+  Private repos: a GitHub App (lib/admin/github-app.ts, D1 github_app, migration 0009). An owner
+  creates it with GitHub's manifest flow (Admin → Projects → Private repos → form POST to
+  github.com/settings/apps/new, the one form-action exception in adminCsp; GitHub returns to
+  /admin/github with a code and our HMAC-signed state). Its private key is AES-GCM sealed with
+  ADMIN_SESSION_KEY in D1, never in a file or the chat. Team members install it and pick repos;
+  privateRepoAccess mints a one-hour token for just that repo. The cloud sandbox's proxy blocks
   api.github.com: test with a fixture server via GITHUB_API_BASE (only `next dev` with ADMIN_DEV_BYPASS).
 - Projects on public pages come from lib/work.ts: published D1 rows, else nothing (sections hide,
   /work shows an empty state). The placeholders in content.ts/pages.ts show only in a build made

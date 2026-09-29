@@ -381,3 +381,18 @@ export async function saveCompany(c: Company) {
        ON CONFLICT (id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at`,
   ).bind(JSON.stringify(c)).run();
 }
+
+/* ------------------------------------------------------------------ GitHub App (private repos) */
+export interface GithubAppRow { app_id: number; slug: string; owner: string; key_enc: string; connected_by: string; connected_at: string }
+
+export async function getGithubApp() {
+  return (await adminDb()).prepare('SELECT app_id, slug, owner, key_enc, connected_by, connected_at FROM github_app WHERE id = 1').first<GithubAppRow>();
+}
+
+export async function saveGithubApp(r: Omit<GithubAppRow, 'connected_at'>) {
+  await (await adminDb()).prepare(
+    `INSERT INTO github_app (id, app_id, slug, owner, key_enc, connected_by, connected_at) VALUES (1, ?, ?, ?, ?, ?, datetime('now'))
+       ON CONFLICT (id) DO UPDATE SET app_id = excluded.app_id, slug = excluded.slug, owner = excluded.owner,
+         key_enc = excluded.key_enc, connected_by = excluded.connected_by, connected_at = excluded.connected_at`,
+  ).bind(r.app_id, r.slug, r.owner, r.key_enc, r.connected_by).run();
+}
