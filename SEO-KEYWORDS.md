@@ -11,7 +11,9 @@ the Google Business Profile, and track them in Search Console → Performance. E
 page that should rank for it.
 
 The studio is in **Calicut (Kozhikode)**: set City = Calicut and Country = India in Admin → Company
-(owners only). Titles, descriptions and keywords then say Calicut, Kozhikode and Kerala.
+(owners only). We also take clients in **Bangalore (Bengaluru)**: `SITE.alsoServes` in
+`web/lib/site.ts`. Titles, descriptions and keywords then say Calicut, Kozhikode, Kerala,
+Bangalore, Bengaluru and Karnataka.
 
 ## Top 10 (in page titles and the Google Business Profile)
 
@@ -27,6 +29,25 @@ The studio is in **Calicut (Kozhikode)**: set City = Calicut and Country = India
 | 8 | automation agency Kerala | `/services/n8n-automation` |
 | 9 | WhatsApp automation Kerala | `/services/whatsapp-automation` |
 | 10 | AI automation for small business | `/services/n8n-automation`, `/services/whatsapp-automation` |
+
+### Top 10 for Bangalore
+
+| # | Keyword | Page |
+|---|---|---|
+| 1 | freelance web developer in Bangalore | home |
+| 2 | freelance web developers Bengaluru | home |
+| 3 | website design Bangalore | `/services/website-development` |
+| 4 | web development company in Bengaluru | home, `/services/website-development` |
+| 5 | web app development Bangalore | `/services/website-development` |
+| 6 | WhatsApp automation Bangalore | `/services/whatsapp-automation` |
+| 7 | WhatsApp chatbot for business Bengaluru | `/services/whatsapp-automation` |
+| 8 | automation agency Bangalore | `/services/n8n-automation` |
+| 9 | AI automation for startups Bangalore | `/services/n8n-automation` |
+| 10 | hire full stack developer Bangalore | home, `/midhunvijay` |
+
+Bangalore is a big, competitive market: aim first for the WhatsApp, automation and AI searches
+(fewer agencies compete there) and for "affordable"/"freelance" versions, since Bangalore agencies
+charge more than a Kerala studio. In the Google Business Profile, add Bangalore as a service area.
 
 "Best …" searches ("best freelancers in Calicut") are won with Google reviews, not by writing
 "best" on the site: ask every client for a review on the Google Business Profile.
@@ -315,6 +336,46 @@ use these in the Google Business Profile and blog posts too.
 - Midhun Vijay web developer Calicut
 - Midhun Vijay PK
 
+## 11b. Bangalore and Bengaluru → home, `/services/*`, Google Business Profile service area
+
+- freelance web developer Bangalore
+- freelance web developer Bengaluru
+- freelance developers in Bangalore
+- hire freelance developer Bangalore
+- freelance full stack developer Bengaluru
+- full stack developer Bangalore
+- remote web developer for Bangalore startups
+- affordable web developer Bangalore
+- affordable website design Bengaluru
+- website design Bangalore
+- website designers in Bengaluru
+- website development company Bangalore
+- web development company in Bengaluru
+- small business website Bangalore
+- ecommerce website development Bangalore
+- landing page for startups Bangalore
+- web app development Bangalore
+- MVP development for startups Bangalore
+- custom software development Bengaluru
+- SaaS dashboard development Bangalore
+- WhatsApp automation Bangalore
+- WhatsApp chatbot for business Bengaluru
+- WhatsApp Business API provider Bangalore
+- business automation Bangalore
+- automation agency Bangalore
+- n8n automation expert Bangalore
+- n8n developer Bengaluru
+- AI automation for startups Bangalore
+- AI integration services Bengaluru
+- AI chatbot development Bangalore
+- local SEO Bangalore
+- SEO services for startups Bengaluru
+- NFC business card Bangalore
+- digital business card Bengaluru
+- Legit Forge Bangalore
+- Roshan Raj M AI engineer Bangalore
+- Midhun Vijay full stack developer Bangalore
+
 ## 12. Questions for blog posts → `/blog`
 
 Long-tail searches, each a good blog post.
@@ -323,6 +384,8 @@ Long-tail searches, each a good blog post.
 - what can a WhatsApp bot do for my business
 - how much does a website cost in India
 - how much does a website cost in Kerala
+- how much does a website cost in Bangalore
+- Kerala developers for Bangalore startups: is remote cheaper?
 - website vs app: which does my business need
 - freelancer vs agency for a website
 - how long does it take to build a website

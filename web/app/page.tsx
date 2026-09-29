@@ -22,7 +22,7 @@ import { HallmarkStrike } from '@/components/intro/hallmark-strike';
 import { PROCESS, SERVICES } from '@/lib/content';
 import type { Metadata } from 'next';
 import { getTeam, toCards, type Member } from '@/lib/team';
-import { cityNames, fit, named, personLd, siteKeywords } from '@/lib/team-seo';
+import { cityNames, fit, joinNames, named, personLd, servedCities, siteKeywords } from '@/lib/team-seo';
 import { getProjects } from '@/lib/work';
 import { ORG_ID, SITE, activeSocial, shownEmail, waLink, type Company } from '@/lib/site';
 import { getCompany } from '@/lib/company';
@@ -70,7 +70,7 @@ const orgLd = (c: Company, team: Member[]) => ({
   ...(shownEmail(c) ? { email: shownEmail(c) } : {}),
   description:
     'A two-person studio building websites, web apps, quotation and warranty systems, WhatsApp automation and n8n workflows.',
-  ...(c.city ? { areaServed: c.city } : {}),
+  areaServed: servedCities(c.city),
   ...(c.city || c.country ? { address: { '@type': 'PostalAddress',
     ...(c.city ? { addressLocality: c.city } : {}), ...(c.country ? { addressCountry: c.country } : {}) } } : {}),
   ...(c.whatsapp ? { telephone: `+${c.whatsapp}` } : {}),
@@ -93,16 +93,21 @@ const orgLd = (c: Company, team: Member[]) => ({
   },
 });
 
-/** With a city in Admin → Company the title and description name it ("…freelance web developers
- *  in Calicut"); without one, the layout's. Keywords follow Admin → Team and Company. */
+/** The title and description name where we work: the city in Admin → Company, with its other
+ *  name, and SITE.alsoServes ("…freelance web developers in Calicut and Bangalore"). Keywords
+ *  follow Admin → Team and Company. */
 export async function generateMetadata(): Promise<Metadata> {
   const [team, { city }] = await Promise.all([getTeam(), getCompany()]);
+  const cities = servedCities(city);
   const [, also] = cityNames(city);
+  const where = joinNames(cities.map((c) => (c === city && also && !/^(Kerala|Karnataka)$/.test(also) ? `${c} (${also})` : c)));
+  const about = `Freelance web developers in ${where}: websites, web apps, WhatsApp and AI automation and local SEO for small businesses.`;
+  const more = `${about} Fixed quotes; you own it.`;
+  const title = `${SITE.name}: freelance web developers in ${joinNames(cities)}`;
   return {
-    ...(city ? {
-      title: { absolute: `${SITE.name}: freelance web developers in ${city}` },
-      description: fit(`Freelance web developers in ${city}${also && also !== 'Kerala' ? ` (${also})` : ''}: websites, web apps, `
-        + 'WhatsApp and AI automation and local SEO for small businesses. Fixed quotes; you own it.'),
+    ...(cities.length ? {
+      title: { absolute: title.length <= 70 ? title : `${SITE.name}: freelance web developers in ${cities[0]}` },
+      description: more.length <= 160 ? more : fit(about),
     } : {}),
     keywords: siteKeywords(team, city),
   };
