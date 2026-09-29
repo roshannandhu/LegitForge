@@ -9,6 +9,7 @@ Run it when copy gains a new Latin character (npm run check's "font coverage" na
 import json, os, re, sys, urllib.parse, urllib.request
 from fontTools import subset
 from fontTools.ttLib import TTFont
+from fontTools.varLib import instancer
 
 UA = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Safari/537.36'}
 FAMILY = 'Anybody:wdth,wght@50..150,100..900'
@@ -55,6 +56,10 @@ font = TTFont(tmp)
 s = subset.Subsetter(opts)
 s.populate(unicodes=want)
 s.subset(font)
+# only the weights (400-900) and widths (88-112 %) the site uses. The full ranges (100-900, 50-150)
+# made the first layout of the home page 3.5x slower on a phone (1.7 s vs 0.5 s at 4x CPU):
+# the shaper walks all that variation data for every run of text. Nothing on the site looks different.
+font = instancer.instantiateVariableFont(font, {'wght': (400, 900), 'wdth': (88, 112)})
 font.flavor = 'woff2'
 font.save(OUT)
 os.remove(tmp)

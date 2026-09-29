@@ -153,8 +153,9 @@ placeholders on the home page and /work. Draft previews are at `/admin/preview/<
 
 ## Fonts
 
-Anybody is self-hosted as one subset, `app/fonts/anybody-latin.woff2` (about 51 KB, both variable
-axes: weight and width). Google serves it as separate latin and latin-ext files; one small file
+Anybody is self-hosted as one subset, `app/fonts/anybody-latin.woff2` (about 44 KB, both variable
+axes, trimmed to the weights 400–900 and widths 88–112 % the site uses: the full ranges tripled
+the first layout time on phones). Google serves it as separate latin and latin-ext files; one small file
 arrives before the first layout. If `npm run check` reports a character missing from the subset,
 rebuild it:
 

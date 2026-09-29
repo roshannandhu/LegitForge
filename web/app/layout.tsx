@@ -15,21 +15,21 @@ import { CompanyProvider } from '@/components/company-context';
 import './globals.css';
 import '@/components/layout/layout.css';
 
-/** Anybody, variable in weight (100–900) and width (50–150 %, our hammer: PLAN §4.3; it replaced
+/** Anybody, variable in weight (400–900) and width (88–112 %, our hammer: PLAN §4.3; it replaced
  *  Archivo on 2026-09-29, the owner's call for a less common face). Self-hosted as ONE subset
- *  file (app/fonts/anybody-latin.woff2, 51 KB: ASCII, Latin-1, the site's punctuation and ₹)
+ *  file (app/fonts/anybody-latin.woff2, 44 KB, only the axis ranges we use: ASCII, Latin-1, the site's punctuation and ₹)
  *  instead of Google's latin + latin-ext files, so it arrives in time for the first layout far
  *  more often, which spares a budget phone a full re-layout on swap.
  *  Regenerate it when copy gains a new symbol: web/README.md "Fonts". */
 const sans = localFont({
   src: './fonts/anybody-latin.woff2',
-  weight: '100 900',
+  weight: '400 900',
   style: 'normal',
   variable: '--font-body',
   display: 'swap',
   preload: true,
   adjustFontFallback: 'Arial',
-  declarations: [{ prop: 'font-stretch', value: '50% 150%' }],
+  declarations: [{ prop: 'font-stretch', value: '88% 112%' }],
 });
 
 /** The one stamp face: only inside hallmark stamps and ID codes (§4.3). Not preloaded —

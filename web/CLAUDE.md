@@ -218,8 +218,9 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
   HydrateWhenNear (components/motion/hydrate-when-near.tsx): server HTML from the first paint,
   React takes over within 600px. Page-wide observers must re-observe on `lf:hydrated`.
   Don't wrap sections that pin (Process) or anything above the fold.
-- Anybody is self-hosted (next/font/local, app/fonts/anybody-latin.woff2, one 51 KB subset, both
-  axes: weight and width 50–150 %). It arrives in time for the first layout, which spares a
+- Anybody is self-hosted (next/font/local, app/fonts/anybody-latin.woff2, one 44 KB subset, both
+  axes trimmed to what we use: weight 400–900, width 88–112 %; the full ranges made the home
+  page's first layout 3.5x slower on phones). A weight or width outside them needs subset-font.py. It arrives in time for the first layout, which spares a
   full re-layout on swap. New Latin character in copy → scripts/subset-font.py (check names it).
 - content-visibility was measured and rejected: it moved layout into scrolling on this page.
 - Team section rebuild (server markup + attached flip/drag) was measured and skipped: the whole
