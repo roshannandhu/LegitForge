@@ -83,14 +83,15 @@ export async function ogImage({ label, title }: { label?: string; title: string 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 1000 }}>
           {label && (
             <div style={{ display: 'flex' }}>
-              <span style={{ padding: '8px 20px', border: `2px solid ${T.mid}`, borderRadius: 999, color: T.hi, fontSize: 26, fontWeight: 600, backgroundColor: 'rgba(21,26,32,.85)' }}>{label}</span>
+              <span style={{ padding: '8px 20px', border: `2px solid ${T.mid}`, borderRadius: 999, color: T.hi, fontSize: 26, fontWeight: 600, backgroundColor: 'rgba(0,0,0,.85)' }}>{label}</span>
             </div>
           )}
           <div style={{ display: 'flex', fontSize: titleSize, fontWeight: 800, lineHeight: 1.08, letterSpacing: -1 }}>{title}</div>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 26, fontWeight: 600, color: T.muted }}>
-          <span>Websites · WhatsApp automation · n8n workflows</span>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 32, fontSize: 23, fontWeight: 600, color: T.muted }}>
+          {/* Anybody is wider than Archivo was: 23 px keeps the line on one row beside the domain */}
+          <span style={{ whiteSpace: 'nowrap' }}>Websites · WhatsApp automation · n8n workflows</span>
           <span style={{ color: T.text }}>{domain}</span>
         </div>
       </div>
