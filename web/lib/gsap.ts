@@ -30,6 +30,17 @@ export function loadGsap(): Promise<Gs> {
     // phones: the address bar sliding away while scrolling resizes the viewport; re-measuring
     // every trigger each time is a classic mobile stutter, and nothing here depends on it
     ScrollTrigger.config({ ignoreMobileResize: true });
+    // home sections that skip layout until near (globals.css, content-visibility) hold only their
+    // measured height; the first time each one renders, re-measure the triggers once (Process sits
+    // below four of them). Later re-renders keep the remembered size, so they need nothing.
+    const shown = new WeakSet<Element>();
+    let wait = 0;
+    document.addEventListener('contentvisibilityautostatechange', (e) => {
+      if ((e as Event & { skipped?: boolean }).skipped || !(e.target instanceof Element) || shown.has(e.target)) return;
+      shown.add(e.target);
+      clearTimeout(wait);
+      wait = window.setTimeout(() => ScrollTrigger.refresh(), 150);
+    }, true);
     return (ready = { gsap, ScrollTrigger });
   }));
 }

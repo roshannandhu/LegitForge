@@ -222,7 +222,12 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
   axes trimmed to what we use: weight 400–900, width 88–112 %; the full ranges made the home
   page's first layout 3.5x slower on phones). A weight or width outside them needs subset-font.py. It arrives in time for the first layout, which spares a
   full re-layout on swap. New Latin character in copy → scripts/subset-font.py (check names it).
-- content-visibility was measured and rejected: it moved layout into scrolling on this page.
+- content-visibility: only the home sections after the Cleave (globals.css, each with its measured
+  height per breakpoint; 2026-09-29, the owner's call). Measured on this page: Lighthouse phone median
+  74 -> 83, scrolling unchanged at 4x CPU (no frame over 50 ms, no layout shift). Never the hero or
+  the Cleave (a pin); four skipped sections sit above Process, so lib/gsap.ts refreshes ScrollTrigger
+  once when each first renders. A new home section or a big height change: re-measure --cv-h.
+  (An earlier try that skipped sections and cards everywhere slowed load and scroll.)
 - Team section rebuild (server markup + attached flip/drag) was measured and skipped: the whole
   section costs ~240 ms on a lite phone; HydrateWhenNear defers its hydration instead.
 

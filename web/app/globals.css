@@ -170,8 +170,35 @@ html:active-view-transition-type(cleave)::view-transition-group(project-cover) {
 /* ================================================================ lite mode
    html[data-lite] (lib/boot.ts): weak devices see the same site, every animation and the brand
    font included. Only the order of work changes (see hero.css / sections.css data-near rules). */
-/* No content-visibility: measured on a throttled phone, skipping sections or cards moved their
-   layout into scrolling and made both load and scroll slower on this page. */
+/* Home sections after the Cleave skip layout until they near the screen (content-visibility, the
+   owner's call on 2026-09-29, measured: see the commit). Four of them sit above Process: while
+   skipped they hold an estimated height, so lib/gsap.ts re-measures ScrollTrigger once when each
+   first renders. The hero and the Cleave (a pin) are never skipped.
+   contain-intrinsic-size: auto remembers the real height once shown; the numbers are the measured
+   heights at phone / tablet / laptop width, so the scrollbar barely moves when one renders.
+   (An earlier try skipped sections and cards everywhere and slowed both load and scroll.) */
+#top ~ :is(#services, #quotation, .tools, #work, #proof, #pricing), #top ~ * > :is(#compare, #live-test, #team, #contact) {
+  content-visibility: auto; contain-intrinsic-size: auto var(--cv-h, 1000px);
+}
+#top ~ #services { --cv-h: 3274px; }    #top ~ #quotation { --cv-h: 1212px; }
+#top ~ * > #compare { --cv-h: 2017px; } #top ~ * > #live-test { --cv-h: 858px; }
+#top ~ .tools { --cv-h: 128px; }        #top ~ #work { --cv-h: 1123px; }
+#top ~ * > #team { --cv-h: 1386px; }    #top ~ #proof { --cv-h: 917px; }
+#top ~ #pricing { --cv-h: 1896px; }     #top ~ * > #contact { --cv-h: 1161px; }
+@media (max-width: 1023px) {
+  #top ~ #services { --cv-h: 5018px; }  #top ~ #quotation { --cv-h: 1672px; }
+  #top ~ * > #compare { --cv-h: 1947px; } #top ~ * > #live-test { --cv-h: 1022px; }
+  #top ~ #work { --cv-h: 892px; }       #top ~ * > #team { --cv-h: 1271px; }
+  #top ~ #proof { --cv-h: 993px; }      #top ~ #pricing { --cv-h: 2054px; }
+  #top ~ * > #contact { --cv-h: 1053px; }
+}
+@media (max-width: 767px) {
+  #top ~ #services { --cv-h: 4861px; }  #top ~ #quotation { --cv-h: 1760px; }
+  #top ~ * > #compare { --cv-h: 2635px; } #top ~ * > #live-test { --cv-h: 1179px; }
+  #top ~ .tools { --cv-h: 112px; }      #top ~ #work { --cv-h: 851px; }
+  #top ~ * > #team { --cv-h: 1260px; }  #top ~ #proof { --cv-h: 1180px; }
+  #top ~ #pricing { --cv-h: 3098px; }   #top ~ * > #contact { --cv-h: 1132px; }
+}
 
 
 
