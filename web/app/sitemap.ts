@@ -23,7 +23,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       ...(p.cover ? { images: [`${SITE.url}${p.cover.src}`] } : {}),        // image sitemap: uploaded covers
     })),
     u('/team', 0.6),
-    ...team.map((m) => ({ ...u(`/team/${m.slug}`, 0.5), ...(m.photo ? { images: [`${SITE.url}${m.photo}`] } : {}) })),
+    ...team.map((m) => ({ ...u(m.path, 0.5), ...(m.photo ? { images: [`${SITE.url}${m.photo}`] } : {}) })),
     ...(published().length ? [u('/blog', 0.6, 'weekly')] : []),
     ...published().map((p) => ({ ...u(`/blog/${p.slug}`, 0.6), lastModified: new Date(p.date) })),
     u('/contact', 0.7),

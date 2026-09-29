@@ -87,6 +87,7 @@ export function Team({ team, head = true }: { team: Card[]; head?: boolean }) {
     id: m.slug, idCode: m.idCode, name: m.name, role: m.role, initials: m.initials,
     skills: m.skills, shipped: m.shipped, favorite: m.favorite, photo: m.photo, building: m.building,
   })), [team]);
+  const pathOf = useMemo(() => new Map(team.map((m) => [m.slug, m.path])), [team]);
   const motionOn = useMotionEnabled();
   const sectionRef = useRef<HTMLElement>(null);
   const stripRef = useRef<HTMLUListElement>(null);
@@ -240,7 +241,7 @@ export function Team({ team, head = true }: { team: Card[]; head?: boolean }) {
                     <button type="button" className="flip-btn" aria-pressed={!!flipped[p.id]} onClick={() => toggle(p.id)}>
                       Flip {p.name}’s card
                     </button>
-                    <a className="text-link" href={`/team/${p.id}`}>Open {p.name}’s portfolio</a>
+                    <a className="text-link" href={pathOf.get(p.id) ?? `/team/${p.id}`}>Open {p.name}’s portfolio</a>
                   </div>
                 </div>
               </li>

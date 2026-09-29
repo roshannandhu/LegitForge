@@ -9,11 +9,12 @@ queries in Search Console → Performance. Each group names the page that should
 
 ---
 
-## 1. Brand and people → home, `/team`, `/team/<member>`
+## 1. Brand and people → home, `/team`, `/roshanraj`, `/midhunvijay`
 
-Name searches rank through the team pages, `/team/roshan-raj` ("Roshan Raj M", AI & ML
-Engineering) and `/team/midhun-vijay` ("Midhun Vijay", Full Stack Developer). Set those slugs in
-Admin → Team and put the role words from sections 2 and 2b in each bio.
+Name searches rank through each person's own page, at their name: `/roshanraj` ("Roshan Raj M",
+AI & ML Engineering) and `/midhunvijay` ("Midhun Vijay", Full Stack Developer). The site builds
+the address, title, description, keywords and structured data from Admin → Team by itself, so a
+new person gets the same. Put the role words from sections 2 and 2b in each bio.
 
 - Legit Forge
 - LegitForge
@@ -75,7 +76,7 @@ Admin → Team and put the role words from sections 2 and 2b in each bio.
 - two-person development studio
 - small web development studio
 
-## 2b. AI and ML engineering → `/team/roshan-raj`, home
+## 2b. AI and ML engineering → `/roshanraj`, home
 
 How the site lists Roshan (AI & ML Engineering). Good for the team page and AI-related blog posts.
 
