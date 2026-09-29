@@ -61,7 +61,7 @@ html[data-intro] .intro * { animation-duration: var(--d); animation-fill-mode: b
 .intro-anvil {
   position: absolute; left: 50%; top: calc(var(--cy) + var(--coin) * .16); width: calc(var(--coin) * 1.7); height: calc(var(--coin) * .42);
   translate: -50% 0; border-radius: 6px 6px 2px 2px;
-  background: linear-gradient(180deg, #4A5663, #232B34 30%, #151A20); box-shadow: 0 1px 0 #6B7886 inset;
+  background: linear-gradient(180deg, #3A4250, #16191F 30%, #000000); box-shadow: 0 1px 0 #6B7886 inset;
   animation-name: intro-anvil;
 }
 @keyframes intro-anvil { 0%, 40% { opacity: 1; } 55%, 100% { opacity: 0; } }
@@ -74,12 +74,12 @@ html[data-intro] .intro * { animation-duration: var(--d); animation-fill-mode: b
 @keyframes intro-flash { 0%, 24.6% { opacity: 0; } 25.2% { opacity: 1; } 31%, 100% { opacity: 0; } }
 .intro-ring {
   position: absolute; left: 50%; top: var(--cy); width: calc(var(--coin) * 1.2); height: calc(var(--coin) * .45); translate: -50% -50%;
-  border: 2px solid #FFC24A; border-radius: 50%; animation-name: intro-ring;
+  border: 2px solid #F2C14E; border-radius: 50%; animation-name: intro-ring;
 }
 @keyframes intro-ring { 0%, 24.8% { opacity: 0; transform: scale(.3); } 25.2% { opacity: 1; } 36%, 100% { opacity: 0; transform: scale(3); } }
 .intro-sparks i {
   position: absolute; left: 50%; top: var(--cy); width: 10px; height: 3px; margin: -1.5px 0 0 -5px; border-radius: 2px;
-  background: #FFE2B0; box-shadow: 0 0 8px 2px #FFC24A; animation-name: intro-spark;
+  background: #FFE2B0; box-shadow: 0 0 8px 2px #F2C14E; animation-name: intro-spark;
 }
 @keyframes intro-spark {
   0%, 24.8% { opacity: 0; transform: rotate(var(--a)) translateX(0); }

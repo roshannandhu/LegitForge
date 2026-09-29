@@ -3,17 +3,19 @@
 
 /* ============================================================ tokens §4.1 */
 :root {
-  /* Workshop Day (light) */
-  --bg: #E8ECEF; --surface: #F7F9FA; --surface-2: #DDE3E8; --line: #C3CCD4;
-  --text: #1B2129; --text-muted: #56606B;
-  --accent: #2A58A0; --accent-ink: #FFFFFF;
-  --heat-lo: #D9B45A; --heat-mid: #9A5B22; --heat-hi: #6B4796;
-  --quench: #2D6CB5; --focus: #6B4796; --success: #1B6E45; --danger: #B3261E;
+  /* Tempered Steel, day (light): steel white, black ink; the accent is ink with a gold label, the
+     mirror of the night theme's gold with a black label. Heat runs through the temper colours
+     steel shows as it heats: straw, bronze, violet (2026-09-29 palette). */
+  --bg: #F2F3F5; --surface: #FFFFFF; --surface-2: #E4E7EC; --line: #C9CED7;
+  --text: #0B0D12; --text-muted: #525A67;
+  --accent: #0B0D12; --accent-ink: #F2C14E;
+  --heat-lo: #C9982E; --heat-mid: #9A5B22; --heat-hi: #6B4796;
+  --quench: #2F5FD0; --focus: #6B4796; --success: #1B6E45; --danger: #B3261E;
 
   --heat: .35;                                    /* the default; each [data-heat] section has its own (below) */
   --heat-color: color-mix(in oklab, var(--heat-hi) calc(var(--heat) * 100%), var(--heat-lo));
   /* heat as TEXT on the light surfaces: the same hue, dark enough for 4.5:1 (bars and glows keep --heat-color) */
-  --heat-ink: color-mix(in oklab, var(--heat-color) 55%, #1B2129);
+  --heat-ink: color-mix(in oklab, var(--heat-color) 55%, #0B0D12);
   /* metal fresh from the fire (Trust plates): the same in both themes, like the coin */
   --forge-white: #FFF4D6; --forge-hot: #FF8A2A; --forge-deep: #C8321E;
 
@@ -32,12 +34,13 @@
 }
 
 .dark {
-  /* Forge Night (dark) */
-  --bg: #151A20; --surface: #1D242C; --surface-2: #26303A; --line: #33404C;
-  --text: #EDE6DA; --text-muted: #9AA3AB;
-  --accent: #F0701E; --accent-ink: #151A20;
-  --heat-lo: #C8321E; --heat-mid: #F0701E; --heat-hi: #FFC24A;
-  --quench: #5FA8C9; --focus: #FFC24A; --success: #5CC08A; --danger: #FF7A6B;
+  /* Tempered Steel, night (dark): pure black, cool steel-white text, gold (the coin's) with a
+     black label; heat runs bronze to straw gold, the quench is temper blue. */
+  --bg: #000000; --surface: #0C0D10; --surface-2: #15171C; --line: #262A33;
+  --text: #ECEFF4; --text-muted: #8E95A3;
+  --accent: #F2C14E; --accent-ink: #000000;
+  --heat-lo: #C2762E; --heat-mid: #E39B3A; --heat-hi: #F2C14E;
+  --quench: #5A8DFF; --focus: #F2C14E; --success: #45C486; --danger: #FF6B6B;
   --heat-ink: var(--heat-color);   /* bright heat already reads on the dark surfaces */
 }
 
@@ -48,7 +51,7 @@
 [data-heat] { --heat: attr(data-heat type(<number>), .35); }   /* older engines: heat-director.tsx sets it inline */
 :is([data-heat], .site-header, .site-footer, .phone-menu) {
   --heat-color: color-mix(in oklab, var(--heat-hi) calc(var(--heat) * 100%), var(--heat-lo));
-  --heat-ink: color-mix(in oklab, var(--heat-color) 55%, #1B2129);
+  --heat-ink: color-mix(in oklab, var(--heat-color) 55%, #0B0D12);
 }
 .dark :is([data-heat], .site-header, .site-footer, .phone-menu) { --heat-ink: var(--heat-color); }
 
@@ -63,7 +66,7 @@
   --color-accent-ink: var(--accent-ink);
   --color-heat: var(--heat-color);
   --color-quench: var(--quench);
-  --font-sans: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-body), ui-sans-serif, system-ui, sans-serif;
 }
 
 /* ======================================================= base + craft §1.6 */

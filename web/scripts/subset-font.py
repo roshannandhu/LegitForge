@@ -1,9 +1,9 @@
-"""Rebuild app/fonts/archivo-latin.woff2: Archivo (variable wght 100-900, wdth 62-125) as ONE
+"""Rebuild app/fonts/anybody-latin.woff2: Anybody (variable wght 100-900, wdth 50-150) as ONE
 subset holding ASCII, Latin-1, the site's punctuation and ₹, limited to what Google Fonts serves in
 its latin / latin-ext / vietnamese files (so nothing renders differently from next/font/google).
 
   python3 -m venv /tmp/fe && /tmp/fe/bin/pip install fonttools brotli
-  /tmp/fe/bin/python scripts/subset-archivo.py "extra characters to include"
+  /tmp/fe/bin/python scripts/subset-font.py "extra characters to include"
 
 Run it when copy gains a new Latin character (npm run check's "font coverage" names it)."""
 import json, os, re, sys, urllib.parse, urllib.request
@@ -11,14 +11,14 @@ from fontTools import subset
 from fontTools.ttLib import TTFont
 
 UA = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Safari/537.36'}
-FAMILY = 'Archivo:wdth,wght@62..125,100..900'
+FAMILY = 'Anybody:wdth,wght@50..150,100..900'
 HERE = os.path.dirname(os.path.abspath(__file__))
-OUT = os.path.join(HERE, '..', 'app', 'fonts', 'archivo-latin.woff2')
+OUT = os.path.join(HERE, '..', 'app', 'fonts', 'anybody-latin.woff2')
 
 def get(url):
     return urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=60).read()
 
-# what Google serves in Archivo (latin, latin-ext, vietnamese files)
+# what Google serves in Anybody (latin, latin-ext, vietnamese files)
 css = get(f'https://fonts.googleapis.com/css2?family={FAMILY}&display=swap').decode()
 allowed = set()
 for name, body in re.findall(r'/\* ([a-z-]+) \*/\s*@font-face\s*{([^}]*)}', css):

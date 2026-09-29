@@ -13,11 +13,16 @@ export const MOTION_BOOT_SCRIPT =
  *  only while the visitor is browsing: it is dropped (before next-themes reads it) on a new
  *  visit, a reload, or after 30 minutes without a page view. Phones restore a tab's session
  *  when it is reopened, so "new visit" alone let one dark choice stick for days. Each page view
- *  that keeps the choice renews its 30 minutes (lf-theme-at, written by the lever too). */
+ *  that keeps the choice renews its 30 minutes (lf-theme-at, written by the lever too).
+ *  Then it puts the theme's class on <html> itself: next-themes' own script runs in <body>, and a
+ *  dark device painted the light theme for a few frames before it (the refresh flicker). */
 export const THEME_BOOT =
   `try{var s=sessionStorage,l=localStorage,n=performance.getEntriesByType('navigation')[0],t=+l.getItem('lf-theme-at')||0;` +
   `if(!s.getItem('lf-visit')||(n&&n.type==='reload')||Date.now()-t>18e5){l.removeItem('theme');l.removeItem('lf-theme-at')}` +
-  `else if(l.getItem('theme'))l.setItem('lf-theme-at',String(Date.now()));s.setItem('lf-visit','1')}catch(e){}`;
+  `else if(l.getItem('theme'))l.setItem('lf-theme-at',String(Date.now()));s.setItem('lf-visit','1')}catch(e){}` +
+  `try{var c=null;try{c=localStorage.getItem('theme')}catch(e){}` +
+  `var k=c==='dark'||(c!=='light'&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light',h=document.documentElement;` +
+  `h.classList.add(k);h.style.colorScheme=k}catch(e){}`;
 
 /** html[data-lite]: a weak device (≤ 3 GB RAM, ≤ 4 cores, Data Saver or a 2G connection). It sees
  *  exactly the same site, every animation included; only the ORDER of work changes: parts below

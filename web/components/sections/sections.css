@@ -337,8 +337,8 @@
 .cafe-static .cafe-why::before { content: "← "; color: var(--heat-ink); }   /* each note points at its feature */
 .cafe-dynamic .cafe-why::after { content: " →"; color: var(--heat-ink); }
 .cafe-nav .cafe-card { display: flex; align-items: center; justify-content: space-between; gap: .6em; padding-inline: 0; border-color: transparent; background: transparent; }
-.cafe-brand { font-size: 1.2em; font-weight: 800; font-stretch: 112%; white-space: nowrap; }
-.cafe-call, .cafe-account { padding: .35em .8em; border-radius: 999px; font-weight: 600; white-space: nowrap; }
+.cafe-brand { font-size: 1.2em; font-weight: 800; font-stretch: 100%; white-space: nowrap; }
+.cafe-call, .cafe-account { padding: .35em .8em; border-radius: 999px; font-weight: 600; font-stretch: 94%; white-space: nowrap; }
 .cafe-call { background: var(--accent); color: var(--accent-ink); }
 .cafe-account { border: 1px solid var(--line); }
 .cafe-h { margin: 0; font-weight: 700; }
@@ -623,8 +623,8 @@
 .id-seal {
   align-self: flex-end; margin-top: auto; padding: 4px 10px; border-radius: 6px;
   font-family: var(--font-stencil), var(--font-sans); font-size: 14px; letter-spacing: .14em; text-transform: uppercase;
-  color: #151A20;
-  background: linear-gradient(120deg, #D9B45A, #FFC24A, #5FA8C9, #F0701E);
+  color: #000000;
+  background: linear-gradient(120deg, #D9B45A, #F2C14E, #5A8DFF, #C2762E);
 }
 @media (min-width: 1024px) {   /* 218px desktop card: same design, tighter */
   .id-top { gap: 8px; }
@@ -1197,9 +1197,9 @@
 /* 6 — NFC: card, waves, phone */
 .nfc { position: relative; display: flex; align-items: center; justify-content: center; gap: 24px; width: 100%; }
 .nfc-card { position: relative; display: grid; align-content: space-between; width: 150px; height: 94px; padding: 12px; border-radius: 10px;
-  background: linear-gradient(135deg, #1D242C, #2E3945); color: #EDE6DA; box-shadow: 0 10px 24px -10px rgb(0 0 0 / .6); rotate: -8deg; }
+  background: linear-gradient(135deg, #15171C, #262A33); color: #ECEFF4; box-shadow: 0 10px 24px -10px rgb(0 0 0 / .6); rotate: -8deg; }
 .nfc-brand { font-weight: 800; font-size: 13px; }
-.nfc-mark { width: 22px; height: 22px; border: 2px solid #FFC24A; border-radius: 50%; border-left-color: transparent; }
+.nfc-mark { width: 22px; height: 22px; border: 2px solid #F2C14E; border-radius: 50%; border-left-color: transparent; }
 .nfc-waves { position: absolute; right: -6px; top: 50%; width: 30px; height: 30px; margin-top: -15px; }
 .nfc-waves i { position: absolute; inset: 0; border: 2px solid var(--heat-hi); border-radius: 50%; opacity: 0; }
 .nfc-phone { display: grid; gap: 4px; align-content: start; width: 160px; min-height: 230px; padding: 16px 12px; border: 6px solid #0E1319; border-radius: 22px; background: var(--bg); font-size: 11.5px; box-shadow: 0 16px 30px -14px rgb(0 0 0 / .6); }

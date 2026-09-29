@@ -15,21 +15,21 @@ import { CompanyProvider } from '@/components/company-context';
 import './globals.css';
 import '@/components/layout/layout.css';
 
-/** Archivo, variable in weight (100–900) and width (62–125 %, our hammer: PLAN §4.3). Self-hosted
- *  as ONE subset file (app/fonts/archivo-latin.woff2, 80 KB: ASCII, Latin-1, the site's
- *  punctuation and ₹) instead of Google's two latin + latin-ext files (176 KB). Same glyphs,
- *  same axes, same kerning and figures, so it looks identical; it simply arrives in time for
- *  the first layout far more often, which spares a budget phone a full re-layout on swap.
+/** Anybody, variable in weight (100–900) and width (50–150 %, our hammer: PLAN §4.3; it replaced
+ *  Archivo on 2026-09-29, the owner's call for a less common face). Self-hosted as ONE subset
+ *  file (app/fonts/anybody-latin.woff2, 51 KB: ASCII, Latin-1, the site's punctuation and ₹)
+ *  instead of Google's latin + latin-ext files, so it arrives in time for the first layout far
+ *  more often, which spares a budget phone a full re-layout on swap.
  *  Regenerate it when copy gains a new symbol: web/README.md "Fonts". */
-const archivo = localFont({
-  src: './fonts/archivo-latin.woff2',
+const sans = localFont({
+  src: './fonts/anybody-latin.woff2',
   weight: '100 900',
   style: 'normal',
-  variable: '--font-archivo',
+  variable: '--font-body',
   display: 'swap',
   preload: true,
   adjustFontFallback: 'Arial',
-  declarations: [{ prop: 'font-stretch', value: '62% 125%' }],
+  declarations: [{ prop: 'font-stretch', value: '50% 150%' }],
 });
 
 /** The one stamp face: only inside hallmark stamps and ID codes (§4.3). Not preloaded —
@@ -83,7 +83,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // when the details are saved; client components get them from the provider
   const company = await getCompany();
   return (
-    <html lang="en" className={`${archivo.variable} ${stencil.variable}`} suppressHydrationWarning>
+    <html lang="en" className={`${sans.variable} ${stencil.variable}`} suppressHydrationWarning>
       <head>
         {/* sets html[data-motion] before first paint so motion-off visitors never see a flash (§5.5) */}
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT + MOTION_BOOT_SCRIPT + LITE_BOOT + INTRO_BOOT + CLEAVE_BOOT }} />

@@ -13,7 +13,12 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
   (components/lanyard, every screen with WebGL2 + motion, phones included; touch taps flip,
   never drag) and `motion` inside the vendored FlipCard
   (components/react-bits). Nothing else may import them.
-- Fonts: Archivo self-hosted subset (see Performance), Big Shoulders Stencil via next/font/google.
+- Fonts: Anybody self-hosted subset (see Performance; it replaced Archivo on 2026-09-29), Big Shoulders Stencil via next/font/google.
+- Palette "Tempered Steel" (2026-09-29, the owner's pick over the common cream-and-orange look): night is
+  pure black with gold (the coin's) and a black label; day is steel white with black ink and a gold label.
+  Keep lib/theme-colors.ts PAGE_BG, lib/og.tsx T and forge-canvas's first colours in step with globals.css.
+- Theme: lib/boot.ts THEME_BOOT puts the dark/light class on <html> in <head>, before first paint.
+  next-themes' own script runs in <body>, so without it a dark device painted light for a few frames.
 - Hero (the Teardown, PLAN §6.2c, seven layers: SEO, web, WhatsApp, n8n, quote, warranty, NFC): data lib/teardown.ts · component components/hero/teardown.tsx ·
   live screens components/hero/layer-screens.tsx · their flows components/hero/teardown-flows.ts
 - First-visit intro (the Hallmark Strike, PLAN §6.1b): components/intro, pure CSS. lib/boot.ts
@@ -178,7 +183,7 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
   stripped; the art is drawn at runtime by lib/card-art.ts. Don't ship React Bits' lanyard.png.
 
 ## Performance on budget phones (measure at 360px with 4-6x CPU throttling before and after)
-- Never remove or simplify an animation, the intro, the embers or the Archivo font for speed
+- Never remove or simplify an animation, the intro, the embers or the Anybody font for speed
   (the owner's rule). Improve how the same thing is built and drawn instead.
 - Lite mode: html[data-lite] (LITE_BOOT in lib/boot.ts) for <=3 GB RAM, <=4 cores,
   Data Saver or 2G. Same site; only the order of work changes (data-near rules below, GSAP after
@@ -207,9 +212,9 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
   HydrateWhenNear (components/motion/hydrate-when-near.tsx): server HTML from the first paint,
   React takes over within 600px. Page-wide observers must re-observe on `lf:hydrated`.
   Don't wrap sections that pin (Process) or anything above the fold.
-- Archivo is self-hosted (next/font/local, app/fonts/archivo-latin.woff2, one 80 KB subset, both
-  axes; Google's two files were 176 KB). It arrives in time for the first layout, which spares a
-  full re-layout on swap. New Latin character in copy → scripts/subset-archivo.py (check names it).
+- Anybody is self-hosted (next/font/local, app/fonts/anybody-latin.woff2, one 51 KB subset, both
+  axes: weight and width 50–150 %). It arrives in time for the first layout, which spares a
+  full re-layout on swap. New Latin character in copy → scripts/subset-font.py (check names it).
 - content-visibility was measured and rejected: it moved layout into scrolling on this page.
 - Team section rebuild (server markup + attached flip/drag) was measured and skipped: the whole
   section costs ~240 ms on a lite phone; HydrateWhenNear defers its hydration instead.

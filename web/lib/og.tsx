@@ -15,9 +15,9 @@ export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 
 const T = {
-  bg: '#151A20', surface: '#1D242C', line: '#33404C', text: '#EDE6DA', muted: '#9AA3AB',
-  lo: '#C8321E', mid: '#F0701E', hi: '#FFC24A',
-  grid: 'rgba(51,64,76,.6)',    // --line at the site's grid strength
+  bg: '#000000', surface: '#0C0D10', line: '#262A33', text: '#ECEFF4', muted: '#8E95A3',
+  lo: '#C2762E', mid: '#E39B3A', hi: '#F2C14E',
+  grid: 'rgba(38,42,51,.6)',    // --line at the site's grid strength
 };
 const GOLD = 'radial-gradient(circle at 38% 32%, #FFE9A8 0%, #E3B452 45%, #A87424 100%)';
 const STEEL = 'linear-gradient(135deg, #5C6B7A 0%, #2E3945 50%, #1A222B 100%)';

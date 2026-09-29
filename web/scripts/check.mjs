@@ -339,13 +339,13 @@ if (!only || only === 'flow') {
   await ctx.close();
 }
 
-// Font coverage: Archivo is one self-hosted subset (app/fonts/archivo-latin.woff2). Every Latin
+// Font coverage: Anybody is one self-hosted subset (app/fonts/anybody-latin.woff2). Every Latin
 // character a page shows must be in it, or it would silently render in the fallback font.
-// Symbols Google never served in Archivo (arrows, ★, ✓, box drawing) stay system glyphs, as before.
+// Symbols Google never served in Anybody (arrows, ★, ✓, box drawing) stay system glyphs, as before.
 if (!only || only === 'glyphs') {
   console.log('\nfont coverage');
   const { readFile } = await import('node:fs/promises');
-  const covered = new Set(JSON.parse(await readFile(new URL('../app/fonts/archivo-latin.codepoints.json', import.meta.url), 'utf8')));
+  const covered = new Set(JSON.parse(await readFile(new URL('../app/fonts/anybody-latin.codepoints.json', import.meta.url), 'utf8')));
   const latin = (c) => (c >= 0x20 && c <= 0x24f) || (c >= 0x2000 && c <= 0x206f) || c === 0x20b9 || c === 0x20ac || c === 0x2122;
   const missing = new Map();
   for (const path of PUBLIC) {
@@ -355,8 +355,8 @@ if (!only || only === 'glyphs') {
       .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&[a-z]+;/g, ' ');
     for (const ch of text) { const c = ch.codePointAt(0); if (latin(c) && !covered.has(c) && c !== 0x20 && c !== 0xa0) missing.set(ch, path); }
   }
-  missing.size === 0 ? pass('every Latin character on the pages is in the Archivo subset')
-    : fail('glyphs', `not in app/fonts/archivo-latin.woff2: ${[...missing].map(([ch, p]) => `"${ch}" U+${ch.codePointAt(0).toString(16).toUpperCase()} (${p})`).join(', ')} — regenerate it (README "Fonts")`);
+  missing.size === 0 ? pass('every Latin character on the pages is in the Anybody subset')
+    : fail('glyphs', `not in app/fonts/anybody-latin.woff2: ${[...missing].map(([ch, p]) => `"${ch}" U+${ch.codePointAt(0).toString(16).toUpperCase()} (${p})`).join(', ')} — regenerate it (README "Fonts")`);
 }
 
 // Admin (PLAN §7.8): Google sign-in only (lib/admin/auth.ts). The dev bypass only works on

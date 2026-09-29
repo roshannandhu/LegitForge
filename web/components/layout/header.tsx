@@ -137,7 +137,6 @@ export function Header() {
             ))}
           </ul>
         </nav>
-        <div className="menu-theme"><ForgeLever /><span aria-hidden="true">Dark mode</span></div>
         <a className="btn btn-primary phone-menu-cta" href={wa} onClick={() => setOpen(false)}>
           <ChatIcon className="btn-icon" /> Chat on WhatsApp
         </a>

@@ -153,14 +153,14 @@ placeholders on the home page and /work. Draft previews are at `/admin/preview/<
 
 ## Fonts
 
-Archivo is self-hosted as one subset, `app/fonts/archivo-latin.woff2` (about 80 KB, both variable
-axes). Google serves it as two files (176 KB). Same glyphs, so the site looks identical; it just
+Anybody is self-hosted as one subset, `app/fonts/anybody-latin.woff2` (about 51 KB, both variable
+axes: weight and width). Google serves it as separate latin and latin-ext files; one small file
 arrives before the first layout. If `npm run check` reports a character missing from the subset,
 rebuild it:
 
 ```
 python3 -m venv /tmp/fe && /tmp/fe/bin/pip install fonttools brotli
-/tmp/fe/bin/python scripts/subset-archivo.py "new characters"
+/tmp/fe/bin/python scripts/subset-font.py "new characters"
 ```
 
 ## Before launch

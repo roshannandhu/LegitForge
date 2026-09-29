@@ -51,7 +51,7 @@ function tokens(): Tokens {
 
 function fonts(): Fonts {
   const s = getComputedStyle(document.documentElement);
-  const sans = s.getPropertyValue('--font-archivo').trim() || 'system-ui, sans-serif';
+  const sans = s.getPropertyValue('--font-body').trim() || 'system-ui, sans-serif';
   return { sans, stencil: s.getPropertyValue('--font-stencil').trim() || sans };
 }
 
@@ -213,7 +213,7 @@ function drawFront(ctx: CanvasRenderingContext2D, r: typeof FRONT, p: CardPerson
   roundRect(ctx, sx, sy, sw, sh, 18);
   ctx.fillStyle = g;
   ctx.fill();
-  ctx.fillStyle = '#151A20';
+  ctx.fillStyle = '#000000';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   setFont(ctx, 700, 62, f.stencil);
