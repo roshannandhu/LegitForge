@@ -11,8 +11,9 @@ queries in Search Console → Performance. Each group names the page that should
 
 ## 1. Brand and people → home, `/team`, `/team/<member>`
 
-Name searches rank through the team pages. In Admin → Team, use these exact spellings for the
-names, and put the role words from section 2 in each bio.
+Name searches rank through the team pages, `/team/roshan-raj` ("Roshan Raj M", AI & ML
+Engineering) and `/team/midhun-vijay` ("Midhun Vijay", Full Stack Developer). Set those slugs in
+Admin → Team and put the role words from sections 2 and 2b in each bio.
 
 - Legit Forge
 - LegitForge
@@ -28,6 +29,12 @@ names, and put the role words from section 2 in each bio.
 - Roshan Raj web developer
 - Roshan Raj app developer
 - Roshan Raj Legit Forge
+- Roshan Raj M
+- Roshan Raj M Legit Forge
+- Roshan Raj AI engineer
+- Roshan Raj ML engineer
+- Roshan Raj AI & ML engineer
+- Roshan Raj machine learning engineer
 - Midhun Vijay
 - Midhun Vijay developer
 - Midhun Vijay freelance developer
@@ -67,6 +74,22 @@ names, and put the role words from section 2 in each bio.
 - hire web developer
 - two-person development studio
 - small web development studio
+
+## 2b. AI and ML engineering → `/team/roshan-raj`, home
+
+How the site lists Roshan (AI & ML Engineering). Good for the team page and AI-related blog posts.
+
+- AI engineer
+- ML engineer
+- AI & ML engineer
+- AI and machine learning engineer
+- machine learning engineer
+- freelance AI engineer
+- freelance ML engineer
+- AI developer
+- AI/ML developer India
+- AI engineer Kochi
+- machine learning engineer Kerala
 
 ## 3. Website development → `/services/website-development`
 
@@ -270,6 +293,7 @@ and blog posts.
 - quotation software Kochi
 - warranty management system Kerala
 - Roshan Raj Kochi
+- Roshan Raj M Kochi
 - Midhun Vijay Kochi
 - Legit Forge Kochi
 
