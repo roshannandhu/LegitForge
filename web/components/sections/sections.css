@@ -256,13 +256,24 @@
 }
 
 /* ================================================================ compare */
-.compare-labels { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; margin-bottom: 16px; font-size: 15px; color: var(--text-muted); }
-@media (min-width: 768px) {
-  .compare-labels { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px; }
-  .compare-labels p:last-child { text-align: right; }
+/* what just happened at the café, and what each website shows about it (aligned over its half) */
+.cafe-events { display: grid; margin: 0 0 16px; padding: 16px 20px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); }
+/* every moment sits in the same cell; only the current one shows (opacity and transform only) */
+.cafe-moment {
+  grid-area: 1 / 1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 24px; align-content: start;
+  opacity: 0; visibility: hidden; transform: translateY(6px);
+  transition: opacity 360ms var(--ease-forge), transform 360ms var(--ease-forge), visibility 0s 360ms;
 }
-.compare-labels p { margin: 0; }
-.compare-labels strong { color: var(--text); }
+.cafe-moment[data-on] { opacity: 1; visibility: visible; transform: none; transition: opacity 360ms var(--ease-forge), transform 360ms var(--ease-forge); }
+[data-motion="off"] .cafe-moment { transition: none; }
+.cafe-event { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin: 0; font-size: 16px; font-weight: 600; }
+.cafe-event b { color: var(--heat-ink); }
+.cafe-event .live-dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--success); box-shadow: 0 0 0 4px color-mix(in oklab, var(--success) 25%, transparent); }
+.cafe-outcome { margin: 0; font-size: 15px; line-height: 1.35; color: var(--text-muted); }
+.cafe-outcome b { display: block; margin-bottom: 2px; font-size: 14px; letter-spacing: .04em; text-transform: uppercase; color: var(--text); }
+.cafe-outcome.is-dynamic { text-align: right; }
+.cafe-outcome.is-dynamic b { color: var(--success); }
+@media (max-width: 479px) { .cafe-events { padding: 12px 16px; } .cafe-moment { column-gap: 16px; } .cafe-event { font-size: 15px; } .cafe-outcome { font-size: 14px; } }
 .compare {
   --pos: 50;
   position: relative; aspect-ratio: 16 / 10; overflow: hidden;
@@ -270,7 +281,13 @@
   touch-action: pan-y;
 }
 @media (max-width: 767px) { .compare { aspect-ratio: 4 / 5; } }
-.compare-static { position: absolute; inset: 0; clip-path: inset(0 calc(100% - var(--pos) * 1%) 0 0); }
+/* the static version shows left of the chisel: its box slides right-to-left while its content
+   slides back the same amount, so the content stays put and the edge moves. Transforms only, so
+   a drag is compositing, not a repaint of the café every frame (a clip-path change repaints) */
+.compare-static { position: absolute; inset: 0; overflow: hidden; transform: translateX(calc((var(--pos) - 100) * 1%)); }
+.compare-static > .cafe { transform: translateX(calc((100 - var(--pos)) * 1%)); }
+/* their own layers only while the chisel is held (no permanent will-change: memory on budget phones) */
+.compare:has(input:active) :is(.compare-static, .compare-static > .cafe) { will-change: transform; }
 .compare-divider {
   position: absolute; top: 0; bottom: 0; left: calc(var(--pos) * 1%); width: 2px; translate: -1px 0; pointer-events: none;
   background: linear-gradient(var(--heat-hi), var(--heat-mid) 40%, var(--heat-lo));
@@ -305,36 +322,40 @@
 .compare input[type="range"] { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: ew-resize; }
 .compare:has(input:focus-visible) .compare-handle { outline: 2px solid var(--focus); outline-offset: 3px; border-radius: 12px; }
 
-.cafe { position: absolute; inset: 0; display: flex; flex-direction: column; background: var(--bg); font-size: clamp(11px, 1.4vw, 15px); }
-.cafe-nav { display: flex; align-items: center; gap: 16px; padding: 3% 4%; border-bottom: 1px solid var(--line); }
-.cafe-brand { margin-right: auto; font-size: 1.25em; font-weight: 800; font-stretch: 112%; }
-.cafe-links { display: flex; gap: 14px; color: var(--text-muted); }
-@media (max-width: 767px) { .cafe-links { display: none; } }
-.cafe-call, .cafe-account { padding: .4em .9em; border-radius: 999px; font-weight: 600; }
+/* the café (plan G): the same rows in both versions. A row is [answer | why] in the static
+   version and [why | answer] in the dynamic one, so at 50 % the frame reads like a table (static
+   beside dynamic, feature by feature) and the chisel reveals each side's "why" as it passes */
+.cafe {
+  position: absolute; inset: 0; display: grid; align-content: center; gap: .7em; padding: 3% 4%;
+  background: var(--bg); font-size: clamp(11px, 1.4vw, 15px);
+}
+.cafe-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 8%; align-items: center; }
+.cafe-card { display: grid; gap: .4em; min-width: 0; padding: .7em .9em; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.cafe-why { margin: 0; color: var(--text-muted); font-size: .92em; line-height: 1.35; }
+.cafe-dynamic .cafe-card { grid-column: 2; grid-row: 1; }
+.cafe-dynamic .cafe-why { grid-column: 1; grid-row: 1; text-align: right; }
+.cafe-static .cafe-why::before { content: "← "; color: var(--heat-ink); }   /* each note points at its feature */
+.cafe-dynamic .cafe-why::after { content: " →"; color: var(--heat-ink); }
+.cafe-nav .cafe-card { display: flex; align-items: center; justify-content: space-between; gap: .6em; padding-inline: 0; border-color: transparent; background: transparent; }
+.cafe-brand { font-size: 1.2em; font-weight: 800; font-stretch: 112%; white-space: nowrap; }
+.cafe-call, .cafe-account { padding: .35em .8em; border-radius: 999px; font-weight: 600; white-space: nowrap; }
 .cafe-call { background: var(--accent); color: var(--accent-ink); }
 .cafe-account { border: 1px solid var(--line); }
-.cafe-body { flex: 1; display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 4%; padding: 4%; }
-@media (max-width: 767px) { .cafe-body { grid-template-columns: minmax(0, 1fr); align-content: start; } }
-.cafe-h { margin: 0 0 .8em; font-size: 1.15em; font-weight: 700; }
-.cafe-menu ul { display: grid; gap: .5em; margin: 0; padding: 0; list-style: none; }
-.cafe-menu li { display: flex; justify-content: space-between; padding: .55em .8em; border-radius: 8px; background: var(--surface); }
-.cafe-order { display: inline-block; margin-top: 1em; padding: .5em 1em; border-radius: 8px; background: var(--accent); color: var(--accent-ink); font-weight: 600; }
-.cafe-side { display: grid; gap: .8em; align-content: start; }
-.cafe-hours, .cafe-status, .cafe-live {
-  display: flex; justify-content: space-between; gap: 8px; padding: .8em 1em;
-  border-radius: 10px; background: var(--surface); border: 1px solid var(--line);
-}
-.cafe-status { flex-direction: column; }
-.cafe-status span:last-child { color: var(--text-muted); }
-.cafe-live { justify-content: flex-start; align-items: center; font-weight: 600; }
-.cafe-live .live-dot { width: .6em; height: .6em; border: 0; border-radius: 50%; background: var(--success); box-shadow: 0 0 0 4px color-mix(in oklab, var(--success) 25%, transparent); }
-.cafe-map {
-  min-height: 7em; border-radius: 10px; border: 1px solid var(--line);
-  background:
-    linear-gradient(var(--line) 1px, transparent 1px) 0 0 / 18px 18px,
-    linear-gradient(90deg, var(--line) 1px, transparent 1px) 0 0 / 18px 18px,
-    var(--surface-2);
-}
+.cafe-h { margin: 0; font-weight: 700; }
+.cafe-menu { display: grid; gap: .25em; margin: 0; padding: 0; list-style: none; }
+.cafe-menu li { display: flex; justify-content: space-between; gap: .6em; }
+.cafe-note { color: var(--text-muted); }
+.cafe-track { display: flex; flex-wrap: wrap; align-items: center; gap: .3em .6em; }
+/* a changing value: all its versions stacked in one cell, only the current one visible */
+.cafe-swap { display: inline-grid; }
+.cafe-swap > * { grid-area: 1 / 1; visibility: hidden; }
+.cafe-swap > [data-on] { visibility: visible; animation: cafe-flip 480ms cubic-bezier(.2, .9, .3, 1.2) both; }
+[data-motion="off"] .cafe-swap > [data-on] { animation: none; }
+.cafe-steps { display: inline-flex; gap: .3em; }
+.cafe-steps i { width: .6em; height: .6em; border-radius: 50%; background: var(--line); }
+.cafe-steps i.is-on { background: var(--success); }
+.cafe-stamp { max-width: 46%; }                           /* on its own side of the divider */
+.cafe-dynamic .cafe-stamp { justify-self: end; }
 
 /* ============================================================== live test */
 .live-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 48px; }
@@ -544,7 +565,9 @@
    hang (phones have the 3D cards too). The numbers match the 3D camera in
    components/lanyard/team-lanyards.jsx (136px per world unit): card 1.6×2.25 units =
    218×306px, card top 2.125 units = 289px below the rail. */
-.lanyards { column-gap: 0; padding-top: 0; }
+/* laptops: room between the cards (a few people sit centred as a balanced group, justify-content
+   safe center above; many overflow and scroll with the arrows); the 3D anchors follow the columns */
+.lanyards { column-gap: 64px; padding-top: 0; }
 @media (max-width: 1023px) { .lanyards { column-gap: 16px; } }
 .card-slot { display: block; height: 640px; }
 .card-slot .strap { top: 0; height: 280px; }
@@ -590,8 +613,8 @@
   background: color-mix(in oklab, var(--quench) 14%, var(--surface-2)); border: 1px solid var(--line);
   font-size: 48px; font-weight: 800; font-stretch: 112%; color: color-mix(in oklab, var(--quench) 70%, var(--text));
 }
-.id-photo-empty { background: transparent; border: 2px dashed var(--line); color: var(--text-muted); }
-.id-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }   /* cover, like the 3D atlas */
+/* cover, like the 3D atlas, cropped around a headshot's face (FACE_Y in lib/card-art.ts), not its middle */
+.id-photo img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 22%; display: block; }
 .id-name { margin: 0; font-size: 22px; font-weight: 700; font-stretch: 106%; line-height: 1.15; }
 .id-role { margin: 2px 0 0; color: var(--text-muted); }
 /* currently building (plan D #9): one honest line with a live dot */
@@ -617,10 +640,6 @@
 .id-skills li { padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px; font-size: 14px; }
 .id-stat { display: flex; justify-content: space-between; gap: 12px; margin: 0; padding-top: 12px; border-top: 1px solid var(--line); font-size: 14px; }
 .id-stat span { color: var(--text-muted); }
-.id-back-you { align-items: flex-start; }
-.id-you-line { margin: 0; font-size: 22px; font-weight: 700; line-height: 1.2; }
-.id-you-sub { margin: 0; color: var(--text-muted); }
-@media (min-width: 1024px) { .id-you-line { font-size: 18px; } }
 
 .name-tag { display: grid; justify-items: center; gap: 2px; text-align: center; }
 .name-tag p { margin: 0; }
@@ -1025,14 +1044,6 @@
 .qx-note { margin: 0; color: var(--text-muted); font-size: 11px; }
 
 
-/* compare on phones: the halves stack into one column, so the dynamic version's extras sit
-   right-aligned, on its own side of the divider (the static extras stay left) */
-@media (max-width: 767px) {
-  .cafe-dynamic .cafe-live, .cafe-dynamic .cafe-status { justify-content: flex-end; align-items: flex-end; text-align: right; margin-left: 50%; }
-  .cafe-dynamic .cafe-order { display: table; margin-left: auto; }
-  .cafe-static .cafe-hours, .cafe-static .cafe-map { margin-right: 50%; }
-}
-
 /* live test: the reply stopwatch (plan D #6) */
 .live-watch { display: flex; align-items: baseline; gap: 6px; margin: 0 0 20px; }
 .live-watch-dot { align-self: center; width: 10px; height: 10px; border-radius: 50%; background: var(--line); }
@@ -1051,13 +1062,10 @@
   justify-self: start; align-self: end; padding: .3em .7em; border-radius: 6px; font-size: .78em; font-weight: 700;
   letter-spacing: .04em; text-transform: uppercase; line-height: 1.3;
 }
-.cafe-stamp.is-printed { display: inline-block; margin-top: 1em; border: 1.5px dashed var(--text-muted); color: var(--text-muted); rotate: -3deg; }
-.cafe-book { display: grid; gap: .5em; padding: .7em .9em; border-radius: 8px; background: var(--surface); }
-.cafe-book-h { font-weight: 600; }
+.cafe-stamp.is-printed { display: inline-block; border: 1.5px dashed var(--text-muted); color: var(--text-muted); rotate: -3deg; }
 .cafe-slots { display: flex; flex-wrap: wrap; gap: .4em; }
 .cafe-slot { padding: .25em .6em; border: 1px solid var(--success); border-radius: 6px; color: var(--success); font-size: .9em; transition: opacity 300ms, border-color 300ms, color 300ms; }
 .cafe-slot.is-taken { border-color: var(--line); color: var(--text-muted); text-decoration: line-through; opacity: .7; }
-.cafe-call-note { color: var(--text-muted); }
 @media (min-width: 1024px) { .compare { aspect-ratio: 2 / 1; } .cafe { font-size: clamp(13px, 1.15vw, 16px); } }
 /* chips for the picker (the inner pages' .chip lives in pages.css, not loaded on home) */
 .picker .chip {
@@ -1066,45 +1074,28 @@
 }
 .picker .chip[aria-pressed="true"] { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); }
 .cafe-stamp.is-live { border: 1.5px solid var(--success); color: var(--success); }
-.cafe-dynamic .cafe-side { align-content: start; }
 /* a live value changed: it flips in (remounted by its key) */
-.cafe-flip { display: inline-block; animation: cafe-flip 480ms cubic-bezier(.2, .9, .3, 1.2) both; }
 @keyframes cafe-flip { from { opacity: 0; transform: translateY(-.6em) rotateX(70deg); } to { opacity: 1; transform: none; } }
 .cafe-account { animation: cafe-flip 480ms cubic-bezier(.2, .9, .3, 1.2) both; }
-.cafe-menu li.is-out span:first-child { color: var(--text-muted); text-decoration: line-through; text-decoration-color: var(--danger); }
-.cafe-out { font-style: normal; font-weight: 700; color: var(--danger); animation: cafe-flip 480ms both; }
-[data-motion="off"] :is(.cafe-flip, .cafe-account, .cafe-out) { animation: none; }
-@media (max-width: 767px) {
-  .cafe-stamp { font-size: .72em; }
-  .cafe-dynamic .cafe-stamp { justify-self: end; }
-  .cafe-map, .cafe-book { display: none; }   /* the phone frame is narrow: the live values tell the story */
-}
+.cafe-menu li.is-out > span:first-child { color: var(--text-muted); text-decoration: line-through; text-decoration-color: var(--danger); }
+.cafe-out { font-style: normal; font-weight: 700; color: var(--danger); }   /* flips in with its .cafe-swap slot */
+[data-motion="off"] .cafe-account { animation: none; }
+@media (max-width: 767px) { .cafe-stamp { font-size: .72em; } }
 
-/* underneath: how each is served; each panel brightens as its side takes the frame */
-.engines { display: grid; gap: 16px; margin-top: 24px; }
-@media (min-width: 768px) { .engines { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-.engine { position: relative; padding: 20px 24px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); transition: opacity 300ms var(--ease-forge); }
-.engine.is-static { opacity: calc(.88 + .12 * var(--pos) / 100); }   /* dims, but its words stay at 4.5:1 */
-.engine.is-dynamic { opacity: calc(.5 + .5 * (100 - var(--pos)) / 100); }
-.engine-h { margin: 0 0 12px; font-size: 14px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); }
-.engine-path { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0; padding: 0; list-style: none; font-size: 14px; font-weight: 600; }
-.engine-path li { padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
-.engine-path li + li::before { content: "→"; margin: 0 8px 0 -2px; color: var(--heat-ink); }
-.engine-path.is-loop li:last-child::after { content: " ↺"; color: var(--heat-ink); }
-/* the request travelling the path: one hop for static, a round trip for dynamic */
-.engine-track { position: relative; display: block; height: 2px; margin: 14px 0 0; overflow: hidden; border-radius: 2px; background: var(--line); }
-.engine-track::after {
-  content: ""; position: absolute; inset: 0;
-  background: radial-gradient(circle at right, var(--heat-hi) 0 3px, transparent 4px), linear-gradient(90deg, transparent 70%, color-mix(in oklab, var(--heat-mid) 70%, transparent));
-  transform: translateX(-100%); animation: engine-run 1.4s ease-in-out infinite;
+/* the difference in plain words: one table, static left and dynamic right like the frame. Phones:
+   the question sits above its two answers; wider: three columns */
+.plain { display: grid; margin-top: 24px; padding: 8px 24px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); }
+.plain-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 24px; padding: 12px 0; border-top: 1px solid var(--line); }
+.plain-row:first-child { border-top: 0; }
+.plain-q { grid-column: 1 / -1; font-size: 14px; color: var(--text-muted); }
+.plain-row > [role="cell"] { font-size: 15px; font-weight: 600; line-height: 1.4; }
+.plain-head > [role="columnheader"] { font-size: 14px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); }
+.plain-head > .is-dynamic { color: var(--success); }
+@media (min-width: 768px) {
+  .plain-row { grid-template-columns: minmax(0, 3fr) repeat(2, minmax(0, 4fr)); align-items: baseline; }
+  .plain-q { grid-column: auto; }
 }
-.engine-track.is-loop::after { animation: engine-run 2.6s ease-in-out infinite alternate; }
-@keyframes engine-run { to { transform: translateX(0); } }
-[data-motion="off"] .engine-track::after { animation: none; transform: none; }
-.engine-note { margin: 12px 0 0; font-size: 15px; color: var(--text-muted); }
-.engine-note b, .engine-note i { color: var(--text); }
-/* the static side dims down to .88: a touch darker than --text-muted keeps its words at 4.5:1 */
-.engine .engine-h, .engine .engine-note { color: color-mix(in oklab, var(--text-muted) 60%, var(--text)); }
+@media (max-width: 479px) { .plain { padding: 4px 16px; } .plain-row { column-gap: 16px; } }
 
 /* which one do I need? */
 .picker { display: grid; gap: 16px; margin-top: 24px; padding: 24px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); }

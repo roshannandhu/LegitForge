@@ -277,13 +277,14 @@ function whatsappFlow(root: Element, gsap: G): TL {
 }
 
 /* n8n: executions keep coming. Each run clears the last one's ticks (as n8n does), then one item
-   travels the wires; every node it reaches pulses, gets its tick and says what it did, and the
-   Switch sends it down its branch. Two runs per cycle, an order (→ WhatsApp) then a question
-   (→ Team alert), so both branches show; both endings reset to "waiting" as each run starts.
-   The dot follows the visible layout's own path (getPointAtLength), moved with transform only. */
+   travels the wires; every node it reaches pulses, gets its tick and says what it did. The
+   message is an order and a question, so the Switch (send to all matching outputs) sends it down
+   both branches at once: two dots, WhatsApp reply and Team alert tick together. Both endings
+   reset to "waiting" as each run starts. Each dot follows the visible layout's own path
+   (getPointAtLength), moved with transform only. */
 function n8nFlow(root: Element, gsap: G): TL {
   const tl = gsap.timeline({ repeat: -1, defaults: { ease: 'power2.out' } });
-  const canvas = $(root, '.n8c')!, dot = $(root, '.n8c-dot')!;
+  const canvas = $(root, '.n8c')!, dots = $$(root, '.n8c-dot');
   const nodes = ['form', 'sheet', 'ai', 'switch', 'wa', 'team'].map((id) => $(root, `.n8c-${id}`)!);
   const out = (i: number) => nodes[i].querySelector('.n8c-out');
   const runs = $(root, '.n8c-runs');
@@ -293,7 +294,7 @@ function n8nFlow(root: Element, gsap: G): TL {
     return { svg, paths: [...svg.querySelectorAll<SVGPathElement>('path')] };
   };
   const mark = (w: number, on: boolean) => $$(root, `[data-w="${w}"]`).forEach((el) => el.classList.toggle('ran', on));
-  const place = (w: number, t: number) => {
+  const place = (dot: HTMLElement, w: number, t: number) => {
     const { svg, paths } = wires(), path = paths[w];
     const p = path.getPointAtLength(t * path.getTotalLength());
     const k = canvas.clientWidth / svg.viewBox.baseVal.width;
@@ -303,8 +304,7 @@ function n8nFlow(root: Element, gsap: G): TL {
   let row = numOf(out(1)), n = numOf(runs), k = 0;
   const HOP = 0.55, AT = 0.45;                                        // a wire, then a beat at the node
 
-  const run = (start: number, branch: 'order' | 'question') => {
-    const last = branch === 'order' ? 4 : 5, wLast = branch === 'order' ? 3 : 4;
+  const run = (start: number) => {
     let t = start;
     tl.call(() => {                                                    // a new execution: last run's ticks clear
       nodes.forEach((el) => el.classList.remove('done'));
@@ -317,25 +317,24 @@ function n8nFlow(root: Element, gsap: G): TL {
     };
     arrive(0, t + 0.2, () => sources[k % sources.length]);
     t += 0.2 + AT;
-    const hop = (w: number, to: number, say: () => string) => {
+    // one dot along wire w to node `to`; hops given the same t run side by side
+    const hop = (w: number, to: number, say: () => string, dot = dots[0]) => {
       const o = { t: 0 };
       tl.set(dot, { opacity: 1 }, t)
-        .fromTo(o, { t: 0 }, { t: 1, duration: HOP, ease: 'power1.inOut', immediateRender: false, onUpdate: () => place(w, o.t) }, t)
+        .fromTo(o, { t: 0 }, { t: 1, duration: HOP, ease: 'power1.inOut', immediateRender: false, onUpdate: () => place(dot, w, o.t) }, t)
         .call(() => mark(w, true), [], t + HOP)
         .set(dot, { opacity: 0 }, t + HOP);
       arrive(to, t + HOP, say);
-      t += HOP + AT;
     };
-    hop(0, 1, () => `row #${++row}`);
-    hop(1, 2, () => `intent: ${branch}`);
-    hop(2, 3, () => `→ ${branch}`);
-    hop(wLast, last, () => (branch === 'order' ? 'sent ✓✓' : 'team pinged'));
+    hop(0, 1, () => `row #${++row}`); t += HOP + AT;
+    hop(1, 2, () => 'order + question'); t += HOP + AT;
+    hop(2, 3, () => '→ both'); t += HOP + AT;
+    hop(3, 4, () => 'sent ✓✓', dots[0]);                              // both branches at once
+    hop(4, 5, () => 'team pinged', dots[1]); t += HOP + AT;
     tl.call(() => { txt(runs, (++n).toLocaleString('en-IN')); k++; }, [], t);
     return t + 0.9;                                                    // the finished run rests a moment
   };
-  // the order (→ WhatsApp) runs first: it is what a visitor sees when the demo comes into view
-  const mid = run(0, 'order');
-  run(mid, 'question');
+  run(0);
   return tl;
 }
 

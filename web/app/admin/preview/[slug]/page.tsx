@@ -6,7 +6,7 @@ import '@/components/sections/sections.css';
 import '../../../pages.css';
 
 /** Draft preview (PLAN §7.8): the case study exactly as /work/<slug> will show it, drafts
- *  included. It lives under /admin so Cloudflare Access guards it too, and the public
+ *  included. It lives under /admin so the admin sign-in guards it too, and the public
  *  /work pages stay static. */
 export default async function Preview({ params }: { params: Promise<{ slug: string }> }) {
   await requireAdmin();                            // each page checks too: a layout can be skipped

@@ -9,7 +9,10 @@ import { SERVICE_PAGES } from '@/lib/pages';
 import { orgRef, SITE } from '@/lib/site';
 import '../../pages.css';
 
-export const dynamicParams = false;
+// true, not false: every page reads tagged data (the root layout reads 'company'), and Next 16
+// answers 404 (NoFallbackError) for a dynamicParams = false page once its tag expires.
+// Unknown slugs still 404 through notFound().
+export const dynamicParams = true;
 export const generateStaticParams = () => posts().map((p) => ({ slug: p.slug }));
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {

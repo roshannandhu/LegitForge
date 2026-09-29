@@ -22,7 +22,8 @@ import { HallmarkStrike } from '@/components/intro/hallmark-strike';
 import { PROCESS, SERVICES } from '@/lib/content';
 import { getTeam, toCards } from '@/lib/team';
 import { getProjects } from '@/lib/work';
-import { ORG_ID, SITE, waLink } from '@/lib/site';
+import { ORG_ID, SITE, activeSocial, shownEmail, waLink, type Company } from '@/lib/site';
+import { getCompany } from '@/lib/company';
 import { LAYERS } from '@/lib/teardown';
 import '@/components/hero/hero.css';
 import '@/components/sections/sections.css';
@@ -55,7 +56,8 @@ const siteLd = [
 ];
 
 /** Organization + the services we sell, for search engines and AI answers (PLAN §10.4). */
-const orgLd = {
+/** The studio in structured data, from the saved company details (Admin → Company). */
+const orgLd = (c: Company) => ({
   '@context': 'https://schema.org',
   '@type': 'ProfessionalService',
   '@id': ORG_ID,
@@ -63,14 +65,14 @@ const orgLd = {
   image: `${SITE.url}/opengraph-image`,
   name: SITE.name,
   url: SITE.url,
-  email: SITE.email,
+  ...(shownEmail(c) ? { email: shownEmail(c) } : {}),
   description:
     'A two-person studio building websites, web apps, quotation and warranty systems, WhatsApp automation and n8n workflows.',
-  ...(SITE.city ? { areaServed: SITE.city } : {}),
-  ...(SITE.city || SITE.country ? { address: { '@type': 'PostalAddress',
-    ...(SITE.city ? { addressLocality: SITE.city } : {}), ...(SITE.country ? { addressCountry: SITE.country } : {}) } } : {}),
-  ...(SITE.whatsappNumber ? { telephone: `+${SITE.whatsappNumber}` } : {}),
-  ...(() => { const same = Object.values(SITE.social).filter(Boolean); return same.length ? { sameAs: same } : {}; })(),
+  ...(c.city ? { areaServed: c.city } : {}),
+  ...(c.city || c.country ? { address: { '@type': 'PostalAddress',
+    ...(c.city ? { addressLocality: c.city } : {}), ...(c.country ? { addressCountry: c.country } : {}) } } : {}),
+  ...(c.whatsapp ? { telephone: `+${c.whatsapp}` } : {}),
+  ...(activeSocial(c).length ? { sameAs: activeSocial(c).map((s) => s.url) } : {}),
   openingHoursSpecification: {
     '@type': 'OpeningHoursSpecification',
     dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
@@ -86,12 +88,13 @@ const orgLd = {
         description: 'Quotes sent as links or PDFs, and warranty records customers can check by QR code.' } },
     ],
   },
-};
+});
 
 export default async function Home() {
   const team = toCards(await getTeam());
   const hasWork = (await getProjects()).length > 0;
-  const wa = waLink();
+  const company = await getCompany();
+  const wa = waLink(company);
   return (
     <>
       <HallmarkStrike />
@@ -152,7 +155,7 @@ export default async function Home() {
       <HeatDirector />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify([orgLd, ...siteLd]).replace(/</g, '\\u003c') }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify([orgLd(company), ...siteLd]).replace(/</g, '\\u003c') }}
       />
     </>
   );

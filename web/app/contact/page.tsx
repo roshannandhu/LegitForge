@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import { PageHead } from '@/components/pages/page-head';
 import { Quench } from '@/components/sections/quench';
-import { SITE, waLink } from '@/lib/site';
+import { SITE, shownEmail, waLink } from '@/lib/site';
+import { getCompany } from '@/lib/company';
 import '@/components/sections/sections.css';
 import '../pages.css';
 
@@ -12,7 +13,9 @@ export const metadata: Metadata = {
 };
 
 /** /contact (PLAN §7.5): the quench form plus hours and the reply promise. */
-export default function Contact() {
+export default async function Contact() {
+  const company = await getCompany();
+  const email = shownEmail(company);
   return (
     <>
       <PageHead
@@ -23,8 +26,8 @@ export default function Contact() {
 
       <section className="page-block wrap" aria-label="How to reach us">
         <dl className="contact-facts">
-          <div><dt>WhatsApp</dt><dd><a href={waLink()}>Chat on WhatsApp</a></dd></div>
-          <div><dt>Email</dt><dd><a href={`mailto:${SITE.email}`}>{SITE.email}</a></dd></div>
+          <div><dt>WhatsApp</dt><dd><a href={waLink(company)}>Chat on WhatsApp</a></dd></div>
+          {email && <div><dt>Email</dt><dd><a href={`mailto:${email}`}>{email}</a></dd></div>}
           <div><dt>Hours</dt><dd>{SITE.hours.label}</dd></div>
         </dl>
       </section>

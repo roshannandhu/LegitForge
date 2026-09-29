@@ -191,8 +191,9 @@ function WhatsAppDemo() {
 }
 
 /* 4 — n8n: the real editor canvas. App nodes joined by curved wires; one item at a time travels
-       them, each node it reaches gets its green tick, and after the AI step a Switch sends an
-       order to a WhatsApp reply and a question to the team (demos.ts alternates the two).
+       them, each node it reaches gets its green tick, and after the AI step the Switch (send to
+       all matching outputs) sends a message that is both an order and a question down both
+       branches at once: a WhatsApp reply and a team alert (two dots, demos.ts).
        Two wire layouts, one per shape of box: wide 640 × 300, tall (phones) 300 × 560. */
 type N8nNode = { id: string; name: string; out: string; x: number; y: number; px: number; py: number; glyph: React.ReactNode };
 const N8N_NODES: N8nNode[] = [
@@ -200,13 +201,13 @@ const N8N_NODES: N8nNode[] = [
     glyph: <path d="M7 4h8l3 3v13H7zM10 10h5M10 13h5M10 16h3" /> },
   { id: 'sheet', name: 'Google Sheets', out: 'row #214', x: 185, y: 150, px: 150, py: 140,
     glyph: <path d="M6 5h12v14H6zM6 10h12M6 14.5h12M11 5v14" /> },
-  { id: 'ai', name: 'AI Agent', out: 'intent: order', x: 310, y: 150, px: 150, py: 240,
+  { id: 'ai', name: 'AI Agent', out: 'order + question', x: 310, y: 150, px: 150, py: 240,
     glyph: <path d="M12 4l1.6 4.4L18 10l-4.4 1.6L12 16l-1.6-4.4L6 10l4.4-1.6zM17.5 15.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z" /> },
-  { id: 'switch', name: 'Switch', out: '→ order', x: 435, y: 150, px: 150, py: 340,
+  { id: 'switch', name: 'Switch', out: '→ both', x: 435, y: 150, px: 150, py: 340,
     glyph: <path d="M5 12h5l4-5h5M14 17h5M10 12l4 5M16 4l3 3-3 3M16 14l3 3-3 3" /> },
   { id: 'wa', name: 'WhatsApp reply', out: 'sent ✓✓', x: 570, y: 80, px: 75, py: 470,
     glyph: <path d="M5 19l1.2-3.4A7.3 7.3 0 1 1 9 18.3zM9.6 9.6c0 2.8 2 4.8 4.8 4.8l1-1.4-1.9-1-1 1c-.9 0-2.3-1.4-2.3-2.3l1-1-1-1.9z" /> },
-  { id: 'team', name: 'Team alert', out: 'waiting', x: 570, y: 220, px: 225, py: 470,
+  { id: 'team', name: 'Team alert', out: 'team pinged', x: 570, y: 220, px: 225, py: 470,
     glyph: <path d="M7 16v-5a5 5 0 0 1 10 0v5l1.5 2h-13zM10.3 20a1.9 1.9 0 0 0 3.4 0" /> },
 ];
 // the wires, in data-w order: form→sheet, sheet→ai, ai→switch, switch→wa (order), switch→team (question)
@@ -216,7 +217,7 @@ const N8N_TALL = ['M150 68 C150 90 150 90 150 112', 'M150 168 C150 190 150 190 1
   'M150 368 C150 410 75 400 75 442', 'M150 368 C150 410 225 400 225 442'];
 const N8N_LABEL_WIDE: [number, number][] = [[122, 140], [247, 140], [372, 140], [505, 96], [505, 214]];
 const N8N_LABEL_TALL: [number, number][] = [[142, 94], [142, 194], [142, 294], [96, 440], [204, 440]];
-const RAN = [true, true, true, true, false];                    // the finished frame: an order went to WhatsApp
+const RAN = [true, true, true, true, true];                     // the finished frame: the item took both branches
 
 function N8nWires({ paths, labels, vb, cls }: { paths: string[]; labels: [number, number][]; vb: string; cls: string }) {
   const tall = cls.includes('tall');
@@ -239,7 +240,7 @@ function N8nDemo() {
       <N8nWires paths={N8N_WIDE} labels={N8N_LABEL_WIDE} vb="0 0 640 300" cls="n8c-wide" />
       <N8nWires paths={N8N_TALL} labels={N8N_LABEL_TALL} vb="0 0 300 560" cls="n8c-tall" />
       {N8N_NODES.map((n) => (
-        <div key={n.id} className={`n8c-node n8c-${n.id}${n.id === 'team' ? '' : ' done'}`}
+        <div key={n.id} className={`n8c-node n8c-${n.id} done`}
           style={{ '--x': `${(n.x / 640) * 100}%`, '--y': `${(n.y / 300) * 100}%`, '--px': `${(n.px / 300) * 100}%`, '--py': `${(n.py / 560) * 100}%` } as React.CSSProperties}>
           <span className="n8c-tile">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{n.glyph}</svg>
@@ -250,7 +251,7 @@ function N8nDemo() {
           <span className="n8c-out num">{n.out}</span>
         </div>
       ))}
-      <span className="n8c-dot" />
+      <span className="n8c-dot" /><span className="n8c-dot" />
       <div className="n8c-bar"><span className="n8c-toggle"><i /></span>Active<span className="n8c-sep" />Executions <b className="num n8c-runs">1,284</b></div>
     </div>
   );

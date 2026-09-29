@@ -9,10 +9,14 @@ import { CheckIcon } from '@/components/ui/icons';
 import { getProjects } from '@/lib/work';
 import { SERVICE_PAGES, serviceBySlug } from '@/lib/pages';
 import { orgRef, SITE, waLink } from '@/lib/site';
+import { getCompany } from '@/lib/company';
 import '@/components/sections/sections.css';
 import '../../pages.css';
 
-export const dynamicParams = false;
+// true, not false: every page reads tagged data (the root layout reads 'company'), and Next 16
+// answers 404 (NoFallbackError) for a dynamicParams = false page once its tag expires.
+// Unknown slugs still 404 through notFound().
+export const dynamicParams = true;
 export const generateStaticParams = () => SERVICE_PAGES.map((s) => ({ slug: s.slug }));
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
@@ -27,7 +31,8 @@ export default async function ServicePage({ params }: { params: Promise<{ slug: 
   const s = serviceBySlug((await params).slug);
   if (!s) notFound();
   const related = (await getProjects()).filter((p) => s.categories.includes(p.category)).slice(0, 3);
-  const wa = waLink(`Hi Legit Forge, I'd like to talk about ${s.topic}.`);
+  const company = await getCompany();
+  const wa = waLink(company, `Hi Legit Forge, I'd like to talk about ${s.topic}.`);
 
   return (
     <>
@@ -103,7 +108,7 @@ export default async function ServicePage({ params }: { params: Promise<{ slug: 
         name: s.name,
         description: s.description,
         url: `${SITE.url}/services/${s.slug}`,
-        ...(SITE.city ? { areaServed: SITE.city } : {}),
+        ...(company.city ? { areaServed: company.city } : {}),
         provider: orgRef,
       }} />
       <JsonLd data={{

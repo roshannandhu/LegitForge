@@ -27,16 +27,6 @@ import type { CardPerson } from '@/lib/card-art';
 import type { Card } from '@/lib/team';
 import { SITE, capacityLine } from '@/lib/site';
 
-// The next free card is yours (003 while there are two of us): two cards look sparse, and a
-// hiring ad from a two-person studio
-// reads as premature. It looks like a team card, so people flip it (§6.8).
-const visitor = (code: string): CardPerson => ({
-  id: 'you', idCode: `LF-${code}`, name: 'You', role: 'Client', initials: '?', skills: [], shipped: '', favorite: '', visitor: true,
-});
-/** One past the highest team code: the visitor never shares a real person's number. */
-const nextCode = (team: Card[]) =>
-  String(Math.max(0, ...team.map((m) => Number(m.idCode.replace(/\D/g, '')) || 0)) + 1).padStart(3, '0');
-
 /** 3D wherever the device can draw it (§6.8 tiers; phones included since 27 Sep). Touch
  *  gets tap-to-flip only (team-lanyards.jsx), so swipes still scroll the page and the row. */
 function canRun3d() {
@@ -91,15 +81,12 @@ function ThemedScene({ Scene, ...props }: Omit<SceneProps, 'theme'> & { Scene: C
 
 /** `head={false}` on /team, where the page header already carries this heading and lead. */
 export function Team({ team, head = true }: { team: Card[]; head?: boolean }) {
-  // stable identity: the 3D scene repaints its textures when this changes
-  const people = useMemo<CardPerson[]>(() => [
-    ...team.map((m) => ({
-      id: m.slug, idCode: m.idCode, name: m.name, role: m.role, initials: m.initials,
-      skills: m.skills, shipped: m.shipped, favorite: m.favorite, photo: m.photo, building: m.building,
-    })),
-    visitor(nextCode(team)),
-  ], [team]);
-  const youCode = nextCode(team);
+  // stable identity: the 3D scene repaints its textures when this changes. Only the real team:
+  // the "Card 003 is yours / Client" card was removed (the owner's call, 28 Sep).
+  const people = useMemo<CardPerson[]>(() => team.map((m) => ({
+    id: m.slug, idCode: m.idCode, name: m.name, role: m.role, initials: m.initials,
+    skills: m.skills, shipped: m.shipped, favorite: m.favorite, photo: m.photo, building: m.building,
+  })), [team]);
   const motionOn = useMotionEnabled();
   const sectionRef = useRef<HTMLElement>(null);
   const stripRef = useRef<HTMLUListElement>(null);
@@ -139,11 +126,16 @@ export function Team({ team, head = true }: { team: Card[]; head?: boolean }) {
   useEffect(() => {
     if (!near) return;
     let alive = true;
-    if (use3d && !Scene) {
-      import('@/components/lanyard/team-lanyards').then((m) => alive && setScene(() => m.default as unknown as ComponentType<SceneProps>));
-    }
-    if (!use3d && !Flip) {
-      import('@/components/react-bits/flip-card').then((m) => alive && setFlip(() => m.default as unknown as ComponentType<FlipCardProps>));
+    // Always true in the browser. On the server NEXT_RUNTIME is a build-time constant, so the
+    // server bundle leaves out three.js, Rapier and FlipCard (~1.1 MB gzip): the Worker then
+    // fits the Workers Free 3 MB limit.
+    if (!process.env.NEXT_RUNTIME) {
+      if (use3d && !Scene) {
+        import('@/components/lanyard/team-lanyards').then((m) => alive && setScene(() => m.default as unknown as ComponentType<SceneProps>));
+      }
+      if (!use3d && !Flip) {
+        import('@/components/react-bits/flip-card').then((m) => alive && setFlip(() => m.default as unknown as ComponentType<FlipCardProps>));
+      }
     }
     return () => { alive = false; };
   }, [near, use3d, Scene, Flip]);
@@ -192,7 +184,7 @@ export function Team({ team, head = true }: { team: Card[]; head?: boolean }) {
           </header>
         )}
         <div className="team-bar" data-overflow={edges.start && edges.end ? undefined : ''}>
-          <p className="team-count num">{String(people.length - 1).padStart(2, '0')} people · scroll for every card</p>
+          <p className="team-count num">{String(people.length).padStart(2, '0')} people · scroll for every card</p>
           <div className="team-arrows">
             <button type="button" className="strip-btn" onClick={() => page(-1)} disabled={edges.start} aria-label="Previous cards">←</button>
             <button type="button" className="strip-btn" onClick={() => page(1)} disabled={edges.end} aria-label="Next cards">→</button>
@@ -203,7 +195,7 @@ export function Team({ team, head = true }: { team: Card[]; head?: boolean }) {
       <div className="team-stage" ref={stageRef} data-mode={mode} data-3d-ready={mode === '3d' && sceneReady ? 'true' : undefined}>
           <ul className="lanyards" ref={stripRef} aria-label="Team cards">
             {people.map((p) => (
-              <li key={p.id} className={`lanyard${p.visitor ? ' lanyard-you' : ''}`}>
+              <li key={p.id} className="lanyard">
                 <div className="card-slot">
                   <span className="strap" aria-hidden="true" />
                   {mode === 'flip' && Flip ? (
@@ -217,7 +209,7 @@ export function Team({ team, head = true }: { team: Card[]; head?: boolean }) {
                       back={<CardBack p={p} />}
                       draggable={fine}
                       tiltMax={8}
-                      glareOpacity={0.18}
+                      glareOpacity={0.06}
                       hoverScale={1.02}
                       perspective={1100}
                       stiffness={170}
@@ -242,29 +234,14 @@ export function Team({ team, head = true }: { team: Card[]; head?: boolean }) {
                   onFocus={() => setHighlighted(p.id)}
                   onBlur={() => setHighlighted(null)}
                 >
-                  {p.visitor ? (
-                    <>
-                      <p className="name-tag-name">Card {youCode} is yours</p>
-                      <p className="name-tag-role">Every project starts as a blank card.</p>
-                      <div className="name-tag-actions">
-                        <button type="button" className="flip-btn" aria-pressed={!!flipped[p.id]} onClick={() => toggle(p.id)}>
-                          Flip card {youCode}
-                        </button>
-                        <a className="text-link" href="#contact">Tell us what you’re building</a>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <p className="name-tag-name">{p.name}</p>
-                      <p className="name-tag-role">{p.role}</p>
-                      <div className="name-tag-actions">
-                        <button type="button" className="flip-btn" aria-pressed={!!flipped[p.id]} onClick={() => toggle(p.id)}>
-                          Flip {p.name}’s card
-                        </button>
-                        <a className="text-link" href={`/team/${p.id}`}>Open {p.name}’s portfolio</a>
-                      </div>
-                    </>
-                  )}
+                  <p className="name-tag-name">{p.name}</p>
+                  <p className="name-tag-role">{p.role}</p>
+                  <div className="name-tag-actions">
+                    <button type="button" className="flip-btn" aria-pressed={!!flipped[p.id]} onClick={() => toggle(p.id)}>
+                      Flip {p.name}’s card
+                    </button>
+                    <a className="text-link" href={`/team/${p.id}`}>Open {p.name}’s portfolio</a>
+                  </div>
                 </div>
               </li>
             ))}

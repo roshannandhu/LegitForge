@@ -12,6 +12,7 @@ import { ForgeLever } from './forge-lever';
 import { CoinMark, ChatIcon, CloseIcon, MenuIcon } from '@/components/ui/icons';
 import { useGsap } from '@/lib/gsap';
 import { SITE, waLink } from '@/lib/site';
+import { useCompany } from '@/components/company-context';
 
 // Blog replaces Pricing here once /blog exists (§7.4); a nav link must never 404.
 const NAV = [
@@ -30,7 +31,7 @@ export function Header() {
   const menuOpenRef = useRef(false);
   const [open, setOpen] = useState(false);
   const lenis = useLenis();
-  const wa = waLink();
+  const wa = waLink(useCompany());
 
   useGsap(({ ScrollTrigger }) => {
     const header = headerRef.current!;

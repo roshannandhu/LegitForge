@@ -5,6 +5,7 @@ import { PROJECTS } from './content';
 import { CASE_STUDIES, type WorkCategory } from './pages';
 import { getEnv } from './cf';
 import { SHOW_PH } from './placeholder';
+import { atBuild } from './build-cache';
 
 /** Projects for the public pages (PLAN §7.8): published rows from D1 once the admin has
  *  published any, otherwise none (the placeholders in lib/content.ts + lib/pages.ts with SHOW_PLACEHOLDERS=1). `next build`
@@ -87,10 +88,11 @@ const getProjectsCached = unstable_cache(
   { tags: ['projects'] },
 );
 
-/** During `next build` the placeholders, without touching the cache: .next/cache survives between
- *  builds, and a list cached by a LOCAL server (test rows) would be baked into production pages. */
+/** During `next build` the placeholders, never D1 or a runtime cache entry (a LOCAL server's test
+ *  rows would be baked into production pages), but still tagged (lib/build-cache.ts), so the
+ *  admin's updateTag('projects') re-renders the prerendered pages. */
 export const getProjects: typeof getProjectsCached = (...args) =>
-  process.env.NEXT_PHASE === 'phase-production-build' ? Promise.resolve(FALLBACK) : getProjectsCached(...args);
+  process.env.NEXT_PHASE === 'phase-production-build' ? atBuild('projects', FALLBACK) : getProjectsCached(...args);
 
 /** The home page's rail: the projects starred "Show on the home page" in the admin, in admin order;
  *  none starred → every published one (else the placeholders). `total` is for "See all N". */

@@ -8,6 +8,7 @@ import { ProjectCard } from '@/components/work/project-card';
 import { getProjects } from '@/lib/work';
 import { getTeam } from '@/lib/team';
 import { orgRef, SITE, waLink } from '@/lib/site';
+import { getCompany } from '@/lib/company';
 import '@/components/sections/sections.css';
 import '../../pages.css';
 
@@ -33,7 +34,7 @@ export default async function Member({ params }: { params: Promise<{ slug: strin
   if (!m) notFound();
   const d = m;
   const projects = (await getProjects()).filter((p) => p.study.team.some((t) => t.slug === m.slug));
-  const wa = waLink(`Hi, I saw ${m.name}'s portfolio on your site.`);
+  const wa = waLink(await getCompany(), `Hi, I saw ${m.name}'s portfolio on your site.`);
 
   return (
     <>

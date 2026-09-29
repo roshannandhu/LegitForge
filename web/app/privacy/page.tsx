@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
-import { SITE, legalLine } from '@/lib/site';
+import { SITE, legalLine, shownEmail, waLink } from '@/lib/site';
+import { getCompany } from '@/lib/company';
 import { Breadcrumbs } from '@/components/pages/page-head';
 
 export const metadata: Metadata = {
@@ -11,7 +12,12 @@ export const metadata: Metadata = {
 /** PLAN §7.6 and §13.4. This must describe what the system actually does (§13.5).
  *  DRAFT: have a lawyer review it against the law that applies to you (e.g. India's
  *  DPDP Act, or GDPR for EU visitors) before launch. */
-export default function Privacy() {
+export default async function Privacy() {
+  const company = await getCompany();
+  const email = shownEmail(company);
+  // the data-rights contact: the email when it is shown, else WhatsApp
+  const reach = email ? <a href={`mailto:${email}`}>{email}</a> : <a href={waLink(company)}>message us on WhatsApp</a>;
+  const legal = legalLine(company);
   return (
     <article className="legal wrap">
       <Breadcrumbs crumbs={[{ name: 'Privacy policy', href: '/privacy' }]} />
@@ -52,11 +58,11 @@ export default function Privacy() {
       <h2>Your choices</h2>
       <ul>
         <li><strong>Stop WhatsApp messages:</strong> reply <strong>STOP</strong> at any time. Reply START to resume.</li>
-        <li><strong>See or delete your data:</strong> email <a href={`mailto:${SITE.email}`}>{SITE.email}</a> and we will do it without undue delay.</li>
+        <li><strong>See or delete your data:</strong> {email ? 'email ' : ''}{reach} and we will do it without undue delay.</li>
       </ul>
 
       <h2>Who we are</h2>
-      <p>{legalLine() ? `${legalLine()}. ` : `${SITE.name}. `}Contact: <a href={`mailto:${SITE.email}`}>{SITE.email}</a>.</p>
+      <p>{legal ? `${legal}. ` : `${SITE.name}. `}Contact: {reach}.</p>
     </article>
   );
 }

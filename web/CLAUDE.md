@@ -30,10 +30,35 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
   dynamicParams = false): the font files in assets/og are read at build time, never on Workers.
 - Admin (PLAN §7.8): app/admin (pages, Server Actions in actions.ts), lib/admin (auth, D1 queries),
   app/api/admin/upload (R2), app/media (serves R2 images). Setup: README "Admin".
+  Sign-in is Google only (lib/admin/auth.ts; no Cloudflare Access): /admin/sign-in renders
+  Google's button, POST /api/admin/session verifies the ID token (Google's keys, the client ID in
+  lib/admin/google.ts, email_verified, the nonce from its GET) and sets the HMAC-signed
+  __Host-lf_admin cookie (ADMIN_SESSION_KEY secret). Allowed: owners in the ADMIN_EMAILS secret
+  plus D1 admin_emails (Admin → Access). Every request re-checks the cookie AND the allow-list.
+  Each Google token signs in once (D1 admin_sign_ins, keyed by nonce; also the sign-in log), and
+  "Sign out everywhere" (D1 admin_security) refuses older sessions. Only owners manage Access.
+  /admin/* sends an ENFORCED CSP (next.config.ts adminCsp) and X-Frame-Options: DENY. The dev
+  bypass exists only under `next dev` (NODE_ENV check): laptop builds embed .env.local values.
+  Deploy: .github/workflows/deploy-cloudflare.yml runs scripts/cf-setup.mjs (D1, R2, site URL),
+  the migrations, `npm run deploy`, marks the data tags changed for the new build ("Live data on
+  the new pages"), the Pages deploy, then cf-setup.mjs --post (HASH_SALT, ADMIN_SESSION_KEY, once).
   "Add from GitHub" (app/admin/projects/github-add.tsx + projectFromGithubAction): image + repo link →
   draft project; the brief is lib/admin/github.ts repoBrief (GitHub data only, no AI; numbers are
-  never invented). GITHUB_TOKEN secret for private repos. The cloud sandbox's proxy blocks
-  api.github.com: test with a fixture server via GITHUB_API_BASE (honoured only with ADMIN_DEV_BYPASS).
+  never invented). The ADMIN'S BROWSER reads public repos (fetchRepoData, browser: true) and sends
+  the data; the server checks it (repoDataFrom) and writes the brief (briefFrom). When the browser
+  can't (API out of requests: a phone's mobile network shares one IP), the server reads GitHub
+  itself (serverRepoData): the API only with GITHUB_TOKEN, else the public repo PAGE (fetchRepoPage:
+  its embedded react-app JSON + the raw README), which the API's 60/hour limit doesn't cover. The
+  owner must never see a rate-limit message (their rule): an unreadable or private repo offers
+  "Create from the name only" (BriefError.nameOnly). If GitHub reshapes the page, fetchRepoPage
+  throws and that offer appears; re-probe sidebarAbout / codeViewLayoutRoute.
+  Private repos: a GitHub App (lib/admin/github-app.ts, D1 github_app, migration 0009). An owner
+  creates it with GitHub's manifest flow (Admin → Projects → Private repos → form POST to
+  github.com/settings/apps/new, the one form-action exception in adminCsp; GitHub returns to
+  /admin/github with a code and our HMAC-signed state). Its private key is AES-GCM sealed with
+  ADMIN_SESSION_KEY in D1, never in a file or the chat. Team members install it and pick repos;
+  privateRepoAccess mints a one-hour token for just that repo. The cloud sandbox's proxy blocks
+  api.github.com: test with a fixture server via GITHUB_API_BASE (only `next dev` with ADMIN_DEV_BYPASS).
 - Projects on public pages come from lib/work.ts: published D1 rows, else nothing (sections hide,
   /work shows an empty state). The placeholders in content.ts/pages.ts show only in a build made
   with SHOW_PLACEHOLDERS=1 (local design work; `SHOW_PLACEHOLDERS=1 npm run check` covers the
@@ -41,6 +66,12 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
   priceText; empty SITE fields are left out); `npm run check` ONLY=seo fails if any shows. Never import PROJECTS/CASE_STUDIES in a page again; use getProjects().
   People the same way: lib/team.ts getTeam() (tag 'team'), never TEAM/MEMBER_DETAILS in a page.
   Client components get toCards(team) only, so bios stay on the server.
+- Company details (email, WhatsApp number and greeting, social links, legal name, city, GSTIN)
+  live in D1 `company` (one row, Admin → Company, owners only; lib/company.ts, tag 'company').
+  Server components: `await getCompany()`; client components: `useCompany()`
+  (components/company-context.tsx, provided by the root layout). Build links with waLink(company)
+  and shownEmail(company) from lib/site.ts. SITE holds only fixed facts (name, url, hours):
+  never add contact fields back to it.
 
 ## Commands
 - npm run dev              local development (port 3000)
@@ -90,8 +121,22 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
   public POST endpoints. Route handlers use revalidateTag('projects', { expire: 0 }); only
   actions may call updateTag.
 - lib/work.ts never reads D1 during `next build`: the dev bindings would bake local test data
-  into production pages.
+  into production pages. But the build must still TAG the pages: getProjects/getTeam/
+  getTestimonials go through atBuild (lib/build-cache.ts) at build, or updateTag() never
+  re-renders the prerendered home, /work and /team (the admin's edits never showed).
+- No page may set `dynamicParams = false`: every page carries a data tag (the root layout reads
+  'company'), and once a tag expires (each deploy, each admin save) Next 16 answers such a page
+  with 404 (NoFallbackError). Use `dynamicParams = true` + notFound(). `npm run check` fails on
+  it. OG image routes are the exception (they read no data, so nothing expires them).
 - Never add `export const runtime = 'edge'` (OpenNext uses the Node.js runtime).
+- The Worker runs on Workers Free (3 MB compressed limit, ~2.4 MB now). A client component's
+  `import()` of browser-only code (three.js, Rapier, FlipCard) sits inside
+  `if (!process.env.NEXT_RUNTIME)` (team.tsx), or the server bundle takes it too (+1.1 MB).
+  Measure: `npx opennextjs-cloudflare build && npx wrangler deploy --dry-run --outdir <tmp>`.
+- The public address is legitforge.pages.dev: the Pages project in cf-pages/ serves the static
+  folders in cf-pages/_routes.json and forwards the rest to the Worker (service binding SITE).
+  A new top-level folder in public/ belongs in that exclude list, or every file in it costs a
+  Worker request.
 - Binding types: cf-typegen runs with --include-runtime=false. Wrangler's full runtime types
   redeclare fetch, Response and DOM Element and break the browser code. The binding types
   come from cloudflare-bindings.d.ts instead; add a line there for any new binding kind.

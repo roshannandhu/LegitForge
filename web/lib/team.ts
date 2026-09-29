@@ -3,7 +3,8 @@ import { unstable_cache } from 'next/cache';
 import { TEAM } from './content';
 import { MEMBER_DETAILS } from './pages';
 import { getEnv } from './cf';
-import { SHOW_PH } from './placeholder';
+import { isPh, SHOW_PH } from './placeholder';
+import { atBuild } from './build-cache';
 
 /** The team for the public pages (PLAN §7.8): published team_members rows once the admin
  *  has any, otherwise TEAM + MEMBER_DETAILS. Same rules as lib/work.ts: never read during
@@ -42,11 +43,16 @@ export async function teamFromDb(includeHidden: boolean): Promise<Member[] | nul
     ]);
     const shipped = (slug: string) => (projects.results as { team: string }[])
       .filter((p) => { try { return (JSON.parse(p.team) as { slug: string }[]).some((t) => t.slug === slug); } catch { return false; } }).length;
-    return (members.results as Row[]).map((r) => ({
-      slug: r.slug, idCode: r.id_code, name: r.name, role: r.role, initials: r.initials || monogram(r.name),
+    // public pages never print [bracketed] placeholders (lib/placeholder.ts): an imported default
+    // the owner hasn't filled in yet ("[Role]") shows as empty, and an unnamed person not at all
+    const real = (s: string | null | undefined) => (s && !isPh(s) ? s : '');
+    const rows = (members.results as Row[]).filter((r) => includeHidden || !isPh(r.name));
+    return rows.map((r) => ({
+      slug: r.slug, idCode: r.id_code, name: r.name, role: includeHidden ? r.role : real(r.role), initials: r.initials || monogram(r.name),
       photo: r.photo_key ? `/media/${r.photo_key}?v=${r.card_version}` : '',
-      skills: list(r.skills), shipped: String(shipped(r.slug)), favorite: r.favorite ?? '—', building: r.building ?? '',
-      bio: r.bio, tools: list(r.tools), cardVersion: r.card_version,
+      skills: list(r.skills).filter((s) => includeHidden || !isPh(s)), shipped: String(shipped(r.slug)), favorite: r.favorite ?? '—',
+      building: includeHidden ? r.building ?? '' : real(r.building),
+      bio: includeHidden ? r.bio : real(r.bio), tools: list(r.tools).filter((s) => includeHidden || !isPh(s)), cardVersion: r.card_version,
       links: ([['LinkedIn', r.linkedin_url], ['GitHub', r.github_url], ['Website', r.website_url]] as const)
         .filter(([, href]) => href).map(([label, href]) => ({ label, href: href! })),
     }));
@@ -65,10 +71,11 @@ const getTeamCached = unstable_cache(
   { tags: ['team'] },
 );
 
-/** During `next build` the placeholders, without touching the cache: .next/cache survives between
- *  builds, and a list cached by a LOCAL server (test rows) would be baked into production pages. */
+/** During `next build` the placeholders, never D1 or a runtime cache entry (a LOCAL server's test
+ *  rows would be baked into production pages), but still tagged (lib/build-cache.ts), so the
+ *  admin's updateTag('team') re-renders the prerendered pages. */
 export const getTeam: typeof getTeamCached = (...args) =>
-  process.env.NEXT_PHASE === 'phase-production-build' ? Promise.resolve(FALLBACK) : getTeamCached(...args);
+  process.env.NEXT_PHASE === 'phase-production-build' ? atBuild('team', FALLBACK) : getTeamCached(...args);
 
 /** Only the fields the card components need: bios and links stay on the server. */
 export const toCards = (team: Member[]): Card[] =>

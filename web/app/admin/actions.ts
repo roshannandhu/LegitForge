@@ -4,14 +4,17 @@
  *  public POST endpoints, whatever page they are rendered on. Writes that change the public
  *  site call updateTag('projects') so the pages re-render from D1. */
 
+import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { revalidatePath, updateTag } from 'next/cache';
-import { requireAdmin } from '@/lib/admin/auth';
+import { isOwner, ownerEmails, requireAdmin, SESSION_COOKIE } from '@/lib/admin/auth';
 import * as db from '@/lib/admin/db';
 import { getEnv } from '@/lib/cf';
 import { getTeam, TEAM_DEFAULTS } from '@/lib/team';
 import type { WorkCategory } from '@/lib/pages';
-import { BriefError, parseRepo, repoBrief, type Brief } from '@/lib/admin/github';
+import { BriefError, briefFrom, nameOnly, parseRepo, repoBrief, repoDataFrom, type Brief } from '@/lib/admin/github';
+import { ConnectError, checkState, connectApp, privateRepoAccess } from '@/lib/admin/github-app';
+import { companyFromForm } from '@/lib/company';
 
 const str = (f: FormData, k: string, max = 2000) => String(f.get(k) ?? '').trim().slice(0, max);
 const opt = (f: FormData, k: string, max = 2000) => str(f, k, max) || null;
@@ -31,19 +34,28 @@ function refreshPublic() {
 /** "Add from GitHub": the repo link becomes a DRAFT project with its brief filled in
  *  (lib/admin/github.ts). The browser then uploads the cover to /api/admin/upload and opens
  *  the editor; the owner checks it and presses Publish. */
-export type GithubResult = { id: string; title: string; alt: string } | { error: string };
+export type GithubResult = { id: string; title: string; alt: string } | { error: string; nameOnly?: boolean; link?: string };
 
-export async function projectFromGithubAction(url: string): Promise<GithubResult> {
+/** `fetched`: the repo's data as the admin's browser read it from GitHub (github-add.tsx), used
+ *  when it checks out (repoDataFrom); else the server reads GitHub itself (serverRepoData: the
+ *  public repo page, or the API with GITHUB_TOKEN for private repos). `fromName`: the owner chose
+ *  "Create from the name only" after GitHub couldn't be read (a private repo). */
+export async function projectFromGithubAction(url: string, fetched?: string, fromName = false): Promise<GithubResult> {
   await requireAdmin();
   const ref = parseRepo(String(url ?? ''));
   if (!ref) return { error: 'That isn’t a GitHub repository link. It looks like https://github.com/owner/repo.' };
+  const given = typeof fetched === 'string' && fetched.length < 400_000 ? repoDataFrom(fetched, ref) : null;
   const env = await getEnv();
   const token = env?.GITHUB_TOKEN || process.env.GITHUB_TOKEN || undefined;
-  // a test fixture server, honoured only with the local admin bypass (never in production)
-  const apiBase = (env?.ADMIN_DEV_BYPASS || process.env.ADMIN_DEV_BYPASS) ? (env?.GITHUB_API_BASE || process.env.GITHUB_API_BASE || undefined) : undefined;
+  // a fixture server for local tests only: `next dev` with the bypass (production builds drop this)
+  const apiBase = process.env.NODE_ENV === 'development' && (env?.ADMIN_DEV_BYPASS || process.env.ADMIN_DEV_BYPASS)
+    ? (env?.GITHUB_API_BASE || process.env.GITHUB_API_BASE || undefined) : undefined;
   let b: Brief;
-  try { b = await repoBrief(ref, { token, apiBase }); }
-  catch (e) { return { error: e instanceof BriefError ? e.message : 'Couldn’t read that repository. Try again.' }; }
+  try { b = fromName === true ? briefFrom(nameOnly(ref)) : given ? briefFrom(given) : await repoBrief(ref, { token, apiBase, privateAccess: privateRepoAccess }); }
+  catch (e) {
+    return e instanceof BriefError ? { error: e.message, nameOnly: e.nameOnly, link: e.link }
+      : { error: 'Couldn’t read that repository. Try again, or create the project from its name.', nameOnly: true };
+  }
 
   let slug = b.slugBase;
   for (let n = 2; await db.slugTaken(slug); n++) slug = `${b.slugBase.slice(0, 55)}-${n}`;
@@ -56,6 +68,23 @@ export async function projectFromGithubAction(url: string): Promise<GithubResult
   });
   revalidatePath('/admin/projects');
   return { id, title: b.title, alt: `Screenshot of ${b.title}` };
+}
+
+/** GitHub's redirect back after an owner created the private-repos app (app/admin/github):
+ *  owners only, and only the owner who started it within the hour (the signed `state`). */
+export async function connectGithubAppAction(code: string, state: string, fetched?: string): Promise<{ ok: true } | { error: string }> {
+  const who = await requireAdmin();
+  if (!(await isOwner(who))) return { error: 'Only the owners can connect GitHub.' };
+  const key = (await getEnv())?.ADMIN_SESSION_KEY;
+  if (!key || !(await checkState(String(state ?? ''), who, key))) {
+    return { error: 'This link has expired or was started by someone else. Go back to Projects and press Connect GitHub again.' };
+  }
+  try { await connectApp(String(code ?? ''), typeof fetched === 'string' && fetched.length < 20_000 ? fetched : undefined, who); }
+  catch (e) {
+    return { error: e instanceof ConnectError ? e.message : 'Couldn’t finish connecting GitHub. Go back to Projects and press Connect GitHub again.' };
+  }
+  revalidatePath('/admin/projects');
+  return { ok: true };
 }
 
 /** Rollback for "Add from GitHub" when the cover upload fails: drops the draft it just made. */
@@ -185,6 +214,14 @@ export async function leadStatusAction(id: string, f: FormData) {
   revalidatePath('/admin/leads');
 }
 
+/** Delete a lead for good (spam, tests). The button asks first. */
+export async function deleteLeadAction(id: string) {
+  await requireAdmin();
+  await db.deleteLead(id);
+  revalidatePath('/admin/leads');
+  revalidatePath('/admin');    // the overview's counts
+}
+
 /* ------------------------------------------------------------------ testimonials */
 export async function saveTestimonialAction(_: FormState, f: FormData): Promise<FormState> {
   await requireAdmin();
@@ -216,21 +253,11 @@ export async function deleteTestimonialAction(id: string) {
 }
 
 /* ------------------------------------------------------------------ site */
-export async function saveStatAction(_: FormState, f: FormData): Promise<FormState> {
-  await requireAdmin();
-  const key = str(f, 'key', 60), value = str(f, 'value', 200);
-  if (!/^[a-z_]+$/.test(key)) return { error: 'Keys use lowercase letters and underscores.' };
-  if (!value) return { error: 'Enter a value.' };
-  await db.setStat(key, value);
-  revalidatePath('/admin/site');
-  revalidatePath('/', 'layout');
-  return { ok: `Saved ${key}.` };
-}
-
-/** "Refresh site content": every page that reads D1 re-renders on its next visit. */
+/** "Refresh site content" (Admin → Overview): every page that reads D1 re-renders on its next visit. */
 export async function refreshSiteAction(): Promise<FormState> {
   await requireAdmin();
   refreshPublic();
+  updateTag('company');
   revalidatePath('/', 'layout');
   return { ok: 'Done. Pages update on their next visit.' };
 }
@@ -239,6 +266,7 @@ export async function refreshSiteAction(): Promise<FormState> {
 export async function importTeamAction() {
   await requireAdmin();
   await db.importMembers(TEAM_DEFAULTS);
+  updateTag('team');           // the imported people are published: the public pages show them now
   revalidatePath('/admin/team');
 }
 
@@ -376,4 +404,55 @@ export async function captureCoverAction(projectId: string): Promise<FormState> 
   refreshPublic();
   revalidatePath(`/admin/projects/${projectId}`);
   return { ok: 'Captured: the laptop view is now the cover, and the phone view is in the gallery.' };
+}
+
+/* ------------------------------------------------------------------ access */
+/** Admin → Access: the Google accounts that may sign in besides the owners (ADMIN_EMAILS).
+ *  lib/admin/auth.ts checks this list on every request, so a removal takes effect at once.
+ *  Only owners may change it: an added admin can't add more people or lock others out. */
+const EMAIL = /^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/;
+
+export async function addAdminEmailAction(_: FormState, f: FormData): Promise<FormState> {
+  const who = await requireAdmin();
+  if (!(await isOwner(who))) return { error: 'Only the owners can change who can sign in.' };
+  const email = str(f, 'email', 254).toLowerCase();
+  if (!EMAIL.test(email)) return { error: 'Enter the Google account’s email, like name@gmail.com.' };
+  if ((await ownerEmails()).includes(email)) return { error: `${email} is an owner: it can always sign in.` };
+  await db.addAdminEmail(email, who);
+  revalidatePath('/admin/access');
+  return { ok: `${email} can now sign in with Google.` };
+}
+
+export async function removeAdminEmailAction(email: string) {
+  if (!(await isOwner(await requireAdmin()))) return;
+  await db.removeAdminEmail(email);
+  revalidatePath('/admin/access');
+}
+
+/** Sign out. The one action without requireAdmin(): it only ever removes access. */
+export async function signOutAction() {
+  (await cookies()).set(SESSION_COOKIE, '', { httpOnly: true, secure: true, sameSite: 'strict', path: '/', maxAge: 0 });
+  redirect('/admin/sign-in');
+}
+
+/** Owners: end every admin session on every device (a lost phone, a shared computer), this one too. */
+export async function signOutEverywhereAction() {
+  if (!(await isOwner(await requireAdmin()))) return;
+  await db.signOutEverywhere();
+  await signOutAction();
+}
+
+/* ------------------------------------------------------------------ company */
+/** Admin → Company: email, WhatsApp, social links, legal details (lib/company.ts checks them).
+ *  Owners only: the WhatsApp number is where every customer chat goes, so an added admin can't
+ *  redirect it. Every page re-renders with the new details on its next visit. */
+export async function saveCompanyAction(_: FormState, f: FormData): Promise<FormState> {
+  const who = await requireAdmin();
+  if (!(await isOwner(who))) return { error: 'Only the owners can change the company details.' };
+  const r = companyFromForm(f);
+  if ('error' in r) return { error: r.error };
+  await db.saveCompany(r.company);
+  updateTag('company');
+  revalidatePath('/admin/company');
+  return { ok: 'Saved. Every page shows the new details on its next visit.' };
 }

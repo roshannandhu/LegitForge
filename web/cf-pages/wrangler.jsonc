@@ -1,0 +1,10 @@
+/** Pages project for the frontend (legitforge.pages.dev): the static files from the OpenNext
+ *  build plus _worker.js, which hands everything else to the site Worker. Deployed after the
+ *  Worker: .github/workflows/deploy-cloudflare.yml, step "Frontend on Pages". */
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "legitforge",
+  "pages_build_output_dir": "../.open-next/pages",   // .open-next/assets + _worker.js + _routes.json
+  "compatibility_date": "2026-09-25",
+  "services": [{ "binding": "SITE", "service": "legitforge-web" }]
+}

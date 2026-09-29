@@ -5,6 +5,7 @@ import { WorkGrid } from '@/components/work/work-grid';
 import { WORK_FILTERS } from '@/lib/pages';
 import { getProjects } from '@/lib/work';
 import { waLink } from '@/lib/site';
+import { getCompany } from '@/lib/company';
 import '@/components/sections/sections.css';
 import '../pages.css';
 
@@ -16,6 +17,7 @@ export const metadata: Metadata = {
 
 /** /work (PLAN §7.2). */
 export default async function WorkIndex() {
+  const company = await getCompany();
   // only the card fields cross to the client filter
   const items = (await getProjects()).map(({ study: _study, published: _published, ...card }) => card);
   return (
@@ -29,11 +31,11 @@ export default async function WorkIndex() {
       />
       <section className="page-block wrap" aria-label="Projects">
         {items.length ? (
-          <WorkGrid items={items} filters={WORK_FILTERS} waHref={waLink('Hi Legit Forge, I have a project like the ones on your site.')} />
+          <WorkGrid items={items} filters={WORK_FILTERS} waHref={waLink(company, 'Hi Legit Forge, I have a project like the ones on your site.')} />
         ) : (
           <div className="work-empty">
             <p className="type-lead">Our case studies are being written up. Ask us on WhatsApp and we’ll show you what we’ve built.</p>
-            <a className="btn btn-primary" href={waLink('Hi Legit Forge, can you show me examples of your work?')}>Ask for examples</a>
+            <a className="btn btn-primary" href={waLink(company, 'Hi Legit Forge, can you show me examples of your work?')}>Ask for examples</a>
           </div>
         )}
       </section>

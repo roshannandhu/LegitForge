@@ -2,6 +2,7 @@ import 'server-only';
 import { getEnv } from '@/lib/cf';
 import type { D1Result } from '@cloudflare/workers-types';
 import type { WorkCategory } from '@/lib/pages';
+import type { Company } from '@/lib/site';
 
 /** D1 queries for the admin (PLAN §7.8). Callers check requireAdmin() first. */
 
@@ -159,6 +160,10 @@ export async function listLeads(status?: LeadStatus) {
   return (await q.all<LeadRow>()).results;
 }
 
+export async function deleteLead(id: string) {
+  await (await adminDb()).prepare('DELETE FROM leads WHERE id = ?').bind(id).run();
+}
+
 export async function setLeadStatus(id: string, status: LeadStatus) {
   await (await adminDb()).prepare('UPDATE leads SET status = ? WHERE id = ?').bind(status, id).run();
 }
@@ -206,20 +211,6 @@ export async function deleteTestimonial(id: string) {
     db.prepare('UPDATE projects SET testimonial_id = NULL WHERE testimonial_id = ?').bind(id),   // foreign key
     db.prepare('DELETE FROM testimonials WHERE id = ?').bind(id),
   ]);
-}
-
-/* ------------------------------------------------------------------ site stats */
-export const STAT_KEYS = ['projects_live', 'median_reply_minutes', 'last_launch'] as const;
-
-export async function listStats() {
-  return (await (await adminDb()).prepare('SELECT key, value, updated_at FROM site_stats ORDER BY key').all<{ key: string; value: string; updated_at: string }>()).results;
-}
-
-export async function setStat(key: string, value: string) {
-  await (await adminDb()).prepare(
-    `INSERT INTO site_stats (key, value, updated_at) VALUES (?, ?, datetime('now'))
-       ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
-  ).bind(key, value).run();
 }
 
 /* ------------------------------------------------------------------ overview */
@@ -348,4 +339,60 @@ export async function renameCredits(from: string, to: string | null) {
     return [db.prepare('UPDATE projects SET team = ? WHERE id = ?').bind(JSON.stringify(next), r.id)];
   });
   if (updates.length) await db.batch(updates);
+}
+
+/* ------------------------------------------------------------------ access */
+export interface AdminEmailRow { email: string; added_by: string; added_at: string }
+
+export async function listAdminEmails() {
+  const db = await adminDb();
+  return (await db.prepare('SELECT email, added_by, added_at FROM admin_emails ORDER BY added_at, email').all<AdminEmailRow>()).results;
+}
+
+export async function addAdminEmail(email: string, by: string) {
+  const db = await adminDb();
+  await db.prepare('INSERT INTO admin_emails (email, added_by) VALUES (?, ?) ON CONFLICT (email) DO NOTHING').bind(email, by).run();
+}
+
+export async function removeAdminEmail(email: string) {
+  const db = await adminDb();
+  await db.prepare('DELETE FROM admin_emails WHERE email = ?').bind(email).run();
+}
+
+export interface SignInRow { email: string; at: string }
+
+/** The sign-in log (one row per Google sign-in, kept 90 days), newest first. */
+export async function listSignIns(limit = 20) {
+  const db = await adminDb();
+  return (await db.prepare('SELECT email, at FROM admin_sign_ins ORDER BY at DESC LIMIT ?').bind(limit).all<SignInRow>()).results;
+}
+
+/** Refuse every session issued until now (lib/admin/auth.ts adminIdentity). */
+export async function signOutEverywhere() {
+  const db = await adminDb();
+  await db.prepare('UPDATE admin_security SET sessions_after = ? WHERE id = 1').bind(Date.now()).run();
+}
+
+/* ------------------------------------------------------------------ company */
+/** The one company row (Admin → Company); the caller checked the details (lib/company.ts). */
+export async function saveCompany(c: Company) {
+  await (await adminDb()).prepare(
+    `INSERT INTO company (id, data, updated_at) VALUES (1, ?, datetime('now'))
+       ON CONFLICT (id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at`,
+  ).bind(JSON.stringify(c)).run();
+}
+
+/* ------------------------------------------------------------------ GitHub App (private repos) */
+export interface GithubAppRow { app_id: number; slug: string; owner: string; key_enc: string; connected_by: string; connected_at: string }
+
+export async function getGithubApp() {
+  return (await adminDb()).prepare('SELECT app_id, slug, owner, key_enc, connected_by, connected_at FROM github_app WHERE id = 1').first<GithubAppRow>();
+}
+
+export async function saveGithubApp(r: Omit<GithubAppRow, 'connected_at'>) {
+  await (await adminDb()).prepare(
+    `INSERT INTO github_app (id, app_id, slug, owner, key_enc, connected_by, connected_at) VALUES (1, ?, ?, ?, ?, ?, datetime('now'))
+       ON CONFLICT (id) DO UPDATE SET app_id = excluded.app_id, slug = excluded.slug, owner = excluded.owner,
+         key_enc = excluded.key_enc, connected_by = excluded.connected_by, connected_at = excluded.connected_at`,
+  ).bind(r.app_id, r.slug, r.owner, r.key_enc, r.connected_by).run();
 }

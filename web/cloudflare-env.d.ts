@@ -13,8 +13,8 @@ interface __BaseEnv_CloudflareEnv {
 	N8N_LEAD_WEBHOOK_URL: string;
 	N8N_SHARED_KEY: string;
 	TURNSTILE_SECRET_KEY: string;
-	ACCESS_TEAM_DOMAIN: string;
-	ACCESS_AUD: string;
+	ADMIN_EMAILS: string;
+	ADMIN_SESSION_KEY: string;
 	ADMIN_DEV_BYPASS: string;
 	GITHUB_TOKEN: string;
 	GITHUB_API_BASE: string;
@@ -33,5 +33,5 @@ type StringifyValues<EnvType extends Record<string, unknown>> = {
 	[Binding in keyof EnvType]: EnvType[Binding] extends string ? EnvType[Binding] : string;
 };
 declare namespace NodeJS {
-	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "SITE_URL" | "HASH_SALT" | "N8N_LEAD_WEBHOOK_URL" | "N8N_SHARED_KEY" | "TURNSTILE_SECRET_KEY" | "ACCESS_TEAM_DOMAIN" | "ACCESS_AUD" | "ADMIN_DEV_BYPASS" | "GITHUB_TOKEN" | "GITHUB_API_BASE">> {}
+	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "SITE_URL" | "HASH_SALT" | "N8N_LEAD_WEBHOOK_URL" | "N8N_SHARED_KEY" | "TURNSTILE_SECRET_KEY" | "ADMIN_EMAILS" | "ADMIN_SESSION_KEY" | "ADMIN_DEV_BYPASS" | "GITHUB_TOKEN" | "GITHUB_API_BASE">> {}
 }

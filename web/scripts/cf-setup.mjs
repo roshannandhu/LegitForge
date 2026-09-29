@@ -2,8 +2,8 @@
 /** First-time Cloudflare setup for the deploy workflow (.github/workflows/deploy-cloudflare.yml).
  *  Idempotent: finds or creates what wrangler.jsonc names, so every run can call it.
  *
- *    node scripts/cf-setup.mjs            before the build: D1, R2, the site URL
- *    node scripts/cf-setup.mjs --post     after the deploy: the HASH_SALT Worker secret, once
+ *    node scripts/cf-setup.mjs            before the build: D1, R2, the Pages project, the site URL
+ *    node scripts/cf-setup.mjs --post     after the deploy: the HASH_SALT and ADMIN_SESSION_KEY Worker secrets, once
  *    node scripts/cf-setup.mjs --dry-run  print what it would do (no token needed)
  *
  *  Needs CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID. Writes the D1 id and SITE_URL into
@@ -12,48 +12,35 @@
 
 import { readFile, writeFile, appendFile } from 'node:fs/promises';
 import { randomBytes } from 'node:crypto';
+import { cf, putSecret, requireCredentials, WORKER } from './cf-api.mjs';
 
-const WORKER = 'legitforge-web';
 const D1 = 'legitforge';
 const BUCKETS = ['legitforge-media', 'legitforge-next-cache'];
+const PAGES = 'legitforge';                       // the frontend, cf-pages/wrangler.jsonc "name"
 const ZERO_ID = '00000000-0000-0000-0000-000000000000';
 
 const post = process.argv.includes('--post');
 const dry = process.argv.includes('--dry-run');
-const { CLOUDFLARE_API_TOKEN: token, CLOUDFLARE_ACCOUNT_ID: account, GITHUB_ENV, SITE_URL } = process.env;
+const { GITHUB_ENV, SITE_URL } = process.env;
 
 if (dry) {
   console.log(post
-    ? `would set the HASH_SALT secret on ${WORKER} if it is missing`
-    : `would find or create D1 "${D1}" and R2 ${BUCKETS.join(', ')}, write the D1 id and SITE_URL into wrangler.jsonc,\n` +
-      `and export NEXT_PUBLIC_SITE_URL (${SITE_URL || `https://${WORKER}.<subdomain>.workers.dev`}) to the build`);
+    ? `would set the HASH_SALT and ADMIN_SESSION_KEY secrets on ${WORKER} if they are missing`
+    : `would find or create D1 "${D1}", R2 ${BUCKETS.join(', ')} and Pages "${PAGES}", write the D1 id and SITE_URL into wrangler.jsonc,\n` +
+      `and export NEXT_PUBLIC_SITE_URL (${SITE_URL || `https://${PAGES}.pages.dev`}) to the build`);
   process.exit(0);
 }
-if (!token || !account) {
-  console.error('CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID must be set (GitHub → Settings → Secrets → Actions).');
-  process.exit(1);
-}
-
-async function cf(method, path, body) {
-  const res = await fetch(`https://api.cloudflare.com/client/v4/accounts/${account}${path}`, {
-    method,
-    headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  const json = await res.json().catch(() => ({}));
-  if (!res.ok || json.success === false) {
-    const why = (json.errors ?? []).map((e) => `${e.code}: ${e.message}`).join('; ') || res.statusText;
-    throw new Error(`${method} ${path} → ${res.status} ${why}`);
-  }
-  return json.result;
-}
+requireCredentials();
 
 if (post) {
-  const secrets = await cf('GET', `/workers/scripts/${WORKER}/secrets`);
-  if (secrets.some((s) => s.name === 'HASH_SALT')) console.log('HASH_SALT: already set');
-  else {
-    await cf('PUT', `/workers/scripts/${WORKER}/secrets`, { name: 'HASH_SALT', text: randomBytes(32).toString('hex'), type: 'secret_text' });
-    console.log('HASH_SALT: set (random, never printed)');
+  const set = new Set((await cf('GET', `/workers/scripts/${WORKER}/secrets`)).map((s) => s.name));
+  // random, set once: HASH_SALT (rate limiter), ADMIN_SESSION_KEY (signs the admin sign-in cookie)
+  for (const name of ['HASH_SALT', 'ADMIN_SESSION_KEY']) {
+    if (set.has(name)) console.log(`${name}: already set`);
+    else {
+      await putSecret(name, randomBytes(32).toString('hex'));
+      console.log(`${name}: set (random, never printed)`);
+    }
   }
   process.exit(0);
 }
@@ -70,13 +57,13 @@ for (const name of BUCKETS) {
   else { await cf('POST', '/r2/buckets', { name }); console.log(`R2 ${name}: created`); }
 }
 
-// The site's address: the real domain once the SITE_URL repo variable is set, else workers.dev
-let url = (SITE_URL ?? '').replace(/\/+$/, '');
-if (!url) {
-  const sub = (await cf('GET', '/workers/subdomain'))?.subdomain;
-  if (!sub) throw new Error('This account has no workers.dev subdomain yet: open Workers & Pages once in the dashboard to create it.');
-  url = `https://${WORKER}.${sub}.workers.dev`;
-}
+// Pages: the frontend (cf-pages/), deployed after the Worker by the workflow
+let pages;
+try { pages = await cf('GET', `/pages/projects/${PAGES}`); console.log(`Pages ${PAGES}: exists`); }
+catch { pages = await cf('POST', '/pages/projects', { name: PAGES, production_branch: 'main' }); console.log(`Pages ${PAGES}: created`); }
+
+// The site's address: the real domain once the SITE_URL repo variable is set, else <project>.pages.dev
+const url = (SITE_URL || `https://${pages.subdomain}`).replace(/\/+$/, '');
 const noindex = url.endsWith('.workers.dev');
 
 let cfg = await readFile('wrangler.jsonc', 'utf8');
