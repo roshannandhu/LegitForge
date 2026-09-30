@@ -320,7 +320,7 @@ if (!only || only === 'flow') {
   await ctx.addInitScript(LITE_INIT, LITE);
   const page = await ctx.newPage();
   await page.goto(BASE + '/', { waitUntil: 'networkidle' });
-  for (const kind of ['website', 'app', 'whatsapp', 'n8n', 'seo', 'nfc', 'quote']) {
+  for (const kind of ['signage', 'website', 'app', 'whatsapp', 'n8n', 'seo', 'nfc', 'quote']) {
     const demo = page.locator(`.demo-player:has(.demo-${kind})`).first();
     await demo.scrollIntoViewIfNeeded();
     await page.evaluate((k) => {
@@ -408,7 +408,7 @@ if (!only || only === 'admin') {
 }
 
 // Inner pages (PLAN §7): the same §4.8 audit at every viewport, both themes on phone
-const PAGES = ['/services', '/services/website-development', '/services/whatsapp-automation', '/services/n8n-automation', '/services/seo', '/services/nfc',
+const PAGES = ['/services', '/services/digital-signage', '/services/website-development', '/services/whatsapp-automation', '/services/n8n-automation', '/services/seo', '/services/nfc',
   '/work', ...(PH ? ['/work/project-one'] : []), '/team', ...(PH ? ['/team/member-one'] : []), '/contact', '/privacy', '/terms', '/blog', '/blog/static-or-dynamic-website'];
 const PAGE_RUNS = RUNS.filter((r) => r.audit || r.name === 'phone-light');
 if (!process.env.SKIP_PAGES) for (const run of PAGE_RUNS.filter((r) => !only || r.name.includes(only))) {

@@ -19,7 +19,7 @@ export async function GET() {
   const lines = [
     `# ${SITE.name}`,
     '',
-    '> A two-person studio that builds websites, web apps, quotation and warranty systems, WhatsApp automation, n8n workflows, local SEO and NFC cards. Fixed quotes, weekly previews, and the client owns everything.',
+    '> A two-person studio that builds websites, web apps, quotation and warranty systems, WhatsApp automation, n8n workflows, local SEO and NFC cards, and runs MR Signage, its digital signage app for Android TVs and tablets, sold by subscription. Fixed quotes, weekly previews, and the client owns everything.',
     '',
     ...(servedCities(company.city).length ? [[company.city ? `Based in ${company.city}, ${company.country || 'India'}.` : '',
       `Works with clients in ${joinNames(servedCities(company.city))}.`].filter(Boolean).join(' '), ''] : []),

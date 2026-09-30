@@ -8,7 +8,7 @@ import '../pages.css';
 
 export const metadata: Metadata = {
   title: 'Services',
-  description: 'Websites and web apps, WhatsApp automation and n8n workflows — what each one is for, what it costs to start, and how long it takes.',
+  description: 'MR Signage, websites and web apps, WhatsApp automation, n8n workflows, SEO and NFC cards: what each one is for, what it costs to start, and how long it takes.',
   alternates: { canonical: '/services' },
 };
 
@@ -18,8 +18,8 @@ export default function ServicesIndex() {
     <>
       <PageHead
         crumbs={[{ name: 'Services', href: '/services' }]}
-        title="What we build, and who it’s for"
-        lead="Often combined: the website or app your customers see, the WhatsApp that answers them, and the workflows that move the data behind both."
+        title="What we offer, and who it’s for"
+        lead="Often combined: the screens and website your customers see, the WhatsApp that answers them, and the workflows that move the data behind them."
       />
 
       <section className="page-block wrap" aria-label="Services">

@@ -49,7 +49,7 @@ const SERVICE_URL: Record<string, string> = {
 const siteLd = [
   { '@context': 'https://schema.org', '@type': 'WebSite', name: SITE.name, url: SITE.url, inLanguage: 'en-IN', publisher: { '@id': ORG_ID } },
   {
-    '@context': 'https://schema.org', '@type': 'ItemList', name: 'What we build, layer by layer',
+    '@context': 'https://schema.org', '@type': 'ItemList', name: 'What we offer, layer by layer',
     itemListElement: LAYERS.map((l, i) => ({
       '@type': 'ListItem', position: i + 1, name: l.name, description: `${l.spec}. ${HERO_JOURNEY[i]}`,
       ...(SERVICE_URL[l.id] ? { url: `${SITE.url}${SERVICE_URL[l.id]}` } : {}),
@@ -69,7 +69,7 @@ const orgLd = (c: Company, team: Member[]) => ({
   url: SITE.url,
   ...(shownEmail(c) ? { email: shownEmail(c) } : {}),
   description:
-    'A two-person studio building websites, web apps, quotation and warranty systems, WhatsApp automation and n8n workflows.',
+    'A two-person studio building websites, web apps, quotation and warranty systems, WhatsApp automation and n8n workflows, and running MR Signage, its digital signage app sold by subscription.',
   areaServed: servedCities(c.city),
   ...(c.city || c.country ? { address: { '@type': 'PostalAddress',
     ...(c.city ? { addressLocality: c.city } : {}), ...(c.country ? { addressCountry: c.country } : {}) } } : {}),
@@ -134,7 +134,7 @@ export default async function Home() {
               <a className="btn btn-primary" href={wa}>Chat on WhatsApp</a>
               {hasWork
                 ? <a className="btn btn-ghost" href="#work">See our work</a>
-                : <a className="btn btn-ghost" href="#services">See what we build</a>}
+                : <a className="btn btn-ghost" href="#services">See what we offer</a>}
             </div>
             <HeroStatus />
           </div>

@@ -15,6 +15,7 @@ export function ServiceDemo({ kind }: { kind: DemoKind }) {
     <>
       <DemoPlayer kind={kind}>
         <div className={`demo demo-${kind}`} aria-hidden="true">
+          {kind === 'signage' && <SignageDemo />}
           {kind === 'website' && <WebsiteDemo />}
           {kind === 'app' && <AppDemo />}
           {kind === 'whatsapp' && <WhatsAppDemo />}
@@ -146,6 +147,44 @@ function SeoDemo() {
       <div className="serp-stats">
         <span><b className="num serp-clicks">148</b> clicks this week</span>
         <span><b className="num serp-calls">23</b> calls from Google</span>
+      </div>
+    </div>
+  );
+}
+
+/* 0 — MR Signage: a playlist is picked and published, the TV switches slides, three branch
+       screens (two TVs and a counter tablet) sync. The final frame is the last act of signageFlow (demos.ts). */
+function SignageDemo() {
+  return (
+    <div className="sg">
+      <div className="sg-dash">
+        <p className="sg-kicker">MR Signage · Playlist</p>
+        <div className="sg-lwrap">
+          <span className="sg-hl" />
+          <ol className="sg-list">
+            <li className="sg-item"><span className="sg-thumb t1" /><span className="sg-name">Breakfast menu</span><span className="sg-when">7–11 am</span></li>
+            <li className="sg-item"><span className="sg-thumb t2" /><span className="sg-name">Evening offer</span><span className="sg-when">6–10 pm</span></li>
+            <li className="sg-item"><span className="sg-thumb t3" /><span className="sg-name">New arrivals</span><span className="sg-when">All day</span></li>
+          </ol>
+        </div>
+        <span className="sg-btn">Publish to 3 screens</span>
+      </div>
+      <div className="sg-tvcol">
+        <div className="sg-tv">
+          <div className="sg-screen">
+            <p className="sg-tag">Just in</p>
+            <p className="sg-h">New arrivals</p>
+            <p className="sg-sub">Ask at the counter</p>
+            <span className="sg-bar"><i /></span>
+          </div>
+          <span className="sg-stand" />
+        </div>
+        <div className="sg-minis">
+          <span className="sg-mini"><i />Calicut TV</span>
+          <span className="sg-mini is-tab"><i />Kochi tablet</span>
+          <span className="sg-mini"><i />Bangalore TV</span>
+        </div>
+        <p className="sg-status"><span className="sg-dot" /><span className="sg-state">3 screens online · synced</span></p>
       </div>
     </div>
   );

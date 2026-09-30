@@ -17,7 +17,7 @@ export const contentType = 'image/png';
 
 const T = {
   bg: '#000000', surface: '#0C0D10', line: '#262A33', text: '#ECEFF4', muted: '#8E95A3',
-  lo: '#C2762E', mid: '#E39B3A', hi: '#F2C14E',
+  lo: '#C9982E', mid: '#DDAE45', hi: '#F2C14E',
   grid: 'rgba(38,42,51,.6)',    // --line at the site's grid strength
 };
 const GOLD = 'radial-gradient(circle at 38% 32%, #FFE9A8 0%, #E3B452 45%, #A87424 100%)';

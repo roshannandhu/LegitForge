@@ -624,7 +624,7 @@
   align-self: flex-end; margin-top: auto; padding: 4px 10px; border-radius: 6px;
   font-family: var(--font-stencil), var(--font-sans); font-size: 14px; letter-spacing: .14em; text-transform: uppercase;
   color: #000000;
-  background: linear-gradient(120deg, #D9B45A, #F2C14E, #5A8DFF, #C2762E);
+  background: linear-gradient(120deg, #D9B45A, #F2C14E, #5A8DFF, #C9982E);
 }
 @media (min-width: 1024px) {   /* 218px desktop card: same design, tighter */
   .id-top { gap: 8px; }
@@ -1197,6 +1197,51 @@
   .serp-acts .serp-act:first-child { display: none; }
 }
 
+/* 0 — MR Signage: the playlist dashboard, the TV it drives, three branch screens.
+   The TV is a real screen, dark in both themes, like the NFC phone; its gold is the coin's. */
+.sg { display: grid; grid-template-columns: minmax(0, 236px) minmax(0, 272px); gap: 24px; align-items: center; justify-content: center; width: 100%; }
+.sg-dash { display: grid; gap: 10px; padding: 14px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); font-size: 12px; }
+.sg-kicker { margin: 0; font-size: 11px; font-weight: 700; letter-spacing: .04em; color: var(--text-muted); }
+.sg-lwrap { position: relative; }
+.sg-hl {   /* sits on the playing item; SG_STEP in demos.ts = item height + gap */
+  position: absolute; left: 0; right: 0; top: 72px; height: 30px; border-radius: 8px;
+  background: color-mix(in oklab, var(--heat-lo) 20%, transparent);   /* gold in both themes */
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--heat-lo) 65%, transparent);
+}
+.sg-list { position: relative; display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.sg-item { display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 8px; min-width: 0; }
+.sg-thumb { flex: none; width: 24px; height: 16px; border-radius: 3px; background: linear-gradient(135deg, #2A2210, #C9982E); }
+.sg-thumb.t2 { background: linear-gradient(135deg, #15171C, #F2C14E); }
+.sg-thumb.t3 { background: linear-gradient(135deg, #1B222B, #5A8DFF); }
+.sg-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; color: var(--text); }
+.sg-when { flex: none; font-size: 11px; color: var(--text-muted); }
+.sg-btn { justify-self: start; padding: 6px 12px; border-radius: 8px; background: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.sg-tvcol { display: grid; gap: 12px; justify-items: center; min-width: 0; }
+.sg-tv { display: grid; justify-items: center; width: 100%; }
+.sg-screen {
+  position: relative; display: grid; align-content: center; gap: 4px; width: 100%; aspect-ratio: 16 / 9; padding: 12px 16px 16px;
+  border: 6px solid #0E1319; border-radius: 10px; overflow: hidden; color: #ECEFF4;
+  background: radial-gradient(120% 110% at 85% 0%, #2A2210, #0B0F14 62%); box-shadow: 0 16px 30px -14px rgb(0 0 0 / .6);
+}
+.sg-tag { margin: 0; font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #F2C14E; }
+.sg-h { margin: 0; font-size: 18px; font-weight: 800; line-height: 1.15; }
+.sg-sub { margin: 0; font-size: 11px; color: #AEB6C2; }
+.sg-bar { position: absolute; left: 10px; right: 10px; bottom: 8px; height: 3px; border-radius: 2px; background: rgb(255 255 255 / .14); overflow: hidden; }
+.sg-bar i { position: absolute; inset: 0; background: #F2C14E; transform-origin: left center; }
+.sg-stand { width: 64px; height: 8px; border-radius: 0 0 6px 6px; background: #0E1319; }
+.sg-minis { display: flex; gap: 12px; }
+.sg-mini { display: grid; justify-items: center; gap: 4px; font-size: 10.5px; color: var(--text-muted); }
+.sg-mini i { width: 40px; height: 24px; border: 3px solid #0E1319; border-radius: 4px; background: linear-gradient(135deg, #2A2210, #F2C14E); }
+.sg-mini.is-tab i { width: 20px; height: 28px; margin-top: -4px; border-width: 3px 2px; border-radius: 5px; }   /* a tablet stood upright on the counter */
+.sg-status { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 12px; font-weight: 600; color: var(--text); }
+.sg-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--success); box-shadow: 0 0 0 3px color-mix(in oklab, var(--success) 25%, transparent); }
+/* narrow phones: the TV on top, the dashboard under it */
+@media (max-width: 559px) {
+  .sg { grid-template-columns: minmax(0, 1fr); gap: 16px; padding: 4px 0; }
+  .sg-tvcol { order: -1; }
+  .sg-tv { max-width: 300px; }
+}
+
 /* 6 — NFC: card, waves, phone */
 .nfc { position: relative; display: flex; align-items: center; justify-content: center; gap: 24px; width: 100%; }
 .nfc-card { position: relative; display: grid; align-content: space-between; width: 150px; height: 94px; padding: 12px; border-radius: 10px;
@@ -1222,6 +1267,7 @@
 @media (max-width: 479px) {
   html[data-lite]:not([data-lite-all]):not([data-motion="off"]) .demo-player:not([data-near]) > * > * { display: none; }
   html[data-lite]:not([data-lite-all]):not([data-motion="off"]) .demo-player:not([data-near]) > * { box-sizing: border-box; }
+  html[data-lite]:not([data-lite-all]):not([data-motion="off"]) .demo-player:not([data-near]) > .demo-signage { min-height: 526px; }
   html[data-lite]:not([data-lite-all]):not([data-motion="off"]) .demo-player:not([data-near]) > .demo-website { min-height: calc(35vw + 143px); }
   html[data-lite]:not([data-lite-all]):not([data-motion="off"]) .demo-player:not([data-near]) > .demo-app { min-height: 345px; }
   html[data-lite]:not([data-lite-all]):not([data-motion="off"]) .demo-player:not([data-near]) > .demo-whatsapp { min-height: 414px; }

@@ -58,12 +58,15 @@ export const INTRO_BOOT =
  *  Old page: the clicked card's cover is named project-cover, to morph into the case-study
  *  cover, and the header is named so it stays put instead of splitting with the page. New page: the transition runs only with motion on. */
 export const CLEAVE_BOOT =
-  `try{var CS=/^\\/work\\/[^/]+\\/?$/,card=null;` +
+  `try{var CS=/^\\/work\\/[^/]+\\/?$/,card=null,clear=function(){document.querySelectorAll('.project-cover,.site-header').forEach(function(x){x.style.viewTransitionName=''})};` +
   `addEventListener('click',function(e){var a=e.target.closest&&e.target.closest('a');card=a&&a.closest('[data-project-card]')},true);` +
   `addEventListener('pageswap',function(e){var v=e.viewTransition;if(!v)return;` +
   `var to=e.activation&&e.activation.entry&&new URL(e.activation.entry.url);` +
   `if(document.documentElement.dataset.motion==='on'&&card&&to&&to.origin===location.origin&&CS.test(to.pathname)){` +
-  `var c=card.querySelector('.project-cover'),h=document.querySelector('.site-header');if(c)c.style.viewTransitionName='project-cover';if(h)h.style.viewTransitionName='site-header'}else v.skipTransition()});` +
+  `clear();var c=card.querySelector('.project-cover'),h=document.querySelector('.site-header');if(c)c.style.viewTransitionName='project-cover';if(h)h.style.viewTransitionName='site-header'}else v.skipTransition()});` +
+  // Back from a case study restores this page from the back/forward cache with the names still
+  // set: a second card would then share 'project-cover' and the browser would drop the transition.
+  `addEventListener('pageshow',clear);` +
   `addEventListener('pagereveal',function(e){var v=e.viewTransition;if(!v)return;` +
   `if(document.documentElement.dataset.motion==='on'&&CS.test(location.pathname))v.types.add('cleave');else v.skipTransition()})` +
   `}catch(e){}`;

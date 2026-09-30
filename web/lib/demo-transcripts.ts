@@ -5,6 +5,16 @@
 import type { DemoId } from '@/components/sections/demos';
 
 export const DEMO_TRANSCRIPTS: Record<DemoId, { title: string; steps: string[] }> = {
+  signage: {
+    title: 'How MR Signage runs TV and tablet screens in every branch from one dashboard',
+    steps: [
+      'The MR Signage dashboard shows a playlist: a breakfast menu from 7 to 11 am, an evening offer from 6 to 10 pm, and new arrivals all day.',
+      'An item is picked and published to three screens with one button.',
+      'The TV switches to it at once: the breakfast menu (masala dosa and filter coffee for ₹99, until 11 am), then the evening offer (20% off after 6 pm), then new arrivals.',
+      'The screens sync together: a TV in Calicut, a counter tablet in Kochi and a TV in Bangalore. The status reads “3 screens online, synced”.',
+      'A progress bar plays each item out, and the day’s playlist keeps running by itself.',
+    ],
+  },
   website: {
     title: 'How a fast static website works, and when it turns dynamic',
     steps: [

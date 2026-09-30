@@ -4,5 +4,6 @@
 
 export const isPh = (s: string | null | undefined) => !!s && /\[[^\]]+\]/.test(s);
 export const SHOW_PH = process.env.SHOW_PLACEHOLDERS === '1';
-/** A price is printed only once it is real. */
-export const priceText = (p: string) => (isPh(p) ? 'Quoted per project' : p);
+/** A price is printed only once it is real. A subscription says so ("Monthly plans, quoted per
+ *  screen"); anything else is "Quoted per project". */
+export const priceText = (p: string, unset = 'Quoted per project') => (isPh(p) ? unset : p);

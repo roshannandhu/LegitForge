@@ -17,6 +17,9 @@
 }
 
 .hero h1 { margin: 0 0 20px; max-width: 16ch; }
+/* phones: at 40 px the display face's .95 leading let "everything" touch "behind" (the g and y
+   descenders met the b, h and d ascenders). A little more air, same size, weight and width. */
+@media (max-width: 767px) { .hero h1 { line-height: 1.06; } }
 .hero .lead { font-size: var(--step-lead); color: var(--text-muted); margin: 0 0 28px; max-width: 52ch; }
 .ctas { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
 .note { font-size: 14px; color: var(--text-muted); margin: 0; min-height: 1lh; }   /* reserved: status fills in after hydration */
@@ -294,7 +297,7 @@
 /* NFC layer: the tag on the AC, then her card */
 .ls-ac { position: relative; height: calc(34 * var(--cq)); border-radius: calc(4 * var(--cq)); background: linear-gradient(#E9EEF2, #C9D2DB); }
 .ls-ac-grill { position: absolute; left: calc(8 * var(--cq)); right: calc(8 * var(--cq)); bottom: calc(6 * var(--cq)); height: calc(6 * var(--cq)); border-radius: calc(2 * var(--cq)); background: repeating-linear-gradient(90deg, #9AA6B2 0 calc(1.2 * var(--cq)), transparent calc(1.2 * var(--cq)) calc(3 * var(--cq))); }
-.ls-tag { position: absolute; right: calc(7 * var(--cq)); top: calc(6 * var(--cq)); display: grid; place-items: center; width: calc(17 * var(--cq)); height: calc(17 * var(--cq)); border-radius: 50%; background: #0E1319; color: #FFC24A; font-size: calc(5 * var(--cq)); font-weight: 800; }
+.ls-tag { position: absolute; right: calc(7 * var(--cq)); top: calc(6 * var(--cq)); display: grid; place-items: center; width: calc(17 * var(--cq)); height: calc(17 * var(--cq)); border-radius: 50%; background: #0E1319; color: #F2C14E; font-size: calc(5 * var(--cq)); font-weight: 800; }
 .ls-wave { position: absolute; inset: 0; border: calc(0.8 * var(--cq)) solid #F2C14E; border-radius: 50%; opacity: 0; }
 .ls-card { display: grid; gap: calc(2.5 * var(--cq)); margin-top: calc(5 * var(--cq)); padding: calc(5 * var(--cq)); border-radius: calc(4 * var(--cq)); background: #151D25; }
 .ls-card .ls-title { margin: 0 !important; }
