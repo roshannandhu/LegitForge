@@ -29,9 +29,10 @@ export async function CaseStudy({ p, next }: { p: WorkProject; next?: WorkProjec
 
       <div className="page-block wrap">
         {p.cover ? (
-          <div className="case-cover" style={{ backgroundColor: p.cover.color ?? undefined }}>
+          // the frame takes the image's own shape (--ar), so the whole upload shows, never a crop
+          <div className="case-cover is-upload" style={{ backgroundColor: p.cover.color ?? undefined, '--ar': (p.cover.width / p.cover.height).toFixed(4) } as React.CSSProperties}>
             {/* eslint-disable-next-line @next/next/no-img-element -- R2 image, already sized */}
-            <img className="cover-img" src={p.cover.src} alt={p.cover.alt} width={p.cover.width} height={p.cover.height} />
+            <img className="cover-img" src={p.cover.src} alt={p.cover.alt} width={p.cover.width} height={p.cover.height} fetchPriority="high" />
             {p.stamp !== 'none' && <span className="stamp stamp-hallmark">{p.stamp === 'live' ? 'Live' : 'In use'}</span>}
           </div>
         ) : (

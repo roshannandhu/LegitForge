@@ -17,6 +17,8 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
 - Palette "Tempered Steel" (2026-09-29, the owner's pick over the common cream-and-orange look): night is
   pure black with gold (the coin's) and a black label; day is steel white with black ink and a gold label.
   Keep lib/theme-colors.ts PAGE_BG, lib/og.tsx T and forge-canvas's first colours in step with globals.css.
+  Gold, never red or orange (the owner's call, 30 Sep): --forge-hot/--forge-deep are the coin's gold and rim
+  bronze, the dark heat runs straw gold to bright gold, the intro coin glows gold. Brand logos keep their colours.
 - Theme: lib/boot.ts THEME_BOOT puts the dark/light class on <html> in <head>, before first paint.
   next-themes' own script runs in <body>, so without it a dark device painted light for a few frames.
 - Hero (the Teardown, PLAN §6.2c, seven layers: SEO, web, WhatsApp, n8n, quote, warranty, NFC): data lib/teardown.ts · component components/hero/teardown.tsx ·
@@ -103,6 +105,9 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
 - The hero's no-JS / motion-off frame is the finished exploded stack. Each layer's position, tilt
   and scale are CSS variables (--x --y --tilt --s) with server-rendered slot values; GSAP animates
   the same variables, so if you move a slot in lib/teardown.ts, both stay in step.
+- Services: MR Signage (the owner's signage app, TVs and tablets, sold by subscription; kind 'signage',
+  /services/digital-signage) is first everywhere. priceText(p, unset) takes the wording shown while
+  a price is a placeholder ("Monthly plans, quoted per screen" for a subscription).
 - Service demos (DemoPlayer): DEMOS[kind] is the intro (builds the finished frame once), then
   FLOWS[kind] keeps the demo working forever as a repeat:-1 timeline: no reset, no fade (plan F).
   Each cycle ends where the next begins; rotating text uses txt() (keeps React's text node) and

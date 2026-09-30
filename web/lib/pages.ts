@@ -7,7 +7,7 @@ import type { DemoKind } from './content';
 import { priceText } from './placeholder';
 
 /* ------------------------------------------------------------ services §7.1 */
-export type ServiceSlug = 'website-development' | 'whatsapp-automation' | 'n8n-automation' | 'seo' | 'nfc';
+export type ServiceSlug = 'digital-signage' | 'website-development' | 'whatsapp-automation' | 'n8n-automation' | 'seo' | 'nfc';
 export type WorkCategory = 'static' | 'dynamic' | 'whatsapp' | 'n8n';
 
 export interface ServicePage {
@@ -32,6 +32,45 @@ export interface ServicePage {
 }
 
 export const SERVICE_PAGES: ServicePage[] = [
+  {
+    slug: 'digital-signage',
+    name: 'MR Signage',
+    topic: 'MR Signage',
+    demo: 'signage',
+    title: 'MR Signage: digital signage for TVs and tablets',
+    description: 'MR Signage runs every TV and tablet screen in every branch from one dashboard: upload, schedule and publish, and they keep playing offline. Monthly plans.',
+    keywords: ['digital signage software', 'digital signage', 'Android TV signage app', 'tablet signage app', 'digital menu board', 'cloud digital signage subscription'],
+    h1: 'Every screen in every branch, run from one dashboard',
+    lead: 'MR Signage is our own digital signage app, sold as a monthly subscription. Pair an Android TV or tablet with a six-digit code, then choose what plays, where and when, from anywhere. MR stands for Midhun and Roshan, the two people who build and support it.',
+    problem: [
+      '“Every time the offer changes, someone drives to each shop with a pen drive.”',
+      '“The screen went blank when the internet dropped, and nobody noticed for days.”',
+      '“We sell ad space on our screens, but we can’t show advertisers that their ads actually played.”',
+    ],
+    builds: [
+      { h: 'Upload once, play everywhere', p: 'Images and videos go into one media library. Drag them into a playlist and publish it to one screen, a group of screens or every branch at once: TVs on the wall and tablets on the counter alike.' },
+      { h: 'Schedules that run themselves', p: 'Give each item its dates, weekdays and hours: the breakfast menu until 11, the evening offer after 6. Overnight windows work too.' },
+      { h: 'Keeps playing offline', p: 'A screen downloads everything before it switches playlists and plays from its own storage, by its own clock. A dropped connection never means a blank screen.' },
+      { h: 'Ad slots with proof of play', p: 'Sell advertising plans to your own clients, book them onto screens and time slots, and send each advertiser a playback report and an invoice as PDFs.' },
+      { h: 'Every screen at a glance', p: 'See which screens are online, what they are playing, their app version and storage. New player versions reach a few screens first, then the rest.' },
+    ],
+    included: [
+      'The MR Signage player for Android TVs and tablets (Android 8.0 and newer)',
+      'The web dashboard, with owner, editor and viewer roles for your team',
+      'Pairing and setup of your first screens',
+      'Player and dashboard updates, included in the subscription',
+      'Support from the two people who build it',
+    ],
+    price: priceText('From [price] per screen/month', 'Monthly plans, quoted per screen'),
+    timeline: 'First screens live in a day',
+    categories: ['dynamic'],
+    faq: [
+      { q: 'What hardware do I need?', a: 'A TV with an Android TV box, a smart TV running Android TV, or an Android tablet, on Android 8.0 or newer, and an internet connection for updates. If you have nothing yet, we will suggest a box or a tablet.' },
+      { q: 'What happens when the internet goes down?', a: 'The screen keeps playing what it has already downloaded, on schedule, by its own clock. When the connection returns, it picks up any changes by itself.' },
+      { q: 'How does the subscription work?', a: 'You pay per screen, per month. Packages set how many screens, how much storage and which features you get, so you can start with one screen and add more as you grow.' },
+      { q: 'Can I sell advertising on my screens?', a: 'Yes. Create advertising plans, book advertisers onto screens and time slots, and send them playback reports that show when their ads ran.' },
+    ],
+  },
   {
     slug: 'website-development',
     name: 'Websites and web apps',

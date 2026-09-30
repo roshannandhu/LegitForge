@@ -6,7 +6,7 @@ import { isPh } from './placeholder';
 /** Form options. Kept here, not in content.ts: whatever the
  *  form imports ships to the browser, and content.ts holds every page's copy. */
 export const NEEDS = [
-  'Website (static)', 'Website (dynamic)', 'Web app', 'Quotation or warranty system',
+  'MR Signage (digital signage)', 'Website (static)', 'Website (dynamic)', 'Web app', 'Quotation or warranty system',
   'WhatsApp automation', 'n8n workflow', 'SEO', 'NFC cards or tags', 'Not sure yet',
 ] as const;
 

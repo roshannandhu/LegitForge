@@ -3,11 +3,17 @@ import { priceText } from './placeholder';
  *  [Bracketed] text is a placeholder — the plan forbids launching with any of it. */
 
 /* ------------------------------------------------------------ services §6.3 */
-export type DemoKind = 'website' | 'app' | 'whatsapp' | 'n8n' | 'seo' | 'nfc';
+export type DemoKind = 'signage' | 'website' | 'app' | 'whatsapp' | 'n8n' | 'seo' | 'nfc';
 
 export const SERVICES: {
   id: DemoKind; name: string; line: string; audience: string; price: string; time: string; link: string; href: string;
 }[] = [
+  {
+    id: 'signage', name: 'MR Signage',
+    line: 'Our digital signage app, by subscription: every TV and tablet screen in every branch, run from one dashboard, and it keeps playing offline.',
+    audience: 'Shops, restaurants, clinics, malls and screen advertisers',
+    price: priceText('From [price] per screen/month', 'Monthly plans, quoted per screen'), time: 'First screens live in a day', link: 'See MR Signage', href: '/services/digital-signage',
+  },
   {
     id: 'website', name: 'Static websites',
     line: 'A fast site that loads in about a second and is easy to update.',
@@ -50,7 +56,7 @@ export const SERVICES: {
    Directly under the hero. Same wording as the Maker's promise (§6.9): repeated
    word for word, a promise reads as policy rather than a sales line. */
 export const TRUST_INTRO =
-  'Websites, apps, quotation and warranty systems, WhatsApp automation and n8n workflows — built by the two people you talk to.';
+  'Websites, apps, quotation and warranty systems, WhatsApp automation, n8n workflows and MR Signage — built by the two people you talk to.';
 export const TRUST_TITLE = 'Four promises, stamped in steel.';
 export const TRUST_LINES = [
   { k: 'Fixed price before we start', v: 'No surprise invoices.', mark: 'Fixed', icon: 'lock' },
@@ -112,6 +118,7 @@ export const TESTIMONIALS: { quote: string; name: string; role: string; company:
 
 /* ------------------------------------------------------------- pricing §6.10 */
 export const PRICING = [
+  { service: 'MR Signage (subscription)', from: priceText('[price] per screen/month', 'Monthly, per screen'), time: 'Live in a day', weeks: [0.2, 0.4], includes: 'The player app for Android TVs and tablets, the dashboard, schedules, offline playback, updates and support' },
   { service: 'Static website', from: priceText('[price]'), time: '1–2 weeks', weeks: [1, 2], includes: 'Up to 5 pages, contact form, SEO setup, 30 days of fixes' },
   { service: 'Web app', from: priceText('[price]'), time: '3–6 weeks', weeks: [3, 6], includes: 'Logins, database, admin panel' },
   { service: 'Quotation and warranty system', from: priceText('[price]'), time: '3–6 weeks', weeks: [3, 6], includes: 'Quotes as links or PDFs, warranty lookup by QR, CSV export any time' },

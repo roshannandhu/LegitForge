@@ -16,8 +16,9 @@
   --heat-color: color-mix(in oklab, var(--heat-hi) calc(var(--heat) * 100%), var(--heat-lo));
   /* heat as TEXT on the light surfaces: the same hue, dark enough for 4.5:1 (bars and glows keep --heat-color) */
   --heat-ink: color-mix(in oklab, var(--heat-color) 55%, #0B0D12);
-  /* metal fresh from the fire (Trust plates): the same in both themes, like the coin */
-  --forge-white: #FFF4D6; --forge-hot: #FF8A2A; --forge-deep: #C8321E;
+  /* metal fresh from the fire (Trust plates, sparks, welds): the coin's own gold in both themes,
+     white-hot to bright gold to the rim's dark bronze. No red or orange (the owner's call, 30 Sep). */
+  --forge-white: #FFF4D6; --forge-hot: #F2C14E; --forge-deep: #7A5418;
 
   --section-y: clamp(4.5rem, 3rem + 5vw, 8rem);
   --ease-forge: cubic-bezier(.16, 1, .3, 1);
@@ -35,11 +36,11 @@
 
 .dark {
   /* Tempered Steel, night (dark): pure black, cool steel-white text, gold (the coin's) with a
-     black label; heat runs bronze to straw gold, the quench is temper blue. */
+     black label; heat runs deep straw gold to the coin's bright gold (no orange), the quench is temper blue. */
   --bg: #000000; --surface: #0C0D10; --surface-2: #15171C; --line: #262A33;
   --text: #ECEFF4; --text-muted: #8E95A3;
   --accent: #F2C14E; --accent-ink: #000000;
-  --heat-lo: #C2762E; --heat-mid: #E39B3A; --heat-hi: #F2C14E;
+  --heat-lo: #C9982E; --heat-mid: #DDAE45; --heat-hi: #F2C14E;
   --quench: #5A8DFF; --focus: #F2C14E; --success: #45C486; --danger: #FF6B6B;
   --heat-ink: var(--heat-color);   /* bright heat already reads on the dark surfaces */
 }
@@ -145,7 +146,7 @@ html:not(.dark) body::before {
 .vt-seam { display: none; }
 html:active-view-transition-type(cleave) .vt-seam {
   display: block; position: fixed; inset: 0; z-index: 300; pointer-events: none; view-transition-name: cleave-seam;
-  background: linear-gradient(90deg, transparent 33%, #FFC24A 37.6%, #FFF4D6 38%, #FFC24A 38.4%, transparent 43%);
+  background: linear-gradient(90deg, transparent 33%, #F2C14E 37.6%, #FFF4D6 38%, #F2C14E 38.4%, transparent 43%);
   clip-path: polygon(41.2% 0, 42.8% 0, 34.8% 100%, 33.2% 100%);
 }
 html:active-view-transition-type(cleave) .case-cover { view-transition-name: project-cover; }
@@ -154,6 +155,17 @@ html:active-view-transition-type(cleave)::view-transition-new(root) { animation:
 html:active-view-transition-type(cleave)::view-transition-old(root) { animation: vt-cleave-fall 820ms cubic-bezier(.7, 0, .2, 1) both; }
 html:active-view-transition-type(cleave)::view-transition-new(cleave-seam) { animation: vt-cleave-seam 820ms linear both; }
 html:active-view-transition-type(cleave)::view-transition-group(project-cover) { animation-duration: 820ms; animation-timing-function: cubic-bezier(.7, 0, .2, 1); }
+/* The picture itself travels (the owner's bug, 30 Sep): the new page's snapshot is taken before
+   its cover has painted, so a plain cross-fade ended on an empty box and the image popped in
+   after. The clicked card's image fills the moving frame the whole way, like a cover, and the
+   case study's own cover fades in over it only at the end. */
+html:active-view-transition-type(cleave)::view-transition-image-pair(project-cover) { overflow: hidden; border-radius: 16px; }
+html:active-view-transition-type(cleave)::view-transition-old(project-cover),
+html:active-view-transition-type(cleave)::view-transition-new(project-cover) { width: 100%; height: 100%; object-fit: cover; }
+html:active-view-transition-type(cleave)::view-transition-old(project-cover) { animation: vt-cover-hold 820ms linear both; }
+html:active-view-transition-type(cleave)::view-transition-new(project-cover) { animation: vt-cover-in 820ms linear both; }
+@keyframes vt-cover-hold { 0%, 80% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes vt-cover-in { 0%, 62% { opacity: 0; } 100% { opacity: 1; } }
 @keyframes vt-cleave-open {
   0%, 18% { clip-path: polygon(42% 0, 42% 0, 34% 100%, 34% 100%); }
   100% { clip-path: polygon(-20% 0, 120% 0, 120% 100%, -20% 100%); }
@@ -183,24 +195,24 @@ html:active-view-transition-type(cleave)::view-transition-group(project-cover) {
 /* a jump to a section (lib/boot.ts CV_BOOT) renders them all first, so the target can't move */
 html[data-cv-off] #top ~ :is(#services, #quotation, .tools, #work, #proof, #pricing),
 html[data-cv-off] #top ~ * > :is(#compare, #live-test, #team, #contact) { content-visibility: visible; }
-#top ~ #services { --cv-h: 3274px; }    #top ~ #quotation { --cv-h: 1212px; }
+#top ~ #services { --cv-h: 3760px; }    #top ~ #quotation { --cv-h: 1212px; }
 #top ~ * > #compare { --cv-h: 2017px; } #top ~ * > #live-test { --cv-h: 858px; }
 #top ~ .tools { --cv-h: 128px; }        #top ~ #work { --cv-h: 1123px; }
 #top ~ * > #team { --cv-h: 1386px; }    #top ~ #proof { --cv-h: 917px; }
-#top ~ #pricing { --cv-h: 1896px; }     #top ~ * > #contact { --cv-h: 1161px; }
+#top ~ #pricing { --cv-h: 1979px; }     #top ~ * > #contact { --cv-h: 1161px; }
 @media (max-width: 1023px) {
-  #top ~ #services { --cv-h: 5018px; }  #top ~ #quotation { --cv-h: 1672px; }
+  #top ~ #services { --cv-h: 5895px; }  #top ~ #quotation { --cv-h: 1672px; }
   #top ~ * > #compare { --cv-h: 1947px; } #top ~ * > #live-test { --cv-h: 1022px; }
   #top ~ #work { --cv-h: 892px; }       #top ~ * > #team { --cv-h: 1271px; }
-  #top ~ #proof { --cv-h: 993px; }      #top ~ #pricing { --cv-h: 2054px; }
+  #top ~ #proof { --cv-h: 993px; }      #top ~ #pricing { --cv-h: 2200px; }
   #top ~ * > #contact { --cv-h: 1053px; }
 }
 @media (max-width: 767px) {
-  #top ~ #services { --cv-h: 4861px; }  #top ~ #quotation { --cv-h: 1760px; }
+  #top ~ #services { --cv-h: 5858px; }  #top ~ #quotation { --cv-h: 1760px; }
   #top ~ * > #compare { --cv-h: 2635px; } #top ~ * > #live-test { --cv-h: 1179px; }
   #top ~ .tools { --cv-h: 112px; }      #top ~ #work { --cv-h: 851px; }
   #top ~ * > #team { --cv-h: 1260px; }  #top ~ #proof { --cv-h: 1180px; }
-  #top ~ #pricing { --cv-h: 3098px; }   #top ~ * > #contact { --cv-h: 1132px; }
+  #top ~ #pricing { --cv-h: 3396px; }   #top ~ * > #contact { --cv-h: 1132px; }
 }
 
 

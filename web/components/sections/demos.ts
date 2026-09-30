@@ -7,7 +7,7 @@ import type { gsap as Gsap } from 'gsap';
 
 type G = typeof Gsap;
 type TL = ReturnType<G['timeline']>;
-export type DemoId = 'website' | 'app' | 'whatsapp' | 'n8n' | 'quote' | 'seo' | 'nfc';
+export type DemoId = 'signage' | 'website' | 'app' | 'whatsapp' | 'n8n' | 'quote' | 'seo' | 'nfc';
 
 const $ = (root: Element, sel: string) => root.querySelector<HTMLElement>(sel);
 const $$ = (root: Element, sel: string) => [...root.querySelectorAll<HTMLElement>(sel)];
@@ -161,6 +161,21 @@ function seo(root: Element, gsap: G): TL {
   tapCall(tl, root, 2.5);
   countUp(tl, $(root, '.serp-clicks'), 2.2, 1.0);
   countUp(tl, $(root, '.serp-calls'), 2.9, 0.6);
+  return tl;
+}
+
+/* 0 — MR Signage: the dashboard and the TV come in, the playlist fills, the slide plays */
+function signage(root: Element, gsap: G): TL {
+  const tl = gsap.timeline({ defaults: { ease: 'power2.out' } });
+  tl.from($(root, '.sg-dash'), { x: -24, opacity: 0, duration: 0.5 }, 0.1)
+    .from($(root, '.sg-tv'), { y: 30, opacity: 0, duration: 0.6, ease: 'power3.out' }, 0.25)   // from below: never past the viewport edge
+    .from($$(root, '.sg-item'), { opacity: 0, x: -10, duration: 0.3, stagger: 0.08 }, 0.4)
+    .from($(root, '.sg-hl'), { scaleX: 0, transformOrigin: 'left center', duration: 0.35 }, 0.75)
+    .from($$(root, '.sg-screen > p'), { opacity: 0, y: 10, duration: 0.3, stagger: 0.08 }, 0.9)
+    .fromTo($(root, '.sg-bar i'), { scaleX: 0 }, { scaleX: 1, duration: 1.4, ease: 'none', immediateRender: true }, 1.0)
+    .from($(root, '.sg-btn'), { opacity: 0, scale: 0.9, duration: 0.3 }, 1.1)
+    .from($$(root, '.sg-mini'), { opacity: 0, y: 8, duration: 0.3, stagger: 0.1 }, 1.2)
+    .from($(root, '.sg-status'), { opacity: 0, duration: 0.3 }, 1.5);
   return tl;
 }
 
@@ -371,6 +386,35 @@ function seoFlow(root: Element, gsap: G): TL {
   return tl;
 }
 
+/* MR Signage: the day's playlist runs itself. Each act picks the next item, publishes it, the TV
+   switches and the three branch screens sync; the progress bar plays the item out. The last act
+   is the server-rendered frame, so every cycle ends where the next begins. */
+const SG_STEP = 36;   // .sg-item height + gap (sections.css)
+function signageFlow(root: Element, gsap: G): TL {
+  const tl = gsap.timeline({ repeat: -1, defaults: { ease: 'power2.out' } });
+  const hl = $(root, '.sg-hl'), btn = $(root, '.sg-btn'), bar = $(root, '.sg-bar i'), state = $(root, '.sg-state');
+  const parts = $$(root, '.sg-screen > p'), minis = $$(root, '.sg-mini i');
+  const acts = [
+    ['Good morning', 'Masala dosa + filter coffee ₹99', 'Until 11 am · all branches'],
+    ['Tonight', '20% off after 6 pm', 'Evening offer · all branches'],
+    ['Just in', 'New arrivals', 'Ask at the counter'],            // last = the server-rendered frame
+  ];
+  const L = 2.6;
+  acts.forEach((act, k) => {
+    const t = k * L;
+    tl.fromTo(hl, { y: ((k + 2) % 3 - 2) * SG_STEP }, { y: (k - 2) * SG_STEP, duration: 0.45, ease: 'power2.inOut', immediateRender: false }, t)
+      .fromTo(btn, { scale: 1 }, { scale: 0.94, duration: 0.12, yoyo: true, repeat: 1, immediateRender: false }, t + 0.3)
+      .call(() => txt(state, 'Publishing to 3 screens'), [], t + 0.35)
+      .to(parts, { opacity: 0, y: -8, duration: 0.22, stagger: 0.04, ease: 'power2.in' }, t + 0.4)
+      .call(() => { act.forEach((s, i) => txt(parts[i], s)); gsap.set(parts, { y: 10 }); }, [], t + 0.72)
+      .to(parts, { opacity: 1, y: 0, duration: 0.3, stagger: 0.06 }, t + 0.75)
+      .fromTo(minis, { opacity: 0.35 }, { opacity: 1, duration: 0.3, stagger: 0.12, immediateRender: false }, t + 0.8)
+      .fromTo(bar, { scaleX: 0 }, { scaleX: 1, duration: L - 0.8, ease: 'none', immediateRender: false }, t + 0.8)
+      .call(() => txt(state, '3 screens online · synced'), [], t + 1.2);
+  });
+  return tl;
+}
+
 /* NFC: tap after tap, the same card opens a review, a warranty, a contact */
 function nfcFlow(root: Element, gsap: G): TL {
   const tl = gsap.timeline({ repeat: -1, defaults: { ease: 'power2.out' } });
@@ -497,7 +541,7 @@ function quoteFlow(root: Element, gsap: G): TL {
 
 /** Continuous flows (plan F step 4). A kind without one falls back to the fade-and-replay loop. */
 export const FLOWS: Partial<Record<DemoId, (root: Element, gsap: G) => TL>> = {
-  website: websiteFlow, app: appFlow, whatsapp: whatsappFlow, n8n: n8nFlow, seo: seoFlow, nfc: nfcFlow, quote: quoteFlow,
+  signage: signageFlow, website: websiteFlow, app: appFlow, whatsapp: whatsappFlow, n8n: n8nFlow, seo: seoFlow, nfc: nfcFlow, quote: quoteFlow,
 };
 
-export const DEMOS: Record<DemoId, (root: Element, gsap: G) => TL> = { website, app, whatsapp, n8n, quote, seo, nfc };
+export const DEMOS: Record<DemoId, (root: Element, gsap: G) => TL> = { signage, website, app, whatsapp, n8n, quote, seo, nfc };

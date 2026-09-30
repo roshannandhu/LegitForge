@@ -71,6 +71,12 @@
 .case-cover { position: relative; display: grid; place-items: center; aspect-ratio: 16 / 9; overflow: hidden; border: 1px solid var(--line); border-radius: 16px; background: color-mix(in oklab, var(--quench) 14%, var(--surface-2)); }
 .case-cover .cover-initials { font-size: 96px; }
 .case-cover .cover-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+/* An uploaded cover is shown whole (the owner's call, 30 Sep): the frame takes the image's own
+   shape, and a very tall one (a full-page screenshot) is letterboxed on its dominant colour
+   instead of cropped, so the frame never grows taller than 4:5 on a phone or 5:4 wider up. */
+.case-cover.is-upload { aspect-ratio: max(var(--ar, 1.7778), .8); }
+@media (min-width: 768px) { .case-cover.is-upload { aspect-ratio: max(var(--ar, 1.7778), 1.25); } }
+.case-cover.is-upload .cover-img { object-fit: contain; }
 .case-cover .stamp { position: absolute; top: 20px; right: 20px; }
 .results { display: grid; gap: 16px; margin: 0; padding: 0; list-style: none; }
 @media (min-width: 768px) { .results { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); } }

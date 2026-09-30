@@ -1,7 +1,7 @@
 import { SERVICES } from '@/lib/content';
 import { ServiceDemo } from './service-demos';
 
-/** Services "Four fires" (PLAN §6.3). Each service proves itself with a demo.
+/** Services, "What we offer" (PLAN §6.3; was "Four fires"). Each service proves itself with a demo.
  *  This is the finished-frame layout: correct with no JS, and the motion-off state.
  *  While a demo's flow runs, its number and frame warm up, and cool on the hold (plan D #3). */
 export function Services() {
@@ -9,8 +9,8 @@ export function Services() {
     <section id="services" data-heat="0.55" className="section">
       <div className="wrap">
         <header className="section-head">
-          <h2 className="type-h2">What we build</h2>
-          <p className="type-lead">Everything we build for businesses — each one shown working, not described.</p>
+          <h2 className="type-h2">What we offer</h2>
+          <p className="type-lead">Everything we offer businesses, from websites to signage subscriptions — each one shown working, not described.</p>
         </header>
 
         <ol className="fires">

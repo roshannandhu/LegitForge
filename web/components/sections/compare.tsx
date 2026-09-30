@@ -162,7 +162,7 @@ export function Compare({ facts }: { facts: { static: Fact; dynamic: Fact } }) {
             <svg viewBox="0 0 28 72">
               <defs>
                 <linearGradient id="chisel-steel" x1="0" x2="1"><stop offset="0" stopColor="#5C6B7A" /><stop offset=".45" stopColor="#C9D2DB" /><stop offset="1" stopColor="#3A4652" /></linearGradient>
-                <linearGradient id="chisel-heat" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#C9D2DB" /><stop offset=".35" stopColor="#F0701E" /><stop offset="1" stopColor="#FFE2A0" /></linearGradient>
+                <linearGradient id="chisel-heat" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#C9D2DB" /><stop offset=".35" stopColor="#E3B452" /><stop offset="1" stopColor="#FFE2A0" /></linearGradient>
               </defs>
               <rect x="7" y="0" width="14" height="30" rx="3" fill="url(#chisel-steel)" />
               <path d="M8 30 H20 L18 60 L14 72 L10 60 Z" fill="url(#chisel-heat)" />

@@ -49,7 +49,7 @@ export default async function ServicePage({ params }: { params: Promise<{ slug: 
       </section>
 
       <section className="page-block wrap" aria-labelledby="build-h">
-        <h2 id="build-h" className="type-h3 block-h">What we build</h2>
+        <h2 id="build-h" className="type-h3 block-h">What we offer</h2>
         <ol className="tiles">
           {s.builds.map((b, i) => (
             <li key={b.h} className="tile">

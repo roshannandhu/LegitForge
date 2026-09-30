@@ -19,7 +19,7 @@ export function Footer({ company: c }: { company: Company }) {
             <CoinMark className="logo-mark" />
             <span className="logo-word">Legit Forge</span>
           </a>
-          <p>Websites, apps, quotation and warranty systems, WhatsApp automation and n8n workflows — built by two people{c.city ? ` in ${c.city}` : ''}.</p>
+          <p>Websites, apps, quotation and warranty systems, WhatsApp automation, n8n workflows and MR Signage — built by two people{c.city ? ` in ${c.city}` : ''}.</p>
           <ForgeStatus />
         </div>
 

@@ -29,7 +29,7 @@ export function ForgeCanvas() {
     const cap = small ? 60 : window.innerWidth < 1024 ? 100 : 160;
     const embers: Ember[] = [];
     const pointer = { x: -9999, y: -9999 };
-    let colors = { lo: '#C2762E', hi: '#F2C14E' };
+    let colors = { lo: '#C9982E', hi: '#F2C14E' };
     let w = 0, h = 0, raf = 0, last = performance.now();
 
     const readColors = () => {
