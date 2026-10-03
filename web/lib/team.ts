@@ -64,7 +64,7 @@ const monogram = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2)
 export async function teamFromDb(includeHidden: boolean): Promise<Member[] | null> {
   if (process.env.NEXT_PHASE === 'phase-production-build') return null;
   const db = (await getEnv())?.DB;
-  if (!db) return null;
+  if (!db) throw new Error('Team details are temporarily unavailable.');
   try {
     const [members, projects] = await db.batch([
       db.prepare(
@@ -88,8 +88,8 @@ export async function teamFromDb(includeHidden: boolean): Promise<Member[] | nul
         .filter(([, href]) => href).map(([label, href]) => ({ label, href: href! })),
     })));
   } catch (e) {
-    console.error('[team] D1 read failed, showing the defaults', e);
-    return null;
+    console.error('[team] D1 read failed');
+    throw new Error('Team profiles are temporarily unavailable.', { cause: e });
   }
 }
 
@@ -99,7 +99,7 @@ const getTeamCached = unstable_cache(
     return rows && rows.length ? rows : FALLBACK;
   },
   ['team-members'],
-  { tags: ['team'] },
+  { tags: ['team'], revalidate: 60 },
 );
 
 /** During `next build` the placeholders, never D1 or a runtime cache entry (a LOCAL server's test

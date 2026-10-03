@@ -13,7 +13,7 @@ export type Testimonial = { quote: string; name: string; role: string; company: 
 async function fromDb(): Promise<Testimonial[] | null> {
   if (process.env.NEXT_PHASE === 'phase-production-build') return null;
   const db = (await getEnv())?.DB;
-  if (!db) return null;
+  if (!db) throw new Error('Testimonials are temporarily unavailable.');
   try {
     const { results } = await db.prepare(
       `SELECT person_name, person_role, company, quote, created_at FROM testimonials
@@ -24,8 +24,8 @@ async function fromDb(): Promise<Testimonial[] | null> {
       date: new Date(`${r.created_at.replace(' ', 'T')}Z`).toLocaleDateString('en-GB', { month: 'short', year: 'numeric', timeZone: 'UTC' }),
     }));
   } catch (e) {
-    console.error('[testimonials] D1 read failed', e);
-    return null;
+    console.error('[testimonials] D1 read failed');
+    throw new Error('Testimonials are temporarily unavailable.', { cause: e });
   }
 }
 
@@ -35,7 +35,7 @@ const getTestimonialsCached = unstable_cache(
     return rows && rows.length ? rows : TESTIMONIALS;
   },
   ['testimonials'],
-  { tags: ['testimonials'] },
+  { tags: ['testimonials'], revalidate: 60 },
 );
 
 /** During `next build` the placeholders, never D1 or a runtime cache entry (a LOCAL server's test

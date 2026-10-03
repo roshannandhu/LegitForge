@@ -4,13 +4,15 @@
 # Hashes IPs in the rate limiter so raw addresses are never stored (§13)
 HASH_SALT=change-me-to-a-long-random-string
 
-# n8n WF-2: new form lead -> WhatsApp/email alert to us (§9). Leave empty to skip the alert.
+# Optional website enquiries -> n8n -> internal Telegram alert. Configure BOTH values only after
+# n8n authenticates x-lf-key and deduplicates the stable lead ID/idempotency-key.
+# D1 outbox retains delivery state and retries temporary failures; blank means no alert is sent.
 N8N_LEAD_WEBHOOK_URL=
 N8N_SHARED_KEY=
 
 # Turnstile (§13.3). Server-side verification is enforced whenever this is set.
 # The widget also needs NEXT_PUBLIC_TURNSTILE_SITE_KEY at build time (.env.local locally,
-# a Workers Builds build variable in production). Set both, or neither.
+# the GitHub Actions repository variable in production). Set both, or neither.
 # Cloudflare's test keys: secret 1x0000000000000000000000000000000AA always passes,
 # 2x0000000000000000000000000000000AA always fails; site key 1x00000000000000000000AA.
 TURNSTILE_SECRET_KEY=

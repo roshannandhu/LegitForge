@@ -22,9 +22,12 @@ export function Quench() {
   const [replyBy, setReplyBy] = useState('');
   const [armed, setArmed] = useState(false);          // Turnstile loads on the form's first focus
   const turnstile = useRef<TurnstileHandle>(null);
+  const pending = useRef(false);
+  const submission = useRef<{ fingerprint: string; id: string } | null>(null);
 
   async function onSubmit(ev: React.FormEvent<HTMLFormElement>) {
     ev.preventDefault();
+    if (pending.current) return;
     const form = ev.currentTarget;
     const data = new FormData(form);
     const showErrors = (found: LeadErrors) => {
@@ -33,29 +36,41 @@ export function Quench() {
       if (first) form.querySelector<HTMLElement>(`[name="${first}"]`)?.focus();
       return !!first;
     };
-    if (showErrors(validateLead(data).errors)) return;
+    const validated = validateLead(data);
+    if (showErrors(validated.errors)) return;
+    const fingerprint = JSON.stringify(validated.lead);
+    if (submission.current?.fingerprint !== fingerprint) {
+      submission.current = { fingerprint, id: crypto.randomUUID() };
+    }
+    data.set('submission_id', submission.current.id);
 
+    pending.current = true;
     setState('sending');
     try {
-      const res = await fetch('/api/leads', { method: 'POST', body: data });
-      turnstile.current?.reset();                     // tokens are single-use, whatever happened
+      const res = await fetch('/api/leads', { method: 'POST', headers: { Accept: 'application/json' }, body: data });
+      const body = await res.json().catch(() => null) as {
+        ok?: boolean; stored?: boolean; error?: string; errors?: LeadErrors;
+      } | null;
       if (res.status === 429) { setState('limited'); return; }
-      if (res.status === 400 && ((await res.clone().json().catch(() => ({}))) as { error?: string }).error === 'verification_failed') {
+      if (body?.error === 'verification_failed') {
         setState('unverified');
         return;
       }
       if (res.status === 422) {                          // server is the real check
-        const body = (await res.json()) as { errors?: LeadErrors };
         setState('idle');
-        showErrors(body.errors ?? {});
+        showErrors(body?.errors ?? {});
         return;
       }
-      if (!res.ok) throw new Error(String(res.status));
+      if (!res.ok || body?.ok !== true || body.stored !== true) throw new Error('receipt-unconfirmed');
       setReplyBy(replyByLabel());
       setState('sent');
       form.reset();
+      submission.current = null;
     } catch {
       setState('error');
+    } finally {
+      pending.current = false;
+      turnstile.current?.reset();                    // a new attempt needs a fresh challenge; accepted retries use their receipt
     }
   }
 
@@ -86,7 +101,7 @@ export function Quench() {
             <a className="btn btn-ghost" href={waLink(company)}>Open WhatsApp now</a>
           </div>
         ) : (
-          <form ref={formRef} className="lead-form" onSubmit={onSubmit} onFocus={() => setArmed(true)} noValidate>
+          <form ref={formRef} className="lead-form" method="post" action="/api/leads" onSubmit={onSubmit} onFocus={() => setArmed(true)} aria-busy={state === 'sending'} noValidate>
             {/* honeypot: hidden from people and assistive tech; bots fill it */}
             <div className="hp" aria-hidden="true">
               <label htmlFor={HONEYPOT}>Leave this empty</label>
@@ -94,21 +109,21 @@ export function Quench() {
             </div>
             <div className="field">
               <label htmlFor="name">Name</label>
-              <input id="name" name="name" type="text" autoComplete="name" maxLength={80}
+              <input id="name" name="name" type="text" autoComplete="name" maxLength={80} minLength={2} required readOnly={state === 'sending'}
                      aria-invalid={!!errors.name} aria-describedby={describe('name')} />
               <Err f="name" />
             </div>
 
             <div className="field">
               <label htmlFor="phone">WhatsApp number</label>
-              <input id="phone" name="phone" type="tel" inputMode="tel" autoComplete="tel" placeholder="+91 98765 43210"
+              <input id="phone" name="phone" type="tel" inputMode="tel" autoComplete="tel" placeholder="+91 98765 43210" required readOnly={state === 'sending'}
                      aria-invalid={!!errors.phone} aria-describedby={describe('phone')} />
               <Err f="phone" />
             </div>
 
             <div className="field">
               <label htmlFor="need">What do you need?</label>
-              <select id="need" name="need" defaultValue="" aria-invalid={!!errors.need} aria-describedby={describe('need')}>
+              <select id="need" name="need" defaultValue="" required disabled={state === 'sending'} aria-invalid={!!errors.need} aria-describedby={describe('need')}>
                 <option value="" disabled>Choose one</option>
                 {NEEDS.map((n) => <option key={n} value={n}>{n}</option>)}
               </select>
@@ -117,7 +132,7 @@ export function Quench() {
 
             {BUDGETS.length > 1 && <div className="field">
               <label htmlFor="budget">Budget <span className="optional">(optional)</span></label>
-              <select id="budget" name="budget" defaultValue="">
+              <select id="budget" name="budget" defaultValue="" disabled={state === 'sending'}>
                 <option value="">Choose a range</option>
                 {BUDGETS.map((b) => <option key={b} value={b}>{b}</option>)}
               </select>
@@ -125,22 +140,29 @@ export function Quench() {
 
             <div className="field field-wide">
               <label htmlFor="message">Message <span className="optional">(optional)</span></label>
-              <textarea id="message" name="message" rows={4} maxLength={1500}
+              <textarea id="message" name="message" rows={4} maxLength={1500} readOnly={state === 'sending'}
                         aria-invalid={!!errors.message} aria-describedby={describe('message')} />
               <Err f="message" />
             </div>
 
             <div className="field field-wide field-check">
-              <input id="consent" name="consent" type="checkbox" value="yes"
+              <input id="consent" name="consent" type="checkbox" value="yes" required disabled={state === 'sending'}
                      aria-invalid={!!errors.consent} aria-describedby={describe('consent')} />
               <label htmlFor="consent">Contact me on WhatsApp about this request.</label>
               <Err f="consent" />
             </div>
 
             <Turnstile ref={turnstile} armed={armed} />
+            <noscript>
+              <p className="field-wide form-alert">
+                This form submits securely without JavaScript. If human verification is required,{' '}
+                <a href={waLink(company)}>contact us on WhatsApp</a>
+                {company.contactEmail && <> or <a href={`mailto:${company.contactEmail}`}>email us</a></>} instead.
+              </p>
+            </noscript>
 
             <div className="field-wide form-actions">
-              <button type="submit" className="btn btn-primary" data-sending={state === 'sending'}>
+              <button type="submit" className="btn btn-primary" disabled={state === 'sending'} data-sending={state === 'sending'}>
                 {state === 'sending' ? 'Sending…' : 'Send project details'}
               </button>
               <p className="form-promise">No payment until you approve a written quote.</p>
@@ -148,7 +170,7 @@ export function Quench() {
 
             {state === 'error' && (
               <p className="form-alert" role="alert">
-                Your details didn’t send because our server didn’t respond. Try again, or{' '}
+                We couldn’t confirm receipt. Your details are still here; retrying won’t create another enquiry. Try again, or{' '}
                 <a href={waLink(company)}>message us on WhatsApp</a>.
               </p>
             )}

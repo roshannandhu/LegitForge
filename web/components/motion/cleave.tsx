@@ -16,7 +16,7 @@ import { useRef } from 'react';
 import { useGsap } from '@/lib/gsap';
 import { useMotionEnabled } from './motion-provider';
 
-export function Cleave({ cover, children, label }: { cover: React.ReactNode; children: React.ReactNode; label?: string }) {
+export function Cleave({ cover, children, label, pin: allowPin = true }: { cover: React.ReactNode; children: React.ReactNode; label?: string; pin?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
   const motionOn = useMotionEnabled();
 
@@ -26,7 +26,7 @@ export function Cleave({ cover, children, label }: { cover: React.ReactNode; chi
     el.dataset.armed = '';
     const mm = gsap.matchMedia();
     mm.add({ pin: '(min-width: 768px)', phone: '(max-width: 767px)' }, (ctx) => {
-      const pin = !!ctx.conditions!.pin;
+      const pin = allowPin && !!ctx.conditions!.pin;
       const q = gsap.utils.selector(el);
       const onUpdate = (self: { progress: number }) => { if (self.progress > 0.55 && !('open' in el.dataset)) el.dataset.open = ''; };
       gsap.timeline({
@@ -41,10 +41,10 @@ export function Cleave({ cover, children, label }: { cover: React.ReactNode; chi
         .to(q('[data-seam]'), { opacity: 0, scaleX: 6, duration: 0.3 }, 0.3);
     });
     return () => { mm.revert(); delete el.dataset.armed; delete el.dataset.open; };
-  }, { dependencies: [motionOn] });
+  }, { dependencies: [motionOn, allowPin] });
 
   return (
-    <div className="cleave" data-heat="0.35" ref={ref}>
+    <div className="cleave" data-pin={allowPin ? 'allowed' : 'off'} data-heat="0.35" ref={ref}>
       <div className="cleave-inner">{children}</div>
       <div className="cleave-cover" aria-hidden="true" title={label}>
         <div className="cleave-half" data-cleave="l">{cover}</div>

@@ -4,7 +4,6 @@
  *  [Bracketed] text is a placeholder and must be replaced before launch. */
 
 import type { DemoKind } from './content';
-import { priceText } from './placeholder';
 
 /* ------------------------------------------------------------ services §7.1 */
 export type ServiceSlug = 'digital-signage' | 'website-development' | 'whatsapp-automation' | 'n8n-automation' | 'seo' | 'nfc';
@@ -31,7 +30,7 @@ export interface ServicePage {
   faq: { q: string; a: string }[];
 }
 
-export const SERVICE_PAGES: ServicePage[] = [
+const SERVICE_PAGE_CONTENT: ServicePage[] = [
   {
     slug: 'digital-signage',
     name: 'MR Signage',
@@ -61,7 +60,7 @@ export const SERVICE_PAGES: ServicePage[] = [
       'Player and dashboard updates, included in the subscription',
       'Support from the two people who build it',
     ],
-    price: priceText('From [price] per screen/month', 'Monthly plans, quoted per screen'),
+    price: 'Monthly plans, quoted per screen',
     timeline: 'First screens live in a day',
     categories: ['dynamic'],
     faq: [
@@ -77,9 +76,9 @@ export const SERVICE_PAGES: ServicePage[] = [
     topic: 'websites and web apps',
     demo: 'website',
     title: 'Website design and development for small businesses',
-    description: 'Website design and web app development: static sites that load in about a second, and apps with logins, bookings and dashboards. Fixed quote; you own it.',
+    description: 'Website design and web app development: fast static sites, and apps with logins, bookings and dashboards. Fixed quote; you own it.',
     keywords: ['website design', 'website development', 'web development company', 'freelance web developer', 'web app development', 'small business website', 'ecommerce website development', 'booking website', 'custom software development'],
-    h1: 'Websites that load in a second, and web apps that run your business',
+    h1: 'Fast websites, and web apps that run your business',
     lead: 'A static site when your content changes a few times a month. A web app when you need logins, bookings or a dashboard. We tell you which one you need — and when the cheaper one is enough.',
     problem: [
       '“Our site takes forever to open on a phone, and people leave.”',
@@ -87,10 +86,10 @@ export const SERVICE_PAGES: ServicePage[] = [
       '“We run bookings from a notebook and three WhatsApp groups.”',
     ],
     builds: [
-      { h: 'Static websites', p: 'Five to ten pages, built from plain HTML at deploy time and served from Cloudflare’s network. That is why they open in about a second on a normal phone connection. You get a simple editor for text and images.' },
+      { h: 'Static websites', p: 'Five to ten pages, built from plain HTML at deploy time and served from Cloudflare’s network. We test loading speed on phones before launch. You get a simple editor for text and images.' },
       { h: 'Dynamic websites', p: 'Menus that change daily, a blog, a product list, a “tables free now” counter. Content comes from a small database you edit yourself, and pages still load fast because they are cached until you change something.' },
       { h: 'Web apps', p: 'Logins, bookings, member areas, internal tools and dashboards. Your data lives in a database in your own account, with an admin panel your team can use without us.' },
-      { h: 'Quotation and warranty systems', p: 'Our own product. Quotes from saved line items, sent as a link or PDF; warranty records your customers check by scanning a QR code; expiry reminders on WhatsApp.' },
+      { h: 'Quotation and warranty systems', p: 'Quotes from saved line items, sent as a link or PDF; warranty records your customers check by scanning a QR code. Reminder integrations are agreed as part of your scope.' },
     ],
     included: [
       'A clickable design you can try on your phone before we build',
@@ -99,7 +98,7 @@ export const SERVICE_PAGES: ServicePage[] = [
       'Hosting set up in your own Cloudflare account',
       'A short training video, and 30 days of free fixes after launch',
     ],
-    price: priceText('Static from [price] · web apps from [price]'),
+    price: 'Quoted per project, with hosting and support agreed separately',
     timeline: 'Static sites 1–2 weeks · web apps 3–6 weeks',
     categories: ['static', 'dynamic'],
     faq: [
@@ -136,13 +135,13 @@ export const SERVICE_PAGES: ServicePage[] = [
       'Lead capture into your sheet, CRM or database',
       'Monthly care: we watch the bot, fix what breaks and adjust flows',
     ],
-    price: priceText('[price] setup + [price]/month · Meta’s message fees at cost'),
+    price: 'Build and support quoted separately; Meta’s message charges are separate',
     timeline: '1–2 weeks, plus Meta’s business verification',
     categories: ['whatsapp'],
     faq: [
-      { q: 'Is a WhatsApp bot allowed by Meta?', a: 'Yes, for business bots: support, bookings, orders and FAQs. Since January 2026 Meta does not allow general-purpose AI assistants on WhatsApp Business, so ours only talk about your business and hand anything else to a person.' },
+      { q: 'How do you use the official WhatsApp Business Platform?', a: 'We scope business flows such as support, bookings, orders and FAQs, with a handoff to your team. We check the current platform requirements and your account setup before launch.' },
       { q: 'What does it cost per month?', a: 'Two parts: our monthly fee for looking after the bot, and Meta’s own message fees, which we pass on at cost. We keep conversations short so that bill stays small, and you see it itemised.' },
-      { q: 'Can I keep my current number?', a: 'Usually yes, but a number on the WhatsApp Business Platform cannot also be used in the normal WhatsApp app. Many businesses use a second number for the bot. We go through the options on the first call.' },
+      { q: 'Can I keep my current number?', a: 'We check the options for your current WhatsApp setup and account eligibility before agreeing the integration. That may mean keeping your number or using a separate business number.' },
     ],
   },
   {
@@ -173,7 +172,7 @@ export const SERVICE_PAGES: ServicePage[] = [
       'Plain-language documentation of what runs, when and why',
       'n8n on your own server or n8n Cloud account — you hold the keys',
     ],
-    price: priceText('From [price] per workflow'),
+    price: 'Quoted per workflow, with hosting and support agreed separately',
     timeline: '2–5 days per workflow',
     categories: ['n8n'],
     faq: [
@@ -210,7 +209,7 @@ export const SERVICE_PAGES: ServicePage[] = [
       'Review requests you can send by WhatsApp in one tap',
       'A monthly one-page report with calls, clicks and next steps',
     ],
-    price: priceText('From [price]/month · setup from [price]'),
+    price: 'Monthly scope and any setup work quoted with you',
     timeline: 'Set up in 1–2 weeks · results build over 2–3 months',
     categories: ['static', 'dynamic'],
     faq: [
@@ -247,7 +246,7 @@ export const SERVICE_PAGES: ServicePage[] = [
       'Change where a tag points any time, with no reprinting',
       'A simple count of taps each month',
     ],
-    price: priceText('From [price] · cards from [price] each'),
+    price: 'Website and physical cards quoted with you',
     timeline: 'About a week, including printing',
     categories: ['dynamic'],
     faq: [
@@ -258,6 +257,11 @@ export const SERVICE_PAGES: ServicePage[] = [
   },
 ];
 
+/** The public service order puts MR Signage last, consistently with the home ledger. */
+export const SERVICE_PAGES: ServicePage[] = [
+  ...SERVICE_PAGE_CONTENT.filter((s) => s.slug !== 'digital-signage'),
+  ...SERVICE_PAGE_CONTENT.filter((s) => s.slug === 'digital-signage'),
+];
 export const serviceBySlug = (slug: string) => SERVICE_PAGES.find((s) => s.slug === slug);
 
 /* ------------------------------------------------------------ work §7.2 */

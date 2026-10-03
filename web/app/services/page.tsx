@@ -8,7 +8,7 @@ import '../pages.css';
 
 export const metadata: Metadata = {
   title: 'Services',
-  description: 'MR Signage, websites and web apps, WhatsApp automation, n8n workflows, SEO and NFC cards: what each one is for, what it costs to start, and how long it takes.',
+  description: 'Websites and web apps, WhatsApp automation, n8n workflows, SEO, NFC cards and MR Signage: what each one is for, how it is quoted, and how long it takes.',
   alternates: { canonical: '/services' },
 };
 

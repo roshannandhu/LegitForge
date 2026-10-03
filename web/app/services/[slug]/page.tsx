@@ -4,6 +4,11 @@ import { PageHead } from '@/components/pages/page-head';
 import { CtaBand } from '@/components/pages/cta-band';
 import { JsonLd } from '@/components/pages/json-ld';
 import { ServiceDemo } from '@/components/sections/service-demos';
+import { Compare } from '@/components/sections/compare';
+import { Quotation } from '@/components/sections/quotation';
+import { LiveTest } from '@/components/sections/live-test';
+import { HydrateWhenNear } from '@/components/motion/hydrate-when-near';
+import { WEBSITE_FACTS } from '@/lib/content';
 import { ProjectCard } from '@/components/work/project-card';
 import { CheckIcon } from '@/components/ui/icons';
 import { getProjects } from '@/lib/work';
@@ -39,7 +44,7 @@ export default async function ServicePage({ params }: { params: Promise<{ slug: 
   return (
     <>
       <PageHead crumbs={[{ name: 'Services', href: '/services' }, { name: s.name, href: `/services/${s.slug}` }]} title={s.h1} lead={s.lead}>
-        <a className="btn btn-primary" href={wa}>Chat on WhatsApp</a>
+        <a className="btn btn-primary" data-event-location="service" href={wa}>Chat on WhatsApp</a>
         <a className="btn btn-ghost" href="#price">See price and time</a>
       </PageHead>
 
@@ -61,7 +66,7 @@ export default async function ServicePage({ params }: { params: Promise<{ slug: 
         </ol>
       </section>
 
-      <section className="page-block wrap split" aria-labelledby="inc-h">
+      <section className="page-block wrap split" data-service={s.slug} aria-labelledby="inc-h">
         <div>
           <h2 id="inc-h" className="type-h3 block-h">What’s included</h2>
           <ul className="ticks">
@@ -73,10 +78,23 @@ export default async function ServicePage({ params }: { params: Promise<{ slug: 
         </div>
       </section>
 
+      {s.slug === 'website-development' && <>
+        <HydrateWhenNear><Compare facts={WEBSITE_FACTS} /></HydrateWhenNear>
+        <section id="app-example" className="page-block wrap split" data-service={s.slug} aria-labelledby="app-example-h">
+          <div>
+            <h2 id="app-example-h" className="type-h3 block-h">A web app in action</h2>
+            <p>An illustrative dashboard: a booking enters, the records update, and your team sees what needs attention.</p>
+          </div>
+          <div className="page-demo"><ServiceDemo kind="app" /></div>
+        </section>
+        <Quotation />
+      </>}
+      {s.slug === 'whatsapp-automation' && <HydrateWhenNear><LiveTest /></HydrateWhenNear>}
+
       <section id="price" className="page-block wrap" aria-labelledby="price-h">
         <h2 id="price-h" className="type-h3 block-h">Price and time</h2>
         <dl className="facts">
-          <div><dt>Starting price</dt><dd className="num">{s.price}</dd></div>
+          <div><dt>Quote basis</dt><dd className="num">{s.price}</dd></div>
           <div><dt>Typical time</dt><dd className="num">{s.timeline}</dd></div>
         </dl>
         <p className="price-note">

@@ -6,8 +6,8 @@ import { isPh } from './placeholder';
 /** Form options. Kept here, not in content.ts: whatever the
  *  form imports ships to the browser, and content.ts holds every page's copy. */
 export const NEEDS = [
-  'MR Signage (digital signage)', 'Website (static)', 'Website (dynamic)', 'Web app', 'Quotation or warranty system',
-  'WhatsApp automation', 'n8n workflow', 'SEO', 'NFC cards or tags', 'Not sure yet',
+  'Website (static)', 'Website (dynamic)', 'Web app', 'Quotation or warranty system',
+  'WhatsApp automation', 'n8n workflow', 'SEO', 'NFC cards or tags', 'MR Signage (digital signage)', 'Not sure yet',
 ] as const;
 
 /** Fill in the ranges to show the Budget field; [bracketed] ones are left out, and with none

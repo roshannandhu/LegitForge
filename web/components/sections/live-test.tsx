@@ -1,8 +1,7 @@
 'use client';
 
-/** Live test "Test us live" (PLAN §6.5), R1 build: an honest REPLAY of the real system's
- *  steps. §22.2 — ship the scripted demo first, label it as a demo, and swap in the real
- *  bot (Durable Object / polling, §9) once Meta verifies the number. */
+/** Illustrative workflow replay. This animation has no message-processing integration.
+ *  The real bot, hosting, memory, opt-outs and verified messaging remain a separate release. */
 
 import { useEffect, useRef, useState } from 'react';
 import { useMotionEnabled } from '@/components/motion/motion-provider';
@@ -11,11 +10,11 @@ import { waLink } from '@/lib/site';
 import { useCompany } from '@/components/company-context';
 
 const STEPS = [
-  { key: 'received',   label: 'Our server got your message', at: 0.0 },
-  { key: 'understood', label: 'Understood what you need',    at: 1.6 },
-  { key: 'saved',      label: 'Saved your request',          at: 2.3 },
-  { key: 'replied',    label: 'Replied on WhatsApp',         at: 3.4 },
-  { key: 'notified',   label: 'Alerted our team',            at: 4.2 },
+  { key: 'received',   label: 'Sample message received',    at: 0.0 },
+  { key: 'understood', label: 'Example request understood', at: 1.6 },
+  { key: 'saved',      label: 'Example request saved',      at: 2.3 },
+  { key: 'replied',    label: 'Example WhatsApp reply',      at: 3.4 },
+  { key: 'notified',   label: 'Example team alert',         at: 4.2 },
 ] as const;
 
 type Status = 'idle' | 'running' | 'done';
@@ -77,14 +76,14 @@ export function LiveTest() {
   const total = STEPS[STEPS.length - 1].at.toFixed(1);
 
   return (
-    <section id="live-test" data-heat="0.8" className="section">
+    <section id="live-test" data-event-location="service" data-heat="0.8" className="section">
       <div className="wrap live-grid">
         <div className="live-copy">
-          <h2 className="type-h2">Test our WhatsApp bot. Watch it work here.</h2>
+          <h2 className="type-h2">Watch an example WhatsApp workflow.</h2>
           <ol className="live-steps">
-            <li>Tap <strong>Run the demo</strong>. You get a one-time code.</li>
-            <li>In the live version, you send that code to our WhatsApp.</li>
-            <li>Watch the message move through our system on this screen.</li>
+            <li>Tap <strong>Run the demo</strong> to start the example.</li>
+            <li>Watch a sample message get understood, saved and answered.</li>
+            <li>See where your team would receive the request.</li>
           </ol>
 
           <button type="button" className="btn btn-primary" onClick={run} disabled={status === 'running'}>
@@ -93,14 +92,14 @@ export function LiveTest() {
 
           {code && (
             <p className="live-code">
-              Your demo code <span className="num">{code}</span>
+              Example reference <span className="num">{code}</span>
             </p>
           )}
 
           <p className="live-note">
-            <strong>This is a replay</strong> of the steps our real system runs, with real timings.
-            The live test — using your own phone and our real bot — switches on once our WhatsApp
-            number is verified. We use your number only to reply to that test, and you can reply STOP any time.
+            <strong>This is an illustrative demo.</strong> The messages, reference and timings are examples.
+            It runs in this page, sends no WhatsApp message and collects no phone number. Your business
+            workflow and response times depend on the integration we agree with you.
           </p>
         </div>
 
@@ -109,9 +108,9 @@ export function LiveTest() {
             <span className="live-watch-dot" />
             <span ref={watch} className="live-watch-num num">{status === 'idle' ? '0.0' : REPLY_AT.toFixed(1)}</span>
             <span className="live-watch-unit">s</span>
-            <span className="live-watch-label">{status === 'idle' ? 'reply time' : lit >= 4 ? 'replied on WhatsApp' : 'waiting for the reply…'}</span>
+            <span className="live-watch-label">{status === 'idle' ? 'example reply time' : lit >= 4 ? 'example reply sent' : 'waiting for the example reply…'}</span>
           </p>
-          <ol className="live-graph" aria-label="Live test progress">
+          <ol className="live-graph" aria-label="Example workflow progress">
             {STEPS.map((s, i) => {
               const done = i < lit;
               return (
@@ -127,7 +126,7 @@ export function LiveTest() {
 
           {status === 'done' && (
             <div className="live-done">
-              <p>That message took <strong className="num">{total} seconds</strong> from arrival to reply and team alert. Want this for your business?</p>
+              <p>This example runs through the steps in <strong className="num">{total} seconds</strong>. Want a workflow like this for your business?</p>
               <a className="btn btn-ghost" href={waLink(company, 'Hi Legit Forge, I saw the WhatsApp demo and want this for my business.')}>Chat on WhatsApp</a>
             </div>
           )}

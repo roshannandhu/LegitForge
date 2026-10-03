@@ -4,6 +4,8 @@ import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { getEnv } from '@/lib/cf';
 import { GOOGLE_CLIENT_ID } from './google';
+import { authorizedSession } from './session';
+export { SESSION_HOURS, signSession, readSession } from './session';
 
 /** Who may use /admin (PLAN §7.8): Google sign-in (the owner's call, 28 Sep).
  *
@@ -25,35 +27,11 @@ import { GOOGLE_CLIENT_ID } from './google';
 
 export const SESSION_COOKIE = '__Host-lf_admin';
 export const NONCE_COOKIE = '__Host-lf_nonce';
-export const SESSION_HOURS = 12;
 const DEV_ADMIN = 'dev@localhost';
 
 const enc = new TextEncoder(), dec = new TextDecoder();
 const b64u = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 const unb64u = (s: string) => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(s.length / 4) * 4, '=')), (c) => c.charCodeAt(0));
-const hmacKey = (secret: string) =>
-  crypto.subtle.importKey('raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign', 'verify']);
-
-/** The session cookie: base64url JSON { e: email, i: issued, x: expiry, both ms } + "." + its HMAC-SHA256. */
-export async function signSession(email: string, secret: string, now = Date.now()) {
-  const payload = b64u(enc.encode(JSON.stringify({ e: email, i: now, x: now + SESSION_HOURS * 3600_000 })));
-  const sig = new Uint8Array(await crypto.subtle.sign('HMAC', await hmacKey(secret), enc.encode(payload)));
-  return `${payload}.${b64u(sig)}`;
-}
-
-/** A session cookie we signed and that has not expired: its email and when it was issued, else null. */
-export async function readSession(value: string | undefined, secret: string | undefined, now = Date.now()) {
-  if (!value || !secret) return null;
-  const [payload, sig, extra] = value.split('.');
-  if (!payload || !sig || extra !== undefined) return null;
-  try {
-    if (!(await crypto.subtle.verify('HMAC', await hmacKey(secret), unb64u(sig), enc.encode(payload)))) return null;
-    const { e, i, x } = JSON.parse(dec.decode(unb64u(payload))) as { e?: unknown; i?: unknown; x?: unknown };
-    return typeof e === 'string' && typeof x === 'number' && x > now ? { email: e, issued: typeof i === 'number' ? i : 0 } : null;
-  } catch {
-    return null;
-  }
-}
 
 type Jwk = JsonWebKey & { kid: string };
 let certs: { at: number; keys: Jwk[] } | null = null;
@@ -125,12 +103,8 @@ export const adminIdentity = cache(async (): Promise<string | null> => {
     if (bypass === '1' && (host === 'localhost' || host === '127.0.0.1')) return DEV_ADMIN;
   }
 
-  const session = await readSession((await cookies()).get(SESSION_COOKIE)?.value, env?.ADMIN_SESSION_KEY);
-  if (!session || !env?.DB) return null;
-  // "Sign out everywhere" refuses every session issued before it
-  const after = (await env.DB.prepare('SELECT sessions_after FROM admin_security WHERE id = 1').first<number>('sessions_after')) ?? 0;
-  if (session.issued <= after) return null;
-  return (await isAllowed(session.email)) ? session.email : null;
+  if (!env?.DB) return null;
+  return authorizedSession(env.DB, (await cookies()).get(SESSION_COOKIE)?.value, env.ADMIN_SESSION_KEY, await ownerEmails());
 });
 
 /** For pages and Server Actions: anyone not signed in goes to the Google sign-in page. */

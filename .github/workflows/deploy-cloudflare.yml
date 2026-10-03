@@ -1,7 +1,8 @@
 # Deploys web/ on every push to main-exh9xw, or by hand (Actions → Deploy to Cloudflare → Run
 # workflow): the backend Worker (OpenNext), then the frontend Pages project in front of it
 # (legitforge.pages.dev, web/cf-pages/). First run creates D1, R2 and the Pages project itself.
-# Needs two repository secrets: CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID (web/README.md).
+# Checks the built local Worker before any production change. Two repository secrets are needed:
+# CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID (web/README.md).
 # Optional repository variable SITE_URL: the real domain, once it is on the Pages project.
 # The admin is Google sign-in only; its owners are the Worker secret ADMIN_EMAILS (web/README.md "Admin").
 name: Deploy to Cloudflare
@@ -22,7 +23,7 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     defaults:
       run:
         working-directory: web
@@ -31,6 +32,10 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       SITE_URL: ${{ vars.SITE_URL }}
       NEXT_PUBLIC_TURNSTILE_SITE_KEY: ${{ vars.NEXT_PUBLIC_TURNSTILE_SITE_KEY }}
+      TURNSTILE_PAIR_VERIFIED: ${{ vars.TURNSTILE_PAIR_VERIFIED }}
+      NEXT_PUBLIC_SITE_URL: ${{ vars.SITE_URL || 'https://legitforge.pages.dev' }}
+      NEXT_PUBLIC_NOINDEX: ${{ endsWith(vars.SITE_URL, '.workers.dev') && '1' || '' }}
+      BUILD_REVISION: ${{ github.sha }}
     steps:
       - uses: actions/checkout@v4
 
@@ -49,31 +54,86 @@ jobs:
 
       - run: npm ci
 
+      - uses: browser-actions/setup-chrome@v1
+        id: chrome
+
+      - name: Typecheck and backend regression tests
+        run: |
+          npx tsc --noEmit
+          npm run test:backend
+
+      - name: Build the production Worker
+        run: npx opennextjs-cloudflare build
+
+      - name: Local Worker release gate (isolated D1 and R2)
+        env:
+          CHROME: ${{ steps.chrome.outputs.chrome-path }}
+        run: node scripts/preflight.mjs
+
+      - name: Record release identifiers and previous versions
+        run: |
+          mkdir -p .release
+          printf '%s\n' "$BUILD_REVISION" > .release/revision.txt
+          cp .next/BUILD_ID .release/build-id.txt
+          npx wrangler deployments list > .release/prior-worker-deployments.txt || echo 'No previous Worker version recorded; inspect the account before rollback.' >> .release/prior-worker-deployments.txt
+          npx wrangler pages deployment list --project-name legitforge > .release/prior-pages-deployments.txt || echo 'No previous Pages deployment recorded; inspect the account before rollback.' >> .release/prior-pages-deployments.txt
+
       - name: D1, R2 and the site URL
         run: node scripts/cf-setup.mjs
+
+      - name: Record the pre-migration D1 recovery bookmark
+        run: npx wrangler d1 time-travel info legitforge > .release/prior-d1-bookmark.txt
+
+      - name: Verify deployment configuration
+        run: node scripts/check-release-config.mjs
 
       - name: Database migrations
         run: npx wrangler d1 migrations apply legitforge --remote
 
-      - name: Build and deploy
-        run: npm run deploy
+      - name: Deploy the checked Worker
+        run: npx opennextjs-cloudflare deploy
 
       - name: Live data on the new pages
         # The build renders no database data (lib/build-cache.ts). Marking the data tags as changed
         # for this build (OpenNext's D1 tag cache, keyed "<build id>/<tag>") makes the first visit
         # to each page re-render it from D1, so a deploy never hides the admin's projects, team or company details.
-        run: |
-          NOW=$(date +%s)000; B=$(cat .next/BUILD_ID)
-          npx wrangler d1 execute legitforge --remote --command "INSERT INTO revalidations (tag, revalidatedAt, stale, expire) VALUES ('$B/projects', $NOW, $NOW, NULL), ('$B/team', $NOW, $NOW, NULL), ('$B/testimonials', $NOW, $NOW, NULL), ('$B/company', $NOW, $NOW, NULL)"
+        run: node scripts/revalidate-release.mjs
 
       - name: Frontend on Pages
         run: |
-          rm -rf .open-next/pages && cp -r .open-next/assets .open-next/pages
-          cp cf-pages/_worker.js cf-pages/_routes.json .open-next/pages/
+          node scripts/prepare-pages.mjs
           cd cf-pages && npx wrangler pages deploy --branch main --commit-dirty=true
 
       - name: Worker secrets (first run only)
         run: node scripts/cf-setup.mjs --post
+
+      - name: Read-only production smoke
+        env:
+          BASE: ${{ env.NEXT_PUBLIC_SITE_URL }}
+          EXPECTED_REVISION: ${{ github.sha }}
+        run: node scripts/smoke.mjs
+
+      - name: Record the deployed Worker and Pages versions
+        run: |
+          npx wrangler deployments list > .release/current-worker-deployments.txt
+          npx wrangler pages deployment list --project-name legitforge > .release/current-pages-deployments.txt
+
+      - name: Retain release identifiers (no customer data)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ github.sha }}
+          path: |
+            web/.release/revision.txt
+            web/.release/build-id.txt
+            web/.release/prior-worker-deployments.txt
+            web/.release/prior-pages-deployments.txt
+            web/.release/prior-d1-bookmark.txt
+            web/.release/current-worker-deployments.txt
+            web/.release/current-pages-deployments.txt
+          if-no-files-found: ignore
+          include-hidden-files: true
+          retention-days: 30
 
       - name: Live
         run: |

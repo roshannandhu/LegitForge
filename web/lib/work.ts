@@ -62,7 +62,7 @@ export async function projectsFromDb(includeDrafts: boolean): Promise<WorkProjec
   // never at build: the dev bindings would bake the LOCAL test database into production pages
   if (process.env.NEXT_PHASE === 'phase-production-build') return null;
   const db = (await getEnv())?.DB;
-  if (!db) return null;
+  if (!db) throw new Error('Published projects are temporarily unavailable.');
   try {
     const { results } = await db.prepare(
       `SELECT p.*, i.r2_key, i.alt AS cover_alt, i.width, i.height, i.dominant_color
@@ -74,8 +74,8 @@ export async function projectsFromDb(includeDrafts: boolean): Promise<WorkProjec
     ).all<Row>();
     return results.map(toWork);
   } catch (e) {
-    console.error('[work] D1 read failed, showing the placeholders', e);   // e.g. migrations not applied yet
-    return null;
+    console.error('[work] D1 read failed');
+    throw new Error('Published projects are temporarily unavailable.', { cause: e });
   }
 }
 
@@ -85,7 +85,7 @@ const getProjectsCached = unstable_cache(
     return rows && rows.length ? rows : FALLBACK;
   },
   ['work-projects'],
-  { tags: ['projects'] },
+  { tags: ['projects'], revalidate: 60 },
 );
 
 /** During `next build` the placeholders, never D1 or a runtime cache entry (a LOCAL server's test

@@ -9,7 +9,8 @@ import { SmoothScroll } from '@/components/motion/smooth-scroll';
 import { ForgeCanvas } from '@/components/background/forge-canvas';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
-import { NOINDEX, SITE } from '@/lib/site';
+import { NOINDEX, SITE, shownEmail } from '@/lib/site';
+import { Analytics } from '@/components/analytics';
 import { getCompany } from '@/lib/company';
 import { CompanyProvider } from '@/components/company-context';
 import './globals.css';
@@ -91,7 +92,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <MotionProvider>
-            <CompanyProvider value={{ whatsapp: company.whatsapp, whatsappText: company.whatsappText }}>
+            <CompanyProvider value={{ whatsapp: company.whatsapp, whatsappText: company.whatsappText, contactEmail: shownEmail(company) }}>
+              <Analytics />
               <SmoothScroll />
               <ForgeCanvas />
               <Header />

@@ -3,6 +3,18 @@
 The full plan is ../PLAN.md. Read the relevant section before building anything.
 PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory review gates.
 
+## Current owner decisions (3 October 2026)
+- Website/CMS/enquiry fixes only; real WhatsApp/n8n/AI infrastructure remains future work.
+- Compact homepage; detailed illustrative demos live on service/inner pages. Preserve the intro,
+  Anybody font, forge palette and retained motion. Relocation is explicitly authorised.
+- MR Signage is LAST in service lists, pricing/quotation rows, enquiry options and summaries.
+  This supersedes historical MR-first instructions in PLAN §22.3.
+- Custom written quotes after scoping, no invented starting prices/budget bands/client metrics.
+- Describe simulations as illustrative. Never call a scripted stopwatch a measured real reply.
+- Google sessions/allow-list are current admin architecture; never restore Cloudflare Access.
+- Analytics retains only bounded aggregate events for 13 months; no names, phone/message text,
+  IPs or session identifiers. Admin shows the last 30 days plus enquiry-delivery state.
+
 ## Stack
 - Next.js 16 (App Router, TypeScript) on Cloudflare Workers via @opennextjs/cloudflare
 - Tailwind CSS v4; tokens live in app/globals.css — never hard-code hex in components
@@ -54,8 +66,10 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
   /admin/* sends an ENFORCED CSP (next.config.ts adminCsp) and X-Frame-Options: DENY. The dev
   bypass exists only under `next dev` (NODE_ENV check): laptop builds embed .env.local values.
   Deploy: .github/workflows/deploy-cloudflare.yml runs scripts/cf-setup.mjs (D1, R2, site URL),
-  the migrations, `npm run deploy`, marks the data tags changed for the new build ("Live data on
-  the new pages"), the Pages deploy, then cf-setup.mjs --post (HASH_SALT, ADMIN_SESSION_KEY, once).
+  first runs local typecheck/backend/build/Worker/browser and mocked enquiry gates, then
+  the migrations, deploys the checked build, marks the data tags changed for the new build ("Live data on
+  the new pages"), the Pages deploy, then cf-setup.mjs --post (HASH_SALT, ADMIN_SESSION_KEY, once)
+  and a read-only production smoke matching BUILD_REVISION. See README for paired rollback.
   "Add from GitHub" (app/admin/projects/github-add.tsx + projectFromGithubAction): image + repo link →
   draft project; the brief is lib/admin/github.ts repoBrief (GitHub data only, no AI; numbers are
   never invented). The ADMIN'S BROWSER reads public repos (fetchRepoData, browser: true) and sends
@@ -90,6 +104,9 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
 ## Commands
 - npm run dev              local development (port 3000)
 - npm run build            production build
+- npm run test:backend     validation/auth/enquiry route regression tests (local fakes)
+- node scripts/preflight.mjs  checked OpenNext build in isolated local Worker + browser/enquiry gates
+- node scripts/smoke.mjs   GET-only route/revision/admin gate (BASE, EXPECTED_REVISION)
 - npx tsc --noEmit         typecheck
 - npm run check            headless-Chrome gate: §4.8 audit at 375/768/1440 + the team layers.
                            BASE=http://localhost:3300 for a `next start` build. Screenshots: .check/
@@ -105,9 +122,9 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
 - The hero's no-JS / motion-off frame is the finished exploded stack. Each layer's position, tilt
   and scale are CSS variables (--x --y --tilt --s) with server-rendered slot values; GSAP animates
   the same variables, so if you move a slot in lib/teardown.ts, both stay in step.
-- Services: MR Signage (the owner's signage app, TVs and tablets, sold by subscription; kind 'signage',
-  /services/digital-signage) is first everywhere. priceText(p, unset) takes the wording shown while
-  a price is a placeholder ("Monthly plans, quoted per screen" for a subscription).
+- Services: MR Signage (TVs/tablets subscription, kind 'signage', /services/digital-signage)
+  is last everywhere. Custom quotes use truthful scope-first wording; subscription quotes are per
+  screen/month. No fake starting prices or placeholder budget bands.
 - Service demos (DemoPlayer): DEMOS[kind] is the intro (builds the finished frame once), then
   FLOWS[kind] keeps the demo working forever as a repeat:-1 timeline: no reset, no fade (plan F).
   Each cycle ends where the next begins; rotating text uses txt() (keeps React's text node) and
@@ -152,7 +169,8 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
   quirks mode). Neither shows under `next start`; test with `npx wrangler dev` after a build.
 - Share images use Anybody too: assets/og/Anybody-Wide-*.ttf, cut by scripts/og-fonts.py from
   app/fonts/anybody-latin.woff2 (rerun both scripts when copy gains a character).
-- The Worker runs on Workers Free (3 MB compressed limit, ~2.4 MB now). A client component's
+- The prior Worker measured 2799.72 KiB gzip and 23 ms startup. Re-measure each release and
+  verify current account limits/CPU; startup is not request CPU. A client component's
   `import()` of browser-only code (three.js, Rapier, FlipCard) sits inside
   `if (!process.env.NEXT_RUNTIME)` (team.tsx), or the server bundle takes it too (+1.1 MB).
   Measure: `npx opennextjs-cloudflare build && npx wrangler deploy --dry-run --outdir <tmp>`.
@@ -167,8 +185,9 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
 - D1 enforces foreign keys: clear what points at a row before deleting it (lib/admin/db.ts
   deleteProject clears favourites and credits). Image R2 keys are content hashes and can be
   shared by two rows: delete the object only when no row still uses it. One cover per project.
-- A lead is stored before anything else happens to it. Alerts (n8n) run in ctx.waitUntil
-  after the response, so an outage there never loses a lead.
+- A lead is stored before its notification. Alerts run after the response; delivery status must
+  remain visible when n8n is missing/fails. Never retry an outbound alert blindly without receiving
+  workflow idempotency. Mock all enquiry POSTs in browser checks; no real customer/test messages.
 - Copy lives in lib/content.ts (home) and lib/pages.ts (inner pages: services, case studies,
   member bios); pages pass it to client components as props.
   Importing content.ts into a 'use client' file ships all of it to the browser.
@@ -237,5 +256,8 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
   section costs ~240 ms on a lite phone; HydrateWhenNear defers its hydration instead.
 
 ## Before saying a task is done
-- npm run build and npm run check pass (check covers 375, 768 and 1440, both themes, motion on and off).
+- Typecheck, npm run test:backend, OpenNext build, node scripts/preflight.mjs and production
+  read-only smoke pass (browser gate covers 375, 768 and 1440, themes and reduced motion).
+- Deploy Worker → invalidate four tags for .next/BUILD_ID → publish the matching Pages assets.
+  Capture prior Worker/Pages IDs and a pre-migration D1 bookmark; don't deploy an unchecked rebuild.
 - No horizontal overflow at any width; no spacing value outside the 4px scale.

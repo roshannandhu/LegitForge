@@ -23,7 +23,7 @@ export default async function Terms() {
       <p className="type-lead">The plain rules for this website, and how working with us works.</p>
 
       <h2>Using this website</h2>
-      <p>You may read, share and link to this website. Please don’t copy it, scrape it or try to break it. The live WhatsApp test is for trying our system, not for general chat.</p>
+      <p>You may read, share and link to this website. Please don’t copy it, scrape it or try to break it. Interactive demonstrations are illustrative examples; they do not send messages, book appointments or create a contract.</p>
 
       <h2>Quotes</h2>
       <p>Every project starts with a written, fixed quote after a short call. The quote lists exactly what is included. If the scope grows, we tell you and agree a new price <em>before</em> doing the extra work.</p>
@@ -32,7 +32,7 @@ export default async function Terms() {
       <p>Payments follow the schedule written in your quote. No payment is due until you approve a written quote.</p>
 
       <h2>Ownership</h2>
-      <p>When the project is paid, you own it: the code, the domain, the hosting account, your WhatsApp number and every workflow. We keep no hidden licences or lock-ins.</p>
+      <p>Your written quote or service agreement describes the deliverables, ownership, account access and any ongoing services. Third-party software and services retain their own licence terms. MR Signage follows the commercial terms in its written offer.</p>
 
       <h2>Fixes after launch</h2>
       <p>We fix anything that doesn’t work as agreed, free of charge, for 30 days after launch.</p>

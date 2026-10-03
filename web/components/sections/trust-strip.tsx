@@ -13,7 +13,7 @@ import { TRUST_INTRO, TRUST_LINES, TRUST_TITLE } from '@/lib/content';
 const ICONS: Record<(typeof TRUST_LINES)[number]['icon'], React.ReactNode> = {
   lock: (
     <span className="ti ti-lock">
-      <span className="ti-price num">₹45,800</span>
+      <span className="ti-price">Fixed quote</span>
       <svg viewBox="0 0 24 28" width="26" height="30">
         <path className="ti-shackle" d="M7 12V8a5 5 0 0 1 10 0v4" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
         <rect x="3" y="12" width="18" height="14" rx="3" fill="currentColor" />
@@ -55,12 +55,12 @@ const ICONS: Record<(typeof TRUST_LINES)[number]['icon'], React.ReactNode> = {
   ),
 };
 
-export function TrustStrip() {
+export function TrustStrip({ compact = false }: { compact?: boolean }) {
   return (
-    <section className="trust wrap" aria-labelledby="trust-h">
+    <section id="promises" className={`trust wrap${compact ? ' trust-compact' : ''}`} data-heat="0.35" aria-labelledby="trust-h">
       <div className="trust-head">
         <h2 id="trust-h" className="type-h2">{TRUST_TITLE}</h2>
-        <p className="trust-intro">{TRUST_INTRO}</p>
+        {!compact && <p className="trust-intro">{TRUST_INTRO}</p>}
       </div>
       <ul className="trust-list">
         {TRUST_LINES.map((t, i) => (

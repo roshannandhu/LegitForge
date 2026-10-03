@@ -1,16 +1,26 @@
 import { requireAdmin } from '@/lib/admin/auth';
-import { LEAD_STATUSES, listLeads, type LeadStatus } from '@/lib/admin/db';
+import { LEAD_STATUSES, type LeadStatus } from '@/lib/admin/db';
+import { leadPage } from '@/lib/admin/lead-delivery';
+import { getEnv } from '@/lib/cf';
+import { alertsConfigured } from '@/lib/server/lead-delivery';
+import { markLeadContactedAction, retryLeadAlertAction } from './delivery-actions';
 import { deleteLeadAction, leadStatusAction } from '../actions';
 import { ConfirmSubmit } from '../ui';
 
-export default async function AdminLeads({ searchParams }: { searchParams: Promise<{ status?: string }> }) {
+export default async function AdminLeads({ searchParams }: { searchParams: Promise<{ status?: string; page?: string }> }) {
   await requireAdmin();                            // each page checks too: a layout can be skipped
-  const q = (await searchParams).status;
+  const params = await searchParams;
+  const q = params.status;
   const status = LEAD_STATUSES.includes(q as LeadStatus) ? (q as LeadStatus) : undefined;
-  const leads = await listLeads(status);
+  const requestedPage = Number(params.page);
+  const { leads, page, pages, total } = await leadPage(status, Number.isSafeInteger(requestedPage) ? requestedPage : 1);
+  const notifications = alertsConfigured(await getEnv());
+  const pageUrl = (n: number) => `/admin/leads?${new URLSearchParams({ ...(status ? { status } : {}), page: String(n) })}`;
   return (
     <>
       <h1 className="type-h2">Leads</h1>
+      <p className="muted">{total} saved enquiries. Alert delivery is separate from enquiry storage.</p>
+      {!notifications && <p role="status">Alerts not configured. Review new enquiries here; saved enquiries remain available.</p>}
       <div className="admin-actions admin-lead admin-leads-filter">
         <a className="btn btn-ghost btn-sm" href="/admin/leads" aria-current={!status ? 'page' : undefined}>All</a>
         {LEAD_STATUSES.map((s) => <a key={s} className="btn btn-ghost btn-sm" href={`/admin/leads?status=${s}`} aria-current={status === s ? 'page' : undefined}>{s}</a>)}
@@ -21,7 +31,7 @@ export default async function AdminLeads({ searchParams }: { searchParams: Promi
       ) : (
         <div className="admin-table-wrap">
           <table className="admin-table">
-            <thead><tr><th>Received</th><th>Who</th><th>Service and budget</th><th>Message</th><th>Status</th></tr></thead>
+            <thead><tr><th>Received</th><th>Who</th><th>Service and budget</th><th>Message</th><th>Status</th><th>Notification and contact</th></tr></thead>
             <tbody>
               {leads.map((l) => (
                 <tr key={l.id}>
@@ -43,12 +53,24 @@ export default async function AdminLeads({ searchParams }: { searchParams: Promi
                       <button className="btn btn-ghost btn-sm">Save</button>
                     </form>
                   </td>
+                  <td>
+                    <span>{l.delivery_status === 'delivered' ? 'Delivered' : l.delivery_status === 'dead' ? 'Failed' : l.delivery_status === 'pending' ? 'Pending' : 'Not queued'}</span>
+                    {l.attempts != null && <><br /><span className="muted">{l.attempts} attempts{l.last_error ? ` · ${l.last_error}` : ''}</span></>}
+                    {notifications && l.delivery_status !== 'delivered' && <form action={retryLeadAlertAction.bind(null, l.id)} className="admin-inline"><button className="btn btn-ghost btn-sm">Retry alert</button></form>}
+                    <p className="muted">Last contact: {l.last_contact_at?.slice(0, 16) ?? 'Not recorded'}</p>
+                    <form action={markLeadContactedAction.bind(null, l.id)} className="admin-inline"><button className="btn btn-ghost btn-sm">Record contact today</button></form>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       )}
+      {pages > 1 && <nav className="admin-actions" aria-label="Enquiry pages">
+        {page > 1 && <a className="btn btn-ghost btn-sm" href={pageUrl(page - 1)}>Previous</a>}
+        <span>Page {page} of {pages}</span>
+        {page < pages && <a className="btn btn-ghost btn-sm" href={pageUrl(page + 1)}>Next</a>}
+      </nav>}
     </>
   );
 }

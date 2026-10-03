@@ -48,8 +48,8 @@ export interface Company {
 }
 
 export const COMPANY_DEFAULTS: Company = {
-  email: 'hello@legitforge.example',          // TODO: set the real one in Admin → Company
-  showEmail: true,
+  email: '',                               // Publish only an owner-configured address.
+  showEmail: false,
   whatsapp: '',
   whatsappText: "Hi Legit Forge, I'd like to talk about a project.",
   legalName: '',

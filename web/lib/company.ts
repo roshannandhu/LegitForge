@@ -31,17 +31,17 @@ export function normalizeCompany(raw: unknown): Company {
 export async function readCompany(): Promise<Company | null> {
   if (process.env.NEXT_PHASE === 'phase-production-build') return null;   // never bake local data into a build
   const db = (await getEnv())?.DB;
-  if (!db) return null;
+  if (!db) throw new Error('Company details are temporarily unavailable.');
   try {
     const row = await db.prepare('SELECT data FROM company WHERE id = 1').first<{ data: string }>();
     return row ? normalizeCompany(JSON.parse(row.data)) : null;
   } catch (e) {
-    console.error('[company] D1 read failed, using the defaults', e);   // e.g. migration 0008 not applied yet
-    return null;
+    console.error('[company] D1 read failed');
+    throw new Error('Company details are temporarily unavailable.', { cause: e });
   }
 }
 
-const getCompanyCached = unstable_cache(async () => (await readCompany()) ?? COMPANY_DEFAULTS, ['company'], { tags: ['company'] });
+const getCompanyCached = unstable_cache(async () => (await readCompany()) ?? COMPANY_DEFAULTS, ['company'], { tags: ['company'], revalidate: 60 });
 
 /** For pages and layouts. React's cache: one read per request, however many components ask. */
 export const getCompany = cache((): Promise<Company> =>

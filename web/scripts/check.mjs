@@ -49,7 +49,7 @@ const RUNS = [
 ];
 
 /** Runs in the page. The §4.8 gate, measured rather than eyeballed. */
-function audit(PH) {
+function audit() {
   const vw = innerWidth;
   // a clipped marquee; accordion panels clip their details; the compare frame clips its static half (slid by transform)
   const skip = '.projects, .lanyards, .stage-fit, .hp, .skip-link, .phone-menu, .sr-only, .team-canvas, .intro, .logoloop, .ag, .compare-static';
@@ -78,11 +78,23 @@ function audit(PH) {
     const inline = el.tagName === 'A' && el.closest('p, li, td');     // WCAG 2.5.8 inline exception
     if (r.height < 44 && !inline) tiny.push(`${name(el)} h=${Math.round(r.height)}`);
   });
-  const ids = ['top', 'services', 'quotation', 'compare', 'live-test', 'process', ...(PH ? ['work', 'team'] : []), 'proof', 'pricing', 'contact'];
+  const ids = ['top', 'promises', 'services', 'contact', 'process', 'pricing'];
+  const before = (a, b) => !!(document.getElementById(a)?.compareDocumentPosition(document.getElementById(b)) & Node.DOCUMENT_POSITION_FOLLOWING);
+  const topology = location.pathname === '/' ? [
+    ...ids.slice(1).map((id, i) => !before(ids[i], id) && `${id} is out of order`),
+    document.getElementById('work') && !before('work', 'services') && 'work must precede services',
+    document.getElementById('proof') && !before('proof', 'services') && 'testimonials must precede services',
+    ['quotation', 'compare', 'live-test'].some((id) => document.getElementById(id)) && 'detailed demos still on home',
+    document.querySelector('.cleave')?.dataset.pin !== 'off' && 'trust Cleave still allows pinning',
+    document.querySelectorAll('#cta-h').length !== 1 && 'closing CTA heading must appear once',
+    [...document.querySelectorAll('.service-ledger > li')].map((li) => li.dataset.service).join(',') !== 'website,app,quote,whatsapp,n8n,seo,nfc,signage' && 'home service order changed',
+    document.querySelector('#proof .engraved-grid') && 'duplicate promises in proof section',
+  ].filter(Boolean) : [];
   return {
     vw,
     overflow: Math.max(0, Math.round(document.documentElement.scrollWidth - vw)),
     missing: ids.filter((i) => !document.getElementById(i)),
+    topology,
     escapees: escapees.slice(0, 8),
     // SEO basics (plan B): one h1, a canonical, and titles and descriptions search shows in full
     seo: {
@@ -97,7 +109,7 @@ function audit(PH) {
 }
 
 // Every public page (the demo project and member only exist with SHOW_PLACEHOLDERS=1)
-const PUBLIC = ['/', '/services', '/services/website-development', '/services/seo', '/work', ...(PH ? ['/work/project-one'] : []),
+const PUBLIC = ['/', '/services', '/services/website-development', '/services/whatsapp-automation', '/services/n8n-automation', '/services/seo', '/services/nfc', '/services/digital-signage', '/work', ...(PH ? ['/work/project-one'] : []),
   '/team', ...(PH ? ['/team/member-one'] : []), '/contact', '/blog', '/blog/static-or-dynamic-website', '/privacy', '/terms'];
 
 const failures = [];
@@ -133,6 +145,10 @@ if (!only || only === 'seo') {
   bad.length ? fail('source', `dynamicParams = false in ${bad.join(', ')} (404 after a data change)`) : pass('no page sets dynamicParams = false');
 }
 const settle = Number(process.env.SETTLE ?? 2200);
+// CMS state, not a placeholder flag, determines whether home should include work and team.
+const [workHtml, teamHtml] = await Promise.all(['/work', '/team'].map(async (path) => (await fetch(BASE + path)).text()));
+const expectedWork = /<(?:li|div)\b[^>]*\bdata-project-card(?:\s|=|>)/.test(workHtml);
+const expectedTeam = /class="member-list"/.test(teamHtml);
 
 for (const run of RUNS.filter((r) => !only || r.name.includes(only))) {
   console.log(`\n${run.name}  (${run.viewport.join('×')}, ${run.scheme}, motion ${run.motion === 'reduce' ? 'off' : 'on'})`);
@@ -142,6 +158,7 @@ for (const run of RUNS.filter((r) => !only || r.name.includes(only))) {
     deviceScaleFactor: 1,
   });
   await ctx.addInitScript(LITE_INIT, LITE);   // the full site; LITE=1 npm run check audits lite mode
+  if (run.motion === 'reduce') await ctx.addInitScript(() => localStorage.setItem('lf-motion', 'on'));
   const page = await ctx.newPage();
   const errors = [];
   page.on('console', (m) => { if (m.type() === 'error' || (m.type() === 'warning' && !isVendor(m.text()))) errors.push(`${m.type()}: ${m.text().slice(0, 200)}`); });
@@ -156,14 +173,18 @@ for (const run of RUNS.filter((r) => !only || r.name.includes(only))) {
   const ended = await page.waitForFunction(() => !document.documentElement.dataset.intro, null, { timeout: 4000 }).then(() => true, () => false);
   ended ? pass('intro ended by itself') : fail(run.name, 'intro overlay still up after 4 s');
   await page.screenshot({ path: `${OUT}/${run.name}-hero.png` });
+  const state = await page.evaluate(() => ({ work: !!document.getElementById('work'), team: !!document.getElementById('team'), motion: document.documentElement.dataset.motion }));
+  state.work === expectedWork && state.team === expectedTeam ? pass('work and team match published CMS data') : fail(run.name, `home work/team ${state.work}/${state.team}; CMS ${expectedWork}/${expectedTeam}`);
+  if (run.motion === 'reduce') state.motion === 'off' ? pass('device reduced motion overrides saved On preference') : fail(run.name, 'saved On preference overrode device reduced motion');
 
   if (run.audit) {
-    const a = await page.evaluate(audit, PH);
+    const a = await page.evaluate(audit);
     a.overflow ? fail(run.name, `horizontal overflow ${a.overflow}px`) : pass('no horizontal overflow');
     // A phone widens its layout viewport to fit anything that escapes, and innerWidth follows,
     // so the overflow above reads 0. Compare with the device width instead.
     a.vw > run.viewport[0] ? fail(run.name, `layout viewport widened to ${a.vw}px`) : pass('layout viewport = device width');
-    a.missing.length ? fail(run.name, `missing sections: ${a.missing}`) : pass(`all ${PH ? 11 : 9} sections present`);
+    a.missing.length ? fail(run.name, `missing sections: ${a.missing}`) : pass('all required home sections present');
+    a.topology.length ? fail(run.name, `homepage topology: ${a.topology.join('; ')}`) : pass('proof and contact early; demos on service pages; MR Signage last');
     a.escapees.length ? fail(run.name, `elements outside viewport: ${a.escapees.join(', ')}`) : pass('nothing escapes the viewport');
     const seoBad = seoProblems(a.seo);
     seoBad.length ? fail(run.name, `SEO: ${seoBad.join('; ')}`) : pass(`SEO basics (h1, canonical, title ${a.seo.title.length}, description ${a.seo.desc.length})`);
@@ -192,7 +213,7 @@ for (const run of RUNS.filter((r) => !only || r.name.includes(only))) {
   }
 
   // Team (only when there are people to show): scroll near, wait for the expected layer
-  if (PH) {
+  if (state.team) {
   await page.evaluate(() => document.getElementById('team').scrollIntoView({ block: 'start' }));
   const stage = page.locator('.team-stage');
   try {
@@ -319,8 +340,13 @@ if (!only || only === 'flow') {
   await ctx.addInitScript(() => localStorage.setItem('lf-intro-seen', '1'));
   await ctx.addInitScript(LITE_INIT, LITE);
   const page = await ctx.newPage();
-  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
-  for (const kind of ['signage', 'website', 'app', 'whatsapp', 'n8n', 'seo', 'nfc', 'quote']) {
+  const demoRoutes = {
+    website: '/services/website-development', app: '/services/website-development', quote: '/services/website-development',
+    whatsapp: '/services/whatsapp-automation', n8n: '/services/n8n-automation', seo: '/services/seo', nfc: '/services/nfc', signage: '/services/digital-signage',
+  };
+  let currentRoute = '';
+  for (const [kind, route] of Object.entries(demoRoutes)) {
+    if (route !== currentRoute) { await page.goto(BASE + route, { waitUntil: 'networkidle' }); currentRoute = route; }
     const demo = page.locator(`.demo-player:has(.demo-${kind})`).first();
     await demo.scrollIntoViewIfNeeded();
     await page.evaluate((k) => {
@@ -335,6 +361,20 @@ if (!only || only === 'flow') {
     const minOp = await page.evaluate(() => window.__minOp);
     shots.size >= 4 ? pass(`${kind}: keeps changing (${shots.size}/8 distinct frames)`) : fail('flow', `${kind}: only ${shots.size}/8 distinct frames after the intro`);
     minOp > 0.9 ? pass(`${kind}: never fades out to restart`) : fail('flow', `${kind}: the box faded to opacity ${minOp}`);
+  }
+  await ctx.close();
+}
+
+// Old demo bookmarks keep opening the relocated content, with their section anchor intact.
+if (!only || only === 'anchors') {
+  console.log('\nlegacy demo links');
+  const ctx = await browser.newContext({ reducedMotion: 'reduce' });
+  const page = await ctx.newPage();
+  for (const [hash, route] of [['quotation', '/services/website-development'], ['compare', '/services/website-development'], ['live-test', '/services/whatsapp-automation']]) {
+    await page.goto(`${BASE}/#${hash}`, { waitUntil: 'networkidle' });
+    await page.waitForURL(`${BASE}${route}#${hash}`);
+    await page.waitForSelector(`#${hash}`);
+    pass(`#${hash} opens ${route}`);
   }
   await ctx.close();
 }
@@ -364,9 +404,10 @@ if (!only || only === 'glyphs') {
 if (!only || only === 'admin') {
   console.log('\nadmin access');
   const { networkInterfaces } = await import('node:os');
-  const ip = Object.values(networkInterfaces()).flat().find((n) => n && n.family === 'IPv4' && !n.internal)?.address;
-  const locked = ip ? BASE.replace(/localhost|127\.0\.0\.1/, ip) : null;
-  if (!locked || locked === BASE) console.log('  · skipped: no network address to test from (the bypass allows localhost)');
+  const ip = Object.values(networkInterfaces()).flat().find((n) => n && n.family === 'IPv4' && !n.internal && !n.address.startsWith('169.254.'))?.address;
+  const loopback = /localhost|127\.0\.0\.1/.test(new URL(BASE).hostname);
+  const locked = process.env.PRODUCTION_CHECK === '1' || !loopback ? BASE : ip ? BASE.replace(/localhost|127\.0\.0\.1/, ip) : null;
+  if (!locked) console.log('  · skipped: no network address to test the development bypass');
   else {
     const toSignIn = async (path, init = {}) => {
       const r = await fetch(locked + path, { ...init, redirect: 'manual' });
@@ -408,7 +449,7 @@ if (!only || only === 'admin') {
 }
 
 // Inner pages (PLAN §7): the same §4.8 audit at every viewport, both themes on phone
-const PAGES = ['/services', '/services/digital-signage', '/services/website-development', '/services/whatsapp-automation', '/services/n8n-automation', '/services/seo', '/services/nfc',
+const PAGES = ['/services', '/services/website-development', '/services/whatsapp-automation', '/services/n8n-automation', '/services/seo', '/services/nfc', '/services/digital-signage',
   '/work', ...(PH ? ['/work/project-one'] : []), '/team', ...(PH ? ['/team/member-one'] : []), '/contact', '/privacy', '/terms', '/blog', '/blog/static-or-dynamic-website'];
 const PAGE_RUNS = RUNS.filter((r) => r.audit || r.name === 'phone-light');
 if (!process.env.SKIP_PAGES) for (const run of PAGE_RUNS.filter((r) => !only || r.name.includes(only))) {

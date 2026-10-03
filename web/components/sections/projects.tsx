@@ -34,8 +34,8 @@ export async function Projects() {
     <section id="work" data-heat="1" className="section">
       <div className="wrap">
         <header className="section-head">
-          <h2 className="type-h2">Work that’s live right now</h2>
-          <p className="type-lead">Real projects, each with the number that mattered to the client.</p>
+          <h2 className="type-h2">Selected work</h2>
+          <p className="type-lead">See what we built, the problem it solved, and the details behind it.</p>
         </header>
 
         <WorkGallery items={items} />

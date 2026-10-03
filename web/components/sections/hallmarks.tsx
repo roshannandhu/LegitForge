@@ -9,9 +9,10 @@ import { SnapToGrid } from '@/components/motion/snap-to-grid';
  *  Testimonials render only once a client has given written permission; until then the
  *  heading promises only what we can back — our own commitments. Each quote carries a punched
  *  hallmark with the client's business and the month (plan D #10), struck in once. */
-export async function Hallmarks() {
+export async function Hallmarks({ testimonialsOnly = false }: { testimonialsOnly?: boolean }) {
   const testimonials = await getTestimonials();
   const hasTestimonials = testimonials.length > 0;
+  if (testimonialsOnly && !hasTestimonials) return null;
 
   return (
     <section id="proof" data-heat="0.45" className="section">
@@ -32,7 +33,7 @@ export async function Hallmarks() {
           </PunchIn>
         )}
 
-        <div className="engraved-grid">
+        {!testimonialsOnly && <div className="engraved-grid">
           <div className="engraved" data-snap>
             <h3 className="engraved-h">Maker’s promise</h3>
             <ul className="engraved-list">{MAKERS_PROMISE.map((l) => <li key={l}>{l}</li>)}</ul>
@@ -41,14 +42,14 @@ export async function Hallmarks() {
             <h3 className="engraved-h">What we won’t do</h3>
             <ul className="engraved-list">{WONT_DO.map((l) => <li key={l}>{l}</li>)}</ul>
           </div>
-        </div>
+        </div>}
 
-        <p className="proof-speed">
+        {!testimonialsOnly && <p className="proof-speed">
           We sell fast websites, so check ours:{' '}
           <a className="text-link" href={`https://pagespeed.web.dev/report?url=${encodeURIComponent(SITE.url)}`} target="_blank" rel="noopener">
             test this page’s speed
           </a>.
-        </p>
+        </p>}
       </div>
       <SnapToGrid />
     </section>

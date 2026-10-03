@@ -5,7 +5,7 @@ import { useMotionSwitch } from '@/components/motion/motion-provider';
 
 /** "Animations: On / Off" (PLAN §5.5, §18.5). A real switch, remembered per browser. */
 export function MotionSwitch() {
-  const { enabled, setEnabled } = useMotionSwitch();
+  const { enabled, systemReduced, setEnabled } = useMotionSwitch();
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
@@ -15,6 +15,8 @@ export function MotionSwitch() {
       role="switch"
       aria-checked={mounted ? enabled : undefined}
       className="motion-switch"
+      disabled={systemReduced}
+      title={systemReduced ? 'Animations are off because your device asks for reduced motion.' : undefined}
       onClick={() => setEnabled(!enabled)}
     >
       <span className="motion-switch-label">Animations</span>

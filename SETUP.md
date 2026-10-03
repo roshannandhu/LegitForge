@@ -8,7 +8,29 @@ full plan for the WhatsApp automation system, SEO and launch. The website itself
 encrypted secret stores (GitHub Actions secrets → Cloudflare). This repository is not a safe place
 for them. If a secret is ever pasted into a chat, a file or a screenshot, rotate it.
 
-Last updated: 29 September 2026.
+Last reviewed: 3 October 2026. Current website decisions in `PLAN.md` supersede older release
+instructions below. Account IDs record setup context; they do not prove a service is connected.
+
+## Current website release and unverified account setup
+
+The studio site has been deployed at `https://legitforge.pages.dev`: Pages fronts the
+`legitforge-web` OpenNext Worker, D1 and R2. The last production browser check passed; a local
+admin check was skipped, so it is not evidence of a successful admin sign-in test. Local Wrangler
+OAuth has worked through the LegitForge account's membership in the owner's Cloudflare account.
+The last inspected GitHub deploy was missing its Cloudflare API token; repair the repository
+secrets separately and never copy credentials into this document.
+
+Admin authentication now uses Google ID-token verification, signed sessions and an allow-list,
+not Cloudflare Access. Business contact/legal/social details are owned in Admin → Company.
+The current site uses a compact homepage, deeper inner-page demonstrations, custom written quotes
+and MR Signage last. See `web/README.md` for the checked Worker → cache tags → Pages release order.
+
+Still to verify in the account: custom domain, Google authorised origins for any new domain,
+production Turnstile key pair, Web Analytics/Search Console/Business Profile, D1 recovery
+retention, admin owner access, current company details and optional Browser Rendering.
+The real WhatsApp webhook/bot, n8n deployment, team notifications and AI system below remain
+future work. Website enquiry notification is optional and its missing setup must remain visible;
+storing an enquiry successfully is not proof that somebody received an alert.
 
 ---
 
@@ -97,8 +119,8 @@ Keep a copy of every value in a password manager (for example Bitwarden) under l
 - [ ] Supabase connector added at claude.ai/customize/connectors
 - [ ] n8n: choose Cloud or VPS
 - [ ] Telegram team group and alert bot
-- [ ] Website deployed on Cloudflare (workers.dev first, then the real domain)
-- [ ] Business details filled in `web/lib/site.ts`
+- [x] Website deployed on Cloudflare Pages → OpenNext Worker
+- [ ] Business details and WhatsApp destination reviewed in Admin → Company (owners only)
 
 ---
 
@@ -106,10 +128,10 @@ Keep a copy of every value in a password manager (for example Bitwarden) under l
 
 ## 1. Where the project stands
 
-The website (`web/`) is built: every home section, the service pages (websites and web apps,
+The website (`web/`) is built: the homepage overview, service pages (websites and web apps,
 WhatsApp automation, n8n, SEO, NFC, quotation and warranty system), work and case studies, team
-with 3D lanyard cards, blog, contact, legal pages and the admin. Lighthouse scores 100 for SEO,
-accessibility and best practices, and it is tuned for 2 GB phones.
+with 3D lanyard cards, blog, contact, legal pages and the admin. Earlier Lighthouse/device results
+are recorded in PLAN.md as historical measurements; rerun the release checks after changes.
 
 What does **not** exist yet is the product the site sells: the WhatsApp webhook, the real bot and
 the n8n workflows. The database tables for it are ready (`wa_processed`, `wa_optouts`,
@@ -123,12 +145,12 @@ is live.
    business number is printed on the site, cards, NFC tags and Google Business Profile, and we sell
    WhatsApp automation to clients, so a ban is not a risk we can take. Unofficial tools are only for
    experiments on a spare SIM.
-2. **Meta AI policy (since 15 January 2026).** General-purpose AI assistants are not allowed on the
-   WhatsApp Business Platform. Business-specific bots are. Our AI talks only about Legit Forge
-   work and hands everything else to a person.
-3. **Pricing (from 1 October 2026).** Incoming messages are free. Free-form replies inside the
-   24-hour window are free for the first 1,000 a month per number, then billed. Templates are
-   billed. So replies are short and complete, and team alerts go through Telegram, not WhatsApp.
+2. **Business scope.** Our proposed AI talks only about Legit Forge work and hands everything else
+   to a person. Verify the current official Meta AI/use-case terms before building or quoting a bot;
+   earlier dates and policy summaries in PLAN.md are historical research, not deployment approval.
+3. **Pricing.** Verify Meta's current official rate cards and any gateway charges before quoting
+   clients. No date-based allowance or fee claim is assumed here. Keep replies short and complete;
+   the proposed internal alert channel is Telegram and still needs setup.
 4. **24-hour window.** If a person answers more than 24 hours after the client's last message, only
    an approved template can be sent.
 5. **Verification is not a blocker.** The bot is built on the free test number. An unverified
@@ -274,8 +296,9 @@ WhatsApp automation and n8n services. Build it for Legit Forge first, then write
 The site already has per-page titles and descriptions, canonicals, `sitemap.xml`, `robots.txt`,
 structured data, share images and `llms.txt`. What remains is outside the code:
 
-0. **Real domain first.** On `*.workers.dev` the site is deliberately noindex. Add the domain to the
-   Worker, set the `SITE_URL` repository variable and re-run the deploy (`web/README.md`).
+0. **Canonical domain.** The current address is `legitforge.pages.dev`. For a custom domain, add
+    it to the Pages project, set the `SITE_URL` repository variable, add its Google authorised
+    origin, and re-run the checked release (`web/README.md`).
 1. **Google Search Console:** add a **Domain** property, verify it with the TXT record in Cloudflare
    DNS, submit `sitemap.xml`, request indexing for the home page.
 2. **Google Business Profile:** primary category "Website designer" plus secondary categories,
@@ -284,7 +307,7 @@ structured data, share images and `llms.txt`. What remains is outside the code:
 3. **Bing Webmaster Tools:** import from Search Console (submits the sitemap too).
 4. **Analytics:** the site is cookie-less by design (Cloudflare Web Analytics). Google Analytics 4
    would need a code change and a privacy policy update.
-5. **Fill the business details** in `web/lib/site.ts` (legal name, city, country, email, WhatsApp
+5. **Fill the business details** in owner-only Admin → Company (legal name, city, country, email, WhatsApp
    number, social links) so the footer, legal pages and structured data are complete.
 6. **Check:** Rich Results Test on the home, a service and a case study; share previews on WhatsApp
    and LinkedIn; PageSpeed Insights.
@@ -296,6 +319,7 @@ structured data, share images and `llms.txt`. What remains is outside the code:
 3. Submit Meta business verification with the Udyam certificate.
 4. Decide n8n Cloud or VPS.
 5. Create the Telegram group and alert bot.
-6. Deploy the site on Cloudflare (workers.dev first).
+6. Verify the current website deployment, business details and external account setup using the
+   runbook; keep GitHub credential repair distinct from local OAuth deployment.
 7. Connect the Supabase connector at claude.ai/customize/connectors and start a new session.
 8. Build Phase 1: webhook, button bot, lead saving, Telegram alert, secrets in the deploy workflow.

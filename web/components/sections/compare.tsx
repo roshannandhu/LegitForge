@@ -125,7 +125,7 @@ export function Compare({ facts }: { facts: { static: Fact; dynamic: Fact } }) {
     : 'Hi Legit Forge, should my site be static or dynamic?';
 
   return (
-    <section id="compare" data-heat="0.55" className="section">
+    <section id="compare" data-event-location="service" data-heat="0.55" className="section">
       <div className="wrap">
         <header className="section-head">
           <h2 className="type-h2">Static or dynamic? Drag to compare.</h2>

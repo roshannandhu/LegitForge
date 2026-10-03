@@ -28,16 +28,18 @@ export default async function Privacy() {
       <h2>What we collect</h2>
       <ul>
         <li><strong>The contact form:</strong> your name, WhatsApp number, what you need, an optional budget and message, and your consent to be contacted on WhatsApp.</li>
-        <li><strong>WhatsApp conversations:</strong> your number and the messages you send us.</li>
-        <li><strong>Site analytics:</strong> anonymous page views through Cloudflare Web Analytics, which uses no cookies and stores no personal data.</li>
+        <li><strong>WhatsApp conversations:</strong> your number and messages when you choose to contact us through WhatsApp. The illustrative website demonstrations send no messages.</li>
+        <li><strong>Site measurement:</strong> counts of WhatsApp-link clicks, service and project opens, and confirmed form submissions, with public service/project labels, time and country when available. These events contain no names, phone numbers, messages or raw IP addresses; we create no visitor profiles or analytics cookies.</li>
+        <li><strong>Abuse prevention:</strong> short-lived keyed identifiers and submission receipts prevent repeated or excessive enquiries. Human verification is used when configured.</li>
+        <li><strong>Administration:</strong> administrator email addresses and sign-in security records protect access to the private dashboard.</li>
       </ul>
 
       <h2>Who processes it</h2>
       <ul>
         <li><strong>Cloudflare</strong> hosts this website and our database.</li>
-        <li><strong>Meta</strong> carries WhatsApp messages.</li>
-        <li><strong>Our n8n host</strong> runs the automations that route your request to us.</li>
-        <li><strong>Our CRM</strong> keeps track of your enquiry.</li>
+        <li><strong>Meta</strong> carries messages you choose to send through WhatsApp.</li>
+        <li><strong>Google</strong> verifies administrator sign-ins.</li>
+        <li><strong>n8n and Telegram</strong> receive enquiry alerts only when that delivery integration is configured. Enquiries remain in our database if alerts are unavailable or fail.</li>
       </ul>
 
       <h2>Why</h2>
@@ -47,17 +49,16 @@ export default async function Privacy() {
       <table className="legal-table">
         <thead><tr><th scope="col">Data</th><th scope="col">Kept for</th></tr></thead>
         <tbody>
-          <tr><th scope="row">Enquiries (leads)</th><td>Until we no longer need them to answer or follow up your enquiry, then deleted</td></tr>
-          <tr><th scope="row">Live-test sessions</th><td>24 hours</td></tr>
-          <tr><th scope="row">Rate-limit records</th><td>24 hours</td></tr>
-          <tr><th scope="row">Analytics</th><td>13 months, with no personal data</td></tr>
-          <tr><th scope="row">IP addresses and phone numbers in logs</th><td>Never stored in raw form</td></tr>
+          <tr><th scope="row">Enquiries and alert delivery records</th><td>Reviewed and manually deleted when no longer needed to answer or follow up the enquiry</td></tr>
+          <tr><th scope="row">Submission receipts and rate-limit records</th><td>24 hours, then removed by the scheduled cleanup</td></tr>
+          <tr><th scope="row">Site events</th><td>13 months, then removed by the scheduled cleanup</td></tr>
+          <tr><th scope="row">Administrator sign-in records</th><td>90 days</td></tr>
         </tbody>
       </table>
 
       <h2>Your choices</h2>
       <ul>
-        <li><strong>Stop WhatsApp messages:</strong> reply <strong>STOP</strong> at any time. Reply START to resume.</li>
+        <li><strong>Stop follow-up messages:</strong> tell us in the conversation that you do not want further messages.</li>
         <li><strong>See or delete your data:</strong> {email ? 'email ' : ''}{reach} and we will do it without undue delay.</li>
       </ul>
 

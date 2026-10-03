@@ -47,6 +47,7 @@ const adminCsp = [
 ].join('; ');
 
 const nextConfig: NextConfig = {
+  env: { BUILD_REVISION: process.env.BUILD_REVISION || 'unknown' },
   // CSS ships inside the HTML: no render-blocking stylesheet requests on first paint (PSI:
   // ~650 ms on slow 4G mobile). Most visitors are first-time, so a separate cache helps little.
   experimental: { inlineCss: true },

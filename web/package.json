@@ -12,7 +12,8 @@
     "upload": "opennextjs-cloudflare build && opennextjs-cloudflare upload",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv --include-runtime=false cloudflare-env.d.ts",
     "db:migrate:local": "wrangler d1 migrations apply legitforge --local",
-    "db:migrate:remote": "wrangler d1 migrations apply legitforge --remote"
+    "db:migrate:remote": "wrangler d1 migrations apply legitforge --remote",
+    "test:backend": "node --import ./tests/runtime.mjs --import tsx --test tests/*.test.ts"
   },
   "dependencies": {
     "@cloudflare/puppeteer": "^1.4.0",
@@ -42,8 +43,10 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "miniflare": "^5.20261001.0-alpha",
     "playwright-core": "^1.63.0",
     "tailwindcss": "^4",
+    "tsx": "^4.23.15",
     "typescript": "^5",
     "wrangler": "^4.140.0"
   }

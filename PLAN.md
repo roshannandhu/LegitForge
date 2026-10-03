@@ -2,7 +2,54 @@
 
 Version 2.0, 25 September 2026. Sources checked on this date (see §20).
 
-**This is the only document for this project.** It replaces the earlier `IDEAS.md` and `docs/PLAN.md`, which have been deleted. Everything agreed so far lives here.
+## Current decisions — 3 October 2026
+
+This section and `web/CLAUDE.md` govern the current website release. The specifications and
+build logs below are historical where they conflict with these decisions.
+
+- **Scope:** finish the studio website, CMS and enquiry flow. The real WhatsApp bot, webhook,
+  n8n workflows, Supabase memory, AI, Calendar and team escalation system remain a separate
+  future phase in `SETUP.md`; their database scaffolding is not a running product.
+- **Homepage:** a shorter overview of the studio, services, real work/team, commitments and
+  enquiry. Detailed service simulations, comparison and quotation/warranty explanation live on
+  the relevant inner pages. Preserve the forge identity, intro, font and existing motion quality;
+  shortening the homepage is an explicit owner decision, not a performance shortcut.
+- **Service order:** website development, WhatsApp automation, n8n, SEO, NFC, then **MR Signage
+  last**. Apply the same order to service lists, enquiry options, structured lists and summaries.
+  This supersedes the 30 September MR-first decision in §22.3.
+- **Quotation:** every project gets a custom written quote after its scope is discussed. No
+  fabricated starting prices or empty budget bands. MR Signage is quoted per screen/month.
+  Keep the promise of a fixed price before work starts, weekly previews, client ownership and
+  30 days of fixes; distinguish these promises from public numerical prices.
+- **Truthful proof:** on-site animations are illustrative simulations. No simulated stopwatch,
+  sample outcome or generated code is evidence of a real bot response or client result.
+  Publish real client measurements only with a source and permission.
+- **Runtime:** Cloudflare Pages `legitforge.pages.dev` serves build assets and forwards pages,
+  APIs, admin and media to the OpenNext Worker `legitforge-web` through `SITE`. D1 stores CMS
+  and enquiry data; R2 stores media and Next cache; the Durable Object is the cache queue.
+  Admin uses verified Google ID tokens, signed HttpOnly sessions and an owner/admin allow-list;
+  Cloudflare Access/JWT instructions below are superseded. Company details come from owner-only
+  Admin → Company. Use root member URLs generated from profiles.
+- **Design:** Anybody subset, tempered steel/light and black/gold/dark palette. The hero is a
+  clock-driven unpinned loop. Do not restore Archivo, inherited per-frame `<html>` variables,
+  old project-track behaviour or original mobile-only 2D tiers from the historical examples.
+- **Analytics:** bounded first-party aggregate events without names, phones, message text or
+  session identifiers; admin reports the last 30 days. Retain aggregate events for 13 months.
+  Cloudflare Web Analytics dashboard setup remains an account-side verification item.
+- **Release gate:** typecheck, backend tests, OpenNext build, isolated local Worker smoke,
+  mocked JS/no-JS enquiry checks and browser checks must pass before remote migrations/deploy.
+  Then deploy Worker → invalidate the four build data tags → deploy matching Pages assets →
+  read-only smoke against the expected revision. See `web/README.md` for release/recovery steps.
+  A local authenticated deployment does not mean GitHub Actions credentials are configured.
+
+The prior deployed build was observed at 2799.72 KiB gzip and 23 ms startup. These are historical
+build measurements, not guarantees of request CPU, uptime or performance on every device.
+Current Cloudflare plan, dashboard analytics, restore retention, Turnstile and n8n configuration
+must be checked in the account; do not infer them from config files or old checkboxes.
+
+This is the master specification and historical build log. `web/README.md` is the current release
+runbook, `web/CLAUDE.md` the implementation guide, and `SETUP.md` separates confirmed setup from
+the future automation roadmap. Earlier `IDEAS.md` and `docs/PLAN.md` were replaced.
 
 Legit Forge is a **two-person freelance studio**. We build websites and web apps, a quotation and warranty system, WhatsApp automation and n8n workflows. This document is the complete plan for the company website: concept, design system, every animation, every section, backend, WhatsApp and n8n integration, SEO, performance, accessibility, roadmap and launch.
 

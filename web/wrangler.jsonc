@@ -29,7 +29,7 @@
     "bindings": [{ "name": "NEXT_CACHE_DO_QUEUE", "class_name": "DOQueueHandler" }]
   },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["DOQueueHandler"] }],
-  "triggers": { "crons": ["0 3 * * *"] },     // daily cleanup at 03:00 UTC (worker.ts)
+  "triggers": { "crons": ["*/5 * * * *", "0 3 * * *"] }, // retry queued alerts; daily cleanup (worker.ts)
   "vars": {
     "SITE_URL": "https://legitforge.example"   // set per deploy by scripts/cf-setup.mjs (repo variable SITE_URL, else workers.dev)
   },

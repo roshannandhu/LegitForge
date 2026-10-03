@@ -12,7 +12,7 @@ import { DemoTranscript } from './demo-transcript';
 const POINTS = [
   { h: 'Quote', p: 'Build a quote from saved line items, send it as a link or PDF, and see when it was opened. Accepted quotes are timestamped and stored.' },
   { h: 'Warranty', p: 'Every completed job gets a warranty record with a serial or QR code. Your customer scans it and sees what is covered, until when, and how to claim.' },
-  { h: 'Reminders', p: 'Expiry reminders and claim requests go out on WhatsApp automatically — the same automation we build for clients.' },
+  { h: 'Reminders', p: 'Add expiry reminders and claim requests through the WhatsApp or email integrations agreed in your scope.' },
 ];
 
 /** One quote's whole life, left to right: the rail over the demo (plan F step 5). */
@@ -20,11 +20,11 @@ const STAGES = ['Enquiry', 'Quote', 'Sent', 'Opened', 'Accepted', 'Installed', '
 
 export function Quotation() {
   return (
-    <section id="quotation" data-heat="0.55" className="section">
+    <section id="quotation" data-event-location="service" data-heat="0.55" className="section">
       <div className="wrap quote-grid">
         <div className="quote-copy">
           <h2 className="type-h2">Quotes that look professional. Warranties customers can check.</h2>
-          <p className="type-lead">Our own product, and the plainest answer to “can these two build real software?”</p>
+          <p className="type-lead">An example of the quote and warranty flow we can build around your business.</p>
           <ol className="quote-points">
             {POINTS.map((pt) => (
               <li key={pt.h}><h3 className="type-h3">{pt.h}</h3><p>{pt.p}</p></li>

@@ -11,7 +11,7 @@ import '../pages.css';
 
 export const metadata: Metadata = {
   title: 'Work',
-  description: 'Websites, web apps, WhatsApp bots and n8n workflows we have built — each with the result that mattered to the client, and a link to the live site.',
+  description: 'Explore published websites, web apps and automation projects from Legit Forge, with delivery details, available evidence and links to the work.',
   alternates: { canonical: '/work' },
 };
 
@@ -26,8 +26,8 @@ export default async function WorkIndex() {
         crumbs={[{ name: 'Work', href: '/work' }]}
         title="Work that’s live right now"
         lead={items.length
-          ? 'Every project here is running for a real business. Each card shows the one number the client cared about, and where that number came from.'
-          : 'Websites, apps and automations running for real businesses. Each case study will show the one number the client cared about.'}
+          ? 'Published work for real businesses. Explore what we built; recorded results appear where supporting information is available.'
+          : 'Our published case studies will appear here as they become available.'}
       />
       <section className="page-block wrap" aria-label="Projects">
         {items.length ? (

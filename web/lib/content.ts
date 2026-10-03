@@ -1,4 +1,3 @@
-import { priceText } from './placeholder';
 /** All page copy in one place. Sources: PLAN §6 (sections) and §18 (copy).
  *  [Bracketed] text is a placeholder — the plan forbids launching with any of it. */
 
@@ -9,48 +8,62 @@ export const SERVICES: {
   id: DemoKind; name: string; line: string; audience: string; price: string; time: string; link: string; href: string;
 }[] = [
   {
-    id: 'signage', name: 'MR Signage',
-    line: 'Our digital signage app, by subscription: every TV and tablet screen in every branch, run from one dashboard, and it keeps playing offline.',
-    audience: 'Shops, restaurants, clinics, malls and screen advertisers',
-    price: priceText('From [price] per screen/month', 'Monthly plans, quoted per screen'), time: 'First screens live in a day', link: 'See MR Signage', href: '/services/digital-signage',
-  },
-  {
     id: 'website', name: 'Static websites',
     line: 'A fast site that loads in about a second and is easy to update.',
     audience: 'Local businesses, portfolios, launches',
-    price: priceText('From [price]'), time: 'Live in about 2 weeks', link: 'See website packages', href: '/services/website-development',
+    price: 'Quoted per project', time: 'Live in about 2 weeks', link: 'See website packages', href: '/services/website-development',
   },
   {
     id: 'app', name: 'Web apps',
     line: 'Bookings, dashboards, member areas and internal tools: software that works with your data.',
     audience: 'Growing businesses',
-    price: priceText('From [price]'), time: 'Usually 3–6 weeks', link: 'See web app examples', href: '/work?service=dynamic',
+    price: 'Quoted per project', time: 'Usually 3–6 weeks', link: 'See web app examples', href: '/services/website-development#app-example',
   },
   {
     id: 'whatsapp', name: 'WhatsApp automation',
     line: 'Answer customers instantly, send order updates and collect leads on WhatsApp.',
     audience: 'Shops, clinics, restaurants, service businesses',
-    price: priceText('From [price]'), time: 'Live in 1–2 weeks', link: 'See WhatsApp automation', href: '/services/whatsapp-automation',
+    price: 'Quoted per project', time: 'Live in 1–2 weeks', link: 'See WhatsApp automation', href: '/services/whatsapp-automation',
   },
   {
     id: 'n8n', name: 'n8n workflows',
     line: 'Connect your apps so data moves by itself: forms, sheets, CRM, invoices.',
     audience: 'Teams stuck copying and pasting',
-    price: priceText('From [price]'), time: 'Often running in days', link: 'See n8n workflows', href: '/services/n8n-automation',
+    price: 'Quoted per project', time: 'Often running in days', link: 'See n8n workflows', href: '/services/n8n-automation',
   },
   {
     id: 'seo', name: 'SEO',
     line: 'Get found on Google when people nearby search for what you sell, then turn the click into a call.',
     audience: 'Local shops, clinics, service businesses',
-    price: priceText('From [price]/month'), time: 'Results build over 2–3 months', link: 'See how we do SEO', href: '/services/seo',
+    price: 'Monthly scope, quoted with you', time: 'Results build over 2–3 months', link: 'See how we do SEO', href: '/services/seo',
   },
   {
     id: 'nfc', name: 'NFC cards and tags',
     line: 'One tap on a card or sticker opens your contact, your Google reviews, or a product’s warranty.',
     audience: 'Sales teams, restaurants, product and service brands',
-    price: priceText('From [price]'), time: 'Ready in about a week', link: 'See NFC cards and tags', href: '/services/nfc',
+    price: 'Quoted per project', time: 'Ready in about a week', link: 'See NFC cards and tags', href: '/services/nfc',
+  },
+  {
+    id: 'signage', name: 'MR Signage',
+    line: 'Our digital signage subscription: run TV and tablet screens across your branches from one dashboard, with offline playback.',
+    audience: 'Shops, restaurants, clinics, malls and screen advertisers',
+    price: 'Monthly plans, quoted per screen', time: 'First screens live in a day', link: 'See MR Signage', href: '/services/digital-signage',
   },
 ];
+
+/** The home ledger includes the quotation offer; full examples live on the service pages. */
+export const HOME_SERVICES = SERVICES.flatMap((s) => s.id === 'app' ? [s, {
+  id: 'quote', name: 'Quotation and warranty systems',
+  line: 'Send quotes as links or PDFs, and let customers check their warranty by QR code.',
+  audience: 'Businesses selling work with a guarantee', price: 'Quoted per project', time: 'Usually 3–6 weeks',
+  link: 'See quotation and warranty systems', href: '/services/website-development#quotation',
+}] : [s]);
+
+/** Resolve comparison facts by identity: service reordering must never change their meaning. */
+export const WEBSITE_FACTS = {
+  static: (() => { const s = SERVICES.find((x) => x.id === 'website')!; return { price: s.price, time: s.time }; })(),
+  dynamic: (() => { const s = SERVICES.find((x) => x.id === 'app')!; return { price: s.price, time: s.time }; })(),
+};
 
 /* ------------------------------------------------------- trust strip §18.6
    Directly under the hero. Same wording as the Maker's promise (§6.9): repeated
@@ -118,14 +131,14 @@ export const TESTIMONIALS: { quote: string; name: string; role: string; company:
 
 /* ------------------------------------------------------------- pricing §6.10 */
 export const PRICING = [
-  { service: 'MR Signage (subscription)', from: priceText('[price] per screen/month', 'Monthly, per screen'), time: 'Live in a day', weeks: [0.2, 0.4], includes: 'The player app for Android TVs and tablets, the dashboard, schedules, offline playback, updates and support' },
-  { service: 'Static website', from: priceText('[price]'), time: '1–2 weeks', weeks: [1, 2], includes: 'Up to 5 pages, contact form, SEO setup, 30 days of fixes' },
-  { service: 'Web app', from: priceText('[price]'), time: '3–6 weeks', weeks: [3, 6], includes: 'Logins, database, admin panel' },
-  { service: 'Quotation and warranty system', from: priceText('[price]'), time: '3–6 weeks', weeks: [3, 6], includes: 'Quotes as links or PDFs, warranty lookup by QR, CSV export any time' },
-  { service: 'WhatsApp automation', from: priceText('[price] setup + [price]/month'), time: '1–2 weeks', weeks: [1, 2], includes: "Bot flows, lead capture, team alerts. Meta's message fees are billed at cost." },
-  { service: 'SEO', from: priceText('[price]/month'), time: 'Set up in 1–2 weeks', weeks: [1, 2], includes: 'Google Business Profile, on-page fixes, local pages, monthly report of calls and clicks' },
-  { service: 'NFC cards and tags', from: priceText('[price]'), time: 'About a week', weeks: [0.8, 1.2], includes: 'Programmed cards or stickers, the page they open, and edits any time without reprinting' },
-  { service: 'n8n workflow', from: priceText('[price] per workflow'), time: '2–5 days', weeks: [0.4, 1], includes: 'Build, testing, documentation, 30 days of fixes' },
+  { service: 'Static website', from: 'Quoted per project', time: '1–2 weeks', weeks: [1, 2], includes: 'Up to 5 pages, contact form, SEO setup, 30 days of fixes' },
+  { service: 'Web app', from: 'Quoted per project', time: '3–6 weeks', weeks: [3, 6], includes: 'Logins, database, admin panel' },
+  { service: 'Quotation and warranty system', from: 'Quoted per project', time: '3–6 weeks', weeks: [3, 6], includes: 'Quotes as links or PDFs, warranty lookup by QR, CSV export any time' },
+  { service: 'WhatsApp automation', from: 'Build and support quoted separately', time: '1–2 weeks', weeks: [1, 2], includes: "Bot flows, lead capture, team alerts. Meta's message fees are separate." },
+  { service: 'n8n workflow', from: 'Quoted per workflow', time: '2–5 days', weeks: [0.4, 1], includes: 'Build, testing, documentation, 30 days of fixes' },
+  { service: 'SEO', from: 'Monthly scope, quoted with you', time: 'Set up in 1–2 weeks', weeks: [1, 2], includes: 'Google Business Profile, on-page fixes, local pages, monthly report of calls and clicks' },
+  { service: 'NFC cards and tags', from: 'Quoted per project', time: 'About a week', weeks: [0.8, 1.2], includes: 'Programmed cards or stickers, the page they open, and edits any time without reprinting' },
+  { service: 'MR Signage (subscription)', from: 'Monthly, quoted per screen', time: 'Live in a day', weeks: [0.2, 0.4], includes: 'The player app for Android TVs and tablets, the dashboard, schedules, offline playback, updates and support' },
 ];
 
 /* ----------------------------------------------------------------- FAQ §6.10 */
@@ -135,13 +148,13 @@ export const FAQ = [
   { q: 'Do I own my website, domain and accounts?',
     a: 'Yes. The code, the domain, the hosting account, your WhatsApp number and every workflow are in your name from day one. If you ever leave us, you take everything with you.' },
   { q: 'What does WhatsApp automation cost per month?',
-    a: "Two parts: our fee for building and looking after the bot, and Meta's own message fees, which we pass on at cost. From 1 October 2026, Meta charges for replies sent inside the 24-hour customer-service window after the first 1,000 a month per number; incoming messages stay free. We keep conversations short so that bill stays small." },
+    a: "We quote the build and any ongoing support in writing. Meta's message charges are separate and depend on the messages you send. We explain those costs before you approve the work and link you to Meta's current rates." },
   { q: 'Is a WhatsApp bot allowed by Meta?',
-    a: "Yes, for business bots: support, bookings, orders and FAQs. Since January 2026 Meta doesn't allow general-purpose AI assistants on WhatsApp Business, so ours only talk about your business and hand anything else to a person." },
+    a: 'We design business-specific flows for support, bookings, orders and FAQs using the official WhatsApp Business Platform. We check the current platform requirements before launch and hand conversations to a person when needed.' },
   { q: 'Can I edit the site myself?',
     a: 'Yes. Static sites come with a simple way to change text and images, and web apps have an admin panel. We record a short training video at launch.' },
   { q: 'Can you build a quotation or warranty system for us?',
-    a: 'Yes — it is our own product. Quotes built from saved line items and sent as a link or PDF, and warranty records your customers can check by scanning a code. Expiry reminders go out on WhatsApp automatically.' },
+    a: 'Yes. We can build quotes from saved line items, sent as a link or PDF, and warranty records customers check by scanning a code. Reminder integrations are agreed in your scope.' },
   { q: 'What do you need from me to start?',
     a: "A 20-minute conversation about what you want. After that: your logo, your text if you have it, and access to any accounts we'll connect. We send you a short checklist." },
   { q: 'What happens after launch?',

@@ -9,9 +9,7 @@ import { ToolsLoop } from '@/components/sections/tools-strip';
 import { TOOL_LOGOS } from '@/components/sections/tools-logos';
 import { HydrateWhenNear } from '@/components/motion/hydrate-when-near';
 import { Services } from '@/components/sections/services';
-import { Quotation } from '@/components/sections/quotation';
-import { Compare } from '@/components/sections/compare';
-import { LiveTest } from '@/components/sections/live-test';
+import { CtaBand } from '@/components/pages/cta-band';
 import { Process } from '@/components/sections/process';
 import { Projects } from '@/components/sections/projects';
 import { Team } from '@/components/sections/team';
@@ -19,7 +17,7 @@ import { Hallmarks } from '@/components/sections/hallmarks';
 import { PricingFaq } from '@/components/sections/pricing-faq';
 import { Quench } from '@/components/sections/quench';
 import { HallmarkStrike } from '@/components/intro/hallmark-strike';
-import { PROCESS, SERVICES } from '@/lib/content';
+import { HOME_SERVICES, PROCESS } from '@/lib/content';
 import type { Metadata } from 'next';
 import { getTeam, toCards, type Member } from '@/lib/team';
 import { cityNames, fit, joinNames, named, personLd, servedCities, siteKeywords } from '@/lib/team-seo';
@@ -29,6 +27,7 @@ import { getCompany } from '@/lib/company';
 import { LAYERS } from '@/lib/teardown';
 import '@/components/hero/hero.css';
 import '@/components/sections/sections.css';
+import './pages.css';
 
 /** What happens at each hero layer, in the words the teardown's screens show (lib/teardown.ts). */
 const HERO_JOURNEY = [
@@ -40,19 +39,14 @@ const HERO_JOURNEY = [
   'her warranty is issued, checkable by QR code and valid to 2027, with a WhatsApp reminder set.',
   'months later she taps the NFC tag on her AC: her warranty opens and she books a service.',
 ];
-const SERVICE_URL: Record<string, string> = {
-  seo: '/services/seo', web: '/services/website-development', wa: '/services/whatsapp-automation',
-  n8n: '/services/n8n-automation', nfc: '/services/nfc',
-};
-
 /** The site, the studio, and the five systems the hero takes apart (PLAN §10.4, SEO plan B). */
 const siteLd = [
   { '@context': 'https://schema.org', '@type': 'WebSite', name: SITE.name, url: SITE.url, inLanguage: 'en-IN', publisher: { '@id': ORG_ID } },
   {
-    '@context': 'https://schema.org', '@type': 'ItemList', name: 'What we offer, layer by layer',
-    itemListElement: LAYERS.map((l, i) => ({
-      '@type': 'ListItem', position: i + 1, name: l.name, description: `${l.spec}. ${HERO_JOURNEY[i]}`,
-      ...(SERVICE_URL[l.id] ? { url: `${SITE.url}${SERVICE_URL[l.id]}` } : {}),
+    '@context': 'https://schema.org', '@type': 'ItemList', name: 'Services',
+    itemListElement: HOME_SERVICES.map((s, i) => ({
+      '@type': 'ListItem', position: i + 1, name: s.name, description: s.line,
+      url: `${SITE.url}${s.href}`,
     })),
   },
 ];
@@ -85,11 +79,7 @@ const orgLd = (c: Company, team: Member[]) => ({
   hasOfferCatalog: {
     '@type': 'OfferCatalog',
     name: 'Services',
-    itemListElement: [
-      ...SERVICES.map((s) => ({ '@type': 'Offer', itemOffered: { '@type': 'Service', name: s.name, description: s.line } })),
-      { '@type': 'Offer', itemOffered: { '@type': 'Service', name: 'Quotation and warranty system',
-        description: 'Quotes sent as links or PDFs, and warranty records customers can check by QR code.' } },
-    ],
+    itemListElement: HOME_SERVICES.map((s) => ({ '@type': 'Offer', itemOffered: { '@type': 'Service', name: s.name, description: s.line } })),
   },
 });
 
@@ -114,10 +104,9 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function Home() {
-  const members = await getTeam();
+  const [members, projects, company] = await Promise.all([getTeam(), getProjects(), getCompany()]);
   const team = toCards(members);
-  const hasWork = (await getProjects()).length > 0;
-  const company = await getCompany();
+  const hasWork = projects.length > 0;
   const wa = waLink(company);
   return (
     <>
@@ -128,7 +117,7 @@ export default async function Home() {
             <h1 className="type-display">We build the thing, and everything behind it.</h1>
             <p className="lead">
               Websites, apps, WhatsApp automation and the systems that run them.
-              A two-person studio. Watch what we actually build.
+              A two-person studio. See our work, or tell us what you need.
             </p>
             <div className="ctas">
               <a className="btn btn-primary" href={wa}>Chat on WhatsApp</a>
@@ -136,6 +125,7 @@ export default async function Home() {
                 ? <a className="btn btn-ghost" href="#work">See our work</a>
                 : <a className="btn btn-ghost" href="#services">See what we offer</a>}
             </div>
+            <p className="hero-enquiry"><a className="text-link" href="#contact">Prefer a form? Send an enquiry</a></p>
             <HeroStatus />
           </div>
           <StoryChips />
@@ -144,7 +134,7 @@ export default async function Home() {
         </div>
         <div className="sr-only">
           <p>
-            Diagram: the phone in the hand comes apart into seven working layers. One customer’s
+            Illustrative customer journey: the phone in the hand comes apart into seven layers. One customer’s
             request runs through each in turn, top to bottom:
           </p>
           <ol>
@@ -153,28 +143,21 @@ export default async function Home() {
         </div>
       </section>
 
-      <Cleave cover={<div className="plate-steel"><p className="type-display">Now, everything behind it.<span>Scroll to open it up</span></p></div>}>
-        <TrustStrip />
+      <Cleave pin={false} cover={<div className="plate-steel"><p className="type-h2">What you can count on.<span>Scroll to open it up</span></p></div>}>
+        <TrustStrip compact />
       </Cleave>
+      <Projects />
+      <Hallmarks testimonialsOnly />
       <Services />
-      <Quotation />
-      <HydrateWhenNear>
-      <Compare facts={{
-        static: { price: SERVICES[0].price, time: SERVICES[0].time },
-        dynamic: { price: SERVICES[1].price, time: SERVICES[1].time },
-      }} />
-      </HydrateWhenNear>
-      <HydrateWhenNear><LiveTest /></HydrateWhenNear>
+      <HydrateWhenNear><Quench /></HydrateWhenNear>
       <Process steps={PROCESS} />
+      <PricingFaq compact />
+      {team.length > 0 && <HydrateWhenNear><Team team={team} /></HydrateWhenNear>}
       <section className="tools" data-heat="0.9" aria-labelledby="tools-h">
         <div className="wrap"><h2 id="tools-h" className="tools-h">The tools behind every build</h2></div>
         <HydrateWhenNear><ToolsLoop logos={TOOL_LOGOS} /></HydrateWhenNear>
       </section>
-      <Projects />
-      {team.length > 0 && <HydrateWhenNear><Team team={team} /></HydrateWhenNear>}
-      <Hallmarks />
-      <PricingFaq />
-      <HydrateWhenNear><Quench /></HydrateWhenNear>
+      <CtaBand title="Tell us what you want to build." text="Describe the problem. We’ll suggest a scope and put the quote in writing." />
 
       <HeatDirector />
       <script

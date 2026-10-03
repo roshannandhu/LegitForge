@@ -1,35 +1,31 @@
-import { SERVICES } from '@/lib/content';
-import { ServiceDemo } from './service-demos';
+import { HOME_SERVICES } from '@/lib/content';
 
-/** Services, "What we offer" (PLAN §6.3; was "Four fires"). Each service proves itself with a demo.
- *  This is the finished-frame layout: correct with no JS, and the motion-off state.
- *  While a demo's flow runs, its number and frame warm up, and cool on the hold (plan D #3). */
+/** A short service ledger. Animated examples remain on the linked service pages. */
 export function Services() {
   return (
     <section id="services" data-heat="0.55" className="section">
       <div className="wrap">
         <header className="section-head">
           <h2 className="type-h2">What we offer</h2>
-          <p className="type-lead">Everything we offer businesses, from websites to signage subscriptions — each one shown working, not described.</p>
+          <p className="type-lead">Start with the problem you want to solve. Every build gets a fixed written quote; each service page shows the details and an example.</p>
         </header>
 
-        <ol className="fires">
-          {SERVICES.map((s, i) => (
-            <li key={s.id} className="fire">
-              <div className="fire-copy">
+        <ol className="service-ledger">
+          {HOME_SERVICES.map((s, i) => (
+            <li key={s.id} data-service={s.id}>
                 <span className="fire-num num">{String(i + 1).padStart(2, '0')}</span>
+              <div className="service-ledger-copy">
                 <h3 className="type-h3">{s.name}</h3>
                 <p className="fire-line">{s.line}</p>
-                <p className="fire-for"><span className="type-label">For</span> {s.audience}</p>
-                <p className="fire-price"><span className="num">{s.price}</span> <span className="fire-time">{s.time}</span></p>
-                <a className="text-link" href={s.href}>{s.link}</a>
               </div>
-              <div className="fire-stage">
-                <ServiceDemo kind={s.id} />
+              <div className="service-ledger-details">
+                <p className="num">{s.time}</p>
+                <a className="text-link" href={s.href}>{s.link}</a>
               </div>
             </li>
           ))}
         </ol>
+        <p className="section-more"><a className="text-link" href="#contact">Send project details</a> — we’ll help you choose the smallest thing that solves it.</p>
       </div>
     </section>
   );

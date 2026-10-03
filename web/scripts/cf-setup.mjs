@@ -2,13 +2,14 @@
 /** First-time Cloudflare setup for the deploy workflow (.github/workflows/deploy-cloudflare.yml).
  *  Idempotent: finds or creates what wrangler.jsonc names, so every run can call it.
  *
- *    node scripts/cf-setup.mjs            before the build: D1, R2, the Pages project, the site URL
+ *    node scripts/cf-setup.mjs            after local release gates, before deploy: D1, R2, Pages, site URL
  *    node scripts/cf-setup.mjs --post     after the deploy: the HASH_SALT and ADMIN_SESSION_KEY Worker secrets, once
  *    node scripts/cf-setup.mjs --dry-run  print what it would do (no token needed)
  *
  *  Needs CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID. Writes the D1 id and SITE_URL into
- *  wrangler.jsonc in the CI checkout only (never committed), and NEXT_PUBLIC_SITE_URL /
- *  NEXT_PUBLIC_NOINDEX to $GITHUB_ENV for the build. Never prints a secret. */
+ *  wrangler.jsonc in the CI checkout only (never committed). The workflow supplies the same
+ *  canonical NEXT_PUBLIC_SITE_URL before its checked build; exported values must agree with it.
+ *  Never prints a secret. */
 
 import { readFile, writeFile, appendFile } from 'node:fs/promises';
 import { randomBytes } from 'node:crypto';
@@ -64,6 +65,9 @@ catch { pages = await cf('POST', '/pages/projects', { name: PAGES, production_br
 
 // The site's address: the real domain once the SITE_URL repo variable is set, else <project>.pages.dev
 const url = (SITE_URL || `https://${pages.subdomain}`).replace(/\/+$/, '');
+if (process.env.NEXT_PUBLIC_SITE_URL && process.env.NEXT_PUBLIC_SITE_URL.replace(/\/+$/, '') !== url) {
+  throw new Error('Build canonical URL differs from deploy URL; rebuild and rerun release gates.');
+}
 const noindex = url.endsWith('.workers.dev');
 
 let cfg = await readFile('wrangler.jsonc', 'utf8');

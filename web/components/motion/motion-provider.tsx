@@ -7,34 +7,33 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { REDUCED } from '@/lib/boot';
 
-type MotionCtx = { enabled: boolean; setEnabled: (on: boolean) => void };
-const Ctx = createContext<MotionCtx>({ enabled: true, setEnabled: () => {} });
+type MotionCtx = { enabled: boolean; systemReduced: boolean; setEnabled: (on: boolean) => void };
+const Ctx = createContext<MotionCtx>({ enabled: true, systemReduced: false, setEnabled: () => {} });
 
 export function MotionProvider({ children }: { children: React.ReactNode }) {
   const [enabled, setState] = useState(() => {
     if (typeof document === 'undefined') return true;
     try {
       const m = localStorage.getItem('lf-motion');
-      if (m === 'on') return true;
-      if (m === 'off') return false;
-      return !matchMedia(REDUCED).matches;
+      return m !== 'off' && !matchMedia(REDUCED).matches;
     } catch {
-      return true;
+      return !matchMedia(REDUCED).matches;
     }
   });
+  const [systemReduced, setSystemReduced] = useState(false);
 
   useEffect(() => {
     const mq = matchMedia(REDUCED);
     const onChange = () => {
+      setSystemReduced(mq.matches);
       try {
         const m = localStorage.getItem('lf-motion');
-        if (m === 'on') setState(true);
-        else if (m === 'off') setState(false);
-        else setState(!mq.matches);
+        setState(m !== 'off' && !mq.matches);
       } catch {
         setState(!mq.matches);
       }
     };
+    onChange();
     mq.addEventListener('change', onChange);
     return () => mq.removeEventListener('change', onChange);
   }, []);
@@ -45,10 +44,10 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
 
   const setEnabled = (on: boolean) => {
     try { localStorage.setItem('lf-motion', on ? 'on' : 'off'); } catch {}
-    setState(on);
+    setState(on && !matchMedia(REDUCED).matches);
   };
 
-  return <Ctx.Provider value={{ enabled, setEnabled }}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={{ enabled, systemReduced, setEnabled }}>{children}</Ctx.Provider>;
 }
 
 export const useMotionEnabled = () => useContext(Ctx).enabled;

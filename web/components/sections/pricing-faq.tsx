@@ -5,7 +5,7 @@ const SCALE_WEEKS = 6;   // the timeline bars share one scale, so rows compare a
 
 /** Pricing and FAQ (PLAN §6.10). One row per service, not identical cards.
  *  FAQ uses native <details>: keyboard and screen-reader support for free. */
-export function PricingFaq() {
+export function PricingFaq({ compact = false }: { compact?: boolean }) {
   const faqLd = {
     '@context': 'https://schema.org',
     '@type': 'FAQPage',
@@ -17,24 +17,26 @@ export function PricingFaq() {
   };
 
   return (
-    <section id="pricing" data-heat="0.45" className="section">
+    <section id="pricing" data-heat="0.45" className={`section${compact ? ' pricing-compact' : ''}`}>
       <div className="wrap">
         <header className="section-head">
-          <h2 className="type-h2">Prices, up front</h2>
-          <p className="type-lead">Every price here is a real starting price. Every project gets a fixed quote after a 20-minute call.</p>
+          <h2 className="type-h2">Quotes and timelines.</h2>
+          <p className="type-lead">Tell us what needs to work. We agree the deliverables, cost and timing with you before the project starts.</p>
         </header>
 
+        <details className="quote-details" open={!compact}>
+        <summary>How each service is quoted, and typical delivery times</summary>
         <PunchIn className="price-table-wrap" threshold={0.3}>
           <table className="price-table">
-            <caption className="sr-only">Starting prices, typical time and what is included, by service</caption>
+            <caption className="sr-only">Quote basis, typical time and what is included, by service</caption>
             <thead>
-              <tr><th scope="col">Service</th><th scope="col">From</th><th scope="col">Typical time</th><th scope="col">Includes</th></tr>
+              <tr><th scope="col">Service</th><th scope="col">Quote basis</th><th scope="col">Typical time</th><th scope="col">Includes</th></tr>
             </thead>
             <tbody>
               {PRICING.map((r, i) => (
                 <tr key={r.service} style={{ '--i': i } as React.CSSProperties}>
                   <th scope="row">{r.service}</th>
-                  <td data-label="From" className="num">{r.from}</td>
+                  <td data-label="Quote basis" className="num">{r.from}</td>
                   <td data-label="Typical time" className="num">
                     <span className="tl-cell">
                       {r.time}
@@ -48,6 +50,7 @@ export function PricingFaq() {
           </table>
         </PunchIn>
         <p className="price-scale" aria-hidden="true">Bars show the typical time on a {SCALE_WEEKS}-week scale.</p>
+        </details>
 
         <div className="faq">
           <h2 className="type-h2 faq-h" id="faq">Questions people ask us</h2>

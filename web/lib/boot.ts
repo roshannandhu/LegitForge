@@ -6,8 +6,9 @@ export const REDUCED = '(prefers-reduced-motion: reduce)';
 /** html[data-motion]: off when the device asks for reduced motion or the visitor turned
  *  "Animations" off in the footer (PLAN §5.5), so there is never a flash. */
 export const MOTION_BOOT_SCRIPT =
-  `try{var m=localStorage.getItem('lf-motion');var r=matchMedia('${REDUCED}').matches;` +
-  `document.documentElement.dataset.motion=(m==='off'||r)?'off':'on'}catch(e){}`;
+  `var m;try{m=localStorage.getItem('lf-motion')}catch(e){}` +
+  `try{var r=matchMedia('${REDUCED}').matches;document.documentElement.dataset.motion=(m==='off'||r)?'off':'on'}` +
+  `catch(e){document.documentElement.dataset.motion='off'}`;
 
 /** The theme follows the device (next-themes, defaultTheme "system"). The lever's choice holds
  *  only while the visitor is browsing: it is dropped (before next-themes reads it) on a new
@@ -41,6 +42,8 @@ export const LITE_BOOT =
  *  sections rendering mid-jump used to move the target (Pricing landed 150 px off). One full layout,
  *  once per visit, and only for a visitor who jumps. */
 export const CV_BOOT =
+  `try{var old={'#quotation':'/services/website-development#quotation','#compare':'/services/website-development#compare','#live-test':'/services/whatsapp-automation#live-test'};` +
+  `var go=function(){if(location.pathname==='/'&&old[location.hash]){var dest=old[location.hash].split('#');location.replace(dest[0]+location.search+'#'+dest[1])}};go();addEventListener('hashchange',go)}catch(e){}` +
   `try{var h=document.documentElement,o=function(){h.dataset.cvOff=''};if(location.hash.length>1)o();` +
   `document.addEventListener('click',function(e){var a=e.target.closest&&e.target.closest('a[href*="#"]');` +
   `if(a&&a.hash.length>1&&a.pathname===location.pathname)o()},true)}catch(e){}`;

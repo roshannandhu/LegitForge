@@ -3,6 +3,13 @@
 What people type into Google that should lead them to legitforge.pages.dev. Built from the site's
 own copy (`web/lib/content.ts`, `web/lib/pages.ts`, the blog posts) plus the team's names and roles.
 
+Reviewed 3 October 2026. This is an editorial/topic map, not a requirement to insert every phrase.
+The compact homepage summarises the studio; detailed service pages retain the useful explanations
+and illustrative demos. Website development, WhatsApp, n8n, SEO and NFC precede MR Signage,
+which is last in service lists. Public prices are custom written quotes; do not create price
+claims or client results to target a keyword. Only promote draft articles once their copy and
+author are reviewed. Use current Search Console data to choose the next useful article.
+
 **How to use it.** Google ranks pages by their titles, descriptions, headings and text, not by the
 `<meta name="keywords">` tag. The site already builds its titles, descriptions and keyword tags
 from these phrases (`web/lib/pages.ts` `keywords`, `web/lib/team-seo.ts`), adding the city from
