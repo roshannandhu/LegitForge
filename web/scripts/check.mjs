@@ -85,7 +85,8 @@ function audit() {
     document.getElementById('work') && !before('work', 'services') && 'work must precede services',
     document.getElementById('proof') && !before('proof', 'services') && 'testimonials must precede services',
     ['quotation', 'compare', 'live-test'].some((id) => document.getElementById(id)) && 'detailed demos still on home',
-    document.querySelector('.cleave')?.dataset.pin !== 'off' && 'trust Cleave still allows pinning',
+    document.querySelector('#promises')?.closest('.cleave[data-armed]') && 'trust copy is hidden behind an opening cover',
+    document.querySelector('#trust-h')?.textContent.trim() !== 'What you can count on.' && 'persistent trust heading is missing',
     document.querySelectorAll('#cta-h').length !== 1 && 'closing CTA heading must appear once',
     [...document.querySelectorAll('.service-ledger > li')].map((li) => li.dataset.service).join(',') !== 'website,app,quote,whatsapp,n8n,seo,nfc,signage' && 'home service order changed',
     document.querySelector('#proof .engraved-grid') && 'duplicate promises in proof section',
@@ -176,6 +177,38 @@ for (const run of RUNS.filter((r) => !only || r.name.includes(only))) {
   const state = await page.evaluate(() => ({ work: !!document.getElementById('work'), team: !!document.getElementById('team'), motion: document.documentElement.dataset.motion }));
   state.work === expectedWork && state.team === expectedTeam ? pass('work and team match published CMS data') : fail(run.name, `home work/team ${state.work}/${state.team}; CMS ${expectedWork}/${expectedTeam}`);
   if (run.motion === 'reduce') state.motion === 'off' ? pass('device reduced motion overrides saved On preference') : fail(run.name, 'saved On preference overrode device reduced motion');
+
+  // The heading used to shear apart before its centred cover reached a readable position.
+  // Read it on entry, through a quick scroll, then scrolling back; decoration cannot gate copy.
+  const trustHeight = await page.locator('#promises').evaluate((el) => el.getBoundingClientRect().height);
+  const trustProblems = new Set();
+  for (const position of [0.65, 0.18, 0.5]) {
+    await page.locator('#trust-h').evaluate((el, position) => {
+      const top = el.getBoundingClientRect().top + scrollY - Math.max(120, innerHeight * position);
+      scrollTo({ top, behavior: 'instant' });
+    }, position);
+    await page.waitForTimeout(240);
+    const problems = await page.evaluate(() => {
+      const section = document.getElementById('promises');
+      const heading = document.getElementById('trust-h');
+      const issues = [];
+      if (section.closest('.cleave[data-armed]')) issues.push('opening cover obscures promises');
+      for (const el of [heading, ...section.querySelectorAll('.trust-plate strong')]) {
+        for (let node = el; node && node !== document.body; node = node.parentElement) {
+          const css = getComputedStyle(node);
+          if (css.display === 'none' || css.visibility !== 'visible' || Number(css.opacity) < 0.99) issues.push('trust text is hidden');
+        }
+      }
+      const box = heading.getBoundingClientRect();
+      if (box.top < 80 || box.bottom > innerHeight) issues.push('trust heading not in readable viewport position');
+      if (section.querySelectorAll('.trust-plate strong').length !== 4) issues.push('four promises missing');
+      return issues;
+    });
+    problems.forEach((p) => trustProblems.add(p));
+  }
+  const trustAfter = await page.locator('#promises').evaluate((el) => el.getBoundingClientRect().height);
+  if (Math.abs(trustHeight - trustAfter) > 1) trustProblems.add('trust reveal changes layout height');
+  trustProblems.size ? fail(run.name, [...trustProblems].join('; ')) : pass('trust heading and promises stay readable through entry, quick scroll and reverse scroll');
 
   if (run.audit) {
     const a = await page.evaluate(audit);

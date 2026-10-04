@@ -4,10 +4,10 @@ import { TRUST_INTRO, TRUST_LINES, TRUST_TITLE } from '@/lib/content';
 /** Trust strip (PLAN §18.6): what we build, then four promises we keep, forged in front of you.
  *  Right under the hero, so the first scroll answers "can I trust these two?".
  *
- *  As the Cleave opens (data-open), each plate arrives red-hot, a press strikes its hallmark
+ *  The heading and promise copy stay readable from first paint. On entering view, a press strikes each hallmark
  *  (plan D #2's punch, with a spark burst), the plate cools to brushed steel and its little
  *  machine runs once; then a white-hot weld joins the four. Pure CSS, transform and opacity
- *  only (sections.css "trust strip"). Without JS or with motion off it is simply the finished,
+ *  only (sections.css "trust strip"); no opening cover hides the copy. Without JS or with motion off it is simply the finished,
  *  cooled, stamped frame: the animations only exist while PunchIn has armed a plate. */
 
 const ICONS: Record<(typeof TRUST_LINES)[number]['icon'], React.ReactNode> = {

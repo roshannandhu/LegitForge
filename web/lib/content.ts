@@ -70,7 +70,7 @@ export const WEBSITE_FACTS = {
    word for word, a promise reads as policy rather than a sales line. */
 export const TRUST_INTRO =
   'Websites, apps, quotation and warranty systems, WhatsApp automation, n8n workflows and MR Signage — built by the two people you talk to.';
-export const TRUST_TITLE = 'Four promises, stamped in steel.';
+export const TRUST_TITLE = 'What you can count on.';
 export const TRUST_LINES = [
   { k: 'Fixed price before we start', v: 'No surprise invoices.', mark: 'Fixed', icon: 'lock' },
   { k: 'A preview link every week', v: 'You watch it being built.', mark: 'Weekly', icon: 'weeks' },

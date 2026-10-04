@@ -9,6 +9,8 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
   Anybody font, forge palette and retained motion. Relocation is explicitly authorised.
 - MR Signage is LAST in service lists, pricing/quotation rows, enquiry options and summaries.
   This supersedes historical MR-first instructions in PLAN §22.3.
+- The compact trust heading and promises stay visible from first paint; forge decoration may
+  animate, but never hide the copy behind an opening cover or a scroll pin.
 - Custom written quotes after scoping, no invented starting prices/budget bands/client metrics.
 - Describe simulations as illustrative. Never call a scripted stopwatch a measured real reply.
 - Google sessions/allow-list are current admin architecture; never restore Cloudflare Access.

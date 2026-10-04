@@ -14,6 +14,8 @@ Follow the approved October 2026 release decisions in `CLAUDE.md` and the curren
 
 The homepage presents hero → compact trust → published work and genuine testimonials → compact service ledger → full enquiry → process, quotes and FAQ → team, tools and closing contact. Detailed demonstrations live on their service pages. MR Signage is last in every service list; “Not sure yet” is the final enquiry utility option. Existing service URLs and primary homepage anchors remain stable.
 
+Keep the compact trust heading and promise copy visible from first paint. Animate its decorative hallmarks and forge details without an opaque opening cover or scroll pin that prevents reading.
+
 Website illustrations must not claim live WhatsApp processing or measured timings. Quotes are fixed in writing after scoping; do not invent prices or quotation/warranty commercial terms. Bot, n8n hosting, Telegram provisioning and AI workflows are a separate release.
 
 Release checks include `npm run test:backend`, TypeScript, the isolated production Worker preflight and live smoke tests. Deploy database migration → Worker → content tags → matching Pages assets → verification. Preserve production content and unrelated local trace files. Never expose secrets or enable Turnstile from an unverified site-key/secret pair.
