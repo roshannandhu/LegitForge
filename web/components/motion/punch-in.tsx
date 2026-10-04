@@ -23,7 +23,8 @@ export function PunchIn({ children, className, as: Tag = 'div', threshold = 0.5,
     // (a 135 ms frame on a 2 GB tablet, mid-swipe). So there it waits for the Cleave to open:
     // one restyle, at the moment it plays.
     const cleave = el.closest<HTMLElement>('.cleave');
-    const shut = () => !!cleave && 'armed' in cleave.dataset && !('open' in cleave.dataset);
+    const shut = () => !!cleave && !('open' in cleave.dataset) && ('armed' in cleave.dataset
+      || ('readFirst' in cleave.dataset && document.documentElement.dataset.motion === 'on'));
     let seen = false;
     const punch = () => { if (seen && !shut() && !('punched' in el.dataset)) { el.dataset.punched = ''; stop(); } };
     const io = new IntersectionObserver(([e]) => {

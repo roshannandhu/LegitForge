@@ -3,14 +3,15 @@
 The full plan is ../PLAN.md. Read the relevant section before building anything.
 PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory review gates.
 
-## Current owner decisions (3 October 2026)
+## Current owner decisions (4 October 2026)
 - Website/CMS/enquiry fixes only; real WhatsApp/n8n/AI infrastructure remains future work.
 - Compact homepage; detailed illustrative demos live on service/inner pages. Preserve the intro,
   Anybody font, forge palette and retained motion. Relocation is explicitly authorised.
 - MR Signage is LAST in service lists, pricing/quotation rows, enquiry options and summaries.
   This supersedes historical MR-first instructions in PLAN §22.3.
-- The compact trust heading and promises stay visible from first paint; forge decoration may
-  animate, but never hide the copy behind an opening cover or a scroll pin.
+- The owner retains the trust steel-split opening effect: wait until its heading is fully readable,
+  then split visibly, pausing off-screen or behind the menu/intro and staying open afterward. All viewports remain unpinned;
+  reduced motion/no-JS/failed loading show static content. Fix timing rather than removing it.
 - Custom written quotes after scoping, no invented starting prices/budget bands/client metrics.
 - Describe simulations as illustrative. Never call a scripted stopwatch a measured real reply.
 - Google sessions/allow-list are current admin architecture; never restore Cloudflare Access.

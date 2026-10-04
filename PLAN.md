@@ -2,7 +2,7 @@
 
 Version 2.0, 25 September 2026. Sources checked on this date (see §20).
 
-## Current decisions — 3 October 2026
+## Current decisions — 4 October 2026
 
 This section and `web/CLAUDE.md` govern the current website release. The specifications and
 build logs below are historical where they conflict with these decisions.
@@ -33,6 +33,11 @@ build logs below are historical where they conflict with these decisions.
 - **Design:** Anybody subset, tempered steel/light and black/gold/dark palette. The hero is a
   clock-driven unpinned loop. Do not restore Archivo, inherited per-frame `<html>` variables,
   old project-track behaviour or original mobile-only 2D tiers from the historical examples.
+- **Trust opening:** retain the steel-split animation on phone, tablet and laptop. Give the
+  fully visible heading a reading interval, pause the split off-screen or behind the menu/intro,
+  and leave it open afterward. Keep this compact section unpinned at every width; use readable
+  static content for reduced motion, no JavaScript or failed loading. Fix timing without removing
+  the opening effect.
 - **Analytics:** bounded first-party aggregate events without names, phones, message text or
   session identifiers; admin reports the last 30 days. Retain aggregate events for 13 months.
   Cloudflare Web Analytics dashboard setup remains an account-side verification item.

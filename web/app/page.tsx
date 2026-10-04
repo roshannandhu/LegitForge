@@ -4,6 +4,7 @@ import { StoryChips } from '@/components/hero/story-chips';
 import { HeroStatus } from '@/components/hero/hero-status';
 import { HeatDirector } from '@/components/motion/heat-director';
 import { TrustStrip } from '@/components/sections/trust-strip';
+import { Cleave } from '@/components/motion/cleave';
 import { ToolsLoop } from '@/components/sections/tools-strip';
 import { TOOL_LOGOS } from '@/components/sections/tools-logos';
 import { HydrateWhenNear } from '@/components/motion/hydrate-when-near';
@@ -142,7 +143,9 @@ export default async function Home() {
         </div>
       </section>
 
-      <TrustStrip compact />
+      <Cleave readFirst pin={false} cover={<div className="plate-steel"><p data-cleave-title className="type-h2">What you can count on.<span>Four promises, forged in steel</span></p></div>}>
+        <TrustStrip compact />
+      </Cleave>
       <Projects />
       <Hallmarks testimonialsOnly />
       <Services />

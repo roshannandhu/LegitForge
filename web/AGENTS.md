@@ -14,7 +14,7 @@ Follow the approved October 2026 release decisions in `CLAUDE.md` and the curren
 
 The homepage presents hero → compact trust → published work and genuine testimonials → compact service ledger → full enquiry → process, quotes and FAQ → team, tools and closing contact. Detailed demonstrations live on their service pages. MR Signage is last in every service list; “Not sure yet” is the final enquiry utility option. Existing service URLs and primary homepage anchors remain stable.
 
-Keep the compact trust heading and promise copy visible from first paint. Animate its decorative hallmarks and forge details without an opaque opening cover or scroll pin that prevents reading.
+The owner explicitly retains the trust section's steel-split opening animation. Give its fully visible heading a reading interval before the split, pause the opening off-screen or behind the menu/intro, and keep it open afterward. Keep all viewports unpinned and preserve static content for reduced motion, no JavaScript or failed loading. Do not remove the opening effect to solve timing bugs.
 
 Website illustrations must not claim live WhatsApp processing or measured timings. Quotes are fixed in writing after scoping; do not invent prices or quotation/warranty commercial terms. Bot, n8n hosting, Telegram provisioning and AI workflows are a separate release.
 
