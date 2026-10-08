@@ -42,7 +42,7 @@ export const LITE_BOOT =
  *  sections rendering mid-jump used to move the target (Pricing landed 150 px off). One full layout,
  *  once per visit, and only for a visitor who jumps. */
 export const CV_BOOT =
-  `try{var old={'#quotation':'/services/website-development#quotation','#compare':'/services/website-development#compare','#live-test':'/services/whatsapp-automation#live-test'};` +
+  `try{var old={'#quotation':'/services/website-development#quotation','#compare':'/services/website-development#compare','#app-example':'/services/website-development#app-example','#live-test':'/services/whatsapp-automation#live-test'};` +
   `var go=function(){if(location.pathname==='/'&&old[location.hash]){var dest=old[location.hash].split('#');location.replace(dest[0]+location.search+'#'+dest[1])}};go();addEventListener('hashchange',go)}catch(e){}` +
   `try{var h=document.documentElement,o=function(){h.dataset.cvOff=''};if(location.hash.length>1)o();` +
   `document.addEventListener('click',function(e){var a=e.target.closest&&e.target.closest('a[href*="#"]');` +

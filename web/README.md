@@ -20,6 +20,18 @@ npm run dev                         # http://localhost:3000, with local D1 and R
 (http://localhost:8787). Use it to test `worker.ts`, the cron and anything
 Cloudflare-specific. `npm run check` is the headless-Chrome gate (see `CLAUDE.md`).
 
+The trust steel opening follows scrolling in both directions. Its complete heading receives the first
+25% of readable scroll travel before the split. Scrolling down reveals and scrolling up closes
+again, including after a full reveal; stopped scrolling freezes the frame. Its paused timeline
+stays mounted and hallmarks strike once. It remains unpinned, with readable static fallbacks.
+
+Service pages retain six URLs, with websites and apps together. Practical deliverables, relevant
+published work, quotes/timelines and preparation precede the primary demo. Extra demos and deeper
+details use native disclosures; old hashes open the matching section. The index stays compact.
+Run `node scripts/check-service-pages.mjs` against the built local Worker to verify this journey.
+`BASE=http://127.0.0.1:8788 node scripts/check-trust-opening.mjs` runs the focused release checks
+for scrolling, anchors, interruptions, resizing, both themes and failed/delayed loading.
+
 `next dev`, `next build` and `next start` print a warning that `DOQueueHandler` is not exported.
 It comes from OpenNext's dev-bindings helper, which never loads `worker.ts`. It is expected and harmless.
 

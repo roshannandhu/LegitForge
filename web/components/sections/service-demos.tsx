@@ -24,6 +24,7 @@ export function ServiceDemo({ kind }: { kind: DemoKind }) {
           {kind === 'nfc' && <NfcDemo />}
         </div>
       </DemoPlayer>
+      <p className="demo-caption">Illustrative example. Names, figures and activity are sample data.</p>
       <DemoTranscript kind={kind} />
     </>
   );
@@ -37,8 +38,7 @@ function Cursor() {
   );
 }
 
-/* 1 — a wireframe snaps into a styled page, a visitor clicks, speed reads 99, then the
-       page turns dynamic: live content changes on its own */
+/* Website illustration: a wireframe becomes a page, with a sample score and editable content. */
 function WebsiteDemo() {
   const r = 26, c = 2 * Math.PI * r;
   return (
@@ -62,7 +62,7 @@ function WebsiteDemo() {
           <circle cx="32" cy="32" r={r} className="ring-fill" strokeDasharray={c} strokeDashoffset={c * 0.01} />
         </svg>
         <span className="ring-num num">99</span>
-        <span className="ring-label">Speed</span>
+        <span className="ring-label">Sample score</span>
       </div>
     </div>
   );
@@ -96,9 +96,7 @@ function AppDemo() {
   );
 }
 
-/* 5 — SEO: a Google search for the service, as it really looks on a phone or laptop: the query
-       types in, the Maps pack loads, CoolAir climbs from third to the top listing, its pin lifts
-       on the map, someone taps Call, and the week's clicks and calls from Google go up. */
+/* SEO illustration: fictional listings and sample search/contact activity. */
 const SERP_LISTINGS = [
   { id: 'you', name: 'CoolAir Services', rating: '4.9', reviews: '212', kind: 'AC installation · Kochi', note: 'Open now · Fitted in a day' },
   { id: 'b', name: 'City AC Repairs', rating: '4.1', reviews: '38', kind: 'AC repair service · Kochi', note: 'Closes 7 pm' },
@@ -139,14 +137,14 @@ function SeoDemo() {
               <span className="serp-act"><SerpIcon d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM3 12h18M12 3c3 3.3 3 14.7 0 18M12 3c-3 3.3-3 14.7 0 18" /></span>
               <span className={`serp-act${l.id === 'you' ? ' serp-call' : ''}`}><SerpIcon d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2" /></span>
             </span>
-            {l.id === 'you' && <span className="serp-top">#1 on Google Maps</span>}
+            {l.id === 'you' && <span className="serp-top">Example listing</span>}
           </li>
         ))}
       </ol>
       <span className="serp-tap" aria-hidden="true" />
       <div className="serp-stats">
-        <span><b className="num serp-clicks">148</b> clicks this week</span>
-        <span><b className="num serp-calls">23</b> calls from Google</span>
+        <span><b className="num serp-clicks">148</b> sample clicks</span>
+        <span><b className="num serp-calls">23</b> sample calls</span>
       </div>
     </div>
   );
@@ -202,7 +200,7 @@ function NfcDemo() {
       <div className="nfc-phone">
         <p className="nfc-kicker">Tapped · no app needed</p>
         <p className="nfc-h">Leave a review</p>
-        <p className="nfc-stars">★★★★★</p>
+        <p className="nfc-stars">Your rating</p>
         <p className="nfc-sub">CoolAir Services · Google</p>
         <span className="nfc-btn">Post review</span>
       </div>

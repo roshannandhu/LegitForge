@@ -3,15 +3,24 @@
 The full plan is ../PLAN.md. Read the relevant section before building anything.
 PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory review gates.
 
-## Current owner decisions (4 October 2026)
+## Current owner decisions (7 October 2026)
 - Website/CMS/enquiry fixes only; real WhatsApp/n8n/AI infrastructure remains future work.
 - Compact homepage; detailed illustrative demos live on service/inner pages. Preserve the intro,
   Anybody font, forge palette and retained motion. Relocation is explicitly authorised.
 - MR Signage is LAST in service lists, pricing/quotation rows, enquiry options and summaries.
   This supersedes historical MR-first instructions in PLAN §22.3.
-- The owner retains the trust steel-split opening effect: wait until its heading is fully readable,
-  then split visibly, pausing off-screen or behind the menu/intro and staying open afterward. All viewports remain unpinned;
+- The owner retains the trust steel-split opening effect, controlled by scrolling: begin with
+  the full heading readable, hold closed for 25% of remaining travel, then seek the split through
+  the remaining 75%. Scrolling down opens; scrolling up closes again, even after completion.
+  No timer/autoplay or permanent latch. Keep the paused timeline mounted, strike hallmarks once,
+  freeze behind menu/intro/hidden tab, and preserve the painted frame while resizing/rebasing. All viewports remain unpinned;
   reduced motion/no-JS/failed loading show static content. Fix timing rather than removing it.
+- Six service URLs; websites/apps remain together with clear sections. Short overview and
+  deliverables → genuinely relevant published work → included work, quotes/timelines and client
+  preparation → primary illustrative demo → native expandable details/additional demos and FAQ.
+  Old demo hashes open their disclosure. Keep costs/scope visible, index compact and sample
+  figures labelled. Match project tags, never unrelated broad categories. No fictional client
+  quotations, measured-demo claims, ranking guarantees or new mandatory care/ownership terms.
 - Custom written quotes after scoping, no invented starting prices/budget bands/client metrics.
 - Describe simulations as illustrative. Never call a scripted stopwatch a measured real reply.
 - Google sessions/allow-list are current admin architecture; never restore Cloudflare Access.

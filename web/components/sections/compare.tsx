@@ -44,7 +44,7 @@ const PLAIN = [
   { q: 'Changes by itself?', static: 'No. It changes when someone edits it.', dynamic: 'Yes, the moment something happens.' },
   { q: 'Different for each customer?', static: 'No. Everyone sees the same page.', dynamic: 'Yes: their login, their bookings, their orders.' },
   { q: 'Bookings, orders, payments?', static: 'Through WhatsApp or a phone call.', dynamic: 'Right on the website.' },
-  { q: 'Speed', static: 'The fastest, and very little to hack.', dynamic: 'Fast. More moving parts to build and look after.' },
+  { q: 'Care', static: 'Fewer moving parts to look after.', dynamic: 'Data and connected features need ongoing care.' },
   { q: 'It’s like', static: 'A newspaper: printed once, the same for everyone.', dynamic: 'A live cricket score: it changes every ball.' },
   { q: 'Best for', static: 'Portfolios, menus, clinic and shop information.', dynamic: 'Table bookings, online orders, member logins, dashboards.' },
 ] as const;
@@ -129,7 +129,7 @@ export function Compare({ facts }: { facts: { static: Fact; dynamic: Fact } }) {
       <div className="wrap">
         <header className="section-head">
           <h2 className="type-h2">Static or dynamic? Drag to compare.</h2>
-          <p className="type-lead">The same café website, built two ways. Things keep happening at the café: watch which website keeps up.</p>
+          <p className="type-lead">An illustrative café website built two ways. Compare a simple information site with an app that handles bookings and orders. Your features are agreed in the scope.</p>
         </header>
 
         <p className="sr-only">
@@ -199,8 +199,8 @@ export function Compare({ facts }: { facts: { static: Fact; dynamic: Fact } }) {
             ))}
           </ol>
           <div className="picker-result" aria-live="polite" data-verdict={verdict ?? undefined}>
-            {verdict === 'static' && <p><b>A static site is enough.</b> Fast, low cost, {facts.static.price.toLowerCase()} · {facts.static.time.toLowerCase()}. You can add one live piece later.</p>}
-            {verdict === 'dynamic' && <p><b>You need a dynamic site</b> for {needs.map((n) => n.why).join(' and ')}. {facts.dynamic.price} · {facts.dynamic.time.toLowerCase()}. The rest can stay static and fast.</p>}
+            {verdict === 'static' && <p><b>A simple website may fit.</b> {facts.static.price} · {facts.static.time.toLowerCase()}. We confirm the pages and editing you need.</p>}
+            {verdict === 'dynamic' && <p><b>Discuss an editable website or web app</b> for {needs.map((n) => n.why).join(' and ')}. {facts.dynamic.price} · {facts.dynamic.time.toLowerCase()}. We confirm the required workflows with you.</p>}
             {!verdict && <p className="picker-wait">{answered ? 'One more…' : 'Your answer appears here, and the slider moves to the side that fits.'}</p>}
             <a className="btn btn-ghost btn-sm" href={waLink(company, waText)}>{verdict ? 'Send this to us on WhatsApp' : 'Not sure? Ask us on WhatsApp'}</a>
           </div>
@@ -214,7 +214,7 @@ export function Compare({ facts }: { facts: { static: Fact; dynamic: Fact } }) {
  *  frame (grid rows keep their table roles; on phones the question sits above its answers).
  *  memo: dragging the slider or a tick of the café never re-renders it. */
 const PlainWords = memo(function PlainWords({ facts }: { facts: { static: Fact; dynamic: Fact } }) {
-  const rows = [...PLAIN, { q: 'Price and time', static: `${facts.static.price} · ${facts.static.time}`, dynamic: `${facts.dynamic.price} · ${facts.dynamic.time}` }];
+  const rows = [...PLAIN, { q: 'Quotes and timelines', static: `${facts.static.price} · ${facts.static.time}`, dynamic: `${facts.dynamic.price} · ${facts.dynamic.time}` }];
   return (
     <div className="plain" role="table" aria-label="Static and dynamic websites in plain words">
       <div className="plain-row plain-head" role="row">

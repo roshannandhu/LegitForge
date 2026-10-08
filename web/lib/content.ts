@@ -8,10 +8,10 @@ export const SERVICES: {
   id: DemoKind; name: string; line: string; audience: string; price: string; time: string; link: string; href: string;
 }[] = [
   {
-    id: 'website', name: 'Static websites',
-    line: 'A fast site that loads in about a second and is easy to update.',
+    id: 'website', name: 'Websites',
+    line: 'Show your services and work, with clear contact actions and agreed content editing.',
     audience: 'Local businesses, portfolios, launches',
-    price: 'Quoted per project', time: 'Live in about 2 weeks', link: 'See website packages', href: '/services/website-development',
+    price: 'Quoted per project', time: 'Typical build 1–2 weeks', link: 'See website options', href: '/services/website-development',
   },
   {
     id: 'app', name: 'Web apps',
@@ -21,33 +21,33 @@ export const SERVICES: {
   },
   {
     id: 'whatsapp', name: 'WhatsApp automation',
-    line: 'Answer customers instantly, send order updates and collect leads on WhatsApp.',
+    line: 'Handle repeat questions and enquiries, with approved flows and a handoff to your team.',
     audience: 'Shops, clinics, restaurants, service businesses',
-    price: 'Quoted per project', time: 'Live in 1–2 weeks', link: 'See WhatsApp automation', href: '/services/whatsapp-automation',
+    price: 'Build and support quoted separately', time: 'Typical build 1–2 weeks; approvals vary', link: 'See WhatsApp automation', href: '/services/whatsapp-automation',
   },
   {
     id: 'n8n', name: 'n8n workflows',
-    line: 'Connect your apps so data moves by itself: forms, sheets, CRM, invoices.',
+    line: 'Connect forms, sheets and business tools through tested, agreed workflows.',
     audience: 'Teams stuck copying and pasting',
-    price: 'Quoted per project', time: 'Often running in days', link: 'See n8n workflows', href: '/services/n8n-automation',
+    price: 'Quoted per workflow', time: 'Simple workflows typically 2–5 days', link: 'See n8n workflows', href: '/services/n8n-automation',
   },
   {
     id: 'seo', name: 'SEO',
-    line: 'Get found on Google when people nearby search for what you sell, then turn the click into a call.',
+    line: 'Improve your listing and website for the local services and areas you cover.',
     audience: 'Local shops, clinics, service businesses',
-    price: 'Monthly scope, quoted with you', time: 'Results build over 2–3 months', link: 'See how we do SEO', href: '/services/seo',
+    price: 'Setup and monthly scope quoted with you', time: 'Initial setup typically 1–2 weeks', link: 'See how we do SEO', href: '/services/seo',
   },
   {
     id: 'nfc', name: 'NFC cards and tags',
-    line: 'One tap on a card or sticker opens your contact, your Google reviews, or a product’s warranty.',
+    line: 'Share a contact, menu, review or warranty link by tap or QR scan.',
     audience: 'Sales teams, restaurants, product and service brands',
-    price: 'Quoted per project', time: 'Ready in about a week', link: 'See NFC cards and tags', href: '/services/nfc',
+    price: 'Quoted per project', time: 'About a week after artwork approval', link: 'See NFC cards and tags', href: '/services/nfc',
   },
   {
     id: 'signage', name: 'MR Signage',
-    line: 'Our digital signage subscription: run TV and tablet screens across your branches from one dashboard, with offline playback.',
+    line: 'Schedule Android TV and tablet playlists, with playback of downloaded content.',
     audience: 'Shops, restaurants, clinics, malls and screen advertisers',
-    price: 'Monthly plans, quoted per screen', time: 'First screens live in a day', link: 'See MR Signage', href: '/services/digital-signage',
+    price: 'Monthly plans, quoted per screen', time: 'First setup typically a day; hardware required', link: 'See MR Signage', href: '/services/digital-signage',
   },
 ];
 
@@ -134,11 +134,11 @@ export const PRICING = [
   { service: 'Static website', from: 'Quoted per project', time: '1–2 weeks', weeks: [1, 2], includes: 'Up to 5 pages, contact form, SEO setup, 30 days of fixes' },
   { service: 'Web app', from: 'Quoted per project', time: '3–6 weeks', weeks: [3, 6], includes: 'Logins, database, admin panel' },
   { service: 'Quotation and warranty system', from: 'Quoted per project', time: '3–6 weeks', weeks: [3, 6], includes: 'Quotes as links or PDFs, warranty lookup by QR, CSV export any time' },
-  { service: 'WhatsApp automation', from: 'Build and support quoted separately', time: '1–2 weeks', weeks: [1, 2], includes: "Bot flows, lead capture, team alerts. Meta's message fees are separate." },
+  { service: 'WhatsApp automation', from: 'Build and support quoted separately', time: 'Typical build 1–2 weeks; approvals vary', weeks: [1, 2], includes: 'Approved flows, enquiry capture and agreed handoff. Platform messaging charges are separate.' },
   { service: 'n8n workflow', from: 'Quoted per workflow', time: '2–5 days', weeks: [0.4, 1], includes: 'Build, testing, documentation, 30 days of fixes' },
-  { service: 'SEO', from: 'Monthly scope, quoted with you', time: 'Set up in 1–2 weeks', weeks: [1, 2], includes: 'Google Business Profile, on-page fixes, local pages, monthly report of calls and clicks' },
-  { service: 'NFC cards and tags', from: 'Quoted per project', time: 'About a week', weeks: [0.8, 1.2], includes: 'Programmed cards or stickers, the page they open, and edits any time without reprinting' },
-  { service: 'MR Signage (subscription)', from: 'Monthly, quoted per screen', time: 'Live in a day', weeks: [0.2, 0.4], includes: 'The player app for Android TVs and tablets, the dashboard, schedules, offline playback, updates and support' },
+  { service: 'SEO', from: 'Setup and monthly scope quoted with you', time: 'Initial setup typically 1–2 weeks', weeks: [1, 2], includes: 'Agreed listing and website improvements, with reporting from available search and contact data' },
+  { service: 'NFC cards and tags', from: 'Quoted per project', time: 'About a week after artwork approval', weeks: [0.8, 1.2], includes: 'Agreed cards or tags, destination links, QR fallback and the scoped update process' },
+  { service: 'MR Signage (subscription)', from: 'Monthly, quoted per screen', time: 'First setup typically a day; hardware required', weeks: [0.2, 0.4], includes: 'The compatible Android player, chosen dashboard plan, schedules, downloaded playback, updates and support' },
 ];
 
 /* ----------------------------------------------------------------- FAQ §6.10 */

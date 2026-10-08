@@ -1,5 +1,4 @@
-/** Quotation and warranty system (PLAN §6.3b). Our own product, and the plainest proof
- *  that we ship real software. The mock is one living document on a lifecycle rail (plan F
+/** Quotation and warranty illustration (PLAN §6.3b). The mock is one document on a lifecycle rail (plan F
  *  step 5): a WhatsApp enquiry becomes a quote, it is sent, opened, signed and sealed with our
  *  coin, installed, flips over into its warranty card (QR or NFC tap), and the reminder goes
  *  out. Then the next job starts, forever (demos.ts "quote" + its flow). The markup is the
@@ -10,9 +9,9 @@ import { DemoPlayer } from './demo-player';
 import { DemoTranscript } from './demo-transcript';
 
 const POINTS = [
-  { h: 'Quote', p: 'Build a quote from saved line items, send it as a link or PDF, and see when it was opened. Accepted quotes are timestamped and stored.' },
-  { h: 'Warranty', p: 'Every completed job gets a warranty record with a serial or QR code. Your customer scans it and sees what is covered, until when, and how to claim.' },
-  { h: 'Reminders', p: 'Add expiry reminders and claim requests through the WhatsApp or email integrations agreed in your scope.' },
+  { h: 'Quote', p: 'Saved line items, a link or PDF, and a record of acceptance.' },
+  { h: 'Warranty', p: 'A serial or QR code opens coverage, expiry and claim details.' },
+  { h: 'Reminders', p: 'WhatsApp or email reminders, with integrations agreed in your scope.' },
 ];
 
 /** One quote's whole life, left to right: the rail over the demo (plan F step 5). */
@@ -23,16 +22,15 @@ export function Quotation() {
     <section id="quotation" data-event-location="service" data-heat="0.55" className="section">
       <div className="wrap quote-grid">
         <div className="quote-copy">
-          <h2 className="type-h2">Quotes that look professional. Warranties customers can check.</h2>
-          <p className="type-lead">An example of the quote and warranty flow we can build around your business.</p>
+          <h2 className="type-h2">Quotation and warranty example</h2>
+          <p className="type-lead">A sample journey from enquiry to accepted quote and warranty record.</p>
           <ol className="quote-points">
             {POINTS.map((pt) => (
               <li key={pt.h}><h3 className="type-h3">{pt.h}</h3><p>{pt.p}</p></li>
             ))}
           </ol>
           <p className="quote-trust">
-            Your quotes and warranty records are your data. Export everything as CSV at any time,
-            including if you leave us.
+            Your quotes and warranty records are your data. Export them as CSV, including if you leave us.
           </p>
         </div>
 

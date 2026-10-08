@@ -127,7 +127,7 @@ function quote(root: Element, gsap: G): TL {
   return tl;
 }
 
-/* 6 — SEO: the query types, the business climbs from third to the top, clicks and calls count */
+/* 6 — an illustrative local listing: query, contact action and sample activity counts. */
 /* SEO: a finger taps CoolAir's Call button (the touch point, then the button's ripple) */
 function tapCall(tl: TL, root: Element, at: number) {
   const serp = $(root, '.serp'), call = $(root, '.serp-call'), tap = $(root, '.serp-tap');
@@ -145,16 +145,13 @@ function tapCall(tl: TL, root: Element, at: number) {
 
 function seo(root: Element, gsap: G): TL {
   const tl = gsap.timeline({ defaults: { ease: 'power2.out' } });
-  const q = $(root, '.serp-q'), items = $$(root, '.serp-item'), you = items[0];
+  const q = $(root, '.serp-q'), items = $$(root, '.serp-item');
   const text = q?.textContent ?? '';
-  const step = items[1] ? items[1].offsetTop - items[0].offsetTop : 0;
   if (q) q.textContent = '';
   const o = { n: 0 };
   tl.to(o, { n: text.length, duration: 0.7, ease: 'none', onUpdate: () => { if (q) q.textContent = text.slice(0, Math.round(o.n)); } }, 0.1)
     .call(() => { if (q) q.textContent = text; }, [], 0.8)
     .from(items, { opacity: 0, y: 8, duration: 0.3, stagger: 0.08 }, 0.85)
-    .fromTo(you, { y: step * 2 }, { y: 0, duration: 0.8, ease: 'power3.inOut', immediateRender: true }, 1.3)
-    .fromTo(items.slice(1), { y: -step }, { y: 0, duration: 0.8, ease: 'power3.inOut', immediateRender: true }, 1.3)
     .from($(root, '.serp-top'), { opacity: 0, scale: 0.6, duration: 0.3, ease: 'back.out(2)' }, 2.1)
     .from($$(root, '.serp-pin'), { opacity: 0, y: -14, duration: 0.35, stagger: 0.1, ease: 'bounce.out' }, 0.9)
     .fromTo($(root, '.serp-pin.p-you'), { scale: 1 }, { scale: 1.35, duration: 0.2, yoyo: true, repeat: 1, immediateRender: false }, 2.1);
@@ -353,12 +350,11 @@ function n8nFlow(root: Element, gsap: G): TL {
   return tl;
 }
 
-/* SEO: new searches keep coming; every time, the business climbs back to the top */
+/* SEO: sample searches refresh a listing and illustrate available contact reporting. */
 function seoFlow(root: Element, gsap: G): TL {
   const tl = gsap.timeline({ repeat: -1, defaults: { ease: 'power2.out' } });
-  const q = $(root, '.serp-q'), items = $$(root, '.serp-item'), you = items[0];
+  const q = $(root, '.serp-q'), items = $$(root, '.serp-item');
   const clicks = $(root, '.serp-clicks'), calls = $(root, '.serp-calls');
-  const step = items[1] ? items[1].offsetTop - items[0].offsetTop : 0;
   const queries = ['split ac service near me', 'ac repair kochi open now', 'best ac installation kochi', 'ac installation kochi'];
   let i = 0, c = numOf(clicks), n = numOf(calls);
   const del = { p: 1 }, add = { p: 0 };
@@ -369,12 +365,8 @@ function seoFlow(root: Element, gsap: G): TL {
     .fromTo(add, { p: 0 }, { p: 1, duration: 0.7, ease: 'none', immediateRender: false, onUpdate: () => txt(q, to.slice(0, Math.round(add.p * to.length))) }, 1.6)
     .call(() => txt(q, to), [], 2.3)
     .to(items, { opacity: 0.35, duration: 0.15 }, 2.3)                       // results refresh
-    .set(you, { y: step * 2 }, 2.45)
-    .set(items.slice(1), { y: -step }, 2.45)
     .to(items, { opacity: 1, duration: 0.2 }, 2.45)
     .set($(root, '.serp-top'), { opacity: 0 }, 2.45)
-    .to(you, { y: 0, duration: 0.8, ease: 'power3.inOut' }, 2.8)
-    .to(items.slice(1), { y: 0, duration: 0.8, ease: 'power3.inOut' }, 2.8)
     .fromTo($(root, '.serp-top'), { opacity: 0, scale: 0.6 }, { opacity: 1, scale: 1, duration: 0.3, ease: 'back.out(2)', immediateRender: false }, 3.6)
     .fromTo($(root, '.serp-pin.p-you'), { scale: 1 }, { scale: 1.35, duration: 0.2, yoyo: true, repeat: 1, immediateRender: false }, 3.6)
     .call(() => { c += 3 + (i % 4); txt(clicks, String(c)); }, [], 3.7)
@@ -423,7 +415,7 @@ function nfcFlow(root: Element, gsap: G): TL {
   const acts = [
     ['Tapped · warranty', 'Warranty valid', '✓ Until Mar 2028', 'AC-88213 · next service 12 Oct', 'Book a service'],
     ['Tapped · no app needed', 'Save contact', 'Ravi Menon', 'CoolAir · +91 98470 00000', 'Save to phone'],
-    ['Tapped · no app needed', 'Leave a review', '★★★★★', 'CoolAir Services · Google', 'Post review'],
+    ['Tapped · no app needed', 'Leave a review', 'Your rating', 'CoolAir Services · Google', 'Post review'],
   ];
   let i = 0;
   tl.to({}, { duration: 1.6 })

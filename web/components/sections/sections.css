@@ -999,20 +999,20 @@
 
 /* A stationary copy measures the readable heading, independent of the moving halves. */
 .cleave-read-sentinel { position: absolute; inset: 0; visibility: hidden; pointer-events: none; }
-html[data-motion="on"] .cleave[data-read-first]:not([data-open]):not([data-fallback]) { overflow: hidden; }
-html[data-motion="on"] .cleave[data-read-first]:not([data-open]):not([data-fallback]) .cleave-cover { display: block; position: absolute; inset: 0; z-index: 2; pointer-events: none; }
-.cleave[data-read-first][data-phase="opening"] [data-cleave="l"] { animation: cleave-read-left 1100ms cubic-bezier(.7, 0, .3, 1) both paused; }
-.cleave[data-read-first][data-phase="opening"] [data-cleave="r"] { animation: cleave-read-right 1100ms cubic-bezier(.7, 0, .3, 1) both paused; }
-.cleave[data-read-first][data-phase="opening"] [data-seam] { animation: cleave-read-seam 1100ms ease-out both paused; }
-.cleave[data-read-first][data-playing] :is(.cleave-half, .cleave-seam) { animation-play-state: running; }
-.cleave[data-read-first][data-open] .cleave-cover,
+html[data-motion="on"] .cleave[data-read-first]:not([data-fallback]) { overflow: hidden; }
+html[data-motion="on"] .cleave[data-read-first]:not([data-fallback]) .cleave-cover { display: block; position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+.cleave[data-read-first][data-timeline] [data-cleave="l"] { animation: cleave-read-left 1100ms cubic-bezier(.7, 0, .3, 1) both paused; }
+.cleave[data-read-first][data-timeline] [data-cleave="r"] { animation: cleave-read-right 1100ms cubic-bezier(.7, 0, .3, 1) both paused; }
+.cleave[data-read-first][data-timeline] [data-seam] { animation: cleave-read-seam 1100ms ease-out both paused; }
+.cleave[data-read-first][data-open] .cleave-cover { visibility: hidden; }
+.cleave[data-read-first][data-fallback] .cleave-cover,
 html[data-motion="off"] .cleave[data-read-first] .cleave-cover { display: none; }
 @keyframes cleave-read-left {
-  0%, 16% { transform: translateX(0) rotate(0); }
+  0% { transform: translateX(0) rotate(0); }
   100% { transform: translateX(-100%) rotate(-1.5deg); }
 }
 @keyframes cleave-read-right {
-  0%, 16% { transform: translateX(0) rotate(0); }
+  0% { transform: translateX(0) rotate(0); }
   100% { transform: translateX(100%) rotate(1.5deg); }
 }
 @keyframes cleave-read-seam {

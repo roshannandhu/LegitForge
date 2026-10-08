@@ -68,7 +68,10 @@ try {
   await run('scripts/smoke.mjs', [], { env: { ...env, BASE: base, ALLOW_EMPTY_COMPANY: '1' } });
   await run('scripts/check-enquiries.mjs', [], { env: { ...env, BASE: base } });
   await run('scripts/check-access.mjs', [], { env: { ...env, BASE: base } });
+  await run('scripts/check-trust-opening.mjs', [], { env: { ...env, BASE: base } });
+  await run('scripts/check-service-pages.mjs', [], { env: { ...env, BASE: base, ALLOW_EMPTY_COMPANY: '1' } });
   await run('scripts/check.mjs', [], { env: { ...env, BASE: base, SHOW_PLACEHOLDERS: '0', PRODUCTION_CHECK: '1' } });
+  await run('scripts/measure-phone.mjs', [], { env: { ...env, BASE: base } });
 } finally {
   if (process.platform === 'win32') await new Promise((done) => { const stop = spawn('taskkill', ['/pid', String(preview.pid), '/t', '/f'], { stdio: 'ignore' }); stop.once('exit', done); });
   else { try { process.kill(-preview.pid, 'SIGTERM'); } catch {} }

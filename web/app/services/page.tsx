@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import { PageHead } from '@/components/pages/page-head';
 import { CtaBand } from '@/components/pages/cta-band';
-import { ServiceDemo } from '@/components/sections/service-demos';
 import { SERVICE_PAGES } from '@/lib/pages';
 import '@/components/sections/sections.css';
 import '../pages.css';
@@ -12,36 +11,39 @@ export const metadata: Metadata = {
   alternates: { canonical: '/services' },
 };
 
-/** /services (PLAN §3): one card per service page, each with its demo. */
+/** A compact service directory; examples and fuller scope live on each service page. */
 export default function ServicesIndex() {
   return (
     <>
       <PageHead
         crumbs={[{ name: 'Services', href: '/services' }]}
         title="What we offer, and who it’s for"
-        lead="Often combined: the screens and website your customers see, the WhatsApp that answers them, and the workflows that move the data behind them."
+        lead="Choose by the job you need done. Each service page covers scope, cost, timing and an example."
       />
 
       <section className="page-block wrap" aria-label="Services">
-        <ol className="fires">
+        <ol className="service-directory">
           {SERVICE_PAGES.map((s, i) => (
-            <li key={s.slug} className="fire">
-              <div className="fire-copy">
-                <span className="fire-num num">{String(i + 1).padStart(2, '0')}</span>
+            <li key={s.slug}>
+              <span className="fire-num num" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span>
+              <div className="service-directory-copy">
                 <h2 className="type-h3">{s.name}</h2>
                 <p className="fire-line">{s.lead}</p>
-                <p className="fire-price num">{s.price}</p>
+                <p className="service-directory-audience"><span className="type-label">For</span> {s.audience}</p>
+              </div>
+              <div className="service-directory-facts">
+                <p>{s.price}</p>
+                <p className="service-caption">{s.timeline}</p>
                 <a className="text-link" href={`/services/${s.slug}`}>
                   Read about {s.topic}
                 </a>
               </div>
-              <div className="fire-stage"><ServiceDemo kind={s.demo} /></div>
             </li>
           ))}
         </ol>
       </section>
 
-      <CtaBand title="Not sure which one you need?" text="Tell us the problem, not the technology. We’ll tell you the smallest thing that solves it — even if that’s nothing we sell." />
+      <CtaBand title="Not sure which one you need?" text="Tell us what you want to improve. We’ll suggest the scope for your business." />
     </>
   );
 }

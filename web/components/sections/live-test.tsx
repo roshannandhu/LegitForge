@@ -73,17 +73,15 @@ export function LiveTest() {
     });
   }
 
-  const total = STEPS[STEPS.length - 1].at.toFixed(1);
-
   return (
     <section id="live-test" data-event-location="service" data-heat="0.8" className="section">
       <div className="wrap live-grid">
         <div className="live-copy">
-          <h2 className="type-h2">Watch an example WhatsApp workflow.</h2>
+          <h2 className="type-h2">WhatsApp workflow example</h2>
           <ol className="live-steps">
-            <li>Tap <strong>Run the demo</strong> to start the example.</li>
-            <li>Watch a sample message get understood, saved and answered.</li>
-            <li>See where your team would receive the request.</li>
+            <li>Tap <strong>Run the demo</strong>.</li>
+            <li>Follow a sample message through the steps.</li>
+            <li>See the reply and team alert.</li>
           </ol>
 
           <button type="button" className="btn btn-primary" onClick={run} disabled={status === 'running'}>
@@ -97,9 +95,7 @@ export function LiveTest() {
           )}
 
           <p className="live-note">
-            <strong>This is an illustrative demo.</strong> The messages, reference and timings are examples.
-            It runs in this page, sends no WhatsApp message and collects no phone number. Your business
-            workflow and response times depend on the integration we agree with you.
+            <strong>Illustrative replay.</strong> Messages, references and timings are samples. It sends no WhatsApp messages; a live integration is scoped separately.
           </p>
         </div>
 
@@ -126,7 +122,7 @@ export function LiveTest() {
 
           {status === 'done' && (
             <div className="live-done">
-              <p>This example runs through the steps in <strong className="num">{total} seconds</strong>. Want a workflow like this for your business?</p>
+              <p>Example complete. Discuss this workflow for your business.</p>
               <a className="btn btn-ghost" href={waLink(company, 'Hi Legit Forge, I saw the WhatsApp demo and want this for my business.')}>Chat on WhatsApp</a>
             </div>
           )}

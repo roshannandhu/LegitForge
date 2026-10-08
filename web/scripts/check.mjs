@@ -53,7 +53,7 @@ const RUNS = [
 function audit() {
   const vw = innerWidth;
   // a clipped marquee; accordion panels clip their details; the compare frame clips its static half (slid by transform)
-  const skip = '.projects, .lanyards, .stage-fit, .hp, .skip-link, .phone-menu, .sr-only, .team-canvas, .intro, .logoloop, .ag, .compare-static';
+  const skip = '.projects, .lanyards, .stage-fit, .hp, .skip-link, .phone-menu, .sr-only, .team-canvas, .intro, .logoloop, .ag, .compare-static, .cleave-cover, .cleave-read-sentinel';
   const name = (el) => el.tagName.toLowerCase() + (el.classList.length ? '.' + [...el.classList].join('.') : '');
   const escapees = [];
   document.querySelectorAll('body *').forEach((el) => {
@@ -353,7 +353,16 @@ if (!only || only === 'flow') {
   for (const [kind, route] of Object.entries(demoRoutes)) {
     if (route !== currentRoute) { await page.goto(BASE + route, { waitUntil: 'networkidle' }); currentRoute = route; }
     const demo = page.locator(`.demo-player:has(.demo-${kind})`).first();
-    await demo.scrollIntoViewIfNeeded();
+    // Supplemental examples are native disclosures. The focused service checker verifies
+    // keyboard operation; the animation checker first reveals their ancestor disclosures.
+    await demo.evaluate((el) => {
+      for (let parent = el.parentElement; parent; parent = parent.parentElement) if (parent instanceof HTMLDetailsElement) parent.open = true;
+      el.scrollIntoView({ block: 'center', behavior: 'instant' });
+    });
+    // Opening a deferred example replaces its server node when it hydrates. Wait
+    // for the mounted player, then resolve it again before measuring playback.
+    await page.waitForFunction((k) => document.querySelector(`.demo-player:has(.demo-${k})`)?.hasAttribute('data-near'), kind);
+    await demo.evaluate((el) => el.scrollIntoView({ block: 'center', behavior: 'instant' }));
     await page.evaluate((k) => {
       const box = document.querySelector(`.demo-player > .demo-${k}`);
       window.__minOp = 1;
@@ -375,10 +384,15 @@ if (!only || only === 'anchors') {
   console.log('\nlegacy demo links');
   const ctx = await browser.newContext({ reducedMotion: 'reduce' });
   const page = await ctx.newPage();
-  for (const [hash, route] of [['quotation', '/services/website-development'], ['compare', '/services/website-development'], ['live-test', '/services/whatsapp-automation']]) {
+  for (const [hash, route] of [['quotation', '/services/website-development'], ['compare', '/services/website-development'], ['app-example', '/services/website-development'], ['live-test', '/services/whatsapp-automation']]) {
     await page.goto(`${BASE}/#${hash}`, { waitUntil: 'networkidle' });
     await page.waitForURL(`${BASE}${route}#${hash}`);
-    await page.waitForSelector(`#${hash}`);
+    await page.waitForSelector(`#${hash}`, { state: 'visible' });
+    const open = await page.locator(`#${hash}`).evaluate((el) => {
+      for (let parent = el.parentElement; parent; parent = parent.parentElement) if (parent instanceof HTMLDetailsElement && !parent.open) return false;
+      return true;
+    });
+    if (!open) fail('anchors', `#${hash} stayed inside a closed disclosure`);
     pass(`#${hash} opens ${route}`);
   }
   await ctx.close();

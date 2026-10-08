@@ -2,7 +2,7 @@
 
 Version 2.0, 25 September 2026. Sources checked on this date (see §20).
 
-## Current decisions — 4 October 2026
+## Current decisions — 7 October 2026
 
 This section and `web/CLAUDE.md` govern the current website release. The specifications and
 build logs below are historical where they conflict with these decisions.
@@ -34,10 +34,23 @@ build logs below are historical where they conflict with these decisions.
   clock-driven unpinned loop. Do not restore Archivo, inherited per-frame `<html>` variables,
   old project-track behaviour or original mobile-only 2D tiers from the historical examples.
 - **Trust opening:** retain the steel-split animation on phone, tablet and laptop. Give the
-  fully visible heading a reading interval, pause the split off-screen or behind the menu/intro,
-  and leave it open afterward. Keep this compact section unpinned at every width; use readable
+  fully visible heading the first 25% of remaining scroll travel to read, then seek the split
+  through the remaining 75%. No timer or autoplay; stopping scrolling stops the split.
+  Scrolling down reveals; scrolling up closes it again, including after a full reveal. Keep
+  the paused timeline mounted and active, strike the hallmarks once, preserve the painted frame
+  while resizing/rebasing, and freeze behind the menu/intro or a hidden tab. This supersedes
+  forward-only and permanent-opening behaviour. Keep the section unpinned; use readable
   static content for reduced motion, no JavaScript or failed loading. Fix timing without removing
   the opening effect.
+- **Service pages:** keep the six existing URLs and websites/web apps together with clear
+  sections. Show outcome/audience → practical use cases/deliverables → relevant published work
+  → included work, quotes/timelines and client preparation → one primary illustrative demo
+  → expandable details/additional demos, FAQ and contact. Keep important scope/cost information
+  visible. Use native disclosures and open matching ones for existing demo deep links. The
+  services index is a compact overview, not a stack of animations. Remove fictional customer
+  quotations, internal deployment explanations and unsupported results/guarantees; use existing
+  project tags to select genuinely relevant work. Preserve known business commitments and MR's
+  per-screen subscription terms.
 - **Analytics:** bounded first-party aggregate events without names, phones, message text or
   session identifiers; admin reports the last 30 days. Retain aggregate events for 13 months.
   Cloudflare Web Analytics dashboard setup remains an account-side verification item.
