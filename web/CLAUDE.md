@@ -108,10 +108,13 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
   Angular, SvelteKit, Laravel), a code block, a how-to section or an English word ("next",
   "express", "react to", "Belle Vue") into the title, summary or tags, nor into the stack (code
   still names tools there: require('express')); no filler summary (the owner writes it); drafts
-  get no "Live" stamp. A starter's title or an all-template paragraph ENDS the paragraph search
-  (empty beats boilerplate as a public lead); one template sentence is dropped, not its paragraph.
-  How-to headings match whole section names and never an H1 ("Skyline Builders & Developers" is a
-  business). The challenge never repeats the summary (the case study's lead).
+  get no "Live" stamp. A README whose FIRST heading names a starter ("React + TypeScript + Vite",
+  "Astro Starter Kit", "Next.js + Tailwind CSS Example"), or a paragraph that is ALL template text,
+  ends the paragraph search (empty beats boilerplate as a public lead); later headings never end
+  it ("## Message template"), and one template sentence is dropped, not its paragraph. A how-to
+  section is one whose name is ALL setup words (isHowTo: "Installation & Setup" is, "AC
+  Installation & Service" is not). The challenge never repeats the summary (the case study's
+  lead) and is only cut at a sentence end. "+" in a title is a stack only between stack words.
   tests/github-brief.test.ts holds the real template READMEs: add one there for a new false match.
 - Projects on public pages come from lib/work.ts: published D1 rows, else nothing (sections hide,
   /work shows an empty state). The placeholders in content.ts/pages.ts show only in a build made

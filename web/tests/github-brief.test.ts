@@ -283,3 +283,83 @@ test('a business called Belle Vue or Astro is not the Vue or Astro framework', (
   const real = briefFrom({ repo: repo('clinic'), languages: LANGS, readme: '# Clinic\n\nBuilt with Vue 3 and Pinia; pages live in src/views/Home.vue. The blog is an Astro 4 site (astro.config.mjs).' });
   assert.ok(real.stack.includes('Vue') && real.stack.includes('Astro'), real.stack.join(', '));
 });
+
+/* ---------------------------------------------- the second review's findings */
+
+test('a short description never cuts the challenge mid-sentence or mid-word', () => {
+  const cases: [string, string, string][] = [
+    ['Sweet Crumbs', '## About', 'Sweet Crumbs is a family bakery in Kochi that lost half its cake orders to missed phone calls every weekend.'],
+    ['Website for CoolAir AC dealers', '## About', 'Website for CoolAir AC dealers in Thrissur, who needed a way to show stock and take service bookings online.'],
+    ['Clinic booking', '## Background', 'Clinic bookings were lost to missed calls at the front desk, so patients now pick a slot online.'],
+  ];
+  for (const [description, heading, para] of cases) {
+    const b = briefFrom({ repo: repo('client', { description }), languages: LANGS, readme: `# Client\n\n${heading}\n\n${para}` });
+    assert.equal(b.challenge, para, `"${description}": challenge "${b.challenge}"`);
+  }
+});
+
+test('a stack after a separator leaves the title; Next.js example READMEs are templates', () => {
+  for (const [h1, title] of [['Sweet Crumbs Bakery – Next.js + Tailwind CSS', 'Sweet Crumbs Bakery'], ['Sweet Crumbs | React + Vite', 'Sweet Crumbs'],
+    ['Restaurant Website - React + Tailwind', 'Restaurant Website']] as const) {
+    const b = briefFrom({ repo: repo('client'), languages: LANGS, readme: `# ${h1}\n\nOnline orders and a cake gallery for a family bakery in Kochi, with pickup slots.` });
+    assert.equal(b.title, title);
+    assert.ok(b.summary.startsWith('Online orders'));
+  }
+  for (const h1 of ['HTML + CSS + JavaScript', 'Laravel + Vue', 'React + Redux', 'Tauri + React + Typescript', 'Next.js + Jest']) {
+    assert.equal(briefFrom({ repo: repo('gym-site'), languages: LANGS, readme: `# ${h1}\n\nSome text about this stack and how the parts fit together nicely.` }).title, 'Gym Site', h1);
+  }
+  const example = briefFrom({ repo: repo('bakery'), languages: LANGS, readme: '# Next.js + Tailwind CSS Example\n\nThis example shows how to use Tailwind CSS (v3.2) with Next.js. It follows the steps outlined in the official Tailwind docs.' });
+  assert.equal(example.title, 'Bakery');
+  assert.equal(example.summary, '');
+});
+
+test('setup sections never become the summary, however they are named', () => {
+  for (const h of ['Installation & Setup', 'Installation and Setup', 'Local Setup', 'Local Development', 'How to run locally', 'Running the project',
+    '1. Installation', 'Setup Instructions', 'Build & Deploy', 'Installation Steps', 'Project Setup', 'Build Setup', '🚀 Quick Start', 'Environment Variables']) {
+    const b = briefFrom({ repo: repo('sweet-crumbs'), languages: LANGS, readme: `# Sweet Crumbs\n\n## Tech Stack\n\n- Next.js\n- Supabase\n\n## ${h}\n\nCreate a .env.local file with your Supabase URL and anon key before you start the app.` });
+    assert.equal(b.summary, '', `"${h}": summary "${b.summary}"`);
+  }
+  const h1s = briefFrom({ repo: repo('sweet-crumbs'), languages: LANGS, readme: '# Sweet Crumbs\n\n![shot](s.png)\n\n# Getting Started\n\nFirst, install the dependencies and copy .env.example to .env.local before running the server.' });
+  assert.equal(h1s.summary, '');
+});
+
+test('a later heading that mentions a template or a starter is a section, not a starter README', () => {
+  const why = '## Why\n\nThe bakery answered two hundred WhatsApp messages a day by hand, and orders slipped through every weekend.';
+  const bot = briefFrom({ repo: repo('order-bot'), languages: LANGS, readme: `# Order Bot\n\n## Message template\n\nOrder confirmations go out as the approved order_confirmation template with the pickup time.\n\n${why}` });
+  assert.ok(bot.challenge?.startsWith('The bakery answered'), `challenge ${bot.challenge}`);
+  for (const section of ['PDF template', 'Invoice Template', 'Template']) {
+    const b = briefFrom({ repo: repo('quotes'), languages: LANGS, readme: `# CoolAir Quotes\n\n## ${section}\n\n- one\n- two\n\n${why}` });
+    assert.ok(b.summary.startsWith('The bakery answered'), `"${section}": summary "${b.summary}"`);
+  }
+  const cafe = briefFrom({ repo: repo('starter-cafe'), languages: LANGS, readme: '# The Starter Cafe\n\nA website for The Starter Cafe in Kochi with the day\'s menu and table booking.' });
+  assert.ok(cafe.summary.startsWith('A website for The Starter Cafe'));
+  const myApp = briefFrom({ repo: repo('my-app'), languages: LANGS, readme: '# my-app\n\nA booking site for a yoga studio in Kochi, with class times and online payment.' });
+  assert.ok(myApp.summary.startsWith('A booking site'));
+});
+
+test('a paragraph with a template sentence and a short remainder does not end the search', () => {
+  const b = briefFrom({ repo: repo('clinic-booking'), languages: LANGS, readme: '# Clinic Booking\n\nBuilt with Next.js 14 and Supabase. Run it locally with `npm run dev`.\n\nClinic Booking lets patients of a dental clinic in Kochi pick a free slot online and get an SMS reminder the day before.' });
+  assert.ok(b.summary.startsWith('Clinic Booking lets patients'), `summary "${b.summary}"`);
+  const astro = briefFrom({ repo: repo('belle-vue'), languages: LANGS, readme: "# Belle Vue Resort\n\nBelle Vue Resort's website is an Astro project with a room gallery, rates and a booking enquiry form for guests in Munnar." });
+  assert.ok(astro.summary.startsWith("Belle Vue Resort's website"));
+});
+
+test('WhatsApp bots described with a word in between are WhatsApp projects; a quote form is not a quote system', () => {
+  for (const description of ['WhatsApp order bot for Sweet Crumbs bakery', 'WhatsApp appointment reminders for a dental clinic', 'Automated WhatsApp replies for clinic bookings',
+    'WhatsApp Business automation for an AC dealer', 'WhatsApp ordering assistant for a bakery']) {
+    const b = briefFrom({ repo: repo('client-bot', { description }), languages: LANGS, readme: '' });
+    assert.ok(b.tags.includes('WhatsApp'), description);
+    assert.equal(b.category, 'whatsapp', description);
+  }
+  for (const description of ['Website for CoolAir AC: products, service booking and free quotes', 'Skyline Builders website with project gallery and a get-a-quote form',
+    'Bakery website with customer quotes and reviews', 'CoolAir AC website with a request a quote form']) {
+    assert.ok(!briefFrom({ repo: repo('client-site', { description }), languages: LANGS, readme: '' }).tags.includes('Quote'), description);
+  }
+});
+
+test('"built with Vue" and "built with Astro" name the framework even without a languages list', () => {
+  const vue = briefFrom({ repo: repo('bakery'), languages: null, readme: '# Bakery\n\nAn ordering site for a family bakery in Kochi, built with Vue and Firebase.' });
+  assert.ok(vue.stack.includes('Vue'), vue.stack.join(', '));
+  const astro = briefFrom({ repo: repo('clinic'), languages: null, readme: '# Clinic\n\nA fast clinic website built with Astro and Tailwind CSS.' });
+  assert.ok(astro.stack.includes('Astro'), astro.stack.join(', '));
+});
