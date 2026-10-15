@@ -48,20 +48,21 @@ export function plain(md: string): string {
     .trim();
 }
 
-/** Top-level blocks of a README, with the heading each sits under. */
-function blocks(md: string): { heading: string; text: string }[] {
-  const out: { heading: string; text: string }[] = [];
-  let heading = '';
+/** Top-level blocks of a README, with the heading each sits under and that heading's level (0: none). */
+function blocks(md: string): { heading: string; level: number; text: string }[] {
+  const out: { heading: string; level: number; text: string }[] = [];
+  let heading = '', level = 0;
   for (const raw of md.replace(/\r/g, '').split(/\n\s*\n/)) {
     const lines = raw.split('\n');
-    const h = /^\s{0,3}#{1,6}\s+(.+?)\s*#*\s*$/.exec(lines[0]);
+    const h = /^\s{0,3}(#{1,6})\s+(.+?)\s*#*\s*$/.exec(lines[0]);
     if (h) {
-      heading = plain(h[1]);
+      level = h[1].length;
+      heading = plain(h[2]);
       const rest = lines.slice(1).join('\n').trim();
-      if (rest) out.push({ heading, text: rest });
+      if (rest) out.push({ heading, level, text: rest });
       continue;
     }
-    out.push({ heading, text: raw.trim() });
+    out.push({ heading, level, text: raw.trim() });
   }
   return out;
 }
@@ -69,23 +70,39 @@ function blocks(md: string): { heading: string; text: string }[] {
 const isList = (t: string) => /^\s*([-*+]|\d+[.)])\s+/m.test(t);
 const isTable = (t: string) => /^\s*\|/.test(t);
 
-/** A starter template's own README text (create-next-app, Vite, Create React App…): it says how the
- *  repo was generated or how to run it, never what the project is, so it is never a summary. */
-const TEMPLATE_TEXT = /\bbootstrapped with\b|create-next-app|\bcreate react app\b|\bthis template\b|\bminimal setup\b|\bgetting started\b|\bnpm run (dev|start|build)\b|\b(yarn|pnpm|bun) dev\b|\byou can start editing\b|\bproject was generated\b|\bdevelopment (server|mode)\b|\blocalhost\b|\bnext\/font\b/i;
-/** A first heading that names the template, not the project ("React + TypeScript + Vite"). */
-const TEMPLATE_TITLE = /\+|\b(getting started|create react app|template|starter|boilerplate)\b|^(readme|react|next\.?js|vite|vue|svelte|astro|nuxt|angular)( app)?$/i;
-/** Sections that say how to run, build or deploy the code: never where a project is described. */
-const HOWTO_HEADING = /getting started|learn more|deploy|available scripts|^(npm|yarn|pnpm|bun|npx)\b|install|set ?up\b|usage|running|run locally|develop|build|eslint|compiler|contribut|licen[cs]e|scripts|requirements|prerequisites/i;
+/** A starter template's own sentences (create-next-app, Vite, CRA, Angular, SvelteKit, Laravel…):
+ *  how the repo was generated or how to run it, never what the project is. Specific phrases only:
+ *  "minimal setup" or "getting started" also occur in a real project's own description. */
+const TEMPLATE_TEXT = /\bbootstrapped with\b|create-next-app|\bcreate react app\b|\bthis template\b|\bnpm run (dev|start|build)\b|\b(yarn|pnpm|bun) dev\b|\byou can start editing\b|\bproject was generated\b|\blocalhost\b|\bnext\/font\b|\bangular cli\b|\bpowered by sv\b|\bcreate-svelte\b|\blaravel is a web application framework\b|\bnuxt documentation\b|\bastro project\b/i;
+/** A heading that names a starter, not a project: a stack joined by "+" ("React + TypeScript +
+ *  Vite", but not "Brew + Bake" or "C++ Notes"), "… Starter Kit", "Next.js Template", or a
+ *  starter's default name ("sv", "my-app", "About Laravel"). */
+const STACK_WORD = String.raw`(react|vue(\s?\d)?|vite|typescript|ts|javascript|js|next\.?js|svelte(kit)?|tailwind( ?css)?|astro|electron|nuxt|angular|node(\.?js)?|express|supabase|firebase|prisma|swc|babel|eslint)`;
+const TEMPLATE_TITLE = new RegExp(String.raw`^${STACK_WORD}(\s*\+\s*${STACK_WORD})+$|\b(create react app|starter( kit)?|boilerplate)\b|\btemplate\s*$|^(readme|react|next\.?js|vite|vue|svelte|astro|nuxt|angular|sv|create-svelte|my-?app|about laravel)( app)?$`, 'i');
+/** A section that says how to run, build or deploy the code, as its WHOLE name: "Installation",
+ *  "Deploy on Vercel", "🚀 Project Structure"; never "Skyline Builders & Developers" or
+ *  "AC Installation & Service" (and never an H1: that is the project's own title). */
+const HOWTO_HEADING = /^\W*(getting started.*|(want to )?learn more.*|deploy(ing|ment)?\b.*|available scripts|(npm|yarn|pnpm|bun|npx)\b.*|install(ation|ing)?|set ?up|usage|running( locally| the app)?|run locally|development( server)?|developing|build(ing)?( for production)?|production|expanding the eslint.*|react compiler|contribut(ing|ors)|licen[cs]e|scripts|commands|requirements|prerequisites|project structure|code scaffolding|creating a project|additional resources)\W*$/i;
 
-/** First prose paragraph, optionally under a heading: not a list, table, badge row, one-liner,
- *  lead-in ("…are available:"), template text, or anything under a template title or a how-to heading. */
+/** A paragraph's own words: its template sentences ("Bootstrapped with create-next-app.") dropped. */
+const ownWords = (t: string) => t.split(/(?<=[.!?])\s+/).filter((s) => !TEMPLATE_TEXT.test(s)).join(' ').trim();
+const prose = (t: string) => t.length >= 40 && /[a-z]/.test(t) && !t.endsWith(':');
+
+/** First prose paragraph, optionally under a heading: not a list, table, badge row, one-liner or
+ *  lead-in ("…are available:"), and nothing from a how-to section. A paragraph keeps its own
+ *  sentences without the template ones. A starter's title, or a paragraph that is all template
+ *  text, ends the search: a project's own description comes before the boilerplate, and an empty
+ *  answer (the owner writes it) is better than a public lead from a starter's README. */
 function firstParagraph(md: string, under?: RegExp): string | null {
   for (const b of blocks(md)) {
+    if (b.heading && TEMPLATE_TITLE.test(b.heading)) return null;
     if (under && !under.test(b.heading)) continue;
-    if (b.heading && (TEMPLATE_TITLE.test(b.heading) || HOWTO_HEADING.test(b.heading))) continue;
+    if (b.level > 1 && HOWTO_HEADING.test(b.heading)) continue;
     if (isList(b.text) || isTable(b.text)) continue;
     const t = plain(b.text).replace(/\s*\n\s*/g, ' ');
-    if (t.length >= 40 && /[a-z]/.test(t) && !t.endsWith(':') && !TEMPLATE_TEXT.test(t)) return t;
+    const own = ownWords(t);
+    if (own !== t) return prose(own) ? own : null;
+    if (prose(t)) return t;
   }
   return null;
 }
@@ -130,9 +147,11 @@ export const slugify = (s: string) =>
 const TOOLS: [string, string[], RegExp | null][] = [
   ['Next.js', ['nextjs', 'next', 'next-js'], /\bNext\.?js\b|\bnextjs\b/i],
   ['React', ['react', 'reactjs', 'react-js'], /\bReact(\.?js)?\b|\breactjs\b/],          // case matters: the verb
-  ['Vue', ['vue', 'vuejs', 'vue3'], /\bVue(\.?js)?\b|\bvuejs\b/],
+  // "Belle Vue Resort", "Astro Tours": only a technical form names the framework (and GitHub's
+  // languages list adds Vue, Svelte and Astro by themselves when the code uses them)
+  ['Vue', ['vue', 'vuejs', 'vue3'], /\bVue(\.js|js)\b|\bVue\s?[23]\b|\bvuejs\b|\.vue\b|\bcreate-vue\b|\bvue-router\b|\bpinia\b/],
   ['Svelte', ['svelte', 'sveltekit'], /\bSvelte(Kit)?\b/],
-  ['Astro', ['astro', 'astrojs'], /\bAstro\b/],
+  ['Astro', ['astro', 'astrojs'], /\bAstro(\.build|\s?[2-5])\b|\bastro\.config\b|\.astro\b|\bwithastro\b|\bcreate astro\b/i],
   ['Tailwind CSS', ['tailwind', 'tailwindcss', 'tailwind-css'], /\btailwind/i],
   ['Node.js', ['node', 'nodejs', 'node-js'], /\bNode\.?js\b|\bnodejs\b/i],
   ['Express', ['express', 'expressjs', 'express-js'], /\bExpress\.?js\b|\bexpressjs\b|require\(\s*['"]express['"]\s*\)|from\s+['"]express['"]/i],
@@ -148,7 +167,8 @@ const TOOLS: [string, string[], RegExp | null][] = [
   ['Cloudflare', ['cloudflare', 'cloudflare-workers', 'cloudflare-pages'], null],
   ['Vercel', ['vercel'], null],
   ['n8n', ['n8n'], /\bn8n\b/i],
-  ['WhatsApp Cloud API', ['whatsapp-cloud-api', 'whatsapp-api', 'whatsapp-business-api'], /\bwhatsapp (cloud|business) api\b|\bgraph\.facebook\.com\b/i],
+  // graph.facebook.com is all of Meta's Graph API (page posts, Instagram): only its messages endpoint is WhatsApp
+  ['WhatsApp Cloud API', ['whatsapp-cloud-api', 'whatsapp-api', 'whatsapp-business-api'], /\bwhatsapp (cloud|business) api\b|graph\.facebook\.com\/v[\d.]+\/[^\s/]+\/messages\b/i],
   ['Stripe', ['stripe'], /\bstripe\b/i],
   ['Razorpay', ['razorpay'], /\brazorpay\b/i],
   ['WordPress', ['wordpress'], /\bwordpress\b/i],
@@ -161,8 +181,9 @@ const SIGNALS = {
   // "chat with us on WhatsApp" link on a bakery site is not WhatsApp automation
   whatsappBuilt: /\bwhats\s?app (bot|chat ?bot|automation|cloud api|business api|api|integration|flows?)\b|\bwa\s?bot\b|\bwaba\b/i,
   n8n: /\bn8n\b|\bworkflow automation\b|\bzapier\b|\bmake\.com\b/i,
-  // a web app anywhere in the text: things only an app has
-  app: /\bdashboard\b|\badmin panel\b|\bauthentication\b|\bcrud\b|\bsupabase\b|\bfirebase\b|\bprisma\b|\bpostgres|\bmysql\b|\bmongo(db|ose)?\b/i,
+  // a web app anywhere in the text: things only an app has (Firebase's app products, not its
+  // Hosting, which serves plenty of static sites)
+  app: /\bdashboard\b|\badmin panel\b|\bauthentication\b|\bcrud\b|\bsupabase\b|\bfirestore\b|\bfirebase (auth(entication)?|realtime database|database|functions)\b|\bprisma\b|\bpostgres|\bmysql\b|\bmongo(db|ose)?\b/i,
   // words that name an app only when the repo says it about itself (name, description, topics):
   // every Next.js README says "API", and "log in to Vercel" is not a login system
   appCore: /\bapi\b|\blog ?in\b|\bauth\b|\bdatabase\b|\bbackend\b|\bweb ?app\b/i,
@@ -354,18 +375,30 @@ export function briefFrom({ repo: r, languages, readme }: RepoData): Brief {
   // the category and the "app" words read only what the repo says about itself
   // (a README that mentions a WhatsApp order form doesn't make a bakery site a WhatsApp bot)
   const core = [r.name, r.description ?? '', topics.join(' ')].join(' ');
+  // WhatsApp is what the project IS when its name or topics say so, or its description names a
+  // bot or an integration: "Bakery website with WhatsApp ordering" is a website
+  const waCore = SIGNALS.whatsapp.test([r.name, ...topics].join(' ')) || SIGNALS.whatsappBuilt.test(r.description ?? '');
 
-  // title: the README's first heading when it is a real name (not the template's), else the repo name, title-cased
+  // title: the README's first heading when it is a real name (not the template's), else the repo
+  // name, title-cased. "Brew + Bake" and "C++ Notes" keep their "+"; a stack in brackets is dropped
+  // ("Sweet Crumbs (Next.js + Tailwind)").
   const h1 = /^\s{0,3}#\s+(.+?)\s*#*\s*$/m.exec(md)?.[1];
-  const h1Text = h1 && !TEMPLATE_TITLE.test(plain(h1).trim())
-    ? plain(h1).replace(/[^\p{L}\p{N}\s&'’.,:-]/gu, '').replace(/\s+/g, ' ').trim() : '';
+  const h1Plain = h1 ? plain(h1).replace(/\s*[([][^)\]]*\+[^)\]]*[)\]]/g, '').trim() : '';
+  const h1Text = h1Plain && !TEMPLATE_TITLE.test(h1Plain)
+    ? h1Plain.replace(/[^\p{L}\p{N}\s&'’.,:+-]/gu, '').replace(/\s+/g, ' ').trim() : '';
   const title = h1Text && h1Text.length <= 60 && slugify(h1Text) !== slugify(r.name) ? h1Text : titleCase(r.name);
 
   // no filler: without a description or a real paragraph the summary stays empty, and publishing
   // asks the owner to write one (publishProjectAction)
   const summary = clip(plain(r.description ?? '') || firstParagraph(md) || '', 300);
-  const challengeText = firstParagraph(md, /problem|why|background|about|overview|motivation|introduction/i);
-  const challenge = challengeText && challengeText !== summary ? clip(challengeText, 400) : null;
+  // the challenge says what the summary doesn't: the summary is the case study's lead, so when the
+  // About paragraph opens with the summary's words (the summary is that paragraph clipped, or the
+  // description is its first sentence) only the rest is the challenge; after a mid-sentence cut ("…")
+  // the rest would start mid-sentence, so there is none
+  const lead = summary.replace(/…$/, '').trim();
+  let challengeText = firstParagraph(md, /problem|why|background|about|overview|motivation|introduction/i) ?? '';
+  if (lead && challengeText.startsWith(lead)) challengeText = summary.endsWith('…') ? '' : challengeText.slice(lead.length).trim();
+  const challenge = prose(challengeText) && challengeText !== summary ? clip(challengeText, 400) : null;
   const built = bullets(md, /feature|what it does|highlights|functionality|capabilit/i);
 
   const byBytes = Object.entries(langs.data ?? {}).sort((a, b) => b[1] - a[1]).map(([l]) => l)
@@ -379,18 +412,19 @@ export function briefFrom({ repo: r, languages, readme }: RepoData): Brief {
 
   const has = (k: keyof typeof SIGNALS) => SIGNALS[k].test(haystack);
   const tags: string[] = [];
-  if (SIGNALS.whatsapp.test(core) || has('whatsappBuilt')) tags.push('WhatsApp');
+  if (waCore || has('whatsappBuilt')) tags.push('WhatsApp');
   if (has('n8n')) tags.push('n8n');
   if (has('app') || SIGNALS.appCore.test(core)) tags.push('Web app');
   if (has('seo')) tags.push('SEO');
   if (has('nfc')) tags.push('NFC');
-  if (has('quote')) tags.push('Quote');
+  // a README's "quotes" can be string quotes; a repo that calls itself a quote builder means quotations
+  if (has('quote') || /\bquot(e|es|ing|ations?)\b/i.test(core)) tags.push('Quote');
   if (has('warranty')) tags.push('Warranty');
   if (!tags.includes('Web app') && (r.homepage || /\bwebsite\b|\blanding page\b|\bsite\b/i.test(haystack))) tags.unshift('Website');
   if (!tags.length) tags.push('Website');
 
   // the category is what the project IS: the name, description and topics (core, above)
-  const category: WorkCategory = SIGNALS.whatsapp.test(core) ? 'whatsapp' : SIGNALS.n8n.test(core) ? 'n8n'
+  const category: WorkCategory = waCore ? 'whatsapp' : SIGNALS.n8n.test(core) ? 'n8n'
     : tags.includes('Web app') ? 'dynamic' : 'static';
   const liveUrl = r.homepage && /^https:\/\/\S+$/.test(r.homepage.trim()) ? r.homepage.trim() : null;
 

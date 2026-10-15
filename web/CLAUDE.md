@@ -104,9 +104,14 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
   ADMIN_SESSION_KEY in D1, never in a file or the chat. Team members install it and pick repos;
   privateRepoAccess mints a one-hour token for just that repo. The cloud sandbox's proxy blocks
   api.github.com: test with a fixture server via GITHUB_API_BASE (only `next dev` with ADMIN_DEV_BYPASS).
-  briefFrom never turns a starter template's README (create-next-app, Vite, CRA), a code block, a
-  how-to section or an English word ("next", "express", "react to") into the title, summary,
-  stack or tags; no filler summary (the owner writes it); drafts get no "Live" stamp.
+  briefFrom never turns a starter template's README (create-next-app, Vite, CRA, Astro, Nuxt,
+  Angular, SvelteKit, Laravel), a code block, a how-to section or an English word ("next",
+  "express", "react to", "Belle Vue") into the title, summary or tags, nor into the stack (code
+  still names tools there: require('express')); no filler summary (the owner writes it); drafts
+  get no "Live" stamp. A starter's title or an all-template paragraph ENDS the paragraph search
+  (empty beats boilerplate as a public lead); one template sentence is dropped, not its paragraph.
+  How-to headings match whole section names and never an H1 ("Skyline Builders & Developers" is a
+  business). The challenge never repeats the summary (the case study's lead).
   tests/github-brief.test.ts holds the real template READMEs: add one there for a new false match.
 - Projects on public pages come from lib/work.ts: published D1 rows, else nothing (sections hide,
   /work shows an empty state). The placeholders in content.ts/pages.ts show only in a build made

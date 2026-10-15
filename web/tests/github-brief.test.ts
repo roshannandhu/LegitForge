@@ -144,3 +144,142 @@ Run the development server with npm run dev.`;
   assert.equal(b.category, 'dynamic');
   assert.equal(b.liveUrl, 'https://clinic-booking.vercel.app');
 });
+
+/* ---------------------------------------------- the review's findings (each failed before its fix) */
+
+const ASTRO_README = `# Astro Starter Kit: Basics
+
+\`\`\`sh
+npm create astro@latest -- --template basics
+\`\`\`
+
+> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+
+## 🚀 Project Structure
+
+Inside of your Astro project, you'll see the following folders and files:
+
+To learn more about the folder structure of an Astro project, refer to [our guide on project structure](https://docs.astro.build/en/basics/project-structure/).
+
+## 👀 Want to learn more?
+
+Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
+`;
+const NUXT_README = `# Nuxt Minimal Starter
+
+Look at the [Nuxt documentation](https://nuxt.com/docs/getting-started/introduction) to learn more.
+
+## Setup
+
+Make sure to install dependencies:
+
+## Production
+
+Build the application for production:
+
+Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
+`;
+const ANGULAR_README = `# CoolairQuotes
+
+This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 19.2.0.
+
+## Development server
+
+To start a local development server, run:
+
+## Additional Resources
+
+For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+`;
+const SVELTEKIT_README = `# sv
+
+Everything you need to build a Svelte project, powered by [\`sv\`](https://github.com/sveltejs/cli).
+
+## Creating a project
+
+If you're seeing this, you've probably already done this step. Congrats!
+`;
+const LARAVEL_README = `<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+
+## About Laravel
+
+Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+
+- [Simple, fast routing engine](https://laravel.com/docs/routing).
+
+Laravel is accessible, powerful, and provides tools required for large, robust applications.
+`;
+
+test('Astro, Nuxt, Angular, SvelteKit and Laravel starters give no summary and no starter title', () => {
+  for (const [name, readme] of [['astro-site', ASTRO_README], ['nuxt-site', NUXT_README], ['coolair-quotes', ANGULAR_README], ['svelte-site', SVELTEKIT_README], ['laravel-site', LARAVEL_README]] as const) {
+    const b = briefFrom({ repo: repo(name), languages: LANGS, readme });
+    assert.equal(b.summary, '', `${name}: summary from the starter's README: ${b.summary}`);
+    assert.equal(b.challenge, null, `${name}: challenge from the starter's README`);
+    assert.ok(!/starter|^sv$/i.test(b.title), `${name}: title ${b.title}`);
+  }
+});
+
+test('business names that contain how-to words keep their intro and challenge', () => {
+  const intro = (biz: string) => `# ${biz}\n\nThe website for ${biz} in Kochi: services, past projects, and a form that books a site visit.\n\n## About the builders\n\nFamily-run since 1998, they lost leads because their only listing was a phone number in an old directory.`;
+  for (const biz of ['Skyline Builders & Developers', 'CoolAir AC Installation & Service', 'Sparkline Licensed Electricians', 'Kochi Running Club']) {
+    const b = briefFrom({ repo: repo('client-site'), languages: LANGS, readme: intro(biz) });
+    assert.equal(b.title, biz);
+    assert.ok(b.summary.startsWith(`The website for ${biz}`), `${biz}: summary "${b.summary}"`);
+    assert.ok(b.challenge?.startsWith('Family-run since 1998'), `${biz}: challenge ${b.challenge}`);
+  }
+});
+
+test('"+" in a real name stays; a stack in brackets leaves the title; a stack joined by "+" is a template', () => {
+  const brew = briefFrom({ repo: repo('brew-and-bake'), languages: LANGS, readme: '# Brew + Bake\n\nA website for Brew + Bake, a café and bakery in Fort Kochi, with the menu, opening hours and table booking.' });
+  assert.equal(brew.title, 'Brew + Bake');
+  assert.ok(brew.summary.startsWith('A website for Brew + Bake'));
+  const crumbs = briefFrom({ repo: repo('crumbs'), languages: LANGS, readme: '# Sweet Crumbs Bakery (Next.js + Tailwind)\n\nOnline orders and a cake gallery for a family bakery in Kochi, with pickup slots.' });
+  assert.equal(crumbs.title, 'Sweet Crumbs Bakery');
+  assert.ok(crumbs.summary.startsWith('Online orders and a cake gallery'));
+  const vue = briefFrom({ repo: repo('gym-site'), languages: LANGS, readme: '# Vue 3 + TypeScript + Vite\n\nThis template should help get you started developing with Vue 3 and TypeScript in Vite.' });
+  assert.equal(vue.title, 'Gym Site');
+  assert.equal(vue.summary, '');
+});
+
+test('one template sentence does not cost the paragraph its real sentences', () => {
+  const b = briefFrom({ repo: repo('sweet-crumbs'), languages: LANGS, readme: '# Sweet Crumbs\n\nThe website for Sweet Crumbs, a bakery in Kochi: menu, cake gallery and online orders. Bootstrapped with create-next-app and deployed on Vercel.' });
+  assert.equal(b.summary, 'The website for Sweet Crumbs, a bakery in Kochi: menu, cake gallery and online orders.');
+  const bookly = briefFrom({ repo: repo('bookly'), languages: LANGS, readme: '# Bookly\n\nAn appointment booking widget that salons in Kochi can add to their existing website with minimal setup.' });
+  assert.ok(bookly.summary.startsWith('An appointment booking widget'));
+});
+
+test('a long About paragraph is the lead once: the challenge is only what follows it', () => {
+  const para = 'Sweet Crumbs is the ordering site for a family bakery in Kochi that used to take every cake order by phone and lose half of them. ' +
+    'Customers now pick a cake, a size and a pickup slot online, and the bakery sees every order on one screen the night before. ' +
+    'Weekend rushes no longer mean missed calls, and the owners finally know how many cakes to bake.';
+  assert.ok(para.length > 300);
+  const b = briefFrom({ repo: repo('sweet-crumbs'), languages: LANGS, readme: `# Sweet Crumbs\n\n## About\n\n${para}` });
+  assert.ok(para.startsWith(b.summary));
+  assert.ok(b.challenge && !b.challenge.startsWith(b.summary.slice(0, 40)), `challenge repeats the lead: ${b.challenge}`);
+  assert.ok(b.challenge?.startsWith('Weekend rushes'), `challenge: ${b.challenge}`);
+  const described = briefFrom({ repo: repo('sweet-crumbs', { description: para.split('. ')[0] + '.' }), languages: LANGS, readme: `# Sweet Crumbs\n\n## About\n\n${para}` });
+  assert.ok(described.challenge?.startsWith('Customers now pick a cake'), `challenge: ${described.challenge}`);
+});
+
+test('a quote builder keeps its Quote tag; Graph API posts and Firebase Hosting add nothing; a WhatsApp order button is not a bot', () => {
+  const quotes = briefFrom({ repo: repo('coolair-quotes', { description: 'Quote builder for an AC dealer: line items, PDF quotes, acceptance tracking.' }), languages: LANGS, readme: '# CoolAir Quote Builder\n\nLine items, PDF output and a link the customer accepts.' });
+  assert.ok(quotes.tags.includes('Quote'));
+  const posts = briefFrom({ repo: repo('spice-route'), languages: LANGS, readme: '# Spice Route\n\nA restaurant website. A nightly job calls https://graph.facebook.com/v19.0/1234567890/posts to show the latest Facebook posts on the home page.' });
+  assert.ok(!posts.stack.includes('WhatsApp Cloud API'));
+  const bot = briefFrom({ repo: repo('wa-orders'), languages: LANGS, readme: 'Replies are sent with POST https://graph.facebook.com/v19.0/1099887766/messages for each new order.' });
+  assert.ok(bot.stack.includes('WhatsApp Cloud API'));
+  const hosted = briefFrom({ repo: repo('bakery'), languages: LANGS, readme: '# Bakery\n\nA bakery website with the menu, opening hours and a cake gallery for Fort Kochi customers.\n\n## Deploy\n\nHosted on Firebase Hosting: run firebase deploy.' });
+  assert.ok(!hosted.tags.includes('Web app'));
+  assert.equal(hosted.category, 'static');
+  assert.ok(hosted.stack.includes('Firebase'));                                  // still named in the stack
+  const ordering = briefFrom({ repo: repo('sweet-crumbs', { description: 'Bakery website with menu, gallery and WhatsApp ordering' }), languages: LANGS, readme: '' });
+  assert.ok(!ordering.tags.includes('WhatsApp'));
+  assert.notEqual(ordering.category, 'whatsapp');
+});
+
+test('a business called Belle Vue or Astro is not the Vue or Astro framework', () => {
+  const b = briefFrom({ repo: repo('belle-vue-resort'), languages: { HTML: 500, CSS: 300 }, readme: '# Belle Vue Resort\n\nA website for Belle Vue Resort in Munnar, with rooms, rates and a booking enquiry form. Astro Tours runs their treks.' });
+  assert.ok(!b.stack.includes('Vue') && !b.stack.includes('Astro'), b.stack.join(', '));
+  const real = briefFrom({ repo: repo('clinic'), languages: LANGS, readme: '# Clinic\n\nBuilt with Vue 3 and Pinia; pages live in src/views/Home.vue. The blog is an Astro 4 site (astro.config.mjs).' });
+  assert.ok(real.stack.includes('Vue') && real.stack.includes('Astro'), real.stack.join(', '));
+});

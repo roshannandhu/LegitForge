@@ -1,3 +1,4 @@
+import { Children } from 'react';
 import { SITE } from '@/lib/site';
 import { JsonLd } from './json-ld';
 import './crumbs.css';
@@ -36,7 +37,8 @@ export function PageHead({ crumbs, title, lead, children }: {
       <Breadcrumbs crumbs={crumbs} />
       <h1 className="type-h2 page-title">{title}</h1>
       {lead && <p className="type-lead page-lead">{lead}</p>}
-      {children && <div className="page-actions">{children}</div>}
+      {/* conditional children arrive as [false, undefined]: an array is truthy, its content may be nothing */}
+      {Children.toArray(children).length > 0 && <div className="page-actions">{children}</div>}
     </header>
   );
 }
