@@ -127,9 +127,9 @@ export function Compare({ facts }: { facts: { static: Fact; dynamic: Fact } }) {
   return (
     <section id="compare" data-event-location="service" data-heat="0.55" className="section">
       <div className="wrap">
+        {/* no title of its own: it lives in a service-page disclosure whose summary names it */}
         <header className="section-head">
-          <h2 className="type-h2">Static or dynamic? Drag to compare.</h2>
-          <p className="type-lead">An illustrative café website built two ways. Compare a simple information site with an app that handles bookings and orders. Your features are agreed in the scope.</p>
+          <p className="type-lead">Drag the divider to compare an illustrative café website built two ways: a simple information site, and an app that handles bookings and orders. Your features are agreed in the scope.</p>
         </header>
 
         <p className="sr-only">
