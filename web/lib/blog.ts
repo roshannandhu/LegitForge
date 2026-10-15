@@ -18,6 +18,13 @@ export interface Post {
 
 const POSTS: Post[] = [
   {
+    slug: 'how-much-does-a-website-cost-in-india',
+    title: 'How much does a website cost in India in 2026? What actually sets the price',
+    seoTitle: 'How much does a website cost in India? (2026)',
+    description: 'What sets a website’s price in India, the outside costs a quote should list, and how to compare two quotes for Kerala or Bangalore.',
+    date: '2026-10-15', author: 'member-one', service: 'website-development', draft: false,
+  },
+  {
     slug: 'what-a-whatsapp-bot-can-do',
     title: 'What a WhatsApp bot can (and can’t) do for a small business',
     seoTitle: 'What a WhatsApp bot can do for a small business',
