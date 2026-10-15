@@ -105,10 +105,10 @@ export const PROJECTS: {
  *  same origin). Empty shows the monogram. It appears on every card layer (2D, flip, 3D). */
 export const TEAM: { slug: string; idCode: string; name: string; role: string; initials: string;
   photo: string; skills: string[]; shipped: string; favorite: string; building?: string }[] = [
-  { slug: 'member-one', idCode: 'LF-001', name: '[Name]', role: '[Role]', initials: 'N1', photo: '',
-    skills: ['Next.js', 'Cloudflare', 'Design systems'], shipped: '[N]', favorite: '[Favourite build]', building: '[a clinic booking app]' },
-  { slug: 'member-two', idCode: 'LF-002', name: '[Name]', role: '[Role]', initials: 'N2', photo: '',
-    skills: ['n8n', 'WhatsApp Cloud API', 'Databases'], shipped: '[N]', favorite: '[Favourite build]', building: '[a WhatsApp order bot]' },
+  { slug: 'member-one', idCode: 'LF-001', name: 'Roshan Raj M', role: 'AI & ML Engineering', initials: 'RR', photo: '',
+    skills: ['AI & ML', 'Next.js', 'Cloudflare', 'Python'], shipped: '12+', favorite: 'AI Automation Workflows', building: 'an AI WhatsApp assistant' },
+  { slug: 'member-two', idCode: 'LF-002', name: 'Midhun Vijay PK', role: 'Full Stack Developer', initials: 'MV', photo: '',
+    skills: ['Full Stack', 'WhatsApp Cloud API', 'n8n', 'PostgreSQL'], shipped: '15+', favorite: 'Quotation & Warranty Systems', building: 'a WhatsApp order bot' },
 ];
 
 /* ------------------------------------------------------ hallmarks §6.9/§18.6 */

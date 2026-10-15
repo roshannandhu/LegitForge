@@ -359,12 +359,12 @@ export const MEMBER_DETAILS: Record<string, {
   links: { label: string; href: string }[];
 }> = {
   'member-one': {
-    bio: '[60–120 words, first person: what you build, what you care about, one concrete thing you are proud of.]',
+    bio: 'AI & ML engineer at Legit Forge building fast web applications, intelligent automation, and custom AI integrations for small businesses.',
     tools: ['Next.js', 'TypeScript', 'Cloudflare', 'Figma'],
     links: [],
   },
   'member-two': {
-    bio: '[60–120 words, first person: what you build, what you care about, one concrete thing you are proud of.]',
+    bio: 'Full stack developer at Legit Forge building dependable web platforms, quotation and warranty systems, and business automation workflows with n8n and WhatsApp Cloud API.',
     tools: ['n8n', 'WhatsApp Cloud API', 'PostgreSQL', 'Google Sheets'],
     links: [],
   },

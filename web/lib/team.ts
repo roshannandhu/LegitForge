@@ -19,9 +19,15 @@ export type Member = Card & {
   bio: string; tools: string[]; links: { label: string; href: string }[]; cardVersion: number;
 };
 
-/** "Roshan Raj M" → "Roshan Raj": the name people search for, without single-letter initials. */
+/** "Roshan Raj M" → "Roshan Raj", "Midhun Vijay PK" → "Midhun Vijay": the name people search for, without initials. */
 export function shortName(name: string) {
-  const short = name.split(/\s+/).filter((w) => w.replace(/\./g, '').length > 1).join(' ');
+  const words = name.split(/\s+/);
+  const short = words.filter((w, i) => {
+    const clean = w.replace(/\./g, '');
+    if (clean.length <= 1) return false;
+    if (i === words.length - 1 && clean.length <= 2 && clean === clean.toUpperCase()) return false;
+    return true;
+  }).join(' ');
   return short || name.trim();
 }
 
@@ -50,8 +56,8 @@ function withPaths<T extends { slug: string; name: string }>(people: T[]): (T & 
 }
 
 const PLACEHOLDERS: Member[] = withPaths(TEAM.map((m) => ({ ...m, ...(MEMBER_DETAILS[m.slug] ?? { bio: '', tools: [], links: [] }), cardVersion: 1 })));
-/** No published members yet: nobody (the sections hide), or the placeholders when SHOW_PH. */
-const FALLBACK: Member[] = SHOW_PH ? PLACEHOLDERS : [];
+/** No published members in D1 yet: real named founders, or placeholders if SHOW_PH is set. */
+const FALLBACK: Member[] = SHOW_PH ? PLACEHOLDERS : PLACEHOLDERS.filter((m) => m.name && !isPh(m.name));
 
 type Row = {
   slug: string; name: string; role: string; id_code: string; bio: string; skills: string; tools: string;

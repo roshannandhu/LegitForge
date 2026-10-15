@@ -22,7 +22,10 @@ export function normalizeCompany(raw: unknown): Company {
     showEmail: typeof r.showEmail === 'boolean' ? r.showEmail : d.showEmail,
     whatsapp: text(r.whatsapp, 15).replace(/\D/g, ''),
     whatsappText: text(r.whatsappText, 200) || d.whatsappText,
-    legalName: text(r.legalName, 120), city: text(r.city, 80), country: text(r.country, 80), taxId: text(r.taxId, 30),
+    legalName: text(r.legalName, 120) || d.legalName,
+    city: text(r.city, 80) || d.city,
+    country: text(r.country, 80) || d.country,
+    taxId: text(r.taxId, 30),
     social: Object.fromEntries(SOCIALS.map((s) => [s.key, { url: text(social[s.key]?.url, 300), on: social[s.key]?.on === true }])) as Company['social'],
   };
 }

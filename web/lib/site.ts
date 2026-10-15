@@ -52,9 +52,9 @@ export const COMPANY_DEFAULTS: Company = {
   showEmail: false,
   whatsapp: '',
   whatsappText: "Hi Legit Forge, I'd like to talk about a project.",
-  legalName: '',
-  city: '',
-  country: '',
+  legalName: 'Legit Forge',
+  city: 'Calicut',
+  country: 'India',
   taxId: '',
   social: Object.fromEntries(SOCIALS.map((s) => [s.key, { url: '', on: false }])) as Company['social'],
 };
