@@ -22,7 +22,7 @@ export function Quotation() {
     <section id="quotation" data-event-location="service" data-heat="0.55" className="section">
       <div className="wrap quote-grid">
         <div className="quote-copy">
-          <h2 className="type-h2">Quotation and warranty example</h2>
+          {/* no title of its own: it lives in a service-page disclosure whose summary names it */}
           <p className="type-lead">A sample journey from enquiry to accepted quote and warranty record.</p>
           <ol className="quote-points">
             {POINTS.map((pt) => (

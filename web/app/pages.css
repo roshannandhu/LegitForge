@@ -58,7 +58,6 @@
 /* Service directory and shared detail pages: scope first, one visible example. */
 .service-audience { flex-basis: 100%; max-width: 65ch; margin: 0; color: var(--text-muted); }
 .service-audience .type-label, .service-directory-audience .type-label { color: var(--text); margin-right: 6px; }
-.service-use-cases { display: grid; gap: 8px; max-width: 70ch; margin: 0 0 24px; padding-left: 20px; color: var(--text-muted); }
 .service-builds .tile { padding: 20px 24px; }
 .service-included, .service-preparation { max-width: 75ch; }
 .service-caption { max-width: 65ch; margin: 0 0 20px; font-size: 14px; line-height: 1.55; color: var(--text-muted); }
@@ -86,7 +85,8 @@
 .service-disclosure-body > .section, .service-disclosure-body > div > .section { padding: 0; }
 .service-disclosure-body .wrap { padding-right: 0; padding-left: 0; }
 .service-disclosure-body h3 { margin: 0 0 12px; }
-.service-disclosure-body .type-h2 { font-size: var(--step-h3); line-height: 1.2; }
+/* the embedded examples have no title of their own (the summary is it): their lead starts flush */
+.service-disclosure-body .type-lead:first-child { margin-top: 0; }
 @media (min-width: 768px) {
   .service-directory > li { grid-template-columns: 36px minmax(0, 1fr) minmax(200px, .4fr); gap: 24px; }
   .service-directory-facts { grid-column: auto; }

@@ -32,7 +32,10 @@ export function ProjectCard({ p, as: Tag = 'li', headingLevel = 3 }: {
       <div className="project-body">
         <H className="project-title">{p.title}</H>
         <p className="project-client">{p.client}</p>
-        <p className="project-result"><span className="result-value num">{p.resultValue}</span> {p.resultLabel}</p>
+        {/* a result is never invented: without one (e.g. a project added from GitHub) there is no line */}
+        {(p.resultValue || p.resultLabel) && (
+          <p className="project-result"><span className="result-value num">{p.resultValue}</span> {p.resultLabel}</p>
+        )}
         {p.before && p.after && (
           // the proof (plan D #8): as the cover cools, the before is struck through and the after comes up
           <p className="project-proof">

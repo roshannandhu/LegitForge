@@ -137,6 +137,11 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
 - Services: MR Signage (TVs/tablets subscription, kind 'signage', /services/digital-signage)
   is last everywhere. Custom quotes use truthful scope-first wording; subscription quotes are per
   screen/month. No fake starting prices or placeholder budget bands.
+- Service pages say each fact once (lib/pages.ts): `price`/`timeline` are a few words (the
+  "Quotes and timelines" boxes and /services), their conditions live once in `priceNote`; a
+  detail or FAQ never restates a card, the price note or another answer; the demo caption is the
+  only "illustrative" label per demo. Compare, Quotation and LiveTest have no title of their own:
+  the disclosure's summary names them.
 - Service demos (DemoPlayer): DEMOS[kind] is the intro (builds the finished frame once), then
   FLOWS[kind] keeps the demo working forever as a repeat:-1 timeline: no reset, no fade (plan F).
   Each cycle ends where the next begins; rotating text uses txt() (keeps React's text node) and

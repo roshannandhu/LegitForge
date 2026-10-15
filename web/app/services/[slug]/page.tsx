@@ -34,7 +34,9 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 }
 
 /** Shared service order: outcome → practical scope → real work → included → cost/time → preparation →
- *  one example → optional detail → FAQ → contact. Supplemental demos remain addressable. */
+ *  one example → optional detail → FAQ → contact. Supplemental demos remain addressable.
+ *  Each fact is said once: the cards are the scope (no list restating them), the price note
+ *  holds the conditions, and a disclosure's summary is its example's title. */
 export default async function ServicePage({ params }: { params: Promise<{ slug: string }> }) {
   const s = serviceBySlug((await params).slug);
   if (!s) notFound();
@@ -54,7 +56,6 @@ export default async function ServicePage({ params }: { params: Promise<{ slug: 
 
       <section className="page-block wrap" data-service-section="builds" aria-labelledby="build-h">
         <h2 id="build-h" className="type-h3 block-h">What we can build for you</h2>
-        <ul className="service-use-cases">{s.problem.map((useCase) => <li key={useCase}>{useCase}</li>)}</ul>
         <ol className="tiles service-builds">
           {s.builds.map((b, i) => <li key={b.h} className="tile">
             <span className="num">{String(i + 1).padStart(2, '0')}</span>
@@ -83,9 +84,7 @@ export default async function ServicePage({ params }: { params: Promise<{ slug: 
           <div><dt>Quote basis</dt><dd className="num">{s.price}</dd></div>
           <div><dt>Typical time</dt><dd className="num">{s.timeline}</dd></div>
         </dl>
-        <p className="price-note">
-          We discuss your scope and give you a fixed quote in writing before work starts. Any extra work is agreed separately.
-        </p>
+        <p className="price-note">{s.priceNote}</p>
       </section>
 
       <section className="page-block wrap" data-service-section="preparation" aria-labelledby="prepare-h">
@@ -111,8 +110,7 @@ export default async function ServicePage({ params }: { params: Promise<{ slug: 
             </details>
             <details id="website-app-example" className="service-disclosure">
               <summary>See a booking dashboard example</summary>
-              <section id="app-example" className="service-disclosure-body" data-service-demo="details" aria-labelledby="app-example-h">
-                <h3 id="app-example-h" className="type-h3">A web app in action</h3>
+              <section id="app-example" className="service-disclosure-body" data-service-demo="details" aria-label="Booking dashboard example">
                 <p className="service-caption">A sample booking enters, the records update, and the team sees what needs attention.</p>
                 <div className="page-demo"><ServiceDemo kind="app" /></div>
               </section>
@@ -141,7 +139,11 @@ export default async function ServicePage({ params }: { params: Promise<{ slug: 
         </div>
       </section>
 
-      <CtaBand waText={`Hi Legit Forge, I'd like to talk about ${s.topic}.`} />
+      {/* the quote and its conditions are already above: the band only says how fast we answer */}
+      <CtaBand
+        text={`We reply within ${SITE.replyWithin} during working hours.`}
+        waText={`Hi Legit Forge, I'd like to talk about ${s.topic}.`}
+      />
 
       <JsonLd data={{
         '@type': 'Service',

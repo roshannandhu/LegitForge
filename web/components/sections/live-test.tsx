@@ -77,7 +77,7 @@ export function LiveTest() {
     <section id="live-test" data-event-location="service" data-heat="0.8" className="section">
       <div className="wrap live-grid">
         <div className="live-copy">
-          <h2 className="type-h2">WhatsApp workflow example</h2>
+          {/* no title of its own: it lives in a service-page disclosure whose summary names it */}
           <ol className="live-steps">
             <li>Tap <strong>Run the demo</strong>.</li>
             <li>Follow a sample message through the steps.</li>
