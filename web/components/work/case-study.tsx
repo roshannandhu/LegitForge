@@ -1,25 +1,35 @@
 import { PageHead } from '@/components/pages/page-head';
 import { CtaBand } from '@/components/pages/cta-band';
 import { JsonLd } from '@/components/pages/json-ld';
-import { ProjectCard } from '@/components/work/project-card';
 import { CheckIcon, ExternalIcon } from '@/components/ui/icons';
 import { getTeam } from '@/lib/team';
 import { orgRef, SITE } from '@/lib/site';
-import type { WorkProject } from '@/lib/work';
+import { shareImage, type WorkProject } from '@/lib/work';
 
 /** Case study (PLAN §7.2): header → cover → challenge → what we built → results with sources →
- *  stack → who built it → next project. Shared by /work/[slug] and the admin's draft preview. */
+ *  stack → who built it → a link to the next project. Shared by /work/[slug] and the admin's draft
+ *  preview. A block shows only what the owner filled in: no empty headings, no "Client.  ." line,
+ *  and a two-column row only when both columns have something. */
 export async function CaseStudy({ p, next }: { p: WorkProject; next?: WorkProject }) {
   const c = p.study;
   const team = await getTeam();
   const builders = c.team.map((t) => ({ ...t, m: team.find((m) => m.slug === t.slug) })).filter((b) => b.m);
+  const result = !!(p.resultValue || p.resultLabel);
+  const img = shareImage(p);
   return (
     <>
       <PageHead
         crumbs={[{ name: 'Work', href: '/work' }, { name: p.title, href: `/work/${p.slug}` }]}
         title={p.title}
-        lead={`${p.client}. ${p.resultValue} ${p.resultLabel}.`}
+        lead={p.summary || undefined}
       >
+        {(p.client || result) && (
+          <p className="case-meta">
+            {p.client && <><span className="type-label">Client</span> {p.client}</>}
+            {p.client && result && <span aria-hidden="true"> · </span>}
+            {result && <><b className="num">{p.resultValue}</b> {p.resultLabel}</>}
+          </p>
+        )}
         {p.liveUrl && (
           <a className="btn btn-primary" href={p.liveUrl} target="_blank" rel="noopener">
             Visit live site <ExternalIcon className="inline-icon" />
@@ -44,16 +54,18 @@ export async function CaseStudy({ p, next }: { p: WorkProject; next?: WorkProjec
         )}
       </div>
 
-      <section className="page-block wrap split" aria-label="The challenge and what we built">
-        <div className="prose">
-          <h2 className="type-h3 block-h">The challenge</h2>
-          <p>{c.challenge}</p>
-        </div>
-        {c.built.length > 0 && <div>
-          <h2 className="type-h3 block-h">What we built</h2>
-          <ul className="ticks">{c.built.map((b) => <li key={b}><CheckIcon /><span>{b}</span></li>)}</ul>
-        </div>}
-      </section>
+      {(c.challenge || c.built.length > 0) && (
+        <section className={`page-block wrap${c.challenge && c.built.length ? ' split' : ''}`} aria-label="The challenge and what we built">
+          {c.challenge && <div className="prose">
+            <h2 className="type-h3 block-h">The challenge</h2>
+            <p>{c.challenge}</p>
+          </div>}
+          {c.built.length > 0 && <div>
+            <h2 className="type-h3 block-h">What we built</h2>
+            <ul className="ticks">{c.built.map((b) => <li key={b}><CheckIcon /><span>{b}</span></li>)}</ul>
+          </div>}
+        </section>
+      )}
 
       {c.results.length > 0 && <section className="page-block wrap" aria-labelledby="res-h">
         <h2 id="res-h" className="type-h3 block-h">Results</h2>
@@ -61,47 +73,50 @@ export async function CaseStudy({ p, next }: { p: WorkProject; next?: WorkProjec
           {c.results.map((r) => (
             <li key={r.label}>
               <span className="result-value num">{r.value}</span> {r.label}
-              <span className="src">{r.source}</span>
+              {r.source && <span className="src">{r.source}</span>}
             </li>
           ))}
         </ul>
       </section>}
 
-      <section className="page-block wrap split" aria-label="Stack and team">
-        <div>
-          <h2 className="type-h3 block-h">Stack</h2>
-          <ul className="stack">{c.stack.map((t) => <li key={t}>{t}</li>)}</ul>
-        </div>
-        <div>
-          <h2 className="type-h3 block-h">Who built it</h2>
-          <ul className="builders">
-            {builders.map((b) => (
-              <li key={b.slug}>
-                <a className="text-link" href={b.m!.path}>{b.m!.name}</a>
-                <span>{b.role}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </section>
-
-      {next && next.slug !== p.slug && (
-        <section className="page-block wrap" aria-labelledby="next-h">
-          <h2 id="next-h" className="type-h3 block-h">Next project</h2>
-          <div className="work-grid"><ProjectCard p={next} as="div" /></div>
+      {(c.stack.length > 0 || builders.length > 0) && (
+        <section className={`page-block wrap${c.stack.length && builders.length ? ' split' : ''}`} aria-label="Stack and team">
+          {c.stack.length > 0 && <div>
+            <h2 className="type-h3 block-h">Stack</h2>
+            <ul className="stack">{c.stack.map((t) => <li key={t}>{t}</li>)}</ul>
+          </div>}
+          {builders.length > 0 && <div>
+            <h2 className="type-h3 block-h">Who built it</h2>
+            <ul className="builders">
+              {builders.map((b) => (
+                <li key={b.slug}>
+                  <a className="text-link" href={b.m!.path}>{b.m!.name}</a>
+                  {b.role && <span>{b.role}</span>}
+                </li>
+              ))}
+            </ul>
+          </div>}
         </section>
       )}
 
-      <CtaBand title="Want a result like this?" />
+      {/* one line, not a second full project card: the page stays about this project */}
+      {next && next.slug !== p.slug && (
+        <nav className="page-block wrap case-next" aria-label="Next project">
+          <a className="text-link" href={`/work/${next.slug}`}>Next project: {next.title} <span aria-hidden="true">→</span></a>
+        </nav>
+      )}
+
+      <CtaBand title="Want something like this built?" />
 
       <JsonLd data={{
         '@type': 'CreativeWork',
         name: p.title,
         url: `${SITE.url}/work/${p.slug}`,
-        about: p.client,
+        ...(p.summary ? { description: p.summary } : {}),
+        ...(p.client ? { about: p.client } : {}),
         creator: orgRef,
-        keywords: c.stack.join(', '),
-        image: p.cover ? `${SITE.url}${p.cover.src}` : `${SITE.url}/og/work/${p.slug}`,
+        ...(c.stack.length ? { keywords: c.stack.join(', ') } : {}),
+        image: `${SITE.url}${img.url}`,
         ...(c.results.length ? { abstract: c.results.map((r) => `${r.value} ${r.label}`).join('; ') } : {}),
       }} />
     </>

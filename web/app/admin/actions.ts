@@ -10,7 +10,7 @@ import { revalidatePath, updateTag } from 'next/cache';
 import { isOwner, ownerEmails, requireAdmin, SESSION_COOKIE } from '@/lib/admin/auth';
 import * as db from '@/lib/admin/db';
 import { getEnv } from '@/lib/cf';
-import { getTeam, TEAM_DEFAULTS } from '@/lib/team';
+import { teamFromDb, TEAM_DEFAULTS } from '@/lib/team';
 import type { WorkCategory } from '@/lib/pages';
 import { BriefError, briefFrom, nameOnly, parseRepo, repoBrief, repoDataFrom, type Brief } from '@/lib/admin/github';
 import { ConnectError, checkState, connectApp, privateRepoAccess } from '@/lib/admin/github-app';
@@ -63,7 +63,8 @@ export async function projectFromGithubAction(url: string, fetched?: string, fro
   await db.updateProject(id, {
     slug, title: b.title, client_type: '', category: b.category, summary: b.summary, challenge: b.challenge,
     result_value: null, result_label: null, stack: JSON.stringify(b.stack), live_url: b.liveUrl,
-    status_stamp: b.liveUrl ? 'live' : 'none', tags: JSON.stringify(b.tags), built: JSON.stringify(b.built),
+    // a homepage set on GitHub doesn't prove the site works: the owner sets "Live" when checking the draft
+    status_stamp: 'none', tags: JSON.stringify(b.tags), built: JSON.stringify(b.built),
     results: '[]', team: '[]', is_featured: 0, launched_on: b.launchedOn, proof_before: null, proof_after: null,
   });
   revalidatePath('/admin/projects');
@@ -132,7 +133,8 @@ export async function saveProjectAction(id: string, _: FormState, f: FormData): 
     const [value = '', label = '', source = ''] = l.split('|').map((x) => x.trim());
     return { value, label, source };
   }).filter((r) => r.value && r.label);
-  const team = (await getTeam()).filter((m) => f.get(`team_${m.slug}`) === 'on')
+  // the same list the form shows: everyone in Admin → Team, published or not
+  const team = ((await teamFromDb(true)) ?? []).filter((m) => f.get(`team_${m.slug}`) === 'on')
     .map((m) => ({ slug: m.slug, role: str(f, `role_${m.slug}`, 120) }));
 
   await db.updateProject(id, {

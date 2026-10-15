@@ -13,13 +13,15 @@ import { atBuild } from './build-cache';
  *  'projects': the admin's updateTag('projects') re-renders them from D1. */
 
 export type CaseStudy = (typeof CASE_STUDIES)[string];
-export type WorkProject = Project & { category: WorkCategory; study: CaseStudy; published: boolean; updatedAt?: string; featured?: boolean };
+/** `summary` is the admin's required one-line summary: the case study's lead and the home brief.
+ *  `study.challenge` is only what the owner wrote as the challenge (empty = no challenge block). */
+export type WorkProject = Project & { summary: string; category: WorkCategory; study: CaseStudy; published: boolean; updatedAt?: string; featured?: boolean };
 
 const EMPTY: CaseStudy = { category: 'static', challenge: '', built: [], results: [], stack: [], team: [] };
 
 const PLACEHOLDERS: WorkProject[] = PROJECTS.map((p) => {
   const study = CASE_STUDIES[p.slug] ?? EMPTY;
-  return { ...p, category: study.category, study, published: true };
+  return { ...p, summary: '[One-line summary of the project]', category: study.category, study, published: true };
 });
 /** No published projects yet: nothing (the sections hide), or the placeholders when SHOW_PH. */
 const FALLBACK: WorkProject[] = SHOW_PH ? PLACEHOLDERS : [];
@@ -44,14 +46,15 @@ function toWork(r: Row): WorkProject {
     ? { src: `/media/${r.r2_key}`, alt: r.cover_alt ?? '', width: r.width, height: r.height, color: r.dominant_color }
     : undefined;
   return {
-    slug: r.slug, title: r.title, client: r.client_type,
+    slug: r.slug, title: r.title, client: r.client_type, summary: r.summary,
     resultValue: r.result_value ?? '', resultLabel: r.result_label ?? '',
     tags: list<string>(r.tags), stamp: r.status_stamp, liveUrl: r.live_url ?? undefined,
     ...(r.proof_before && r.proof_after ? { before: r.proof_before, after: r.proof_after } : {}),
     initials: initials(r.title), cover, category: r.category, published: r.is_published === 1, featured: r.is_featured === 1,
     updatedAt: r.updated_at.replace(' ', 'T') + 'Z',          // D1 datetime('now') is UTC
     study: {
-      category: r.category, challenge: r.challenge ?? r.summary, built: list(r.built), results: list(r.results),
+      // never the summary standing in: it is the lead already, and it isn't a challenge
+      category: r.category, challenge: r.challenge?.trim() ?? '', built: list(r.built), results: list(r.results),
       stack: list(r.stack), team: list(r.team),
     },
   };
@@ -104,6 +107,25 @@ export async function getHomeProjects() {
 
 export async function getProject(slug: string) {
   return (await getProjects()).find((p) => p.slug === slug);
+}
+
+/** A case study's share image: its uploaded cover, else the drawn card (/og/work/<slug> exists
+ *  only for the placeholders, in a SHOW_PLACEHOLDERS build), else the site card. The page's
+ *  metadata and its CreativeWork data both use it, so neither points at a missing image. */
+export function shareImage(p: WorkProject): { url: string; width: number; height: number; alt: string } {
+  if (p.cover) return { url: p.cover.src, width: p.cover.width, height: p.cover.height, alt: p.cover.alt };
+  if (SHOW_PH && PLACEHOLDERS.some((x) => x.slug === p.slug)) return { url: `/og/work/${p.slug}`, width: 1200, height: 630, alt: `${p.title} case study` };
+  return { url: '/opengraph-image', width: 1200, height: 630, alt: 'Legit Forge' };
+}
+
+/** The case study's meta description, from what the owner wrote: client, summary and the result
+ *  when there is one (never "Client: ." for a project without a number), cut to 160 characters. */
+export function caseDescription(p: WorkProject): string {
+  const sentence = (s: string) => (s && !/[.!?…]$/.test(s) ? `${s}.` : s);
+  const result = [p.resultValue, p.resultLabel].filter(Boolean).join(' ');
+  const text = [p.client && `${p.client}:`, sentence(p.summary?.trim() ?? ''), sentence(result)].filter(Boolean).join(' ')
+    || `${p.title}, a case study by Legit Forge.`;
+  return text.length <= 160 ? text : text.slice(0, 159).replace(/\s+\S*$/, '') + '…';
 }
 
 /** For the admin preview: drafts included, never cached. */

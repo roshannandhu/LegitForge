@@ -99,11 +99,19 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
   ADMIN_SESSION_KEY in D1, never in a file or the chat. Team members install it and pick repos;
   privateRepoAccess mints a one-hour token for just that repo. The cloud sandbox's proxy blocks
   api.github.com: test with a fixture server via GITHUB_API_BASE (only `next dev` with ADMIN_DEV_BYPASS).
+  briefFrom never turns a starter template's README (create-next-app, Vite, CRA), a code block, a
+  how-to section or an English word ("next", "express", "react to") into the title, summary,
+  stack or tags; no filler summary (the owner writes it); drafts get no "Live" stamp.
+  tests/github-brief.test.ts holds the real template READMEs: add one there for a new false match.
 - Projects on public pages come from lib/work.ts: published D1 rows, else nothing (sections hide,
   /work shows an empty state). The placeholders in content.ts/pages.ts show only in a build made
   with SHOW_PLACEHOLDERS=1 (local design work; `SHOW_PLACEHOLDERS=1 npm run check` covers the
   work and 3D team tests). Public pages never print [bracketed] text (lib/placeholder.ts: isPh,
   priceText; empty SITE fields are left out); `npm run check` ONLY=seo fails if any shows. Never import PROJECTS/CASE_STUDIES in a page again; use getProjects().
+  Case study (components/work/case-study.tsx): the lead is the one-line summary, the client and
+  result share one line, and a block shows only what the owner filled in (no empty heading, no
+  summary standing in for the challenge). The next project is one link, not a second card.
+  Share image and CreativeWork image both come from lib/work.ts shareImage.
   People the same way: lib/team.ts getTeam() (tag 'team'), never TEAM/MEMBER_DETAILS in a page.
   Client components get toCards(team) only, so bios stay on the server.
 - Company details (email, WhatsApp number and greeting, social links, legal name, city, GSTIN)
