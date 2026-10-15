@@ -3,6 +3,11 @@
 The full plan is ../PLAN.md. Read the relevant section before building anything.
 PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory review gates.
 
+## Active Working Directives
+- **Working Directory**: Always work in the `web/` directory. All application code, tests, and configuration live in `web/`.
+- **Target Branch**: Always branch from and target `main-exh9xw`.
+- **Verification**: Run `npm run test:backend` (21 tests) and `npm run build` inside `web/`; review page markup directly or inspect generated static files since browser checks (`check.mjs`) require an active dev server.
+
 ## Current owner decisions (7 October 2026)
 - Website/CMS/enquiry fixes only; real WhatsApp/n8n/AI infrastructure remains future work.
 - Compact homepage; detailed illustrative demos live on service/inner pages. Preserve the intro,
