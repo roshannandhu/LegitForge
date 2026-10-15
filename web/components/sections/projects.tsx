@@ -24,7 +24,8 @@ export async function Projects() {
       <div className="wg">
         <p className="wg-client">{p.client}</p>
         <h3 className="wg-title">{p.title}</h3>
-        {p.study.challenge && <p className="wg-brief">{p.study.challenge}</p>}
+        {/* the brief is the owner's one-line summary (the challenge is a paragraph for the case study) */}
+        {(p.summary || p.study.challenge) && <p className="wg-brief">{p.summary || p.study.challenge}</p>}
         <span className="wg-cta" aria-hidden="true">View project →</span>
       </div>
     ),

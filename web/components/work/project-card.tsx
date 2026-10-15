@@ -7,7 +7,8 @@ export type Project = (typeof PROJECTS)[number] & { cover?: Cover };
 
 /** One project card (PLAN §6.7), shared by the home track, /work and the case-study footer.
  *  Covers keep a fixed 4:5 ratio (no CLS): the uploaded image over its dominant colour, or a
- *  blueprint placeholder with the project's initials — never a broken image. Stamps are honest status, set daily by n8n (§9.7). */
+ *  blueprint placeholder with the project's initials — never a broken image. Stamps are honest status, set by the owner in the admin
+ *  (a daily n8n check, §9.7, is future work). */
 export function ProjectCard({ p, as: Tag = 'li', headingLevel = 3 }: {
   p: Project; as?: 'li' | 'div'; headingLevel?: 2 | 3;
 }) {

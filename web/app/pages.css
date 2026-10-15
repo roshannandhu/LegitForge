@@ -116,6 +116,11 @@
 @media (min-width: 768px) { .case-cover.is-upload { aspect-ratio: max(var(--ar, 1.7778), 1.25); } }
 .case-cover.is-upload .cover-img { object-fit: contain; }
 .case-cover .stamp { position: absolute; top: 20px; right: 20px; }
+/* client and the headline result, one quiet line in the head's action row (only what exists) */
+.case-meta { flex-basis: 100%; max-width: 65ch; margin: 0; color: var(--text-muted); }
+.case-meta .type-label { margin-right: 6px; color: var(--text); }
+.case-meta b { color: var(--text); }
+.case-next .text-link { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; }
 .results { display: grid; gap: 16px; margin: 0; padding: 0; list-style: none; }
 @media (min-width: 768px) { .results { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); } }
 .results li { padding: 24px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); }

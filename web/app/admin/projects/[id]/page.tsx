@@ -1,7 +1,7 @@
 import { requireAdmin } from '@/lib/admin/auth';
 import { notFound } from 'next/navigation';
 import { CATEGORIES, getProjectRow, listImages, STAMPS } from '@/lib/admin/db';
-import { getTeam } from '@/lib/team';
+import { getTeam, teamFromDb } from '@/lib/team';
 import { captureCoverAction, deleteImageAction, deleteProjectAction, publishProjectAction, saveProjectAction, setCoverAction } from '../../actions';
 import { ActionButton, ActionForm, ConfirmSubmit, Submit } from '../../ui';
 import { ImageManager } from './image-manager';
@@ -14,7 +14,10 @@ export default async function EditProject({ params }: { params: Promise<{ id: st
   const p = await getProjectRow(id);
   if (!p) notFound();
   const images = await listImages(id);
-  const members = await getTeam();
+  // everyone in Admin → Team (saveProjectAction reads the same list); a hidden profile can be
+  // credited now and shows on the case study once it is published
+  const members = (await teamFromDb(true)) ?? [];
+  const shown = new Set((await getTeam()).map((m) => m.slug));
   const team = parse<{ slug: string; role: string }>(p.team);
   const results = parse<{ value: string; label: string; source: string }>(p.results);
 
@@ -70,7 +73,7 @@ export default async function EditProject({ params }: { params: Promise<{ id: st
             <label className="field"><span>Tags <small>(comma separated, on the card)</small></span><input name="tags" defaultValue={parse<string>(p.tags).join(', ')} placeholder="Website, WhatsApp" /></label>
             <label className="field"><span>Stack <small>(comma separated)</small></span><input name="stack" defaultValue={parse<string>(p.stack).join(', ')} placeholder="Next.js, Cloudflare" /></label>
             <label className="field"><span>Live URL</span><input name="live_url" type="url" defaultValue={p.live_url ?? ''} placeholder="https://" /></label>
-            <label className="field"><span>Status stamp <small>(n8n updates it daily)</small></span>
+            <label className="field"><span>Status stamp <small>(on the cover; set it yourself, Live = the site works today)</small></span>
               <select name="status_stamp" defaultValue={p.status_stamp}>{STAMPS.map((s) => <option key={s} value={s}>{s}</option>)}</select></label>
             <label className="field"><span>Launched on</span><input name="launched_on" type="date" defaultValue={p.launched_on ?? ''} /></label>
             <label className="check"><input type="checkbox" name="is_featured" defaultChecked={!!p.is_featured} /> Show on the home page ★</label>
@@ -86,7 +89,8 @@ export default async function EditProject({ params }: { params: Promise<{ id: st
               const t = team.find((x) => x.slug === m.slug);
               return (
                 <div key={m.slug} className="team-row">
-                  <label className="check"><input type="checkbox" name={`team_${m.slug}`} defaultChecked={!!t} /> {m.name}</label>
+                  <label className="check"><input type="checkbox" name={`team_${m.slug}`} defaultChecked={!!t} /> {m.name}
+                    {!shown.has(m.slug) && <small className="muted"> (profile not published: not on the page yet)</small>}</label>
                   <label className="field"><span className="sr-only">{m.name}’s role</span><input name={`role_${m.slug}`} defaultValue={t?.role ?? ''} placeholder="built the site" /></label>
                 </div>
               );

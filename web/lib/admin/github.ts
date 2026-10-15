@@ -69,13 +69,23 @@ function blocks(md: string): { heading: string; text: string }[] {
 const isList = (t: string) => /^\s*([-*+]|\d+[.)])\s+/m.test(t);
 const isTable = (t: string) => /^\s*\|/.test(t);
 
-/** First prose paragraph (not a list, table, badge row or one-liner), optionally under a heading. */
+/** A starter template's own README text (create-next-app, Vite, Create React App…): it says how the
+ *  repo was generated or how to run it, never what the project is, so it is never a summary. */
+const TEMPLATE_TEXT = /\bbootstrapped with\b|create-next-app|\bcreate react app\b|\bthis template\b|\bminimal setup\b|\bgetting started\b|\bnpm run (dev|start|build)\b|\b(yarn|pnpm|bun) dev\b|\byou can start editing\b|\bproject was generated\b|\bdevelopment (server|mode)\b|\blocalhost\b|\bnext\/font\b/i;
+/** A first heading that names the template, not the project ("React + TypeScript + Vite"). */
+const TEMPLATE_TITLE = /\+|\b(getting started|create react app|template|starter|boilerplate)\b|^(readme|react|next\.?js|vite|vue|svelte|astro|nuxt|angular)( app)?$/i;
+/** Sections that say how to run, build or deploy the code: never where a project is described. */
+const HOWTO_HEADING = /getting started|learn more|deploy|available scripts|^(npm|yarn|pnpm|bun|npx)\b|install|set ?up\b|usage|running|run locally|develop|build|eslint|compiler|contribut|licen[cs]e|scripts|requirements|prerequisites/i;
+
+/** First prose paragraph, optionally under a heading: not a list, table, badge row, one-liner,
+ *  lead-in ("…are available:"), template text, or anything under a template title or a how-to heading. */
 function firstParagraph(md: string, under?: RegExp): string | null {
   for (const b of blocks(md)) {
     if (under && !under.test(b.heading)) continue;
+    if (b.heading && (TEMPLATE_TITLE.test(b.heading) || HOWTO_HEADING.test(b.heading))) continue;
     if (isList(b.text) || isTable(b.text)) continue;
     const t = plain(b.text).replace(/\s*\n\s*/g, ' ');
-    if (t.length >= 40 && /[a-z]/.test(t)) return t;
+    if (t.length >= 40 && /[a-z]/.test(t) && !t.endsWith(':') && !TEMPLATE_TEXT.test(t)) return t;
   }
   return null;
 }
@@ -113,23 +123,52 @@ export const slugify = (s: string) =>
 
 /* ---------------------------------------------------------------- the site's words */
 
-// frameworks and tools worth naming in "Stack" when they appear as topics or in the README
-const TOOLS: [RegExp, string][] = [
-  [/\bnext(\.?js)?\b/i, 'Next.js'], [/\breact\b/i, 'React'], [/\bvue\b/i, 'Vue'], [/\bsvelte\b/i, 'Svelte'],
-  [/\bastro\b/i, 'Astro'], [/\btailwind/i, 'Tailwind CSS'], [/\bnode(\.?js)?\b/i, 'Node.js'], [/\bexpress\b/i, 'Express'],
-  [/\bdjango\b/i, 'Django'], [/\bflask\b/i, 'Flask'], [/\blaravel\b/i, 'Laravel'], [/\bsupabase\b/i, 'Supabase'],
-  [/\bfirebase\b/i, 'Firebase'], [/\bpostgres(ql)?\b/i, 'PostgreSQL'], [/\bmysql\b/i, 'MySQL'], [/\bmongo(db)?\b/i, 'MongoDB'],
-  [/\bprisma\b/i, 'Prisma'], [/\bcloudflare\b/i, 'Cloudflare'], [/\bvercel\b/i, 'Vercel'], [/\bn8n\b/i, 'n8n'],
-  [/\bwhatsapp\b/i, 'WhatsApp Cloud API'], [/\bstripe\b/i, 'Stripe'], [/\brazorpay\b/i, 'Razorpay'], [/\bwordpress\b/i, 'WordPress'],
+/** Frameworks and tools worth naming in "Stack": [name, the GitHub topics that name it, how a
+ *  README names it]. README patterns are strict: "next", "node", "express" and "react" are also
+ *  English words ("next steps", "react to"), a link to wa.me is not the WhatsApp Cloud API, and
+ *  "Deploy on Vercel" is template text (Vercel and Cloudflare come from the homepage's host). */
+const TOOLS: [string, string[], RegExp | null][] = [
+  ['Next.js', ['nextjs', 'next', 'next-js'], /\bNext\.?js\b|\bnextjs\b/i],
+  ['React', ['react', 'reactjs', 'react-js'], /\bReact(\.?js)?\b|\breactjs\b/],          // case matters: the verb
+  ['Vue', ['vue', 'vuejs', 'vue3'], /\bVue(\.?js)?\b|\bvuejs\b/],
+  ['Svelte', ['svelte', 'sveltekit'], /\bSvelte(Kit)?\b/],
+  ['Astro', ['astro', 'astrojs'], /\bAstro\b/],
+  ['Tailwind CSS', ['tailwind', 'tailwindcss', 'tailwind-css'], /\btailwind/i],
+  ['Node.js', ['node', 'nodejs', 'node-js'], /\bNode\.?js\b|\bnodejs\b/i],
+  ['Express', ['express', 'expressjs', 'express-js'], /\bExpress\.?js\b|\bexpressjs\b|require\(\s*['"]express['"]\s*\)|from\s+['"]express['"]/i],
+  ['Django', ['django'], /\bdjango\b/i],
+  ['Flask', ['flask'], /\bFlask\b/],
+  ['Laravel', ['laravel'], /\blaravel\b/i],
+  ['Supabase', ['supabase'], /\bsupabase\b/i],
+  ['Firebase', ['firebase'], /\bfirebase\b/i],
+  ['PostgreSQL', ['postgres', 'postgresql'], /\bpostgres(ql)?\b/i],
+  ['MySQL', ['mysql'], /\bmysql\b/i],
+  ['MongoDB', ['mongodb', 'mongo', 'mongoose'], /\bmongo(db|ose)?\b/i],
+  ['Prisma', ['prisma'], /\bprisma\b/i],
+  ['Cloudflare', ['cloudflare', 'cloudflare-workers', 'cloudflare-pages'], null],
+  ['Vercel', ['vercel'], null],
+  ['n8n', ['n8n'], /\bn8n\b/i],
+  ['WhatsApp Cloud API', ['whatsapp-cloud-api', 'whatsapp-api', 'whatsapp-business-api'], /\bwhatsapp (cloud|business) api\b|\bgraph\.facebook\.com\b/i],
+  ['Stripe', ['stripe'], /\bstripe\b/i],
+  ['Razorpay', ['razorpay'], /\brazorpay\b/i],
+  ['WordPress', ['wordpress'], /\bwordpress\b/i],
 ];
+const HOSTS: [RegExp, string][] = [[/\.vercel\.app$/i, 'Vercel'], [/\.(pages|workers)\.dev$/i, 'Cloudflare']];
 
 const SIGNALS = {
   whatsapp: /\bwhats\s?app\b|\bwa\s?bot\b|\bwaba\b/i,
+  // in a README, WhatsApp is a service we built only when it is a bot or an integration: a
+  // "chat with us on WhatsApp" link on a bakery site is not WhatsApp automation
+  whatsappBuilt: /\bwhats\s?app (bot|chat ?bot|automation|cloud api|business api|api|integration|flows?)\b|\bwa\s?bot\b|\bwaba\b/i,
   n8n: /\bn8n\b|\bworkflow automation\b|\bzapier\b|\bmake\.com\b/i,
-  app: /\bdashboard\b|\badmin panel\b|\blog ?in\b|\bauth(entication)?\b|\bdatabase\b|\bcrud\b|\bapi\b|\bbackend\b|\bsupabase\b|\bfirebase\b|\bprisma\b|\bpostgres|\bmysql\b|\bmongo/i,
+  // a web app anywhere in the text: things only an app has
+  app: /\bdashboard\b|\badmin panel\b|\bauthentication\b|\bcrud\b|\bsupabase\b|\bfirebase\b|\bprisma\b|\bpostgres|\bmysql\b|\bmongo(db|ose)?\b/i,
+  // words that name an app only when the repo says it about itself (name, description, topics):
+  // every Next.js README says "API", and "log in to Vercel" is not a login system
+  appCore: /\bapi\b|\blog ?in\b|\bauth\b|\bdatabase\b|\bbackend\b|\bweb ?app\b/i,
   seo: /\bseo\b|\bsearch engine\b|\bgoogle business\b/i,
   nfc: /\bnfc\b/i,
-  quote: /\bquot(e|ation)s?\b|\binvoice/i,
+  quote: /\bquotations?\b|\binvoic(e|es|ing)\b/i,                // not "quotes" (string quotes, a quotes app)
   warranty: /\bwarrant(y|ies)\b/i,
 };
 
@@ -306,30 +345,43 @@ export function repoDataFrom(json: string, ref: RepoRef): RepoData | null {
 /** Writes the brief from the repo's data (no network). */
 export function briefFrom({ repo: r, languages, readme }: RepoData): Brief {
   const langs = { data: languages };
-  const md = readme;
+  // the README's prose: a "# or" comment in a code block is not its title (every create-next-app
+  // repo came out titled "or"). Code still counts for the stack: require('express') names a tool.
+  const md = readme.replace(/```[\s\S]*?```/g, '\n');
   const topics = r.topics ?? [];
   const haystack = [r.description ?? '', topics.join(' '), md.slice(0, 20_000)].join('\n');
 
-  // title: the README's first heading when it is a real name, else the repo name, title-cased
+  // the category and the "app" words read only what the repo says about itself
+  // (a README that mentions a WhatsApp order form doesn't make a bakery site a WhatsApp bot)
+  const core = [r.name, r.description ?? '', topics.join(' ')].join(' ');
+
+  // title: the README's first heading when it is a real name (not the template's), else the repo name, title-cased
   const h1 = /^\s{0,3}#\s+(.+?)\s*#*\s*$/m.exec(md)?.[1];
-  const h1Text = h1 ? plain(h1).replace(/[^\p{L}\p{N}\s&'’.,:-]/gu, '').trim() : '';
+  const h1Text = h1 && !TEMPLATE_TITLE.test(plain(h1).trim())
+    ? plain(h1).replace(/[^\p{L}\p{N}\s&'’.,:-]/gu, '').replace(/\s+/g, ' ').trim() : '';
   const title = h1Text && h1Text.length <= 60 && slugify(h1Text) !== slugify(r.name) ? h1Text : titleCase(r.name);
 
-  const summary = clip(plain(r.description ?? '') || firstParagraph(md) || `${title}: a project by Legit Forge.`, 300);
+  // no filler: without a description or a real paragraph the summary stays empty, and publishing
+  // asks the owner to write one (publishProjectAction)
+  const summary = clip(plain(r.description ?? '') || firstParagraph(md) || '', 300);
   const challengeText = firstParagraph(md, /problem|why|background|about|overview|motivation|introduction/i);
   const challenge = challengeText && challengeText !== summary ? clip(challengeText, 400) : null;
   const built = bullets(md, /feature|what it does|highlights|functionality|capabilit/i);
 
   const byBytes = Object.entries(langs.data ?? {}).sort((a, b) => b[1] - a[1]).map(([l]) => l)
     .filter((l) => !/^(Dockerfile|Makefile|Shell|Batchfile|PowerShell|Procfile)$/.test(l)).slice(0, 5);
-  const tools = TOOLS.filter(([re]) => re.test(topics.join(' ')) || re.test(md.slice(0, 20_000))).map(([, n]) => n);
-  const stack = [...new Set([...tools, ...byBytes])].slice(0, 8);
+  const topicSet = new Set(topics.map((t) => t.toLowerCase()));
+  const readmeHead = readme.slice(0, 20_000);
+  const host = (() => { try { return r.homepage ? new URL(r.homepage.trim()).hostname : ''; } catch { return ''; } })();
+  const tools = TOOLS.filter(([, names, re]) => names.some((n) => topicSet.has(n)) || (re?.test(readmeHead) ?? false)).map(([n]) => n);
+  const hosts = HOSTS.filter(([re]) => re.test(host)).map(([, n]) => n);
+  const stack = [...new Set([...tools, ...hosts, ...byBytes])].slice(0, 8);
 
   const has = (k: keyof typeof SIGNALS) => SIGNALS[k].test(haystack);
   const tags: string[] = [];
-  if (has('whatsapp')) tags.push('WhatsApp');
+  if (SIGNALS.whatsapp.test(core) || has('whatsappBuilt')) tags.push('WhatsApp');
   if (has('n8n')) tags.push('n8n');
-  if (has('app')) tags.push('Web app');
+  if (has('app') || SIGNALS.appCore.test(core)) tags.push('Web app');
   if (has('seo')) tags.push('SEO');
   if (has('nfc')) tags.push('NFC');
   if (has('quote')) tags.push('Quote');
@@ -337,9 +389,7 @@ export function briefFrom({ repo: r, languages, readme }: RepoData): Brief {
   if (!tags.includes('Web app') && (r.homepage || /\bwebsite\b|\blanding page\b|\bsite\b/i.test(haystack))) tags.unshift('Website');
   if (!tags.length) tags.push('Website');
 
-  // the category is what the project IS, so it reads only the name, description and topics
-  // (a README that mentions a WhatsApp order form doesn't make a bakery site a WhatsApp bot)
-  const core = [r.name, r.description ?? '', topics.join(' ')].join(' ');
+  // the category is what the project IS: the name, description and topics (core, above)
   const category: WorkCategory = SIGNALS.whatsapp.test(core) ? 'whatsapp' : SIGNALS.n8n.test(core) ? 'n8n'
     : tags.includes('Web app') ? 'dynamic' : 'static';
   const liveUrl = r.homepage && /^https:\/\/\S+$/.test(r.homepage.trim()) ? r.homepage.trim() : null;
