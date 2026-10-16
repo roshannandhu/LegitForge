@@ -19,7 +19,7 @@ export default async function AdminLeads({ searchParams }: { searchParams: Promi
   return (
     <>
       <h1 className="type-h2">Leads</h1>
-      <p className="muted">Every enquiry from the website form lands here ({total} so far). Each one is saved first, then an alert is sent, so a failed alert never loses an enquiry. WhatsApp enquiries will arrive here too once the bot is set up.</p>
+      <p className="muted">Every enquiry from the website form and the WhatsApp bot lands here ({total} so far). Each one is saved first, then an alert is sent, so a failed alert never loses an enquiry. WhatsApp enquiries fill in as the client answers the bot.</p>
       {!notifications && <p role="status">Alerts not configured. Review new enquiries here; saved enquiries remain available.</p>}
       <div className="admin-actions admin-lead admin-leads-filter">
         <a className="btn btn-ghost btn-sm" href="/admin/leads" aria-current={!status ? 'page' : undefined}>All</a>
@@ -35,7 +35,7 @@ export default async function AdminLeads({ searchParams }: { searchParams: Promi
             <tbody>
               {leads.map((l) => (
                 <tr key={l.id}>
-                  <td className="muted">{l.created_at.slice(0, 16).replace('T', ' ')}<br />{l.source}
+                  <td className="muted">{l.created_at.slice(0, 16).replace('T', ' ')}<br />{l.source}{l.language ? ` · ${l.language}` : ''}
                     {/* first column: on a phone the table scrolls sideways, and this stays in view */}
                     <form action={deleteLeadAction.bind(null, l.id)} className="admin-inline admin-lead-delete">
                       <ConfirmSubmit message={`Delete the lead from ${l.name ?? 'this person'}? This can't be undone (Export CSV first to keep a copy).`}>Delete</ConfirmSubmit>
@@ -54,9 +54,12 @@ export default async function AdminLeads({ searchParams }: { searchParams: Promi
                     </form>
                   </td>
                   <td>
-                    <span>{l.delivery_status === 'delivered' ? 'Delivered' : l.delivery_status === 'dead' ? 'Failed' : l.delivery_status === 'pending' ? 'Pending' : 'Not queued'}</span>
-                    {l.attempts != null && <><br /><span className="muted">{l.attempts} attempts{l.last_error ? ` · ${l.last_error}` : ''}</span></>}
-                    {notifications && l.delivery_status !== 'delivered' && <form action={retryLeadAlertAction.bind(null, l.id)} className="admin-inline"><button className="btn btn-ghost btn-sm">Retry alert</button></form>}
+                    {/* the bot alerts the team on WhatsApp itself; the n8n outbox is for form leads */}
+                    {l.source === 'whatsapp' ? <span>Team alerted on WhatsApp</span> : <>
+                      <span>{l.delivery_status === 'delivered' ? 'Delivered' : l.delivery_status === 'dead' ? 'Failed' : l.delivery_status === 'pending' ? 'Pending' : 'Not queued'}</span>
+                      {l.attempts != null && <><br /><span className="muted">{l.attempts} attempts{l.last_error ? ` · ${l.last_error}` : ''}</span></>}
+                      {notifications && l.delivery_status !== 'delivered' && <form action={retryLeadAlertAction.bind(null, l.id)} className="admin-inline"><button className="btn btn-ghost btn-sm">Retry alert</button></form>}
+                    </>}
                     <p className="muted">Last contact: {l.last_contact_at?.slice(0, 16) ?? 'Not recorded'}</p>
                     <form action={markLeadContactedAction.bind(null, l.id)} className="admin-inline"><button className="btn btn-ghost btn-sm">Record contact today</button></form>
                   </td>

@@ -96,12 +96,15 @@ sent to the Worker so every lead appears in `/admin`.
 |---|---|---|
 | `CLOUDFLARE_API_TOKEN` | Deploys the site | GitHub Actions secret |
 | `CLOUDFLARE_ACCOUNT_ID` | Cloudflare account | GitHub Actions secret |
-| `WA_ACCESS_TOKEN` | Meta **permanent** system-user token | GitHub Actions secret → Cloudflare |
-| `WA_APP_SECRET` | Meta App settings → Basic → App secret (webhook signatures) | GitHub Actions secret → Cloudflare |
-| `WA_VERIFY_TOKEN` | Random phrase for the Meta webhook check | GitHub Actions secret → Cloudflare |
+| `WA_ACCESS_TOKEN` | Meta **permanent** system-user token | Bot Worker secret (`wrangler secret put … -c bot/wrangler.jsonc`) |
+| `WA_APP_SECRET` | Meta App settings → Basic → App secret (webhook signatures) | Bot Worker secret |
+| `WA_VERIFY_TOKEN` | Random phrase for the Meta webhook check | Bot Worker secret |
 | `TELEGRAM_BOT_TOKEN` | Team alert bot (@BotFather) | n8n credentials |
 | Supabase database password | Postgres login | Password manager + n8n credentials |
 | `N8N_SHARED_KEY`, `N8N_CALLBACK_SECRET` | Worker ↔ n8n authentication | GitHub Actions secret → Cloudflare, and n8n |
+| `TEAM_WHATSAPP` | The team's own WhatsApp numbers (bot alerts) | Bot Worker secret |
+| `SUPABASE_SECRET_KEY` | Supabase secret API key (`sb_secret_…`) | Bot Worker secret |
+| `GROQ_API_KEY`, `GEMINI_API_KEY` | AI providers for the bot | Bot Worker secret |
 
 Keep a copy of every value in a password manager (for example Bitwarden) under legitforge@gmail.com.
 
@@ -125,6 +128,62 @@ Keep a copy of every value in a password manager (for example Bitwarden) under l
 ---
 
 # Part 2 — The plan
+
+## The WhatsApp bot as built (16 Oct 2026) — read this first
+
+The bot is code in `web/bot/` (a separate Cloudflare Worker, `legitforge-bot`), not n8n. It
+**supersedes §3–§9 below** (n8n orchestrator, Telegram claim button, Chatwoot, call ladder,
+Calendar, the AI gateway chain), which are kept only as background.
+
+**What a client sees:** "Hi" → a menu of our services (or "Something else / chat") → pick a
+language (English, Malayalam, Manglish, Hindi, Kannada) → name, business, what they need, when.
+They can ask questions at any point: the bot answers from approved answers, or says it is
+checking with the team. If nobody answers within 10 minutes it tells them the team will reply
+within 2 hours (or after 10 a.m. when closed). STOP stops all messages.
+
+**What the team sees (on your own WhatsApp):**
+- `#K7Q2 question · Ravi (Ravi Bakery) · Website · Malayalam` and the question. Swipe-reply with
+  the answer (or write `#K7Q2 your answer`). The client gets it in their language.
+- Then "Save this for next time?" with **Approve / Edit / Reject**. Only approved answers are
+  reused, so the bot learns without repeating a one-off or wrong answer.
+- `#K7Q2 new lead (brief complete)` with every detail and a wa.me link. The lead is already in
+  Admin → Leads. Swipe-reply to write to the client through the bot.
+- `#K7Q2 take` = you chat with them yourself through the bot (their messages come to you);
+  `#K7Q2 bot` hands back.
+- Send the bot number any message once a day (e.g. "hi"): WhatsApp only allows free alerts to you
+  within 24 hours of your last message; otherwise the bot uses the `team_alert` template (small
+  charge per message).
+
+**Where things live:** leads in Cloudflare D1 (Admin → Leads, same table as the form); chats,
+team questions and learned answers in Supabase (`web/bot/supabase/schema.sql`). AI: Groq and
+Google Gemini, both free tiers (the owner's choice). Phone numbers and emails are removed before
+anything reaches them. Gemini's free tier may keep what it receives, which Meta's WhatsApp terms
+do not allow for chat data: turning on Gemini billing in Google AI Studio fixes this with no code
+change, and is recommended before real client traffic.
+
+**Setup, in order** (secret values never go in this file or a chat):
+1. Meta app → WhatsApp → API Setup: add both team phones and one spare "client" phone as test
+   recipients. Create a system user with a permanent token (`whatsapp_business_messaging`,
+   `whatsapp_business_management`); copy the App secret; choose a random verify token.
+2. Supabase: SQL editor → paste and run `web/bot/supabase/schema.sql`. Settings → API keys →
+   create a secret key (`sb_secret_…`). Reset the database password (the old one was exposed).
+3. Google AI Studio and the Groq console: create one API key each; check the model names in
+   `web/bot/wrangler.jsonc` still exist.
+4. Deploy (`npx wrangler deploy -c bot/wrangler.jsonc` from `web/`, or the GitHub workflow), then
+   set the secrets: `npx wrangler secret put <NAME> -c bot/wrangler.jsonc` for WA_ACCESS_TOKEN,
+   WA_APP_SECRET, WA_VERIFY_TOKEN, TEAM_WHATSAPP (your two numbers, digits, comma-separated),
+   SUPABASE_SECRET_KEY, GROQ_API_KEY, GEMINI_API_KEY.
+5. Meta → WhatsApp → Configuration: callback URL
+   `https://legitforge-bot.roshannandhu1100.workers.dev/webhook`, the verify token, subscribe to
+   `messages`.
+6. Proofread the Malayalam, Manglish, Hindi and Kannada messages in `web/bot/text.ts`, then load
+   the website's FAQ answers: `GEMINI_API_KEY=… SUPABASE_SECRET_KEY=… npx tsx bot/seed.ts`.
+7. WhatsApp Manager → templates: a **utility** template `team_alert`, English, body e.g.
+   "New Legit Forge enquiry {{1}}: {{2}}. Reply to this message to answer."
+8. Test from the spare phone (team phones always count as team). Then add the new SIM
+   (Production setup), get the display name approved, switch the app to Live, change
+   `WA_PHONE_NUMBER_ID` in `web/bot/wrangler.jsonc`, and put the new number in Admin → Company.
+
 
 ## 1. Where the project stands
 

@@ -93,6 +93,11 @@ jobs:
       - name: Deploy the checked Worker
         run: npx opennextjs-cloudflare deploy
 
+      - name: WhatsApp bot Worker
+        # bot/wrangler.jsonc: separate Worker on the same D1 (after the migrations above). Its secrets are
+        # set once by hand (bot/wrangler.jsonc header); without them it answers Meta with errors only.
+        run: npx wrangler deploy -c bot/wrangler.jsonc
+
       - name: Live data on the new pages
         # The build renders no database data (lib/build-cache.ts). Marking the data tags as changed
         # for this build (OpenNext's D1 tag cache, keyed "<build id>/<tag>") makes the first visit

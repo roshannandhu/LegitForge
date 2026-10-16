@@ -1,0 +1,30 @@
+/** The WhatsApp bot Worker (bot/worker.ts). Deployed separately from the website, from web/:
+ *    npx wrangler deploy -c bot/wrangler.jsonc
+ *  It shares the website's D1 database (leads) but never applies migrations (no migrations_dir).
+ *  Secrets (wrangler secret put <NAME> -c bot/wrangler.jsonc): WA_ACCESS_TOKEN, WA_APP_SECRET,
+ *  WA_VERIFY_TOKEN, TEAM_WHATSAPP, SUPABASE_SECRET_KEY, GROQ_API_KEY, GEMINI_API_KEY.
+ *  Meta webhook: https://legitforge-bot.<account subdomain>.workers.dev/webhook */
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "legitforge-bot",
+  "main": "worker.ts",
+  "workers_dev": true,                          // Meta calls this address; it is not shown to clients
+  "compatibility_date": "2026-09-25",
+  "compatibility_flags": ["nodejs_compat"],     // lib/site.ts (via lib/business-hours.ts) reads process.env
+  "d1_databases": [
+    // filled per deploy by scripts/cf-setup.mjs, like the website's
+    { "binding": "DB", "database_name": "legitforge", "database_id": "00000000-0000-0000-0000-000000000000" }
+  ],
+  "triggers": { "crons": ["*/2 * * * *"] },     // 10-minute "team will reply" message, stuck turns, daily purge
+  "vars": {
+    "SITE_URL": "https://legitforge.example",   // set per deploy by scripts/cf-setup.mjs (the privacy link in the menu)
+    "WA_PHONE_NUMBER_ID": "1407419142444585",   // Meta's test number; the new SIM's id once it is live
+    "GRAPH_VERSION": "v25.0",
+    "SUPABASE_URL": "https://htnkzplobqoghnuvmyup.supabase.co",
+    // Model names: check them in Groq's console and Google AI Studio; changing them needs no code change.
+    "GROQ_MODEL": "openai/gpt-oss-20b",
+    "GEMINI_MODEL": "gemini-3.5-flash-lite",
+    "EMBED_MODEL": "gemini-embedding-001"
+  },
+  "observability": { "enabled": true }
+}

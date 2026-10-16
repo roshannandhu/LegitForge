@@ -70,10 +70,12 @@ if (process.env.NEXT_PUBLIC_SITE_URL && process.env.NEXT_PUBLIC_SITE_URL.replace
 }
 const noindex = url.endsWith('.workers.dev');
 
-let cfg = await readFile('wrangler.jsonc', 'utf8');
-cfg = cfg.replaceAll(ZERO_ID, db.uuid).replace(/("SITE_URL":\s*")[^"]*(")/, `$1${url}$2`);
-await writeFile('wrangler.jsonc', cfg);
-console.log(`wrangler.jsonc: D1 id and SITE_URL set (${url})`);
+// the website and the WhatsApp bot (bot/wrangler.jsonc) share the D1 database and the site address
+for (const file of ['wrangler.jsonc', 'bot/wrangler.jsonc']) {
+  const cfg = (await readFile(file, 'utf8')).replaceAll(ZERO_ID, db.uuid).replace(/("SITE_URL":\s*")[^"]*(")/, `$1${url}$2`);
+  await writeFile(file, cfg);
+  console.log(`${file}: D1 id and SITE_URL set (${url})`);
+}
 
 if (GITHUB_ENV) await appendFile(GITHUB_ENV, `NEXT_PUBLIC_SITE_URL=${url}\nNEXT_PUBLIC_NOINDEX=${noindex ? '1' : ''}\nLIVE_URL=${url}\n`);
 console.log(noindex ? 'Search engines: kept out (temporary workers.dev address)' : 'Search engines: allowed');

@@ -6,10 +6,15 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
 ## Active Working Directives
 - **Working Directory**: Always work in the `web/` directory. All application code, tests, and configuration live in `web/`.
 - **Target Branch**: Always branch from and target `main-exh9xw`.
-- **Verification**: Run `npm run test:backend` (21 tests) and `npm run build` inside `web/`; review page markup directly or inspect generated static files since browser checks (`check.mjs`) require an active dev server.
+- **Verification**: Run `npm run test:backend` (35 tests, including the WhatsApp bot's) and `npm run build` inside `web/`; review page markup directly or inspect generated static files since browser checks (`check.mjs`) require an active dev server.
 
 ## Current owner decisions (7 October 2026)
-- Website/CMS/enquiry fixes only; real WhatsApp/n8n/AI infrastructure remains future work.
+- WhatsApp enquiry bot (16 Oct 2026, owner's decisions; supersedes SETUP.md Part 2 §3–§9): a separate
+  Worker in bot/ (below). Menu → language (English, Malayalam, Manglish, Hindi, Kannada) → name,
+  business, need, timeline; questions answered from approved knowledge or asked to the team on
+  their personal WhatsApp; a team answer is reused only after a team member taps Approve.
+  Gemini free + Groq free by the owner's choice (phones/emails redacted, privacy page names both).
+  n8n/Telegram remain only for website-form alerts.
 - Home "What we offer" shows each service with its demo beside it (components/sections/services.tsx,
   the "fires" layout; the quote entry uses QuoteDemo). Owner's call, 16 Oct 2026, reversing the 3 Oct
   compact home. Preserve the intro, Anybody font, forge palette and retained motion.
@@ -127,6 +132,27 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
   (components/company-context.tsx, provided by the root layout). Build links with waLink(company)
   and shownEmail(company) from lib/site.ts. SITE holds only fixed facts (name, url, hours):
   never add contact fields back to it.
+
+## WhatsApp bot (bot/, Worker `legitforge-bot`)
+- Files: bot/worker.ts (webhook, client steps, team protocol, cron), bot/io.ts (WhatsApp, Supabase
+  REST, Groq/Gemini chat, embeddings, redact, signature), bot/text.ts (every fixed message per
+  language, menus, prompts), bot/supabase/schema.sql (owner runs it), bot/seed.ts (site FAQs as
+  approved answers), bot/wrangler.jsonc. Tests: tests/bot.test.ts with tests/bot-fakes.ts.
+- Nothing in app/ or lib/ may import bot/ (the website Worker must stay small); bot/ may import lib/.
+  No SDKs: plain fetch. Bot bundle measured 17.6 KiB gzip.
+- Shares the website's D1 (writes `leads`, source 'whatsapp', column `language` from 0011); never
+  applies migrations (no migrations_dir). Chats, team questions and learned answers live in Supabase.
+- Inbound messages are stored before Meta gets its 200 (Supabase down → 500, Meta retries); one turn
+  per client at a time (contacts.busy_until); the */2 cron retries stuck turns and sends the
+  10-minute "team will reply" message (lib/business-hours.ts).
+- The core path never needs AI: fixed questions per language. AI only extracts, answers from
+  approved knowledge, translates team answers and drafts the Q&A for Approve. Groq first; Malayalam,
+  Manglish and Kannada are written only by Gemini (busy → fixed text + team). redact() before every
+  AI call. Price, deadline or contract questions about their own project always go to the team.
+- Team protocol: alerts start with #CODE; swipe-reply or "#CODE text" answers; "#CODE take" / "#CODE bot".
+  Outside a member's 24-hour window the bot uses the approved utility template `team_alert`.
+- Fixed text in bot/text.ts must stay within WhatsApp limits (tests check them): list rows ≤ 10,
+  row title ≤ 24, buttons ≤ 3 with titles ≤ 20.
 
 ## Commands
 - npm run dev              local development (port 3000)
