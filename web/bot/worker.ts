@@ -1,7 +1,8 @@
 /** Legit Forge WhatsApp bot (separate Worker `legitforge-bot`, bot/wrangler.jsonc).
  *
- *  Client: menu → language → name → business → need → timeline (fixed text per language, so
- *  it works with no AI). Any message can also be a question: answered from approved knowledge
+ *  Client: menu → language → name → business → need → the service's own question → websites
+ *  they like (websites and apps) → timeline (fixed text per language, so it works with no AI).
+ *  Voice notes are transcribed; photos and documents are kept for the team (R2, Admin → Leads). Any message can also be a question: answered from approved knowledge
  *  (Supabase + Gemini embeddings), or asked to the team on their own WhatsApp. A team answer is
  *  relayed (translated) and, once a team member taps Approve, saved for next time.
  *  Every enquiry is a row in the website's D1 `leads`, so Admin → Leads shows it.
@@ -14,13 +15,13 @@
 
 import { isOpenNow } from '../lib/business-hours';
 import {
-  ANSWER_SCHEMA, EXTRACT_SCHEMA, FACTS, FIELDS, LANG_PROMPT, LANGS, QA_SCHEMA, SERVICES, TEXT, TEXT_SCHEMA, TIMELINES,
+  ANSWER_SCHEMA, BRIEF_PROMPT, DETAILS, EXTRACT_SCHEMA, FACTS, FIELDS, LANG_PROMPT, LANGS, QA_SCHEMA, SERVICES, TEXT, TEXT_SCHEMA, TIMELINES,
   TRANSLATED, TRANSLATIONS_SCHEMA, answerPrompt, extractPrompt, generalisePrompt, langFromText, langName, prefilledService,
   scriptLang, serviceByKey, serviceFromText, t, tonePrompt, translatePrompt, translationsPrompt,
   type Field, type Lang, type ServiceKey, type Step,
 } from './text';
 import {
-  chat, clip, count, embed, markRead, q, redact, room, sb, sendButtons, sendList, sendTemplate, sendText, validSignature, vec,
+  chat, clip, count, embed, markRead, media, q, redact, room, sb, sendButtons, sendList, sendTemplate, sendText, transcribe, validSignature, vec,
   type Env, type Provider,
 } from './io';
 
@@ -31,6 +32,7 @@ const iso = (ms: number) => new Date(ms).toISOString();
 const MIN = 60_000, HOUR = 60 * MIN, DAY = 24 * HOUR;
 const LOCK = 45_000;            // longer than a turn can run (room() stops new work after 18 s)
 const AI_PER_DAY = 40;          // AI calls per client per day; past it, the fixed path still works
+const FILE_MAX = 20 * 1024 * 1024, FILES_MAX = 20, VOICE_MAX = 5 * 1024 * 1024;   // per file, per enquiry, per voice note
 const MATCH = 0.8;              // knowledge similarity needed to use an approved answer
 const SURE = 0.9;               // ...and to send it without a team member checking it first
 /** A generated answer that names money is never sent: prices are the team's to give. */
@@ -40,19 +42,27 @@ const MONEY = new RegExp([
   // Malayalam, Hindi, Kannada: rupees, thousand, lakh (ലക്ഷ്യം "goal", രൂപകൽപ്പന "design" are not money)
   'രൂപയ', '\\p{Nd}\\s*രൂപ', 'ആയിര', '\\p{Nd}\\s*ലക്ഷ', 'रुपय', 'रु\\.?\\s*\\p{Nd}', 'लाख', 'हज़ार', 'हजार', 'ರೂಪಾಯಿ', 'ರೂ\\.?\\s*\\p{Nd}', 'ಸಾವಿರ', '\\p{Nd}\\s*ಲಕ್ಷ',
 ].join('|'), 'iu');
+/** STOP, typed or spoken (a transcript ends with a full stop). */
+const STOP = /^(stop|unsubscribe)[\s.!]*$/i;
 /** "Delete my data" in the bot's languages (the Yes/No buttons guard against false matches). */
 const DELETE_ASK = /^(please\s+)?(delete|erase|remove)\s+(all\s+)?(of\s+)?(my\s+)?(data|details|chat|info(rmation)?)\b|ente\s+data\s+delete|ഡാറ്റ\s*ഡിലീറ്റ്|डेटा\s*(हटा|डिलीट)|ಡೇಟಾ\s*ಅಳಿಸ/i;
 
 interface Fields {
-  name?: string; business?: string; need?: string; timeline?: string; notes?: string;
+  name?: string; business?: string; need?: string; details?: string; refs?: string; timeline?: string; notes?: string;
+  files?: string[];          // R2 keys of the files they sent (leads/<lead id>/…), shown in Admin → Leads
+  file_ack_at?: string;      // the last "saved" notice (an album is many messages: one notice a minute)
+  lead_gone?: boolean;       // the admin deleted this enquiry's lead: files are no longer kept
+  since?: string;            // when this enquiry started (the brief lists its own questions only)
   flags?: number;            // abusive messages flagged so far (the second one blocks)
   call_at?: string;          // last "arrange a call" alert, so repeated taps alert once a day
+  person_at?: string;        // asked for a person: they wait for the team, not for a reminder
   prev_leads?: string[];     // earlier enquiries' D1 lead ids (DELETE MY DATA removes them too)
 }
 export interface Contact {
   wa_id: string; phone: string | null; profile_name: string | null; code: string; lead_id: string; lead_saved: boolean;
   step: Step; mode: 'bot' | 'human' | 'stopped' | 'blocked'; taken_by: string | null; lang: Lang | null; service: ServiceKey | null;
   fields: Fields; alerted_at: string | null; busy_until: string | null; won_counted?: boolean; turns: number; turns_day: string | null; last_in_at: string;
+  nudged_at: string | null;  // the one reminder after 3 quiet hours mid-brief (once per enquiry)
 }
 export interface Msg {
   wamid: string; wa_id: string | null; team: string | null; dir: 'in' | 'out'; body: string | null; reply_id: string | null;
@@ -137,7 +147,12 @@ export function inbound(body: any, env: Env): Msg[] {
         const r = m.interactive?.list_reply ?? m.interactive?.button_reply;
         text = r?.title ?? null; reply = r?.id ?? null;
       } else if (m.type === 'button') { text = m.button?.text ?? null; reply = m.button?.payload ?? null; }
-      else reply = `[${m.type ?? 'unknown'}]`;                  // voice, image, sticker…: "please type"
+      else if (['image', 'document', 'video', 'audio'].includes(m.type) && m[m.type]?.id) {
+        // media:<kind>:<media id>[:<file name>]; a caption is the message text
+        const f = m[m.type], kind = m.type === 'audio' && f.voice ? 'voice' : m.type;
+        text = f.caption ?? null;
+        reply = clip(`media:${kind}:${f.id}${f.filename ? `:${String(f.filename).replace(/[^\w.-]+/g, '_')}` : ''}`, 200);
+      } else reply = `[${m.type ?? 'unknown'}]`;                  // sticker, location, contact…: "please type"
       rows.push({
         wamid: m.id, wa_id: isTeam ? null : from, team: isTeam ? from : null, dir: 'in',
         body: text ? clip(text, 4000) : null, reply_id: reply, ctx_id: m.context?.id ?? null,
@@ -177,9 +192,10 @@ interface About { wa_id?: string; sent?: string }
 
 /** One client's unhandled messages, one turn at a time (the lock), then check again. */
 export async function runClient(env: Env, waId: string) {
-  // The worst message: AI calls, a question and a complete-brief alert, each copied to every team
-  // member (window check, send, store); 4 more for the commit (lead, handled marks, contact, more?).
-  const per = 15 + 6 * teamIds(env).size;
+  // The worst text message: AI calls, a question and a complete-brief alert, each sent and stored
+  // per team member, and the finished brief (its questions, the work list); 4 more for the commit
+  // (lead, marks, contact, more?). A voice note or file only ever comes first, so it is not counted.
+  const per = 18 + 4 * teamIds(env).size;
   for (let round = 0; round < 3; round++) {
     if (!room(env, per + 4)) return;                           // the cron picks up the rest
     const now = clock.now(), until = iso(now + LOCK);
@@ -198,10 +214,12 @@ export async function runClient(env: Env, waId: string) {
       const burst = pending.filter((m) => m.body && Date.parse(m.at) >= newest - MIN);
       const same = new Map<string, number>();
       for (const m of burst) if (m.body!.length > 15 && !ACK.test(m.body!)) same.set(m.body!, (same.get(m.body!) ?? 0) + 1);
-      const optOut = pending.some((m) => /^(stop|unsubscribe)$/i.test((m.body ?? '').trim()));
+      const optOut = pending.some((m) => STOP.test((m.body ?? '').trim()));
       if (!optOut && (burst.length >= 10 || [...same.values()].some((n) => n >= 4))) await turn.block('a flood of messages', pending.at(-1)?.body ?? '');
       for (const m of pending) {
-        if (done.length && !room(env, per + 4)) break;         // always at least one message per turn
+        // Always at least one message per turn; a file or voice note only as the first (it can take
+        // long, and a turn cut off at 30 s would repeat everything handled before it).
+        if (done.length && (!room(env, per + 4) || m.reply_id?.startsWith('media:'))) break;
         const snapshot = structuredClone(turn.c);
         try {
           await turn.handle(m); done.push(m);
@@ -242,7 +260,7 @@ async function claim(env: Env, waId: string, now: number, until: string): Promis
     const row: Contact = {
       wa_id: waId, phone: /^\d{8,15}$/.test(waId) ? waId : null, profile_name: first?.profile ?? null, code: newCode(),
       lead_id: crypto.randomUUID(), lead_saved: false, step: 'start', mode: 'bot', taken_by: null, lang: null, service: null,
-      fields: {}, alerted_at: null, busy_until: until, turns: 0, turns_day: null, last_in_at: iso(now),
+      fields: {}, alerted_at: null, busy_until: until, turns: 0, turns_day: null, last_in_at: iso(now), nudged_at: null,
     };
     try {
       const [made] = await sb<Contact>(env, 'POST', 'contacts?on_conflict=wa_id', row, 'resolution=ignore-duplicates,return=representation');
@@ -255,7 +273,17 @@ async function claim(env: Env, waId: string, now: number, until: string): Promis
 const who = (c: Contact) => `${c.fields.name || c.profile_name || 'New client'}${c.fields.business ? ` (${clip(c.fields.business, 60)})` : ''}`;
 const serviceLabel = (c: Contact) => serviceByKey(c.service ?? '')?.lead ?? 'Not chosen yet';
 const join = (a: string | undefined, b: string, n = 1500) => clip(a ? `${a}\n${b}` : b, n);
-const nextStep = (c: Contact): Step => FIELDS.find((f) => !c.fields[f]) ?? 'done';
+/** The service's own question for any service but "Something else"; websites they like for sites and apps. */
+const applies = (c: Contact, f: Field) =>
+  f === 'details' ? !!c.service && c.service !== 'other' : f === 'refs' ? c.service === 'website' || c.service === 'app' : true;
+const nextStep = (c: Contact): Step => FIELDS.find((f) => applies(c, f) && !c.fields[f]) ?? 'done';
+/** A brief field as shown to the team ('-' = the client tapped Skip). */
+const shown = (s?: string) => (s && s !== '-' ? s : '');
+const WORK: Partial<Record<ServiceKey, string>> = { website: 'static', app: 'dynamic', quote: 'dynamic', whatsapp: 'whatsapp', n8n: 'n8n' };
+/** File name in R2 from its type (what Admin → Leads offers to open or download). */
+const EXT: Record<string, string> = {
+  'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'application/pdf': 'pdf', 'video/mp4': 'mp4', 'audio/mpeg': 'mp3', 'audio/ogg': 'ogg',
+};
 const words = (text: string) => text.split(/\s+/).filter(Boolean).length;
 /** Groq (which keeps no prompts) goes first, except for Malayalam and Kannada: Groq's models
  *  don't support them, so Gemini reads them first and is the only one that writes them (if it is
@@ -266,7 +294,7 @@ const reader = (lang: string | null, text: string): Provider[] =>
 const writer = (lang: string | null): Provider[] => (indic(lang) ? ['gemini'] : ['groq', 'gemini']);
 
 interface Extract {
-  kind: 'answer' | 'question' | 'person' | 'off_topic'; name: string; business: string; need_en: string; timeline: string;
+  kind: 'answer' | 'question' | 'person' | 'off_topic'; name: string; business: string; need_en: string; detail_en: string; timeline: string;
   question_en: string; commitment: boolean; price: boolean; mood: 'calm' | 'upset' | 'urgent'; abusive: boolean;
 }
 type Alert = 'complete' | 'person' | 'call' | 'upset' | 'urgent';
@@ -289,7 +317,7 @@ async function training(env: Env, now: number) {
   }
   return now < Date.parse(row.value) + days * DAY;
 }
-const brief = (c: Contact) => `Brief so far: ${serviceLabel(c)} · need: ${clip(c.fields.need || '-', 140)} · timeline: ${c.fields.timeline || '-'}`;
+const brief = (c: Contact) => `Brief so far: ${serviceLabel(c)} · need: ${clip(c.fields.need || '-', 140)}${shown(c.fields.details) ? ` · details: ${clip(c.fields.details!, 100)}` : ''} · timeline: ${c.fields.timeline || '-'}`;
 
 class Turn {
   constructor(readonly env: Env, readonly c: Contact, readonly now: number) {}
@@ -297,11 +325,24 @@ class Turn {
 
   erased = false;
   private wamid = '';                                                      // the message being handled (questions key on it)
+  private at = 0;                                                          // ...and when the client sent it
 
   async handle(m: Msg) {
-    const c = this.c, text = (m.body ?? '').trim(), lang = c.lang ?? 'en';
-    const [kind, value] = (m.reply_id ?? '').split(':');
-    this.wamid = m.wamid;
+    const c = this.c, lang = c.lang ?? 'en';
+    let text = (m.body ?? '').trim();
+    const [kind, value, id, name] = (m.reply_id ?? '').split(':');
+    this.wamid = m.wamid; this.at = Date.parse(m.at) || this.now;
+    // A voice note becomes its words first (and is stored as them), so a spoken "delete my data"
+    // or STOP works like a typed one. A blocked chat's audio never reaches the AI. If it can't be
+    // understood, the recording is kept for the team instead.
+    let file: 'saved' | 'big' | null = null;
+    if (kind === 'media' && value === 'voice' && c.mode !== 'blocked') {
+      const { heard, got } = await this.listen(id);
+      if (heard) {
+        text = heard;
+        await sb(this.env, 'PATCH', `messages?wamid=eq.${q(m.wamid)}`, { body: clip(`🎤 ${heard}`, 4000) }, 'return=minimal');
+      } else file = await this.keep('voice', id, undefined, got);
+    }
     // Privacy first: works even for stopped or blocked chats.
     if (DELETE_ASK.test(text)) {
       c.last_in_at = m.at;
@@ -314,22 +355,40 @@ class Turn {
       return;
     }
     if (c.mode === 'blocked') return;                                       // the team unblocks with "#CODE unblock"
-    if (/^(stop|unsubscribe)$/i.test(text)) { c.last_in_at = m.at; c.mode = 'stopped'; await this.say(t(c.lang, 'stopped')); return; }
+    if (STOP.test(text)) { c.last_in_at = m.at; c.mode = 'stopped'; await this.say(t(c.lang, 'stopped')); return; }
     if (Date.parse(c.last_in_at) < this.now - 30 * DAY && this.welcomeBack()) {
       c.last_in_at = m.at;
+      if (kind === 'media' && value !== 'voice') await this.keep(value, id, name);   // a photo sent first is still kept
       await sendButtons(this.env, c.wa_id, t(lang, 'welcomeBack'), TEXT[lang].retBtn.map((title, i) => ({ id: `ret:${i ? 'new' : 'same'}`, title })));
       return;
     }
     c.last_in_at = m.at;
     if (c.mode === 'stopped') c.mode = 'bot';                               // any later message restarts the chat
+    if (kind === 'media' && value !== 'voice') file = await this.keep(value, id, name);
     if (c.mode === 'human') {
       // With a person on the chat the bot stays quiet and forwards: to whoever took it, or to
       // the whole team while nobody has (an upset or urgent client waiting for anyone).
       const team = teamIds(this.env);
       if (c.taken_by && !team.has(c.taken_by)) c.taken_by = null;           // that person left the team
       const to = c.taken_by ? [c.taken_by] : [...team];
-      if (to.length && (await toTeam(this.env, this.now, `#${c.code} ${who(c)}: ${text || m.reply_id}`, { wa_id: c.wa_id }, to))) return;
+      const what = value === 'voice' ? 'a voice note' : 'a file';
+      const said = kind !== 'media' ? text || m.reply_id : value === 'voice' && text ? `🎤 ${text}`
+        : `📎 sent ${what}${file === 'saved' ? ' (Admin → Leads)' : ' I could not save (too big or unavailable): ask for a link'}${text ? `: ${text}` : ''}`;
+      if (to.length && (await toTeam(this.env, this.now, `#${c.code} ${who(c)}: ${said}`, { wa_id: c.wa_id }, to))) return;
       c.mode = 'bot'; c.taken_by = null;                                    // nobody could be reached: the bot carries on
+    }
+    if (file && value === 'voice' && !text) { await this.say(t(c.lang, 'pleaseType')); return; }   // (the recording is kept for the team)
+    if (file) {
+      // One "saved" notice a minute (an album arrives as many messages); "not saved" every time.
+      const quiet = file === 'saved' && !!c.fields.file_ack_at && Date.parse(c.fields.file_ack_at) > this.now - MIN;
+      if (file === 'saved') c.fields.file_ack_at = iso(this.now);
+      if (!text) {
+        if (quiet) return;
+        if (c.step === 'start') c.step = 'service';
+        await this.ask('', t(c.lang, file === 'saved' ? 'fileSaved' : 'fileBig'));
+        return;
+      }
+      if (file === 'big') await this.say(t(c.lang, 'fileBig'));                // then the caption is read as a message
     }
     if (!text) { await this.say(t(c.lang, 'pleaseType')); return; }
 
@@ -338,7 +397,8 @@ class Turn {
     if (kind === 'ret') {
       if (c.step !== 'returning') { await this.ask(); return; }            // an old welcome-back button: ignore it
       if (value === 'new') { this.restart(); c.step = 'service'; await this.ask(text); return; }
-      c.step = c.lang ? nextStep(c) : 'language';
+      // a brief the team already has stays done (one from before the newer questions included)
+      c.step = !c.lang ? 'language' : c.alerted_at ? 'done' : nextStep(c);
       if (c.step === 'done') await this.say(t(c.lang, 'sameProject')); else await this.ask();
       return;
     }
@@ -352,11 +412,25 @@ class Turn {
       return;
     }
     if (kind === 'svc' && serviceByKey(value)) {
+      if (value !== c.service) { delete c.fields.details; delete c.fields.refs; }   // the new service's own questions
       c.service = value as ServiceKey;
       if (c.step === 'start' || c.step === 'service') c.step = 'language';
+      else if ((FIELDS as string[]).includes(c.step)) { await this.advance(''); return; }   // the questions follow the new service
       await this.ask();
       return;
     }
+    if (kind === 'skip') {
+      if (!(FIELDS as string[]).includes(c.step)) {                         // an old Skip outside the brief
+        if (c.step === 'start') c.step = 'service';
+        await this.ask(text);
+        return;
+      }
+      if ((value === 'details' || value === 'refs') && !c.fields[value]) c.fields[value] = '-';
+      await this.advance('');
+      return;
+    }
+    // A second timeline tap (or one at another step) is not an answer to the current question.
+    if (kind === 'tl' && c.step !== 'done' && (!TIMELINES[Number(value)] || c.fields.timeline)) { await this.ask(); return; }
     if (kind === 'lang' && LANGS.some((l) => l.key === value)) {
       c.lang = value as Lang;
       if (c.step === 'start' || c.step === 'service' || c.step === 'language') c.step = nextStep(c);
@@ -389,7 +463,7 @@ class Turn {
         await this.ask();
         return;
       case 'returning':                                                     // typed instead of tapped: the same project
-        c.step = c.lang ? nextStep(c) : 'language';
+        c.step = !c.lang ? 'language' : c.alerted_at ? 'done' : nextStep(c);
         if (c.step === 'language') await this.ask(); else await this.field(text);
         return;
       default:
@@ -420,6 +494,7 @@ class Turn {
     const theirs = await sb<Question>(this.env, 'GET', `questions?wa_id=eq.${q(c.wa_id)}&select=id`);
     if (theirs.length) await sb(this.env, 'DELETE', `knowledge?status=eq.pending&question_id=in.(${theirs.map((x) => x.id).join(',')})`, undefined, 'return=minimal');
     await sb(this.env, 'DELETE', `questions?wa_id=eq.${q(c.wa_id)}`, undefined, 'return=minimal');
+    for (const id of ids) await dropFiles(this.env, `leads/${id}/`);
     if (c.mode === 'blocked') {
       Object.assign(c, { profile_name: null, lead_id: crypto.randomUUID(), lead_saved: true, step: 'start', taken_by: null, lang: null, service: null, fields: {}, alerted_at: null });
     } else {
@@ -455,7 +530,7 @@ class Turn {
     // ponytail: wins follow the current enquiry only; an earlier one marked Won later is not credited
     Object.assign(this.c, {
       lead_id: crypto.randomUUID(), lead_saved: false, won_counted: false, step: 'start', mode: 'bot', taken_by: null, service: null,
-      fields: prev.length ? { prev_leads: prev } : {}, alerted_at: null,
+      fields: { ...(prev.length ? { prev_leads: prev } : {}), since: iso(this.now) }, alerted_at: null, nudged_at: null,
     });
   }
 
@@ -466,11 +541,13 @@ class Turn {
     switch (c.step) {
       case 'start': case 'service': {
         const l = c.lang ?? scriptLang(seen);
+        if (prefix) await this.say(prefix);
         await sendList(this.env, c.wa_id, t(l, 'welcome'), t(l, 'menu'),
           SERVICES.map((s) => ({ id: `svc:${s.key}`, title: s.title, description: s.description })), footer(this.env));
         return;
       }
       case 'language':
+        if (prefix) await this.say(prefix);
         await sendList(this.env, c.wa_id, LANG_PROMPT, 'Language', LANGS.map((l) => ({ id: `lang:${l.key}`, title: l.title })), footer(this.env));
         return;
       case 'done': case 'returning':
@@ -479,6 +556,11 @@ class Turn {
       case 'timeline':
         await sendButtons(this.env, c.wa_id, lead + TEXT[lang].timeline, TEXT[lang].tl.map((title, i) => ({ id: `tl:${i}`, title })));
         return;
+      case 'details': case 'refs': {
+        const asked = c.step === 'refs' ? t(lang, 'refs') : DETAILS[lang][c.service as Exclude<ServiceKey, 'other'>];
+        await sendButtons(this.env, c.wa_id, lead + asked, [{ id: `skip:${c.step}`, title: t(lang, 'skip') }]);
+        return;
+      }
       default:
         await this.say(lead + t(lang, c.step));
     }
@@ -490,6 +572,7 @@ class Turn {
     if (c.step === 'done' && was !== 'done') {
       await this.say(prefix ? `${prefix}\n\n${t(c.lang, 'done')}` : t(c.lang, 'done'));
       await this.alertTeam('complete');
+      await this.showWork().catch((e) => console.error('[bot] work list failed', String(e)));
       return;
     }
     await this.ask('', prefix);
@@ -499,13 +582,15 @@ class Turn {
   private async field(text: string) {
     const c = this.c, step = c.step as Field | 'done', lang = c.lang ?? 'en';
     const before = JSON.stringify(FIELDS.map((f) => c.fields[f]));
-    const x = await this.ai<Extract>({ system: extractPrompt(step), user: text, schema: EXTRACT_SCHEMA, name: 'extract' }, reader(c.lang, text));
+    const asked = step === 'details' && c.service && c.service !== 'other' ? DETAILS.en[c.service] : undefined;
+    const x = await this.ai<Extract>({ system: extractPrompt(step, asked), user: text, schema: EXTRACT_SCHEMA, name: 'extract' }, reader(c.lang, text));
     let prefix = '';
     if (x) {
       if (x.name && !c.fields.name) c.fields.name = clip(x.name, 80);
       if (x.business && !c.fields.business) c.fields.business = clip(x.business, 200);
-      if (x.need_en) c.fields.need = join(c.fields.need, x.need_en, 1000);
+      if (x.need_en && step !== 'details' && step !== 'refs') c.fields.need = join(c.fields.need, x.need_en, 1000);
       if (x.timeline && !c.fields.timeline) c.fields.timeline = clip(x.timeline, 120);
+      if (x.detail_en && (step === 'details' || step === 'refs') && !c.fields[step]) c.fields[step] = clip(x.detail_en, 600);
       if (x.abusive) {
         // One flag goes to a person (an AI can misread anger or a pasted promo); a second blocks.
         c.fields.flags = (c.fields.flags ?? 0) + 1;
@@ -517,17 +602,22 @@ class Turn {
         // Prices are the team's: the question goes to them and the client is offered a call.
         await this.escalate(text, x.question_en || text, { kind: 'price' });
         await sendButtons(this.env, c.wa_id, t(lang, 'price'), TEXT[lang].callBtn.map((title, i) => ({ id: `call:${i ? 'n' : 'y'}`, title })));
-        if (step !== 'done') { c.step = nextStep(c); if (c.step === 'done') await this.alertTeam('complete'); }
+        if (step !== 'done') {
+          c.step = nextStep(c);
+          if (c.step === 'done') { await this.alertTeam('complete'); await this.showWork().catch((e) => console.error('[bot] work list failed', String(e))); }
+        }
         return;
       }
       if (x.kind === 'question' && x.question_en) prefix = await this.answerOrAsk(text, x.question_en, x.commitment);
-      else if (x.kind === 'person') { await this.alertTeam('person'); prefix = t(lang, 'person'); }
+      else if (x.kind === 'person') { await this.alertTeam('person'); c.fields.person_at = iso(this.now); prefix = t(lang, 'person'); }
       else if (x.kind === 'off_topic') prefix = t(lang, 'offTopic');
     }
     const plain = (!x || x.kind === 'answer') && !ACK.test(text);
     const filled = JSON.stringify(FIELDS.map((f) => c.fields[f])) !== before;
     // With no AI (or when it found nothing), the message answers the question we asked.
-    if (plain && !filled && step !== 'done' && !c.fields[step]) c.fields[step] = clip(text, step === 'need' ? 1000 : 200);
+    // ...also at the service question and websites, even when it filled something else too
+    const own = step === 'details' || step === 'refs';
+    if (plain && (!filled || own) && step !== 'done' && !c.fields[step]) c.fields[step] = clip(text, step === 'need' ? 1000 : own ? 600 : 200);
     if (step === 'done') {
       if (plain) { c.fields.notes = join(c.fields.notes, text); prefix ||= t(lang, 'noted'); }
       if (!c.alerted_at) await this.alertTeam('complete');                  // an earlier alert that didn't go out
@@ -615,27 +705,102 @@ class Turn {
     return this.toneText;
   }
 
-  /** AI with a daily cap per client; null means "use the fixed path". */
-  private async ai<T>(o: { system: string; user: string; schema: typeof EXTRACT_SCHEMA | typeof ANSWER_SCHEMA; name: string }, prefer: Provider[]) {
+  /** One more AI call within the client's daily cap (and this invocation's budget)? */
+  private allow() {
     const c = this.c, today = iso(this.now).slice(0, 10);
     if (c.turns_day !== today) { c.turns_day = today; c.turns = 0; }
-    if (c.turns >= AI_PER_DAY || !room(this.env, 14)) return null;
+    if (c.turns >= AI_PER_DAY || !room(this.env, 14)) return false;
     c.turns++;
-    return chat<T>(this.env, { ...o, prefer });
+    return true;
+  }
+
+  /** AI with a daily cap per client; null means "use the fixed path". */
+  private async ai<T>(o: { system: string; user: string; schema: Parameters<typeof chat>[1]['schema']; name: string }, prefer: Provider[]) {
+    return this.allow() ? chat<T>(this.env, { ...o, prefer }) : null;
+  }
+
+  /** A voice note's words (Groq Whisper, hinted with their language), and the recording itself. */
+  private async listen(id: string) {
+    if (!this.allow()) return { heard: null, got: undefined };
+    const got = await media(this.env, id, VOICE_MAX);
+    if (!got || got === 'big' || got === 'retry') return { heard: null, got: undefined };
+    return { heard: await transcribe(this.env, got.bytes, got.type, this.c.lang === 'mg' ? 'ml' : this.c.lang ?? undefined), got };
+  }
+
+  /** A photo, document, video, audio file or voice note, kept privately for the team under this
+   *  enquiry. 'big' when it can't be kept (too big, too many, unavailable, the lead was deleted). */
+  private async keep(kind: string, id: string, name?: string, had?: { bytes: ArrayBuffer; type: string }): Promise<'saved' | 'big' | null> {
+    const c = this.c, files = c.fields.files ?? [];
+    if (!this.env.MEDIA) return null;
+    if (files.length >= FILES_MAX || c.fields.lead_gone) return 'big';
+    const got = had ?? await media(this.env, id, FILE_MAX);
+    if (got === 'retry') {
+      // Meta busy: the message is retried by the cron (media ids last 30 days), for half an hour
+      if (this.now - this.at < 30 * MIN) throw new Error('media not available yet');
+      return 'big';
+    }
+    if (!got || got === 'big') return 'big';
+    const type = got.type.split(';')[0].trim().toLowerCase();
+    const base = (name ?? kind).replace(/\.[\w]{1,5}$/, '').slice(0, 60) || kind;
+    // the media id makes the key its own: a retried message rewrites the same file, never another
+    const key = `leads/${c.lead_id}/${files.length + 1}-${id.replace(/[^\w-]/g, '').slice(-8)}-${base}.${EXT[type] ?? /\.([\w]{1,5})$/.exec(name ?? '')?.[1] ?? 'bin'}`;
+    if (files.includes(key)) return 'saved';
+    count(this.env);
+    await this.env.MEDIA.put(key, got.bytes, { httpMetadata: { contentType: type } });
+    c.fields.files = [...files, key];
+    return 'saved';
+  }
+
+  /** 2-3 published projects for their service (Admin → Projects), after the brief is done. */
+  private async showWork() {
+    const c = this.c, category = c.service && WORK[c.service];
+    if (!category) return;
+    count(this.env);
+    const { results } = await this.env.DB.prepare(
+      'SELECT slug, title, client_type FROM projects WHERE is_published = 1 AND category = ? ORDER BY is_featured DESC, sort_order LIMIT 10',
+    ).bind(category).all<{ slug: string; title: string; client_type: string }>();
+    const real = results.filter((p) => !/\[[^\]]+\]/.test(p.title)).slice(0, 3);   // never a [placeholder]
+    if (!real.length) return;
+    await this.say([t(c.lang, 'work'), ...real.map((p) => `• ${p.title}${p.client_type && !/\[[^\]]+\]/.test(p.client_type) ? ` (${p.client_type})` : ''}: https://${host(this.env)}/work/${p.slug}`)].join('\n'));
+  }
+
+  /** The one-page English brief on the lead (Admin → Leads) once the brief is complete. */
+  private async briefDoc() {
+    const c = this.c, f = c.fields, line = (label: string, v?: string) => `${label}: ${shown(v) || '-'}`;
+    const asked = (await sb<Question>(this.env, 'GET', `questions?wa_id=eq.${q(c.wa_id)}${f.since ? `&created_at=gte.${q(f.since)}` : ''}`
+      + '&order=created_at.desc&limit=10&select=question_en,status').catch(() => [] as Question[])).reverse();
+    const doc = [
+      `Enquiry brief #${c.code} · ${iso(this.now).slice(0, 10)} · WhatsApp · ${langName(c.lang)}`, '',
+      line('Client', f.name || c.profile_name || undefined), line('Business', f.business), line('Service', serviceLabel(c)), '',
+      line('What they need', f.need),
+      ...(applies(c, 'details') ? [line('Details', f.details)] : []),
+      ...(applies(c, 'refs') ? [line('Websites they like', f.refs)] : []),
+      line('Timeline', f.timeline),
+      ...(f.files?.length ? [`Files: ${f.files.length} (listed below)`] : []),
+      ...(asked.length ? ['', 'Questions they asked:', ...asked.map((x) => `- ${clip(x.question_en, 200)} (${x.status})`)] : []),
+      ...(f.notes ? ['', line('Notes', clip(f.notes, 600))] : []),
+    ].join('\n');
+    if (!c.lang || c.lang === 'en') return doc;
+    // Answers the AI could not read stay in the client's words: one translation makes it English.
+    const r = await this.ai<{ text: string }>({ system: BRIEF_PROMPT, user: doc, schema: TEXT_SCHEMA, name: 'translate' }, reader(c.lang, doc));
+    return r?.text.trim() || doc;
   }
 
   private async alertTeam(why: Alert, said = '') {
     const c = this.c;
     if (why === 'complete' && c.alerted_at) return 1;
-    await this.saveLead();                                    // stored before its notification
+    await this.saveLead(why === 'complete' ? await this.briefDoc() : undefined);   // stored before its notification
     const f = c.fields;
     const sent = await toTeam(this.env, this.now, [
       `#${c.code} ${ALERT_HEAD[why]}`,
       `Name: ${f.name || c.profile_name || '-'}`, `Business: ${f.business || '-'}`, `Service: ${serviceLabel(c)}`,
-      `Need: ${clip(f.need || '-', 500)}`, `Timeline: ${f.timeline || '-'}`, `Language: ${langName(c.lang)}`,
-      ...(f.notes ? [`Notes: ${clip(f.notes, 300)}`] : []),
-      ...(said ? [`Message: "${clip(said, 300)}"`] : []),
       c.phone ? `WhatsApp: wa.me/${c.phone}` : 'WhatsApp: no phone number shared (username)',
+      ...(said ? [`Message: "${clip(said, 300)}"`] : []),
+      `Timeline: ${f.timeline || '-'}`, `Language: ${langName(c.lang)}`,
+      ...(f.files?.length ? [`Files: ${f.files.length} (Admin → Leads)`] : []),
+      `Need: ${clip(f.need || '-', 400)}`,
+      ...(shown(f.details) ? [`Details: ${clip(f.details!, 200)}`] : []), ...(shown(f.refs) ? [`Websites they like: ${clip(f.refs!, 200)}`] : []),
+      ...(f.notes ? [`Notes: ${clip(f.notes, 300)}`] : []),
       '', why === 'upset' || why === 'urgent'
         ? `The bot has stopped. Reply to this message to talk to them; "#${c.code} bot" hands back to the bot.`
         : 'Reply to this message to write to the client.',
@@ -647,16 +812,23 @@ class Turn {
 
   /** The enquiry in the website's D1, where Admin → Leads reads it (same table as the form).
    *  Inserted once per enquiry; later turns only update it, so a lead deleted in the admin stays deleted. */
-  async saveLead() {
+  async saveLead(doc?: string) {
     const c = this.c, f = c.fields;
-    const message = [f.business && `Business: ${f.business}`, f.need && `Need: ${f.need}`, f.timeline && `Timeline: ${f.timeline}`, f.notes && `Notes: ${f.notes}`]
+    const message = [f.business && `Business: ${f.business}`, f.need && `Need: ${f.need}`, shown(f.details) && `Details: ${f.details}`,
+      shown(f.refs) && `Websites they like: ${f.refs}`, f.timeline && `Timeline: ${f.timeline}`, f.notes && `Notes: ${f.notes}`]
       .filter(Boolean).join('\n') || null;
-    const values = [f.name || c.profile_name || null, c.phone ? `+${c.phone}` : null, serviceByKey(c.service ?? '')?.lead ?? null, message, c.lang ? langName(c.lang) : null];
+    const values = [f.name || c.profile_name || null, c.phone ? `+${c.phone}` : null, serviceByKey(c.service ?? '')?.lead ?? null, message,
+      c.lang ? langName(c.lang) : null, f.files?.length ? JSON.stringify(f.files) : null, doc ?? null];
     count(this.env);
-    await (c.lead_saved
-      ? this.env.DB.prepare('UPDATE leads SET name = ?, phone = ?, service = ?, message = ?, language = ? WHERE id = ?').bind(...values, c.lead_id)
-      : this.env.DB.prepare(`INSERT OR IGNORE INTO leads (name, phone, service, message, language, id, source, whatsapp_consent)
-          VALUES (?, ?, ?, ?, ?, ?, 'whatsapp', 1)`).bind(...values, c.lead_id)).run();
+    const r = await (c.lead_saved
+      ? this.env.DB.prepare('UPDATE leads SET name = ?, phone = ?, service = ?, message = ?, language = ?, files = ?, brief = COALESCE(?, brief) WHERE id = ?').bind(...values, c.lead_id)
+      : this.env.DB.prepare(`INSERT OR IGNORE INTO leads (name, phone, service, message, language, files, brief, id, source, whatsapp_consent)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'whatsapp', 1)`).bind(...values, c.lead_id)).run();
+    if (c.lead_saved && !r.meta.changes && !f.lead_gone) {
+      // Deleted in Admin → Leads: it stays deleted, and files sent since go too (none are kept from now on).
+      f.lead_gone = true;
+      if (f.files?.length) { await dropFiles(this.env, `leads/${c.lead_id}/`); delete f.files; }
+    }
     c.lead_saved = true;
   }
 }
@@ -670,8 +842,9 @@ class Turn {
 async function toTeam(env: Env, now: number, text: string, link: { wa_id?: string; question_id?: number; knowledge_id?: number },
   members = [...teamIds(env)], buttons?: { id: string; title: string }[]) {
   let sent = 0;
+  const windows = members.length ? await openWindows(env, now) : new Set<string>();
   for (const member of members) {
-    const open = (await sb(env, 'GET', `messages?team=eq.${q(member)}&dir=eq.in&at=gt.${iso(now - 23 * HOUR)}&select=wamid&limit=1`)).length > 0;
+    const open = windows.has(member);
     const code = /^#([A-Z0-9]{5})/.exec(text)?.[1] ?? '-';
     // Outside the 24-hour window only the template goes out (no buttons): a text reply still works.
     const id = !open ? await sendTemplate(env, member, 'team_alert', [code, text])
@@ -679,6 +852,18 @@ async function toTeam(env: Env, now: number, text: string, link: { wa_id?: strin
     if (id) { sent++; if (link.wa_id || link.question_id || link.knowledge_id) await storeOut(env, now, id, member, text, link); }
   }
   return sent;
+}
+
+/** Team members who wrote to the bot in the last 23 hours (free-form messages reach them): one
+ *  query per run. */
+async function openWindows(env: Env, now: number) {
+  if (env.run?.open) return env.run.open;
+  const team = [...teamIds(env)];
+  const rows = team.length ? await sb<{ team: string }>(env, 'GET', `messages?team=in.${q(`(${team.map((m) => `"${m}"`).join(',')})`)}`
+    + `&dir=eq.in&at=gt.${iso(now - 23 * HOUR)}&select=team&order=at.desc&limit=500`) : [];
+  const open = new Set(rows.map((r) => r.team));
+  if (env.run) env.run.open = open;
+  return open;
 }
 
 async function storeOut(env: Env, now: number, wamid: string, member: string, body: string, link: { wa_id?: string; question_id?: number; knowledge_id?: number }) {
@@ -912,6 +1097,7 @@ export async function tick(env0: Env, now: number) {
       sb(env, 'DELETE', `contacts?last_in_at=lt.${iso(now - 180 * DAY)}`, undefined, 'return=minimal'),
       sb(env, 'DELETE', `knowledge?status=in.(pending,rejected)&created_at=lt.${iso(now - 90 * DAY)}`, undefined, 'return=minimal'),
     ]).catch((e) => console.error('[bot] purge failed', String(e)));
+    await purgeFiles(env, now).catch((e) => console.error('[bot] file purge failed', String(e)));
     await learnFromWins(env).catch((e) => console.error('[bot] won-deal learning failed', String(e)));
   }
   const ist = new Date(now + 5.5 * HOUR);                                                  // Monday 10 a.m. India time
@@ -931,13 +1117,15 @@ export async function tick(env0: Env, now: number) {
   }
   const stale = await sb<Msg>(env, 'GET', `messages?dir=eq.in&handled_at=is.null&at=lt.${iso(now - 2 * MIN)}&order=at.asc&limit=20`);
   for (const m of stale.filter((m) => m.team)) {
-    if (!room(env, 16)) return;
+    if (!room(env, 20)) break;
     await runTeam(env, m);
   }
   for (const waId of new Set(stale.filter((m) => m.wa_id && !m.team).map((m) => m.wa_id!))) {
-    if (!room(env, 24)) return;
+    if (!room(env, 24)) break;
     await runClient(env, waId).catch((e) => console.error('[bot] retry failed', String(e)));
   }
+  // reminders last: stuck messages come first, and a client whose message is unhandled is not quiet
+  if (room(env, 6)) await nudge(env, now).catch((e) => console.error('[bot] reminders failed', String(e)));
 }
 
 /** The weekly report, once per Monday: any tick in the 10 o'clock hour may claim it (a failed
@@ -946,6 +1134,47 @@ async function weeklyOnce(env: Env, now: number, monday: string) {
   await sb(env, 'POST', 'settings?on_conflict=key', { key: 'weekly_at', value: '2000-01-01', updated_at: iso(now) }, 'resolution=ignore-duplicates,return=minimal');
   const [mine] = await sb(env, 'PATCH', `settings?key=eq.weekly_at&value=lt.${monday}`, { value: monday, updated_at: iso(now) });
   if (mine) await weekly(env, now);
+}
+
+/** Files under `prefix` in R2 (uploaded before `before`, when given), deleted: up to 5 pages of
+ *  1,000 from `cursor`. Returns where to go on next time ('' when it reached the end). */
+async function dropFiles(env: Env, prefix: string, before = Infinity, cursor?: string) {
+  if (!env.MEDIA) return '';
+  for (let page = 0; page < 5; page++) {
+    count(env);
+    const list = await env.MEDIA.list({ prefix, cursor: cursor || undefined, limit: 1000 });
+    const old = list.objects.filter((o) => o.uploaded.getTime() < before).map((o) => o.key);
+    if (old.length) { count(env); await env.MEDIA.delete(old); }
+    if (!list.truncated) return '';
+    cursor = list.cursor;
+  }
+  return cursor ?? '';
+}
+
+/** The daily 90-day file purge, resuming each day where the last one stopped (Supabase settings
+ *  'purge_cursor'), so every file is reached however many there are. */
+async function purgeFiles(env: Env, now: number) {
+  const [row] = await sb<{ value: string }>(env, 'GET', 'settings?key=eq.purge_cursor&select=value');
+  const next = await dropFiles(env, 'leads/', now - 90 * DAY, row?.value);
+  await sb(env, 'POST', 'settings?on_conflict=key', { key: 'purge_cursor', value: next, updated_at: iso(now) }, 'resolution=merge-duplicates,return=minimal');
+}
+
+/** One gentle reminder to a client who stopped answering mid-brief: 3 hours later, in working
+ *  hours, inside their 24-hour window, never while they wait for the team. Once per enquiry. */
+async function nudge(env: Env, now: number) {
+  if (!isOpenNow(new Date(now))) return;
+  const quiet = await sb<Contact>(env, 'GET', `contacts?mode=eq.bot&nudged_at=is.null&step=in.(service,language,name,business,need,details,refs,timeline)`
+    + `&last_in_at=lt.${iso(now - 3 * HOUR)}&last_in_at=gt.${iso(now - 23 * HOUR)}&select=wa_id,lang,fields&limit=5`);
+  for (const c of quiet) {
+    if (!room(env, 4)) return;
+    const [mine] = await sb(env, 'PATCH', `contacts?wa_id=eq.${q(c.wa_id)}&nudged_at=is.null&or=(busy_until.is.null,busy_until.lt.${iso(now)})`,
+      { nudged_at: iso(now) });                                              // claimed first: never twice, never mid-turn
+    // Waiting for the team (a question, a person, a call): no reminder, now or later (one would
+    // land right after the team's reply).
+    if (!mine || c.fields?.person_at || c.fields?.call_at) continue;
+    if ((await sb(env, 'GET', `questions?wa_id=eq.${q(c.wa_id)}&status=eq.pending&select=id&limit=1`)).length) continue;
+    await sendText(env, c.wa_id, t(c.lang, 'nudge'));
+  }
 }
 
 /** Monday's learning report to the team: what was asked, who answered, what still needs the

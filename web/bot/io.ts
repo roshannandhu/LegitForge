@@ -5,6 +5,9 @@
 
 export interface Env {
   DB: D1Database;
+  /** The website's R2 bucket: files clients send go under leads/<lead id>/ (private; only
+   *  Admin → Leads serves them). Without it, files get "please type". */
+  MEDIA?: R2Bucket;
   WA_ACCESS_TOKEN: string;
   WA_APP_SECRET: string;
   WA_VERIFY_TOKEN: string;
@@ -18,13 +21,20 @@ export interface Env {
   GROQ_MODEL?: string;
   GEMINI_MODEL?: string;
   EMBED_MODEL?: string;
+  WHISPER_MODEL?: string;
+  /** Calls on the team's Google Calendar (bot/calendar.ts): the owner's OAuth client, its refresh
+   *  token (calendar scope) and the calendar (legitforge@gmail.com). Unset: the team arranges calls. */
+  GOOGLE_CLIENT_ID?: string;
+  GOOGLE_CLIENT_SECRET?: string;
+  GOOGLE_REFRESH_TOKEN?: string;
+  CALENDAR_ID?: string;
   GRAPH_VERSION?: string;
   /** Days after the first client during which every AI answer is a draft for the team (default 14; 0 = off). */
   TRAINING_DAYS?: string;
   SITE_URL?: string;
   /** Per invocation (never a binding): outside calls made so far, and when it started. Workers
    *  Free allows 50 subrequests per invocation (D1 calls count too), so turns stop early. */
-  run?: { calls: number; t0: number };
+  run?: { calls: number; t0: number; open?: Set<string> };
 }
 
 /** One more outside call for this invocation's budget. */
@@ -33,6 +43,7 @@ export const count = (env: Env) => { if (env.run) env.run.calls++; };
 export const room = (env: Env, n: number) => !env.run || (env.run.calls + n <= 48 && Date.now() - env.run.t0 < 18_000);
 
 const TIMEOUT = 8000;
+const graph = (env: Env) => `https://graph.facebook.com/${env.GRAPH_VERSION || 'v25.0'}`;
 export const clip = (s: string, n: number) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
 
 /* ---------------------------------------------------------------------------- Supabase */
@@ -62,7 +73,7 @@ export const vec = (v: number[]) => `[${v.join(',')}]`;
 async function wa(env: Env, { to, ...payload }: { to: string } & Record<string, unknown>): Promise<string | null> {
   count(env);
   try {
-    const r = await fetch(`https://graph.facebook.com/${env.GRAPH_VERSION || 'v25.0'}/${env.WA_PHONE_NUMBER_ID}/messages`, {
+    const r = await fetch(`${graph(env)}/${env.WA_PHONE_NUMBER_ID}/messages`, {
       method: 'POST',
       headers: { authorization: `Bearer ${env.WA_ACCESS_TOKEN}`, 'content-type': 'application/json' },
       // a phone number goes in `to`; a business-scoped user id (clients with a username) in `recipient`
@@ -100,7 +111,7 @@ export const sendTemplate = (env: Env, to: string, name: string, params: string[
 /** Blue ticks plus "typing…" while the reply is worked out (Meta clears it when we reply). */
 export function markRead(env: Env, messageId: string) {
   count(env);
-  return fetch(`https://graph.facebook.com/${env.GRAPH_VERSION || 'v25.0'}/${env.WA_PHONE_NUMBER_ID}/messages`, {
+  return fetch(`${graph(env)}/${env.WA_PHONE_NUMBER_ID}/messages`, {
     method: 'POST',
     headers: { authorization: `Bearer ${env.WA_ACCESS_TOKEN}`, 'content-type': 'application/json' },
     body: JSON.stringify({ messaging_product: 'whatsapp', status: 'read', message_id: messageId, typing_indicator: { type: 'text' } }),
@@ -183,4 +194,48 @@ export async function embed(env: Env, text: string): Promise<number[] | null> {
     const v = ((await r.json()) as { embedding?: { values?: number[] } }).embedding?.values;
     return Array.isArray(v) && v.length === 768 ? v : null;
   } catch (e) { console.warn('[ai] embed failed', String(e).slice(0, 200)); return null; }
+}
+
+/* ------------------------------------------------------------------------------- media */
+
+/** A file a client sent: WhatsApp media id → its bytes and type (two calls: the media's
+ *  address, then the download, both with the access token, which only goes to Meta's own
+ *  hosts). 'big' over `max` bytes (or no size given); null when it is gone or refused; 'retry'
+ *  when Meta is busy or slow (5xx, 429, a timeout). */
+export async function media(env: Env, id: string, max: number): Promise<{ bytes: ArrayBuffer; type: string } | 'big' | 'retry' | null> {
+  const auth = { authorization: `Bearer ${env.WA_ACCESS_TOKEN}` };
+  const passing = (status: number) => status === 429 || status >= 500;
+  try {
+    count(env);
+    const meta = await fetch(`${graph(env)}/${encodeURIComponent(id)}`, { headers: auth, signal: AbortSignal.timeout(TIMEOUT) });
+    if (!meta.ok) { console.error('[wa] media lookup refused', meta.status); return passing(meta.status) ? 'retry' : null; }
+    const m = (await meta.json()) as { url?: string; mime_type?: string; file_size?: number };
+    if (!m.url || !/^https:\/\/([\w-]+\.)*(fbsbx|facebook|whatsapp)\.(com|net)\//.test(m.url)) return null;
+    if (!(Number(m.file_size) <= max)) return 'big';
+    count(env);
+    const r = await fetch(m.url, { headers: auth, signal: AbortSignal.timeout(20_000) });
+    if (!r.ok) { console.error('[wa] media download refused', r.status); return passing(r.status) ? 'retry' : null; }
+    const type = m.mime_type || r.headers.get('content-type') || 'application/octet-stream';
+    if (/^text\/html/i.test(r.headers.get('content-type') ?? '')) return null;   // an error page, not their file
+    const bytes = await r.arrayBuffer();
+    return bytes.byteLength > max ? 'big' : { bytes, type };
+  } catch (e) { console.error('[wa] media failed', String(e).slice(0, 200)); return 'retry'; }
+}
+
+/** A voice note as text (Groq Whisper; Groq keeps no audio). `lang` is a hint (ISO 639-1). */
+export async function transcribe(env: Env, audio: ArrayBuffer, type: string, lang?: string): Promise<string | null> {
+  if (!env.GROQ_API_KEY) return null;
+  const form = new FormData();
+  form.append('file', new Blob([audio], { type }), type.includes('mpeg') ? 'voice.mp3' : 'voice.ogg');
+  form.append('model', env.WHISPER_MODEL || 'whisper-large-v3-turbo');
+  form.append('response_format', 'json');
+  if (lang) form.append('language', lang);
+  count(env);
+  try {
+    const r = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+      method: 'POST', headers: { authorization: `Bearer ${env.GROQ_API_KEY}` }, body: form, signal: AbortSignal.timeout(15_000),
+    });
+    if (!r.ok) { console.warn('[ai] transcription', r.status); return null; }
+    return ((await r.json()) as { text?: string }).text?.trim() || null;
+  } catch (e) { console.warn('[ai] transcription failed', String(e).slice(0, 200)); return null; }
 }

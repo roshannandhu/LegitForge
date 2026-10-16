@@ -42,7 +42,7 @@ Gemini keys, a test from a spare phone. Details: `SETUP.md`.
 | Reference websites | Asks for 1–2 sites they like and why. |
 | Files and photos | Logo, photos, documents saved privately (Cloudflare R2) and linked on the lead. |
 | Voice notes | Transcribed (Groq Whisper, free) and handled like text. |
-| Show matching work | 2–3 published projects for that service, from Admin → Projects. |
+| Show matching work | 2–3 published projects for that service, from Admin → Projects. (Built for websites, web apps, quotation, WhatsApp and n8n: the project categories. SEO, NFC and MR Signage need a category of their own first; the owner's call.) |
 | Gentle follow-up | One reminder 3 hours after a client stops answering (10 a.m.–7 p.m. only). |
 | Auto brief document | A one-page English summary on the lead when the brief is complete. |
 

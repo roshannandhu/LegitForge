@@ -14,7 +14,8 @@ create table if not exists public.contacts (
   lead_id text not null,                        -- the D1 leads.id for this enquiry; a new one after 30 quiet days
   lead_saved boolean not null default false,    -- inserted into D1 once; later turns only update (an admin delete lasts)
   won_counted boolean not null default false,   -- this chat's answers got their win (lead marked Won)
-  step text not null default 'start' check (step in ('start','returning','service','language','name','business','need','timeline','done')),
+  nudged_at timestamptz,                        -- the one reminder after 3 quiet hours mid-brief
+  step text not null default 'start' check (step in ('start','returning','service','language','name','business','need','details','refs','timeline','done')),
   mode text not null default 'bot' check (mode in ('bot','human','stopped','blocked')),
   taken_by text,                                -- team number chatting in person ("take")
   lang text check (lang in ('en','ml','mg','hi','kn')),

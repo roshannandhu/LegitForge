@@ -3,7 +3,8 @@
  *  - Supabase: a small PostgREST (the filters, upserts and RPC the bot uses), in memory.
  *  - WhatsApp Graph API: records every send; ids come back as wamid.out.N.
  *  - Groq / Gemini chat: a test-supplied responder per task (extract, answer, translate, faq).
- *  - Gemini embeddings: words hashed into 768 numbers, so the same text matches itself. */
+ *  - Gemini embeddings: words hashed into 768 numbers, so the same text matches itself.
+ *  - WhatsApp media (state.media) and Groq Whisper (state.voice) for voice notes and files. */
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = Record<string, any>;
@@ -11,7 +12,7 @@ const KEY: Record<string, string> = { contacts: 'wa_id', messages: 'wamid', ques
 const UNIQUE: Record<string, string[]> = { contacts: ['code'], questions: ['wamid'] };
 /** The schema's CHECK constraints (bot/supabase/schema.sql), so a value Postgres would refuse fails here too. */
 const CHECK: Record<string, Record<string, string[]>> = {
-  contacts: { step: ['start', 'returning', 'service', 'language', 'name', 'business', 'need', 'timeline', 'done'], mode: ['bot', 'human', 'stopped', 'blocked'], lang: ['en', 'ml', 'mg', 'hi', 'kn'] },
+  contacts: { step: ['start', 'returning', 'service', 'language', 'name', 'business', 'need', 'details', 'refs', 'timeline', 'done'], mode: ['bot', 'human', 'stopped', 'blocked'], lang: ['en', 'ml', 'mg', 'hi', 'kn'] },
   messages: { dir: ['in', 'out'] },
   questions: { status: ['pending', 'answered'], kind: ['question', 'draft', 'decision', 'price', 'auto'] },
   knowledge: { status: ['pending', 'approved', 'rejected'], source: ['site', 'team'] },
@@ -177,7 +178,14 @@ export function installFakes(sb: ReturnType<typeof fakeSupabase>) {
   const sent: Sent[] = [];
   const reads: string[] = [];
   const aiBodies: string[] = [];
-  const state = { ai: ((): unknown => 500) as Responder, graphDown: false, embedDown: false, onSend: undefined as undefined | ((s: Sent) => Promise<void>) };
+  const state = {
+    ai: ((): unknown => 500) as Responder, graphDown: false, embedDown: false, onSend: undefined as undefined | ((s: Sent) => Promise<void>),
+    /** Files clients "sent": media id → bytes and type (size overrides the reported file_size). */
+    media: {} as Record<string, { type: string; bytes: Uint8Array; size?: number; status?: number }>,
+    /** Groq Whisper: the words for a voice note (given the language hint), or a status to fail with. */
+    voice: ((): string | number => 500) as (lang: string) => string | number,
+  };
+  const whisper: string[] = [], downloads: string[] = [];
   let n = 0;
   const counter = { calls: 0 };
   const original = globalThis.fetch;
@@ -185,6 +193,25 @@ export function installFakes(sb: ReturnType<typeof fakeSupabase>) {
     counter.calls++;
     const url = new URL(typeof input === 'string' || input instanceof URL ? input : input.url);
     if (url.host === 'sb.test') return sb.handle(url, init);
+    if (url.host === 'graph.facebook.com' && (init.method ?? 'GET') === 'GET') {        // a media id's address
+      const id = decodeURIComponent(url.pathname.split('/').pop()!), f = state.media[id];
+      if (!f) return new Response('{"error":{}}', { status: 404 });
+      if (f.status) return new Response('{"error":{}}', { status: f.status });
+      if (!String((init.headers as Record<string, string>)?.authorization).startsWith('Bearer ')) return new Response('{}', { status: 401 });
+      return Response.json({ url: `https://lookaside.fbsbx.com/${id}`, mime_type: f.type, file_size: f.size ?? f.bytes.byteLength });
+    }
+    if (url.host === 'lookaside.fbsbx.com') {
+      downloads.push(url.pathname.slice(1));
+      if (!String((init.headers as Record<string, string>)?.authorization).startsWith('Bearer ')) return new Response('', { status: 401 });
+      const f = state.media[url.pathname.slice(1)];
+      return f ? new Response(f.bytes as unknown as BodyInit, { headers: { 'content-type': f.type } }) : new Response('', { status: 404 });
+    }
+    if (url.host === 'api.groq.com' && url.pathname.endsWith('/audio/transcriptions')) {
+      const lang = String((init.body as FormData).get('language') ?? '');
+      whisper.push(lang);
+      const out = state.voice(lang);
+      return typeof out === 'number' ? new Response('{}', { status: out }) : Response.json({ text: out });
+    }
     if (url.host === 'graph.facebook.com') {
       const b = JSON.parse(String(init.body));
       if (b.status === 'read') { reads.push(b.message_id); return Response.json({ success: true }); }
@@ -218,5 +245,5 @@ export function installFakes(sb: ReturnType<typeof fakeSupabase>) {
     }
     throw new Error(`unexpected fetch ${url}`);
   }) as typeof fetch;
-  return { sent, reads, aiBodies, state, counter, restore: () => { globalThis.fetch = original; } };
+  return { sent, reads, aiBodies, whisper, downloads, state, counter, restore: () => { globalThis.fetch = original; } };
 }

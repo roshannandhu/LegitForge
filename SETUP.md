@@ -154,7 +154,8 @@ within 2 hours (or after 10 a.m. when closed). STOP stops all messages.
   within 24 hours of your last message; otherwise the bot uses the `team_alert` template (small
   charge per message).
 
-**Where things live:** leads in Cloudflare D1 (Admin → Leads, same table as the form); chats,
+**Where things live:** files clients send in the website's R2 bucket `legitforge-media` under
+`leads/<lead id>/` (private, 90 days; open them from Admin → Leads); leads in Cloudflare D1 (Admin → Leads, same table as the form); chats,
 team questions and learned answers in Supabase (`web/bot/supabase/schema.sql`). AI: Groq and
 Google Gemini, both free tiers (the owner's choice). Phone numbers and emails are removed before
 anything reaches them. Gemini's free tier may keep what it receives, which Meta's WhatsApp terms
@@ -167,7 +168,9 @@ change, and is recommended before real client traffic.
    `whatsapp_business_management`); copy the App secret; choose a random verify token.
 2. Supabase: SQL editor → paste and run `web/bot/supabase/schema.sql` (a new project). A project
    that already ran an older schema.sql instead runs each new migration once, in order, before the
-   new bot is deployed: `002_phase1.sql`, `003_phase2.sql`, … (each says what it needs). Settings → API keys →
+   new bot is deployed: `002_phase1.sql`, `003_phase2.sql`, `004_phase3.sql`, … (each says what it
+   needs). The website's D1 migrations (e.g. `0012_whatsapp_brief.sql`: the lead's brief and files)
+   must also be applied before the bot is deployed (the website deploy does this). Settings → API keys →
    create a secret key (`sb_secret_…`). Reset the database password (the old one was exposed).
 3. Google AI Studio and the Groq console: create one API key each; check the model names in
    `web/bot/wrangler.jsonc` still exist.

@@ -3,7 +3,9 @@
  *  It shares the website's D1 database (leads) but never applies migrations (no migrations_dir).
  *  Secrets (wrangler secret put <NAME> -c bot/wrangler.jsonc): WA_ACCESS_TOKEN, WA_APP_SECRET,
  *  WA_VERIFY_TOKEN, TEAM_WHATSAPP, SUPABASE_SECRET_KEY, GROQ_API_KEY, GEMINI_API_KEY.
- *  Meta webhook: https://legitforge-bot.<account subdomain>.workers.dev/webhook */
+ *  Meta webhook: https://legitforge-bot.<account subdomain>.workers.dev/webhook
+ *  Before each deploy: the Supabase migrations in bot/supabase/ (002, 003, 004, …) are run, and the
+ *  website's D1 migrations are applied (the site deploy does it): the bot writes their columns. */
 {
   "$schema": "../node_modules/wrangler/config-schema.json",
   "name": "legitforge-bot",
@@ -15,6 +17,10 @@
     // filled per deploy by scripts/cf-setup.mjs, like the website's
     { "binding": "DB", "database_name": "legitforge", "database_id": "00000000-0000-0000-0000-000000000000" }
   ],
+  "r2_buckets": [
+    // the website's bucket: files clients send are kept under leads/<lead id>/ (private, 90 days)
+    { "binding": "MEDIA", "bucket_name": "legitforge-media" }
+  ],
   "triggers": { "crons": ["*/2 * * * *"] },     // 10-minute "team will reply" message, stuck turns, daily purge
   "vars": {
     "SITE_URL": "https://legitforge.example",   // set per deploy by scripts/cf-setup.mjs (the privacy link in the menu)
@@ -25,6 +31,7 @@
     "GROQ_MODEL": "openai/gpt-oss-20b",
     "GEMINI_MODEL": "gemini-3.5-flash-lite",
     "EMBED_MODEL": "gemini-embedding-001",
+    "WHISPER_MODEL": "whisper-large-v3-turbo",   // Groq: voice notes to text
     "TRAINING_DAYS": "14"                        // every AI answer is a draft for the team for 14 days after the first client
   },
   "observability": { "enabled": true }

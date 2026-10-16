@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
 import { Miniflare, convertV4MiniflareOptions } from 'miniflare';
 import worker, { clock, tick, type Env } from '../bot/worker';
-import { LANGS, TEXT } from '../bot/text';
+import { DETAILS, LANGS, TEXT } from '../bot/text';
 import { fakeEmbedding, fakeSupabase, installFakes, type Responder, type Sent } from './bot-fakes';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -14,12 +14,13 @@ const CLIENT = '919811111111', CLIENT2 = '919822222222', CLIENT3 = '919833333333
 const OPEN = Date.parse('2026-10-14T05:30:00Z');     // Wednesday 11:00 IST: open
 const SUNDAY = Date.parse('2026-10-18T05:30:00Z');   // closed all day
 const MIN = 60_000;
-const blank = { name: '', business: '', need_en: '', timeline: '', question_en: '', commitment: false, price: false, mood: 'calm', abusive: false };
+const blank = { name: '', business: '', need_en: '', detail_en: '', timeline: '', question_en: '', commitment: false, price: false, mood: 'calm', abusive: false };
 const question = (q: string, commitment = false) => ({ ...blank, kind: 'question', question_en: q, commitment });
 
 test('WhatsApp bot (fake Meta, Supabase, Groq and Gemini; real Miniflare D1)', async (t) => {
-  const mf = new Miniflare(convertV4MiniflareOptions({ modules: true, script: 'export default { fetch() { return new Response("ok") } }', compatibilityDate: '2026-09-25', d1Databases: ['DB'] }));
+  const mf = new Miniflare(convertV4MiniflareOptions({ modules: true, script: 'export default { fetch() { return new Response("ok") } }', compatibilityDate: '2026-09-25', d1Databases: ['DB'], r2Buckets: ['MEDIA'] }));
   const db = await mf.getD1Database('DB') as unknown as D1Database;
+  const bucket = await mf.getR2Bucket('MEDIA') as unknown as R2Bucket;
   for (const file of (await readdir('migrations')).filter((f) => f.endsWith('.sql')).sort()) {
     await db.exec((await readFile(`migrations/${file}`, 'utf8')).replace(/--[^\n]*/g, '').replace(/\r?\n/g, ' '));
   }
@@ -31,14 +32,17 @@ test('WhatsApp bot (fake Meta, Supabase, Groq and Gemini; real Miniflare D1)', a
   const env: Env = {
     DB: db, WA_ACCESS_TOKEN: 'token', WA_APP_SECRET: SECRET, WA_VERIFY_TOKEN: 'verify-me', WA_PHONE_NUMBER_ID: 'PNID',
     TEAM_WHATSAPP: TEAM.join(','), SUPABASE_URL: 'https://sb.test', SUPABASE_SECRET_KEY: 'sb-key', GROQ_API_KEY: 'groq-key',
-    GEMINI_API_KEY: 'gemini-key', SITE_URL: 'https://legitforge.pages.dev', TRAINING_DAYS: '0',
+    GEMINI_API_KEY: 'gemini-key', SITE_URL: 'https://legitforge.pages.dev', TRAINING_DAYS: '0', MEDIA: bucket,
   };
 
   let n = 0;
   const reset = async () => {
     for (const rows of Object.values(sb.tables)) rows.length = 0;
-    fx.sent.length = 0; fx.aiBodies.length = 0;
-    Object.assign(fx.state, { ai: (() => 500) as Responder, graphDown: false, embedDown: false, onSend: undefined });
+    fx.sent.length = 0; fx.aiBodies.length = 0; fx.whisper.length = 0;
+    Object.assign(fx.state, { ai: (() => 500) as Responder, graphDown: false, embedDown: false, onSend: undefined, media: {}, voice: () => 500 });
+    const files = (await bucket.list()).objects.map((o) => o.key);
+    if (files.length) await bucket.delete(files);
+    await db.exec('DELETE FROM projects');
     sb.state.down = false;
     now = OPEN;
     await db.exec('DELETE FROM leads');
@@ -76,6 +80,17 @@ test('WhatsApp bot (fake Meta, Supabase, Groq and Gemini; real Miniflare D1)', a
   const teamHi = () => post(TEAM.map((m) => text(m, 'hi')));          // opens the team members' 24-hour windows
   const toName = async (who = CLIENT, lang = 'en') => { await post([text(who, 'Hi')]); await post([tap(who, 'svc:website')]); await post([tap(who, `lang:${lang}`)]); };
   const teamGot = (member: string, needle: string) => to(member).filter((s) => s.body.includes(needle)).at(-1);
+  /** A photo, document, video or voice note (media id `id`, which state.media must hold). */
+  const sent = (from: string, kind: 'image' | 'document' | 'video' | 'voice', id: string, extra: Row = {}) => {
+    const type = kind === 'voice' ? 'audio' : kind;
+    return { from, id: `wamid.in.${++n}`, timestamp: ts(), type, [type]: { id, mime_type: fx.state.media[id]?.type, ...(kind === 'voice' ? { voice: true } : {}), ...extra } };
+  };
+  /** Name, business and need, then the website questions skipped: the brief up to the timeline. */
+  const toTimeline = async (who = CLIENT, answers = ['Ravi', 'Ravi Bakery', 'A website']) => {
+    for (const a of answers) await post([text(who, a)]);
+    await post([tap(who, 'skip:details', 'button_reply')]);
+    await post([tap(who, 'skip:refs', 'button_reply')]);
+  };
 
   await t.test('webhook verification and signatures', async () => {
     await reset();
@@ -151,6 +166,10 @@ test('WhatsApp bot (fake Meta, Supabase, Groq and Gemini; real Miniflare D1)', a
     await post([text(CLIENT, 'Ravi Bakery, cakes in Feroke')]);
     assert.equal(last(CLIENT).body, TEXT.en.need);
     await post([text(CLIENT, 'A website where people can order cakes')]);
+    assert.equal(last(CLIENT).body, DETAILS.en.website, 'the website question');
+    await post([text(CLIENT, 'About 4 pages, no domain yet')]);
+    assert.equal(last(CLIENT).body, TEXT.en.refs);
+    await post([text(CLIENT, 'I like ravibakes.example, it is simple')]);
     assert.equal(last(CLIENT).type, 'button');
     assert.deepEqual(last(CLIENT).ids, ['tl:0', 'tl:1', 'tl:2']);
     await post([tap(CLIENT, 'tl:0', 'button_reply')]);
@@ -166,7 +185,7 @@ test('WhatsApp bot (fake Meta, Supabase, Groq and Gemini; real Miniflare D1)', a
     const row = await lead();
     assert.equal(row?.name, 'Ravi Kumar');
     assert.equal(row?.service, 'Website');
-    assert.match(row?.message ?? '', /Business: Ravi Bakery[\s\S]*Timeline: As soon as possible/);
+    assert.match(row?.message ?? '', /Business: Ravi Bakery[\s\S]*Details: About 4 pages[\s\S]*Websites they like: I like ravibakes\.example[\s\S]*Timeline: As soon as possible/);
     await post([text(CLIENT, 'Also need delivery tracking')]);
     assert.equal(last(CLIENT).body, TEXT.en.noted);
     assert.equal(fx.sent.filter((s) => s.body.includes('new lead')).length, 2, 'one alert per team member, once');
@@ -295,7 +314,10 @@ test('WhatsApp bot (fake Meta, Supabase, Groq and Gemini; real Miniflare D1)', a
 
   await t.test('two quick messages: one turn at a time, one menu', async () => {
     await reset();
-    await Promise.all([post([text(CLIENT, 'Hi')]), post([text(CLIENT, 'I need a website for my shop')])]);
+    // The second arrives while the first turn holds the lock (Meta sends webhooks in order).
+    const hi = text(CLIENT, 'Hi'), next = text(CLIENT, 'I need a website for my shop');
+    const stored = async () => { while (!sb.tables.messages.some((m) => m.wamid === hi.id)) await new Promise((r) => setTimeout(r, 1)); };
+    await Promise.all([post([hi]), stored().then(() => post([next]))]);
     assert.equal(to(CLIENT).filter((s) => s.ids.some((id) => id.startsWith('svc:'))).length, 1);
     assert.equal(contact().step, 'language');
     assert.equal(contact().service, 'website');
@@ -306,7 +328,7 @@ test('WhatsApp bot (fake Meta, Supabase, Groq and Gemini; real Miniflare D1)', a
   await t.test('team window closed → template; client window closed → the team is told', async () => {
     await reset();
     await toName();
-    for (const answer of ['Ravi', 'Ravi Bakery', 'A website']) await post([text(CLIENT, answer)]);
+    await toTimeline();
     await post([tap(CLIENT, 'tl:2', 'button_reply')]);
     const alert = to(TEAM[0])[0];
     assert.equal(alert.type, 'template');
@@ -400,7 +422,7 @@ test('WhatsApp bot (fake Meta, Supabase, Groq and Gemini; real Miniflare D1)', a
     assert.equal(contact().service, 'website');
     await post([tap(CLIENT, 'lang:en')]);
     await post([text(CLIENT, 'Can I talk to someone?')]);
-    for (const a of ['Ravi', 'Ravi Bakery', 'A website']) await post([text(CLIENT, a)]);
+    await toTimeline();
     await post([tap(CLIENT, 'tl:1', 'button_reply')]);
     assert.ok(teamGot(TEAM[0], 'asked for a person') && teamGot(TEAM[0], 'brief complete'), 'the full brief still reaches the team');
     const n0 = to(CLIENT).length;
@@ -653,7 +675,7 @@ test('WhatsApp bot (fake Meta, Supabase, Groq and Gemini; real Miniflare D1)', a
   await t.test('phase 1: a returning client chooses the earlier enquiry or a new one', async () => {
     await reset();
     await toName();
-    for (const a of ['Ravi', 'Ravi Bakery', 'A website']) await post([text(CLIENT, a)]);
+    await toTimeline();
     await post([tap(CLIENT, 'tl:1', 'button_reply')]);
     const first = contact().lead_id;
     now += 31 * 24 * 60 * MIN;
@@ -667,7 +689,8 @@ test('WhatsApp bot (fake Meta, Supabase, Groq and Gemini; real Miniflare D1)', a
     await post([tap(CLIENT, 'ret:new', 'button_reply')]);
     assert.equal(last(CLIENT).type, 'list', 'a new enquiry starts at the menu');
     assert.notEqual(contact().lead_id, first);
-    assert.deepEqual(contact().fields, { prev_leads: [first] }, 'the earlier lead is remembered, so DELETE MY DATA reaches it');
+    assert.deepEqual(contact().fields.prev_leads, [first], 'the earlier lead is remembered, so DELETE MY DATA reaches it');
+    assert.deepEqual(Object.keys(contact().fields).sort(), ['prev_leads', 'since'], 'nothing else of the old brief');
   });
   /* ---- phase 2: self-learning ---- */
 
@@ -943,7 +966,7 @@ test('WhatsApp bot (fake Meta, Supabase, Groq and Gemini; real Miniflare D1)', a
     await reset();
     await teamHi();
     await toName();
-    for (const a of ['Ravi', 'Ravi Bakery', 'A website']) await post([text(CLIENT, a)]);
+    await toTimeline();
     await post([tap(CLIENT, 'tl:1', 'button_reply')]);
     const code = contact().code;
     const alert = teamGot(TEAM[0], `#${code}`)!;
@@ -982,5 +1005,307 @@ test('WhatsApp bot (fake Meta, Supabase, Groq and Gemini; real Miniflare D1)', a
       assert.equal(contact().mode, 'bot');
       assert.notEqual(last(CLIENT).body, TEXT.en.person);
     } finally { env.TEAM_WHATSAPP = TEAM.join(','); }
+  });
+  /* ---- phase 3: the full requirement ---- */
+
+  await t.test('phase 3: each service asks its own question, sites and apps ask for websites they like, and the lead gets a one-page brief', async () => {
+    await reset();
+    await teamHi();
+    await toName();
+    for (const a of ['Ravi', 'Ravi Bakery', 'A website for my bakery']) await post([text(CLIENT, a)]);
+    assert.equal(last(CLIENT).body, DETAILS.en.website);
+    assert.deepEqual(last(CLIENT).ids, ['skip:details']);
+    await post([text(CLIENT, 'About 5 pages, I already have ravibakery.in')]);
+    assert.equal(last(CLIENT).body, TEXT.en.refs);
+    await post([tap(CLIENT, 'skip:refs', 'button_reply', TEXT.en.skip)]);
+    assert.ok(last(CLIENT).ids.every((id) => id.startsWith('tl:')), 'then the timeline');
+    await post([tap(CLIENT, 'tl:1', 'button_reply')]);
+    const code = contact().code, row = await lead();
+    assert.match(row?.message, /Details: About 5 pages, I already have ravibakery\.in/);
+    assert.doesNotMatch(row?.message, /Websites they like/, 'skipped, so left out');
+    assert.match(row?.brief, new RegExp(`^Enquiry brief #${code} · 2026-10-14 · WhatsApp · English`));
+    assert.match(row?.brief, /Client: Ravi\nBusiness: Ravi Bakery\nService: Website/);
+    assert.match(row?.brief, /Websites they like: -/);
+    assert.match(teamGot(TEAM[0], `#${code}`)!.body, /Details: About 5 pages/);
+
+    // NFC: its own question, no websites question; "Something else": neither.
+    await post([text(CLIENT2, 'Hi')]);
+    await post([tap(CLIENT2, 'svc:nfc')]);
+    await post([tap(CLIENT2, 'lang:hi')]);
+    for (const a of ['Asha', 'Asha Clinic', 'NFC cards']) await post([text(CLIENT2, a)]);
+    assert.equal(last(CLIENT2).body, DETAILS.hi.nfc);
+    await post([text(CLIENT2, '50 cards, Google review')]);
+    assert.ok(last(CLIENT2).ids.every((id) => id.startsWith('tl:')));
+    await post([text(CLIENT3, 'Hi')]);
+    await post([tap(CLIENT3, 'svc:other')]);
+    await post([tap(CLIENT3, 'lang:en')]);
+    for (const a of ['Joy', 'Joy Traders', 'Not sure yet']) await post([text(CLIENT3, a)]);
+    assert.ok(last(CLIENT3).ids.every((id) => id.startsWith('tl:')));
+  });
+
+  await t.test('phase 3: with AI, the answer to the service question is kept in English', async () => {
+    await reset();
+    let system = '';
+    fx.state.ai = (task, user, _p, sys) => {
+      if (task !== 'extract') return 500;
+      if (/പേജ്/.test(user)) { system = sys; return { ...blank, kind: 'answer', detail_en: 'About 5 pages; no domain yet.' }; }
+      return { ...blank, kind: 'answer', name: user };
+    };
+    await toName(CLIENT, 'ml');
+    for (const a of ['Ravi', 'Ravi Bakery', 'Website']) await post([text(CLIENT, a)]);
+    await post([text(CLIENT, 'ഏകദേശം 5 പേജ്, ഡൊമെയ്ൻ ഇല്ല')]);
+    assert.ok(system.includes(DETAILS.en.website), 'the extractor sees the exact question');
+    assert.equal(contact().fields.details, 'About 5 pages; no domain yet.');
+    assert.equal(last(CLIENT).body, TEXT.ml.refs);
+  });
+
+  await t.test('phase 3: voice notes are transcribed and handled like typed text', async () => {
+    await reset();
+    await teamHi();
+    await toName(CLIENT, 'ml');
+    fx.state.media['voice-1'] = { type: 'audio/ogg; codecs=opus', bytes: new Uint8Array([1, 2, 3]) };
+    fx.state.voice = () => 'Ravi';
+    const note = sent(CLIENT, 'voice', 'voice-1');
+    await post([note]);
+    assert.deepEqual(fx.whisper, ['ml'], 'with the language as a hint');
+    assert.equal(contact().fields.name, 'Ravi');
+    assert.equal(last(CLIENT).body, TEXT.ml.business);
+    assert.equal(sb.tables.messages.find((m) => m.wamid === note.id)!.body, '🎤 Ravi', 'the chat keeps the words');
+    fx.state.media['voice-2'] = { type: 'audio/ogg', bytes: new Uint8Array([4]) };
+    fx.state.voice = () => 500;
+    await post([sent(CLIENT, 'voice', 'voice-2')]);
+    assert.equal(last(CLIENT).body, TEXT.ml.pleaseType, 'transcription failed: please type');
+    fx.state.media['voice-3'] = { type: 'audio/ogg', bytes: new Uint8Array([4]), size: 6 * 1024 * 1024 };
+    await post([sent(CLIENT, 'voice', 'voice-3')]);
+    assert.equal(fx.whisper.length, 2, 'a long voice note is never downloaded or sent');
+  });
+
+  await t.test('phase 3: photos and documents are kept privately on the lead; DELETE MY DATA removes them', async () => {
+    await reset();
+    await teamHi();
+    await toName();
+    fx.state.media['img-1'] = { type: 'image/jpeg', bytes: new Uint8Array([0xff, 0xd8, 0xff]) };
+    fx.state.media['doc-1'] = { type: 'application/pdf', bytes: new TextEncoder().encode('%PDF-1.4') };
+    fx.state.media['big-1'] = { type: 'video/mp4', bytes: new Uint8Array([0]), size: 25 * 1024 * 1024 };
+    await post([sent(CLIENT, 'image', 'img-1')]);
+    const id = contact().lead_id;
+    assert.equal(last(CLIENT).body, `${TEXT.en.fileSaved}\n\n${TEXT.en.name}`, 'saved, then the question again');
+    const obj = await bucket.get(`leads/${id}/1-img-1-image.jpg`);
+    assert.equal(obj?.httpMetadata?.contentType, 'image/jpeg');
+    await obj?.arrayBuffer();
+    await post([sent(CLIENT, 'document', 'doc-1', { filename: 'our menu (final).pdf', caption: 'Ravi' })]);
+    assert.ok(await bucket.head(`leads/${id}/2-doc-1-our_menu_final_.pdf`), 'the file name, made safe');
+    assert.equal(contact().fields.name, 'Ravi', 'the caption is read like a message');
+    await post([sent(CLIENT, 'video', 'big-1')]);
+    assert.ok(last(CLIENT).body.startsWith(TEXT.en.fileBig));
+    for (const a of ['Ravi Bakery', 'A website']) await post([text(CLIENT, a)]);
+    await post([tap(CLIENT, 'skip:details', 'button_reply')]);
+    await post([tap(CLIENT, 'skip:refs', 'button_reply')]);
+    await post([tap(CLIENT, 'tl:0', 'button_reply')]);
+    const row = await lead();
+    assert.deepEqual(JSON.parse(row?.files), [`leads/${id}/1-img-1-image.jpg`, `leads/${id}/2-doc-1-our_menu_final_.pdf`]);
+    assert.match(row?.brief, /Files: 2/);
+    assert.match(teamGot(TEAM[0], `#${contact().code}`)!.body, /Files: 2 \(Admin → Leads\)/);
+    await post([text(CLIENT, 'delete my data')]);
+    await post([tap(CLIENT, 'del:y', 'button_reply')]);
+    assert.equal((await bucket.list({ prefix: 'leads/' })).objects.length, 0);
+  });
+
+  await t.test('phase 3: a file sent while a person has the chat goes to them as a note', async () => {
+    await reset();
+    await teamHi();
+    await toName();
+    const code = contact().code;
+    await post([text(TEAM[0], `#${code} take`)]);
+    fx.state.media['img-2'] = { type: 'image/png', bytes: new Uint8Array([0x89, 0x50]) };
+    const before = to(CLIENT).length;
+    await post([sent(CLIENT, 'image', 'img-2', { caption: 'our logo' })]);
+    assert.equal(to(CLIENT).length, before, 'the bot stays quiet');
+    assert.match(last(TEAM[0]).body, new RegExp(`#${code} .*📎 sent a file \\(Admin → Leads\\): our logo`));
+  });
+
+  await t.test('phase 3: matching published work after the brief', async () => {
+    await reset();
+    const add = (id: string, slug: string, title: string, category: string, published: number, featured = 0) =>
+      db.prepare(`INSERT INTO projects (id, slug, title, client_type, category, summary, is_published, is_featured) VALUES (?, ?, ?, 'Bakery in Calicut', ?, 's', ?, ?)`)
+        .bind(id, slug, title, category, published, featured).run();
+    await add('p1', 'ravi-bakery', 'Ravi Bakery site', 'static', 1);
+    await add('p2', 'hidden', 'Hidden draft', 'static', 0);
+    await add('p3', 'clinic-app', 'Clinic bookings', 'dynamic', 1);
+    await add('p4', 'placeholder', '[Project title]', 'static', 1);
+    await add('p5', 'featured', 'Featured site', 'static', 1, 1);
+    await toName();
+    await toTimeline();
+    await post([tap(CLIENT, 'tl:1', 'button_reply')]);
+    const work = last(CLIENT).body;
+    assert.ok(work.startsWith(TEXT.en.work));
+    assert.ok(work.indexOf('/work/featured') < work.indexOf('/work/ravi-bakery'), 'featured first');
+    assert.match(work, /• Ravi Bakery site \(Bakery in Calicut\): https:\/\/legitforge\.pages\.dev\/work\/ravi-bakery/);
+    assert.doesNotMatch(work, /hidden|clinic-app|placeholder/);
+  });
+
+  await t.test('phase 3: one gentle reminder 3 hours after a client goes quiet mid-brief', async () => {
+    await reset();
+    await toName();                                               // Wednesday 11:00 IST, asked for their name
+    await toName(CLIENT2);
+    for (const a of ['Asha', 'Asha Clinic', 'Website']) await post([text(CLIENT2, a)]);
+    fx.state.ai = (task) => (task === 'extract' ? question('Can you start tomorrow?', true) : 500);
+    await toName(CLIENT3);
+    await post([text(CLIENT3, 'Start tomorrow?')]);              // waiting for the team: no reminder
+    fx.state.ai = () => 500;
+    now += 2 * 60 * MIN;
+    await tick(env, now);
+    assert.ok(!to(CLIENT).some((m) => m.body === TEXT.en.nudge), 'not before 3 hours');
+    now += 61 * MIN;
+    await tick(env, now);
+    assert.equal(to(CLIENT).filter((m) => m.body === TEXT.en.nudge).length, 1);
+    assert.equal(to(CLIENT2).filter((m) => m.body === TEXT.en.nudge).length, 1, 'quiet at the service question too');
+    assert.ok(!to(CLIENT3).some((m) => m.body === TEXT.en.nudge));
+    now += 2 * MIN;
+    await tick(env, now);
+    assert.equal(to(CLIENT).filter((m) => m.body === TEXT.en.nudge).length, 1, 'once');
+
+    await reset();
+    now = Date.parse('2026-10-14T12:00:00Z');                     // 17:30 IST: 3 hours later is after closing
+    await toName();
+    now += 3 * 60 * MIN + MIN;
+    await tick(env, now);
+    assert.ok(!to(CLIENT).some((m) => m.body === TEXT.en.nudge), 'not after 7 p.m.');
+  });
+  /* ---- phase 3 review fixes ---- */
+
+  await t.test('phase 3 fixes: a spoken "delete my data" or STOP works like a typed one; a voice note nobody can read is kept for the team', async () => {
+    await reset();
+    await teamHi();
+    await toName();
+    fx.state.media['v-del'] = { type: 'audio/ogg', bytes: new Uint8Array([1]) };
+    fx.state.voice = () => 'Delete my data.';
+    await post([sent(CLIENT, 'voice', 'v-del')]);
+    assert.deepEqual(last(CLIENT).ids, ['del:y', 'del:n']);
+    fx.state.media['v-stop'] = { type: 'audio/ogg', bytes: new Uint8Array([2]) };
+    fx.state.voice = () => 'Stop.';
+    await post([sent(CLIENT, 'voice', 'v-stop')]);
+    assert.equal(contact().mode, 'stopped');
+
+    await toName(CLIENT2);
+    const code = contact(CLIENT2).code;
+    await post([text(TEAM[0], `#${code} take`)]);
+    fx.state.media['v-x'] = { type: 'audio/ogg', bytes: new Uint8Array([3]) };
+    fx.state.voice = () => 500;
+    await post([sent(CLIENT2, 'voice', 'v-x')]);
+    assert.match(last(TEAM[0]).body, new RegExp(`#${code} .*📎 sent a voice note \\(Admin → Leads\\)`));
+    assert.equal((await bucket.list({ prefix: `leads/${contact(CLIENT2).lead_id}/` })).objects.length, 1, 'the recording, for the team');
+    assert.equal(fx.downloads.filter((d) => d === 'v-x').length, 1, 'downloaded once: Whisper and the file share it');
+    await post([text(TEAM[0], `#${code} bot`)]);
+    fx.state.media['v-big'] = { type: 'audio/ogg', bytes: new Uint8Array([4]), size: 6 * 1024 * 1024 };
+    await post([sent(CLIENT2, 'voice', 'v-big')]);
+    assert.equal(fx.whisper.length, 3, 'a long voice note never goes to Whisper');
+    assert.equal(last(CLIENT2).body, TEXT.en.pleaseType);
+  });
+
+  await t.test('phase 3 fixes: an album gets one notice; a file that could not be kept is always said; a photo first gets the notice and the menu', async () => {
+    await reset();
+    for (const i of [1, 2, 3]) fx.state.media[`a-${i}`] = { type: 'image/jpeg', bytes: new Uint8Array([i]) };
+    await post([sent(CLIENT, 'image', 'a-1')]);
+    assert.equal(to(CLIENT).at(-2)!.body, TEXT.en.fileSaved, 'the notice, then the menu');
+    assert.equal(last(CLIENT).type, 'list');
+    const n = to(CLIENT).length;
+    await post([sent(CLIENT, 'image', 'a-2')]);
+    await post([sent(CLIENT, 'image', 'a-3')]);
+    assert.equal(to(CLIENT).length, n, 'the rest of the album: no more notices');
+    assert.equal(contact().fields.files.length, 3);
+    await post([tap(CLIENT, 'svc:website')]);
+    await post([tap(CLIENT, 'lang:en')]);
+    fx.state.media['huge'] = { type: 'video/mp4', bytes: new Uint8Array([0]), size: 30 * 1024 * 1024 };
+    await post([sent(CLIENT, 'video', 'huge', { caption: 'Ravi' })]);
+    assert.ok(to(CLIENT).some((m) => m.body === TEXT.en.fileBig), 'told, even with a caption');
+    assert.equal(contact().fields.name, 'Ravi', 'and the caption is still read');
+  });
+
+  await t.test('phase 3 fixes: Meta busy, so the file is retried by the cron, not lost', async () => {
+    await reset();
+    await toName();
+    fx.state.media['slow'] = { type: 'image/png', bytes: new Uint8Array([9]), status: 503 };
+    const photo = sent(CLIENT, 'image', 'slow');
+    await post([photo]);
+    assert.ok(!sb.tables.messages.find((m) => m.wamid === photo.id)!.handled_at, 'left for the cron');
+    delete fx.state.media['slow'].status;
+    now += 3 * MIN;
+    await tick(env, now);
+    assert.equal(contact().fields.files?.length, 1);
+    assert.ok(to(CLIENT).some((m) => m.body.startsWith(TEXT.en.fileSaved)));
+  });
+
+  await t.test('phase 3 fixes: old Skip taps, a changed service, and a returning brief the team already has', async () => {
+    await reset();
+    await post([text(CLIENT, 'Hi')]);
+    await post([tap(CLIENT, 'skip:details', 'button_reply')]);
+    assert.equal(contact().step, 'service', 'an old Skip on a fresh chat: still the menu');
+    assert.equal(last(CLIENT).type, 'list');
+    await post([tap(CLIENT, 'svc:website')]);
+    await post([tap(CLIENT, 'lang:en')]);
+    for (const a of ['Ravi', 'Ravi Bakery', 'A website', 'About 5 pages']) await post([text(CLIENT, a)]);
+    await post([tap(CLIENT, 'svc:nfc')]);
+    assert.equal(contact().fields.details, undefined, 'the website answer does not stand for NFC');
+    assert.equal(last(CLIENT).body, DETAILS.en.nfc);
+    await post([text(CLIENT, '100 cards')]);
+    await post([tap(CLIENT, 'tl:1', 'button_reply')]);
+    assert.ok(contact().alerted_at);
+    delete contact().fields.details;                              // as if completed before the service question existed
+    now += 31 * 24 * 60 * MIN;
+    await post([text(CLIENT, 'Hi')]);
+    await post([tap(CLIENT, 'ret:same', 'button_reply')]);
+    assert.equal(last(CLIENT).body, TEXT.en.sameProject, 'the team has it: not reopened');
+  });
+
+  await t.test('phase 3 fixes: the brief is in English and lists only this enquiry’s questions', async () => {
+    await reset();
+    await teamHi();
+    let briefSystem = '';
+    fx.state.ai = (task, user, _p, system) => {
+      if (task === 'extract') return /ഹോസ്റ്റിംഗ്/.test(user) ? question('Do you provide hosting?') : 500;
+      if (task === 'translate' && /Enquiry brief/.test(user)) { briefSystem = system; return { text: user.replace('ഞാൻ', 'I') }; }
+      return 500;
+    };
+    await post([text(CLIENT, 'Hi')]);
+    sb.tables.questions.push({ id: 990, wa_id: CLIENT, question: 'old', question_en: 'An old enquiry question', status: 'answered', kind: 'question',
+      created_at: new Date(now - 60 * 24 * 60 * MIN).toISOString() });
+    contact().fields.since = new Date(now - MIN).toISOString();
+    await post([tap(CLIENT, 'svc:website')]);
+    await post([tap(CLIENT, 'lang:ml')]);
+    await post([text(CLIENT, 'ഹോസ്റ്റിംഗ് ഉണ്ടോ?')]);
+    for (const a of ['Ravi', 'Ravi Bakery', 'ഞാൻ ഒരു വെബ്സൈറ്റ്']) await post([text(CLIENT, a)]);
+    await post([tap(CLIENT, 'skip:details', 'button_reply')]);
+    await post([tap(CLIENT, 'skip:refs', 'button_reply')]);
+    await post([tap(CLIENT, 'tl:1', 'button_reply')]);
+    const brief = (await lead())?.brief as string;
+    assert.match(briefSystem, /into English/);
+    assert.match(brief, /What they need: I ഒരു/);
+    assert.match(brief, /Questions they asked:\n- Do you provide hosting\? \(pending\)/);
+    assert.doesNotMatch(brief, /old enquiry/);
+  });
+
+  await t.test('phase 3 fixes: the 90-day purge removes old files; a lead deleted in Admin takes later files with it', async () => {
+    await reset();
+    await toName();
+    fx.state.media['p-1'] = { type: 'image/jpeg', bytes: new Uint8Array([1]) };
+    await post([sent(CLIENT, 'image', 'p-1')]);
+    await post([text(CLIENT, 'Ravi')]);
+    await db.prepare('DELETE FROM leads WHERE phone = ?').bind(`+${CLIENT}`).run();      // the admin deleted it
+    fx.state.media['p-2'] = { type: 'image/jpeg', bytes: new Uint8Array([2]) };
+    await post([text(CLIENT, 'Ravi Bakery')]);                    // the next save finds the lead gone
+    await post([sent(CLIENT, 'image', 'p-2')]);
+    assert.ok(last(CLIENT).body.startsWith(TEXT.en.fileBig), 'not kept any more');
+    assert.equal((await bucket.list({ prefix: 'leads/' })).objects.length, 0, 'and the earlier file went with the lead');
+    assert.equal(await lead(), null, 'the lead stays deleted');
+
+    await toName(CLIENT2);
+    fx.state.media['p-3'] = { type: 'image/jpeg', bytes: new Uint8Array([3]) };
+    await post([sent(CLIENT2, 'image', 'p-3')]);
+    assert.equal((await bucket.list({ prefix: 'leads/' })).objects.length, 1);
+    now = Date.parse('2027-03-01T21:30:00Z');                     // 03:00 IST, more than 90 days after the upload
+    await tick(env, now);
+    assert.equal((await bucket.list({ prefix: 'leads/' })).objects.length, 0);
+    assert.equal(sb.tables.settings.find((x) => x.key === 'purge_cursor')?.value, '', 'reached the end');
   });
 });

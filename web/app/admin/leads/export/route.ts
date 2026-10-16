@@ -14,7 +14,7 @@ const cell = (v: unknown) => {
 
 export async function GET() {
   if (!(await adminIdentity())) return new Response('Forbidden', { status: 403 });
-  const cols = ['created_at', 'status', 'source', 'name', 'phone', 'service', 'budget', 'message', 'language', 'whatsapp_consent', 'id'] as const;
+  const cols = ['created_at', 'status', 'source', 'name', 'phone', 'service', 'budget', 'message', 'language', 'brief', 'files', 'whatsapp_consent', 'id'] as const;
   const rows = await listLeads();
   const body = '﻿' + [cols.join(','), ...rows.map((r) => cols.map((c) => cell(r[c])).join(','))].join('\r\n');
   return new Response(body, {

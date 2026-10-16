@@ -150,8 +150,11 @@ export async function deleteImage(projectId: string, imageId: string) {
 export interface LeadRow {
   id: string; source: string; name: string | null; phone: string | null; service: string | null; budget: string | null;
   message: string | null; whatsapp_consent: number; status: LeadStatus; created_at: string;
-  /** Set by the WhatsApp bot (bot/worker.ts): the language the client chose. */
+  /** Set by the WhatsApp bot (bot/worker.ts): the language the client chose, the one-page brief
+   *  once theirs is complete, and the files they sent (JSON list of R2 keys). */
   language: string | null;
+  brief?: string | null;
+  files?: string | null;
 }
 
 export async function listLeads(status?: LeadStatus) {

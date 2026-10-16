@@ -6,7 +6,7 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
 ## Active Working Directives
 - **Working Directory**: Always work in the `web/` directory. All application code, tests, and configuration live in `web/`.
 - **Target Branch**: Always branch from and target `main-exh9xw`.
-- **Verification**: Run `npm run test:backend` (67 tests, including the WhatsApp bot's) and `npm run build` inside `web/`; review page markup directly or inspect generated static files since browser checks (`check.mjs`) require an active dev server.
+- **Verification**: Run `npm run test:backend` (80 tests, including the WhatsApp bot's) and `npm run build` inside `web/`; review page markup directly or inspect generated static files since browser checks (`check.mjs`) require an active dev server.
 
 ## Current owner decisions (7 October 2026)
 - WhatsApp enquiry bot (16 Oct 2026, owner's decisions; supersedes SETUP.md Part 2 §3–§9): a separate
@@ -140,7 +140,7 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
   language, menus, prompts), bot/supabase/schema.sql (owner runs it), bot/seed.ts (site FAQs as
   approved answers), bot/wrangler.jsonc. Tests: tests/bot.test.ts with tests/bot-fakes.ts.
 - Nothing in app/ or lib/ may import bot/ (the website Worker must stay small); bot/ may import lib/.
-  No SDKs: plain fetch. Bot bundle measured 18.8 KiB gzip; a turn stops starting new work near 48 calls or 18 s (io.ts room()) and the cron finishes it.
+  No SDKs: plain fetch. Bot bundle measured 34 KiB gzip (phase 3); a turn stops starting new work near 48 calls or 18 s (io.ts room()) and the cron finishes it.
 - Shares the website's D1 (writes `leads`, source 'whatsapp', column `language` from 0011); never
   applies migrations (no migrations_dir). Chats, team questions and learned answers live in Supabase.
 - Inbound messages are stored before Meta gets its 200 (Supabase down → 500, Meta retries); one turn
@@ -152,6 +152,13 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
   AI call. Price, deadline or contract questions about their own project always go to the team.
 - Team protocol: alerts start with #CODE; swipe-reply or "#CODE text" answers; "#CODE take" / "#CODE bot".
   Outside a member's 24-hour window the bot uses the approved utility template `team_alert`.
+- Brief (phase 3): name → business → need → the service's own question (text.ts DETAILS; not for
+  "Something else") → websites they like (websites and apps) → timeline; both have a Skip button.
+  Voice notes: Groq Whisper (same GROQ_API_KEY). Photos/documents/videos go to the website's R2
+  bucket MEDIA under leads/<lead id>/ (private: app/media serves only projects/ and team/; admins get
+  them from app/admin/leads/files/[...key]); leads.files and leads.brief from D1 migration 0012.
+  One reminder 3 h after a client goes quiet mid-brief (working hours). Published work for the
+  service is sent after the brief.
 - Fixed text in bot/text.ts must stay within WhatsApp limits (tests check them): list rows ≤ 10,
   row title ≤ 24, buttons ≤ 3 with titles ≤ 20.
 

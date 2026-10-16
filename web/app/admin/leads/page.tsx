@@ -7,6 +7,12 @@ import { markLeadContactedAction, retryLeadAlertAction } from './delivery-action
 import { deleteLeadAction, leadStatusAction } from '../actions';
 import { ConfirmSubmit } from '../ui';
 
+/** The files a WhatsApp client sent (R2 keys the bot stored on the lead). */
+const keys = (files?: string | null): string[] => {
+  try { const v: unknown = JSON.parse(files ?? '[]'); return Array.isArray(v) ? v.filter((k): k is string => typeof k === 'string' && k.startsWith('leads/')) : []; }
+  catch { return []; }
+};
+
 export default async function AdminLeads({ searchParams }: { searchParams: Promise<{ status?: string; page?: string }> }) {
   await requireAdmin();                            // each page checks too: a layout can be skipped
   const params = await searchParams;
@@ -43,7 +49,9 @@ export default async function AdminLeads({ searchParams }: { searchParams: Promi
                   <td>{l.name ?? '—'}<br />{l.phone ? <a className="text-link" href={`https://wa.me/${l.phone.replace(/\D/g, '')}`}>{l.phone}</a> : <span className="muted">no phone</span>}
                     {l.whatsapp_consent ? <><br /><span className="pill is-on">WhatsApp OK</span></> : null}</td>
                   <td>{l.service ?? '—'}<br /><span className="muted">{l.budget ?? ''}</span></td>
-                  <td className="msg">{l.message ?? ''}</td>
+                  <td className="msg">{l.message ?? ''}
+                    {l.brief && <details><summary>Brief</summary>{l.brief}</details>}
+                    {keys(l.files).map((k) => <span key={k}><br /><a className="text-link" href={`/admin/leads/files/${k}`}>📎 {k.split('/').pop()}</a></span>)}</td>
                   <td>
                     {/* keyed by the saved status: React resets a form after its action, and without a new key it
                         would snap back to the old status even though the new one was saved */}

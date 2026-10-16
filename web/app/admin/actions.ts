@@ -220,6 +220,10 @@ export async function leadStatusAction(id: string, f: FormData) {
 export async function deleteLeadAction(id: string) {
   await requireAdmin();
   await db.deleteLead(id);
+  // and the files a WhatsApp client sent with it (bot/worker.ts keeps at most 20 per enquiry)
+  const media = (await getEnv())?.MEDIA;
+  const sent = media ? (await media.list({ prefix: `leads/${id}/` })).objects.map((o) => o.key) : [];
+  if (media && sent.length) await media.delete(sent);
   revalidatePath('/admin/leads');
   revalidatePath('/admin');    // the overview's counts
 }
