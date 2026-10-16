@@ -19,7 +19,7 @@ export default async function AdminLeads({ searchParams }: { searchParams: Promi
   return (
     <>
       <h1 className="type-h2">Leads</h1>
-      <p className="muted">{total} saved enquiries. Alert delivery is separate from enquiry storage.</p>
+      <p className="muted">Every enquiry from the website form lands here ({total} so far). Each one is saved first, then an alert is sent, so a failed alert never loses an enquiry. WhatsApp enquiries will arrive here too once the bot is set up.</p>
       {!notifications && <p role="status">Alerts not configured. Review new enquiries here; saved enquiries remain available.</p>}
       <div className="admin-actions admin-lead admin-leads-filter">
         <a className="btn btn-ghost btn-sm" href="/admin/leads" aria-current={!status ? 'page' : undefined}>All</a>

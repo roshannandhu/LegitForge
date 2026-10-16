@@ -24,7 +24,7 @@ export default async function AdminTestimonials() {
   return (
     <>
       <h1 className="type-h2">Testimonials</h1>
-      <p className="admin-lead">Only publish a quote the client agreed to in writing. Publishing is refused until the permission box is ticked.</p>
+      <p className="admin-lead">Client quotes for the home page. Nothing shows on the site until you publish one. Only publish a quote the client agreed to in writing: publishing is refused until the permission box is ticked.</p>
       <ActionForm action={saveTestimonialAction} className="admin-form" resetOnOk>
         <Fields />
         <div><Submit>Add testimonial</Submit></div>
