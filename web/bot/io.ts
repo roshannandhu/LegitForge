@@ -19,6 +19,8 @@ export interface Env {
   GEMINI_MODEL?: string;
   EMBED_MODEL?: string;
   GRAPH_VERSION?: string;
+  /** Days after the first client during which every AI answer is a draft for the team (default 14; 0 = off). */
+  TRAINING_DAYS?: string;
   SITE_URL?: string;
   /** Per invocation (never a binding): outside calls made so far, and when it started. Workers
    *  Free allows 50 subrequests per invocation (D1 calls count too), so turns stop early. */

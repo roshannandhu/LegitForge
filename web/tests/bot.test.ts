@@ -14,7 +14,7 @@ const CLIENT = '919811111111', CLIENT2 = '919822222222', CLIENT3 = '919833333333
 const OPEN = Date.parse('2026-10-14T05:30:00Z');     // Wednesday 11:00 IST: open
 const SUNDAY = Date.parse('2026-10-18T05:30:00Z');   // closed all day
 const MIN = 60_000;
-const blank = { name: '', business: '', need_en: '', timeline: '', question_en: '', commitment: false };
+const blank = { name: '', business: '', need_en: '', timeline: '', question_en: '', commitment: false, price: false, mood: 'calm', abusive: false };
 const question = (q: string, commitment = false) => ({ ...blank, kind: 'question', question_en: q, commitment });
 
 test('WhatsApp bot (fake Meta, Supabase, Groq and Gemini; real Miniflare D1)', async (t) => {
@@ -31,7 +31,7 @@ test('WhatsApp bot (fake Meta, Supabase, Groq and Gemini; real Miniflare D1)', a
   const env: Env = {
     DB: db, WA_ACCESS_TOKEN: 'token', WA_APP_SECRET: SECRET, WA_VERIFY_TOKEN: 'verify-me', WA_PHONE_NUMBER_ID: 'PNID',
     TEAM_WHATSAPP: TEAM.join(','), SUPABASE_URL: 'https://sb.test', SUPABASE_SECRET_KEY: 'sb-key', GROQ_API_KEY: 'groq-key',
-    GEMINI_API_KEY: 'gemini-key', SITE_URL: 'https://legitforge.pages.dev',
+    GEMINI_API_KEY: 'gemini-key', SITE_URL: 'https://legitforge.pages.dev', TRAINING_DAYS: '0',
   };
 
   let n = 0;
@@ -184,7 +184,7 @@ test('WhatsApp bot (fake Meta, Supabase, Groq and Gemini; real Miniflare D1)', a
         if (/dubai/i.test(user)) return question('Do you host websites in Dubai?');
         return { ...blank, kind: 'answer', name: user };
       }
-      if (task === 'answer') return { answer: user.includes('one to two weeks') && /How long does a website take/.test(user) ? 'Usually one to two weeks.' : '' };
+      if (task === 'answer') return { answer: user.includes('one to two weeks') && /How long does a website take/.test(user) ? 'Usually one to two weeks.' : '', answer_en: 'Usually one to two weeks.' };
       return 500;
     };
     await toName();
@@ -207,7 +207,7 @@ test('WhatsApp bot (fake Meta, Supabase, Groq and Gemini; real Miniflare D1)', a
     fx.state.ai = (task, user) => {
       if (task === 'extract') return /hosting|ഹോസ്റ്റിംഗ്/.test(user) ? question('Do you provide hosting?') : /sunday/i.test(user) ? question('Do you work on Sundays?')
         : /holiday/i.test(user) ? question('Do you work on holidays?') : { ...blank, kind: 'answer', name: user };
-      if (task === 'answer') return { answer: user.includes('we set up hosting in your name') ? 'ഹോസ്റ്റിംഗ് നിങ്ങളുടെ പേരിൽ സജ്ജമാക്കും.' : '' };
+      if (task === 'answer') return { answer: user.includes('we set up hosting in your name') ? 'ഹോസ്റ്റിംഗ് നിങ്ങളുടെ പേരിൽ സജ്ജമാക്കും.' : '', answer_en: 'Yes, hosting in your name.' };
       if (task === 'translate') return { text: `[ml] ${user}` };
       if (task === 'faq') return /Sundays/.test(user) ? { question_en: 'Do you work on Sundays?', answer_en: 'We are closed on Sundays.' }
         : /holidays/.test(user) ? { question_en: 'Do you work on holidays?', answer_en: 'Not on public holidays.' }
@@ -263,7 +263,7 @@ test('WhatsApp bot (fake Meta, Supabase, Groq and Gemini; real Miniflare D1)', a
   await t.test('cron: the 10-minute message is sent once (open and closed); stuck turns are retried', async () => {
     await reset();
     await teamHi();
-    fx.state.ai = (task) => (task === 'extract' ? question('Do you build Shopify stores?') : task === 'answer' ? { answer: '' } : 500);
+    fx.state.ai = (task) => (task === 'extract' ? question('Do you build Shopify stores?') : task === 'answer' ? { answer: '', answer_en: '' } : 500);
     await toName();
     await post([text(CLIENT, 'Shopify?')]);
     now += 5 * MIN;
@@ -372,7 +372,7 @@ test('WhatsApp bot (fake Meta, Supabase, Groq and Gemini; real Miniflare D1)', a
     fx.state.ai = (task, _user, provider) => {
       if (provider === 'gemini') return 429;
       if (task === 'extract') return question('How long does a website take?');
-      if (task === 'answer') return { answer: 'Usually one to two weeks.' };
+      if (task === 'answer') return { answer: 'Usually one to two weeks.', answer_en: 'Usually one to two weeks.' };
       return 500;
     };
     await toName(CLIENT, 'ml');
@@ -381,7 +381,8 @@ test('WhatsApp bot (fake Meta, Supabase, Groq and Gemini; real Miniflare D1)', a
     assert.equal(sb.tables.questions.length, 1);
     await toName(CLIENT2, 'en');
     await post([text(CLIENT2, 'How long does a website take?')]);
-    assert.ok(last(CLIENT2).body.startsWith('Usually one to two weeks.'));
+    assert.ok(last(CLIENT2).body.startsWith(TEXT.en.checking), 'no approved match: the team checks the draft first');
+    assert.match(teamGot(TEAM[0], 'draft reply')!.body, /Draft reply: Usually one to two weeks\./, 'Groq wrote the English draft');
   });
 
   /* ---- review regressions (each one a confirmed finding) ---- */
@@ -412,7 +413,7 @@ test('WhatsApp bot (fake Meta, Supabase, Groq and Gemini; real Miniflare D1)', a
     await teamHi();
     fx.state.ai = (task, user) => {
       if (task === 'extract') return /hosting/i.test(user) ? question('Do you provide hosting?') : /someone/i.test(user) ? { ...blank, kind: 'person' } : { ...blank, kind: 'answer', name: user };
-      if (task === 'answer') return { answer: '' };
+      if (task === 'answer') return { answer: '', answer_en: '' };
       if (task === 'faq') return { question_en: 'Do you provide hosting?', answer_en: 'Yes, in your name.' };
       return 500;
     };
@@ -441,7 +442,7 @@ test('WhatsApp bot (fake Meta, Supabase, Groq and Gemini; real Miniflare D1)', a
     await teamHi();
     fx.state.ai = (task, user) => {
       if (task === 'extract') return /cost/i.test(user) ? question('How much does a website cost?') : question('Can I call you?');
-      if (task === 'answer') return { answer: 'A website costs ₹15,000.' };          // a model that ignored its rules
+      if (task === 'answer') return { answer: 'A website costs ₹15,000.', answer_en: 'A website costs ₹15,000.' };          // a model that ignored its rules
       if (task === 'translate') return { text: `[ml] ${user}` };
       return 500;
     };
@@ -472,7 +473,7 @@ test('WhatsApp bot (fake Meta, Supabase, Groq and Gemini; real Miniflare D1)', a
     await reset();
     await teamHi();
     let k = 0;
-    fx.state.ai = (task) => (task === 'extract' ? question(`Question number ${++k}?`) : task === 'answer' ? { answer: '' } : 500);
+    fx.state.ai = (task) => (task === 'extract' ? question(`Question number ${++k}?`) : task === 'answer' ? { answer: '', answer_en: '' } : 500);
     await toName();
     const start = fx.counter.calls;
     await post(Array.from({ length: 6 }, (_, i) => text(CLIENT, `Question ${i}?`)));
@@ -485,5 +486,183 @@ test('WhatsApp bot (fake Meta, Supabase, Groq and Gemini; real Miniflare D1)', a
     }
     assert.equal(sb.tables.questions.length, 6, 'every question reached the team exactly once');
     assert.ok(sb.tables.messages.filter((m) => m.wa_id === CLIENT && m.dir === 'in').every((m) => m.handled_at));
+  });
+  /* ---- phase 1: safe start ---- */
+
+  await t.test('phase 1: first message says it is automated; training mode turns every AI answer into a one-tap draft', async () => {
+    await reset();
+    await teamHi();
+    env.TRAINING_DAYS = '14';
+    try {
+      sb.tables.knowledge.push({ id: 901, question_en: 'Do you build websites in Malayalam?', answer_en: 'Yes, in Malayalam and English.', embedding: JSON.stringify(fakeEmbedding('Do you build websites in Malayalam?')), status: 'approved', source: 'site' });
+      fx.state.ai = (task, user) => {
+        if (task === 'extract') return /malayalam/i.test(user) ? question('Do you build websites in Malayalam?') : /support/i.test(user) ? question('Do you give support after launch?') : { ...blank, kind: 'answer', name: user };
+        if (task === 'answer') return /Malayalam/.test(user) ? { answer: 'Yes, we build in Malayalam and English.', answer_en: 'Yes, we build in Malayalam and English.' } : { answer: 'We fix issues for 30 days.', answer_en: 'We fix issues for 30 days.' };
+        if (task === 'faq') return { question_en: 'Do you give support after launch?', answer_en: 'Thirty days of fixes, then on request.' };
+        return 500;
+      };
+      await post([text(CLIENT, 'Hi')]);
+      assert.match(last(CLIENT).body, /automated/);
+      await post([tap(CLIENT, 'svc:website')]);
+      await post([tap(CLIENT, 'lang:en')]);
+      await post([text(CLIENT, 'Can you make it in Malayalam?')]);
+      assert.ok(last(CLIENT).body.startsWith(TEXT.en.checking), 'even a perfect match waits for the team in training');
+      const code = contact().code;
+      const card = teamGot(TEAM[0], `#${code} draft reply`)!;
+      assert.equal(card.type, 'button');
+      const q = sb.tables.questions.at(-1)!;
+      assert.deepEqual(card.ids, [`dr:s:${q.id}`, `dr:w:${q.id}`]);
+      assert.match(card.body, /Brief so far: Website/);
+      await post([tap(TEAM[0], `dr:s:${q.id}`, 'button_reply', 'Send')]);
+      assert.equal(last(CLIENT).body, 'Yes, we build in Malayalam and English.', 'the draft goes to the client as written');
+      assert.equal(sb.tables.questions.at(-1)!.status, 'answered');
+      const learned = sb.tables.knowledge.at(-1)!;
+      assert.equal(learned.status, 'approved');
+      assert.equal(learned.answer_en, 'Yes, we build in Malayalam and English.');
+      assert.match(last(TEAM[0]).body, /Saved for next time/);
+      await post([tap(TEAM[1], `dr:s:${q.id}`, 'button_reply', 'Send')]);
+      assert.match(last(TEAM[1]).body, /Already answered/);
+
+      // "Write my own": the member's answer replaces the draft, then the usual Approve card.
+      await post([text(CLIENT, 'Do you give support later?')]);
+      const q2 = sb.tables.questions.at(-1)!;
+      await post([tap(TEAM[0], `dr:w:${q2.id}`, 'button_reply', 'Write my own')]);
+      const prompt = last(TEAM[0]);
+      assert.match(prompt.body, /Reply to this message with your answer/);
+      await post([text(TEAM[0], 'Thirty days of free fixes, then on request.', { context: { id: prompt.id } })]);
+      assert.equal(last(CLIENT).body, 'Thirty days of free fixes, then on request.');
+      assert.equal(last(TEAM[0]).type, 'button', 'Approve / Edit / Reject card');
+
+      // Training over and a close match: answered straight away.
+      env.TRAINING_DAYS = '0';
+      await post([text(CLIENT, 'Malayalam website possible?')]);
+      assert.ok(last(CLIENT).body.startsWith('Yes, we build in Malayalam and English.'));
+    } finally { env.TRAINING_DAYS = '0'; }
+  });
+
+  await t.test('phase 1: "send" in reply to a draft (template, no buttons) sends it', async () => {
+    await reset();
+    env.TRAINING_DAYS = '14';
+    try {
+      fx.state.ai = (task) => (task === 'extract' ? question('Do you work weekends?') : task === 'answer' ? { answer: 'We work Monday to Saturday.', answer_en: 'We work Monday to Saturday.' } : 500);
+      await toName();
+      await post([text(CLIENT, 'Weekends?')]);
+      const alert = to(TEAM[0])[0];
+      assert.equal(alert.type, 'template', 'team window closed: template, no buttons');
+      await post([text(TEAM[0], 'send', { context: { id: alert.id } })]);
+      assert.equal(last(CLIENT).body, 'We work Monday to Saturday.');
+    } finally { env.TRAINING_DAYS = '0'; }
+  });
+
+  await t.test('phase 1: a price question offers a call and tells the team; discounts and deadlines need a decision', async () => {
+    await reset();
+    await teamHi();
+    fx.state.ai = (task, user) => {
+      if (task === 'extract') {
+        if (/cost/i.test(user)) return { ...question('How much does a website cost?'), price: true };
+        if (/discount/i.test(user)) return question('Can I get a discount?', true);
+        return { ...blank, kind: 'answer', name: user };
+      }
+      return 500;
+    };
+    await toName();
+    await post([text(CLIENT, 'How much will it cost?')]);
+    const offer = last(CLIENT);
+    assert.equal(offer.type, 'button');
+    assert.equal(offer.body, TEXT.en.price);
+    assert.deepEqual(offer.ids, ['call:y', 'call:n']);
+    const code = contact().code;
+    assert.ok(teamGot(TEAM[0], `#${code} price question`));
+    await post([tap(CLIENT, 'call:y', 'button_reply')]);
+    assert.equal(last(CLIENT).body, TEXT.en.callSoon);
+    assert.ok(teamGot(TEAM[0], 'wants a call'));
+    await post([tap(CLIENT, 'call:n', 'button_reply')]);
+    assert.equal(last(CLIENT).body, `${TEXT.en.keepGoing}\n\n${TEXT.en.name}`);
+    await post([text(CLIENT, 'Any discount for a small shop?')]);
+    const decision = teamGot(TEAM[0], 'needs your decision')!;
+    assert.match(decision.body, /Any discount for a small shop\?[\s\S]*Brief so far:/);
+    assert.ok(last(CLIENT).body.startsWith(TEXT.en.checking));
+  });
+
+  await t.test('phase 1: an upset or urgent client goes straight to a person', async () => {
+    await reset();
+    await teamHi();
+    fx.state.ai = (task, user) => (task === 'extract' ? (/useless/i.test(user) ? { ...blank, kind: 'answer', mood: 'upset' } : { ...blank, kind: 'answer', name: user }) : 500);
+    await toName();
+    await post([text(CLIENT, 'This is useless, nobody replied to me yesterday!')]);
+    assert.equal(last(CLIENT).body, TEXT.en.person);
+    assert.equal(contact().mode, 'human');
+    assert.equal(contact().taken_by, null);
+    const code = contact().code;
+    for (const m of TEAM) assert.ok(teamGot(m, `#${code} ⚠ upset client`));
+    const before = to(CLIENT).length;
+    await post([text(CLIENT, 'Hello??')]);
+    assert.equal(to(CLIENT).length, before, 'the bot stays quiet');
+    for (const m of TEAM) assert.match(last(m).body, /Hello\?\?/, 'forwarded to the whole team');
+    await post([text(TEAM[1], `#${code} bot`)]);
+    assert.equal(contact().mode, 'bot');
+  });
+
+  await t.test('phase 1: abuse and floods block the chat; the team can unblock', async () => {
+    await reset();
+    await teamHi();
+    fx.state.ai = (task, user) => (task === 'extract' ? (/idiot/i.test(user) ? { ...blank, kind: 'answer', abusive: true } : { ...blank, kind: 'answer', name: user }) : 500);
+    await toName();
+    await post([text(CLIENT, 'you idiots')]);
+    assert.equal(contact().mode, 'blocked');
+    const code = contact().code;
+    assert.ok(teamGot(TEAM[0], `#${code} blocked: abusive messages`));
+    const before = to(CLIENT).length;
+    await post([text(CLIENT, 'hello')]);
+    assert.equal(to(CLIENT).length, before, 'no reply to a blocked chat');
+    await post([text(TEAM[0], `#${code} unblock`)]);
+    assert.equal(contact().mode, 'bot');
+
+    await post(Array.from({ length: 10 }, () => text(CLIENT2, 'buy cheap followers now')));
+    assert.equal(contact(CLIENT2).mode, 'blocked', 'the same text flooding in');
+    assert.ok(teamGot(TEAM[0], 'blocked: a flood of messages'));
+  });
+
+  await t.test('phase 1: DELETE MY DATA asks first, then erases the chat, the contact and the lead', async () => {
+    await reset();
+    await teamHi();
+    await toName();
+    await post([text(CLIENT, 'Ravi')]);
+    assert.ok(await lead());
+    await post([text(CLIENT, 'Delete my data')]);
+    assert.deepEqual(last(CLIENT).ids, ['del:y', 'del:n']);
+    await post([tap(CLIENT, 'del:n', 'button_reply')]);
+    assert.equal(last(CLIENT).body, TEXT.en.kept);
+    assert.ok(contact());
+    const code = contact().code;
+    await post([tap(CLIENT, 'del:y', 'button_reply')]);
+    assert.equal(last(CLIENT).body, TEXT.en.deleted);
+    assert.equal(sb.tables.contacts.find((c) => c.wa_id === CLIENT), undefined);
+    assert.equal(sb.tables.messages.filter((m) => m.wa_id === CLIENT && m.dir === 'in').length, 0);
+    assert.equal(await lead(), null);
+    assert.ok(teamGot(TEAM[0], `#${code} asked to delete their data`));
+    await post([text(CLIENT, 'Hi again')]);
+    assert.equal(last(CLIENT).type, 'list', 'a later message starts fresh');
+    assert.notEqual(contact().code, code);
+  });
+
+  await t.test('phase 1: a returning client chooses the earlier enquiry or a new one', async () => {
+    await reset();
+    await toName();
+    for (const a of ['Ravi', 'Ravi Bakery', 'A website']) await post([text(CLIENT, a)]);
+    await post([tap(CLIENT, 'tl:1', 'button_reply')]);
+    const first = contact().lead_id;
+    now += 31 * 24 * 60 * MIN;
+    await post([text(CLIENT, 'Hi')]);
+    assert.deepEqual(last(CLIENT).ids, ['ret:same', 'ret:new']);
+    await post([tap(CLIENT, 'ret:same', 'button_reply')]);
+    assert.equal(last(CLIENT).body, TEXT.en.sameProject);
+    assert.equal(contact().lead_id, first, 'same enquiry, same lead');
+    now += 31 * 24 * 60 * MIN;
+    await post([text(CLIENT, 'Hello')]);
+    await post([tap(CLIENT, 'ret:new', 'button_reply')]);
+    assert.equal(last(CLIENT).type, 'list', 'a new enquiry starts at the menu');
+    assert.notEqual(contact().lead_id, first);
+    assert.deepEqual(contact().fields, {});
   });
 });

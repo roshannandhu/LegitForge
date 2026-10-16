@@ -62,7 +62,7 @@ export function fakeSupabase(now: () => number) {
   };
   function defaults(table: string, row: Row): Row {
     const t = new Date(now()).toISOString();
-    if (table === 'questions') return { status: 'pending', answer: null, answered_by: null, answered_at: null, client_told_at: null, created_at: t, ...row, id: row.id ?? ++seq };
+    if (table === 'questions') return { status: 'pending', kind: 'question', draft: null, draft_en: null, answer: null, answered_by: null, answered_at: null, client_told_at: null, created_at: t, ...row, id: row.id ?? ++seq };
     if (table === 'knowledge') return { embedding: null, status: 'pending', question_id: null, decided_by: null, decided_at: null, created_at: t, ...row, id: row.id ?? ++seq };
     return { created_at: t, ...row };
   }

@@ -24,7 +24,8 @@
     // Model names: check them in Groq's console and Google AI Studio; changing them needs no code change.
     "GROQ_MODEL": "openai/gpt-oss-20b",
     "GEMINI_MODEL": "gemini-3.5-flash-lite",
-    "EMBED_MODEL": "gemini-embedding-001"
+    "EMBED_MODEL": "gemini-embedding-001",
+    "TRAINING_DAYS": "14"                        // every AI answer is a draft for the team for 14 days after the first client
   },
   "observability": { "enabled": true }
 }
