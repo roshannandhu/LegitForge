@@ -156,8 +156,10 @@ export function installFakes(sb: ReturnType<typeof fakeSupabase>) {
   const aiBodies: string[] = [];
   const state = { ai: ((): unknown => 500) as Responder, graphDown: false, embedDown: false, onSend: undefined as undefined | ((s: Sent) => Promise<void>) };
   let n = 0;
+  const counter = { calls: 0 };
   const original = globalThis.fetch;
   globalThis.fetch = (async (input: RequestInfo | URL, init: RequestInit = {}) => {
+    counter.calls++;
     const url = new URL(typeof input === 'string' || input instanceof URL ? input : input.url);
     if (url.host === 'sb.test') return sb.handle(url, init);
     if (url.host === 'graph.facebook.com') {
@@ -166,7 +168,7 @@ export function installFakes(sb: ReturnType<typeof fakeSupabase>) {
       if (state.graphDown) return new Response('{"error":{}}', { status: 400 });
       const i = b.interactive;
       const s: Sent = {
-        id: `wamid.out.${++n}`, to: b.to, type: b.type === 'interactive' ? i.type : b.type,
+        id: `wamid.out.${++n}`, to: b.to ?? b.recipient, type: b.type === 'interactive' ? i.type : b.type,
         body: b.text?.body ?? i?.body?.text ?? b.template?.components?.[0]?.parameters?.map((p: { text: string }) => p.text).join(' | ') ?? '',
         ids: i?.action?.sections?.[0]?.rows?.map((r: { id: string }) => r.id) ?? i?.action?.buttons?.map((x: { reply: { id: string } }) => x.reply.id) ?? [],
         template: b.template?.name,
@@ -193,5 +195,5 @@ export function installFakes(sb: ReturnType<typeof fakeSupabase>) {
     }
     throw new Error(`unexpected fetch ${url}`);
   }) as typeof fetch;
-  return { sent, reads, aiBodies, state, restore: () => { globalThis.fetch = original; } };
+  return { sent, reads, aiBodies, state, counter, restore: () => { globalThis.fetch = original; } };
 }

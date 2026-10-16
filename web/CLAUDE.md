@@ -6,7 +6,7 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
 ## Active Working Directives
 - **Working Directory**: Always work in the `web/` directory. All application code, tests, and configuration live in `web/`.
 - **Target Branch**: Always branch from and target `main-exh9xw`.
-- **Verification**: Run `npm run test:backend` (35 tests, including the WhatsApp bot's) and `npm run build` inside `web/`; review page markup directly or inspect generated static files since browser checks (`check.mjs`) require an active dev server.
+- **Verification**: Run `npm run test:backend` (40 tests, including the WhatsApp bot's) and `npm run build` inside `web/`; review page markup directly or inspect generated static files since browser checks (`check.mjs`) require an active dev server.
 
 ## Current owner decisions (7 October 2026)
 - WhatsApp enquiry bot (16 Oct 2026, owner's decisions; supersedes SETUP.md Part 2 §3–§9): a separate
@@ -139,7 +139,7 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
   language, menus, prompts), bot/supabase/schema.sql (owner runs it), bot/seed.ts (site FAQs as
   approved answers), bot/wrangler.jsonc. Tests: tests/bot.test.ts with tests/bot-fakes.ts.
 - Nothing in app/ or lib/ may import bot/ (the website Worker must stay small); bot/ may import lib/.
-  No SDKs: plain fetch. Bot bundle measured 17.6 KiB gzip.
+  No SDKs: plain fetch. Bot bundle measured 18.8 KiB gzip; a turn stops starting new work near 48 calls or 18 s (io.ts room()) and the cron finishes it.
 - Shares the website's D1 (writes `leads`, source 'whatsapp', column `language` from 0011); never
   applies migrations (no migrations_dir). Chats, team questions and learned answers live in Supabase.
 - Inbound messages are stored before Meta gets its 200 (Supabase down → 500, Meta retries); one turn

@@ -383,4 +383,107 @@ test('WhatsApp bot (fake Meta, Supabase, Groq and Gemini; real Miniflare D1)', a
     await post([text(CLIENT2, 'How long does a website take?')]);
     assert.ok(last(CLIENT2).body.startsWith('Usually one to two weeks.'));
   });
+
+  /* ---- review regressions (each one a confirmed finding) ---- */
+
+  await t.test('a menu tap at the language step, a person request before the brief, thanks after it', async () => {
+    await reset();
+    await teamHi();
+    fx.state.ai = (task, user) => (task === 'extract' ? (/someone/i.test(user) ? { ...blank, kind: 'person' } : { ...blank, kind: 'answer' }) : 500);
+    await post([text(CLIENT, 'Hi')]);
+    await post([text(CLIENT, 'Good morning to the team')]);        // typed instead of tapped: language list
+    await post([tap(CLIENT, 'svc:website')]);                       // then the old menu is tapped
+    assert.ok(!fx.sent.some((s) => s.body === 'undefined' || s.body.includes('undefined')), 'never "undefined"');
+    assert.ok(last(CLIENT).ids.every((id) => id.startsWith('lang:')));
+    assert.equal(contact().service, 'website');
+    await post([tap(CLIENT, 'lang:en')]);
+    await post([text(CLIENT, 'Can I talk to someone?')]);
+    for (const a of ['Ravi', 'Ravi Bakery', 'A website']) await post([text(CLIENT, a)]);
+    await post([tap(CLIENT, 'tl:1', 'button_reply')]);
+    assert.ok(teamGot(TEAM[0], 'asked for a person') && teamGot(TEAM[0], 'brief complete'), 'the full brief still reaches the team');
+    const n0 = to(CLIENT).length;
+    await post([text(CLIENT, 'Thank you')]);
+    assert.equal(to(CLIENT).length, n0, 'no "Noted" for a thank-you');
+    assert.doesNotMatch((await lead())?.message ?? '', /Thank you/);
+  });
+
+  await t.test('team replies: a lead alert is not a question, the review card goes to the client, STOP holds', async () => {
+    await reset();
+    await teamHi();
+    fx.state.ai = (task, user) => {
+      if (task === 'extract') return /hosting/i.test(user) ? question('Do you provide hosting?') : /someone/i.test(user) ? { ...blank, kind: 'person' } : { ...blank, kind: 'answer', name: user };
+      if (task === 'answer') return { answer: '' };
+      if (task === 'faq') return { question_en: 'Do you provide hosting?', answer_en: 'Yes, in your name.' };
+      return 500;
+    };
+    await toName();
+    await post([text(CLIENT, 'Do you do hosting?')]);
+    await post([text(CLIENT, 'Can I talk to someone?')]);
+    const code = contact().code;
+    const leadAlert = teamGot(TEAM[0], 'asked for a person')!;
+    await post([text(TEAM[0], 'Can we call you at 3?', { context: { id: leadAlert.id } })]);
+    assert.equal(last(CLIENT).body, 'Can we call you at 3?');
+    assert.equal(sb.tables.questions[0].status, 'pending', 'a reply to a lead alert does not answer the open question');
+    await post([text(TEAM[0], 'Yes, we set it up in your name.', { context: { id: teamGot(TEAM[0], `#${code} question`)!.id } })]);
+    const card = last(TEAM[0]);
+    assert.equal(card.type, 'button');
+    await post([text(TEAM[0], 'Also, we can start this week.', { context: { id: card.id } })]);
+    assert.equal(last(CLIENT).body, 'Also, we can start this week.', 'a reply to the card is a message to the client');
+    assert.equal(sb.tables.knowledge[0].status, 'pending', 'and never approves anything');
+    await post([text(CLIENT, 'STOP')]);
+    await post([text(TEAM[1], `#${code} take`)]);
+    assert.match(last(TEAM[1]).body, /opted out/);
+    assert.equal(contact().mode, 'stopped');
+  });
+
+  await t.test('team text with a number goes to a Malayalam client exactly as written; money is never generated', async () => {
+    await reset();
+    await teamHi();
+    fx.state.ai = (task, user) => {
+      if (task === 'extract') return /cost/i.test(user) ? question('How much does a website cost?') : question('Can I call you?');
+      if (task === 'answer') return { answer: 'A website costs ₹15,000.' };          // a model that ignored its rules
+      if (task === 'translate') return { text: `[ml] ${user}` };
+      return 500;
+    };
+    await toName(CLIENT, 'ml');
+    await post([text(CLIENT, 'What does a website cost?')]);
+    assert.ok(last(CLIENT).body.startsWith(TEXT.ml.checking), 'the price answer was not sent');
+    await post([text(TEAM[0], `#${contact().code} Call us on 9876543210 any time.`)]);
+    assert.equal(last(CLIENT).body, 'Call us on 9876543210 any time.');
+    assert.match(teamGot(TEAM[0], 'Sent to')!.body, /as you wrote it/);
+  });
+
+  await t.test('an admin delete lasts; reactions are ignored; username-only clients get `recipient`', async () => {
+    await reset();
+    await toName();
+    await db.prepare('DELETE FROM leads WHERE phone = ?').bind(`+${CLIENT}`).run();
+    await post([text(CLIENT, 'Ravi')]);
+    assert.equal(await lead(), null, 'not re-created');
+    const before = fx.sent.length;
+    await post([{ from: CLIENT, id: `wamid.in.${++n}`, timestamp: ts(), type: 'reaction', reaction: { message_id: 'wamid.out.1', emoji: '👍' } }]);
+    assert.equal(fx.sent.length, before);
+    await post([{ from_user_id: 'IN.1349876', id: `wamid.in.${++n}`, timestamp: ts(), type: 'text', text: { body: 'Hi' } }]);
+    const raw = (last('IN.1349876') as Sent & { raw: Row }).raw;
+    assert.equal(raw.recipient, 'IN.1349876');
+    assert.equal(raw.to, undefined);
+  });
+
+  await t.test('a burst of questions stays within the free plan’s 50 calls; the cron finishes the rest', async () => {
+    await reset();
+    await teamHi();
+    let k = 0;
+    fx.state.ai = (task) => (task === 'extract' ? question(`Question number ${++k}?`) : task === 'answer' ? { answer: '' } : 500);
+    await toName();
+    const start = fx.counter.calls;
+    await post(Array.from({ length: 6 }, (_, i) => text(CLIENT, `Question ${i}?`)));
+    assert.ok(fx.counter.calls - start <= 48, `${fx.counter.calls - start} calls in one invocation`);
+    for (let i = 0; i < 5 && sb.tables.messages.some((m) => m.wa_id === CLIENT && m.dir === 'in' && !m.handled_at); i++) {
+      now += 3 * MIN;
+      const c0 = fx.counter.calls;
+      await tick(env, now);
+      assert.ok(fx.counter.calls - c0 <= 48, 'a cron run keeps within the budget too');
+    }
+    assert.equal(sb.tables.questions.length, 6, 'every question reached the team exactly once');
+    assert.ok(sb.tables.messages.filter((m) => m.wa_id === CLIENT && m.dir === 'in').every((m) => m.handled_at));
+  });
 });

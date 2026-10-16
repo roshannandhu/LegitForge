@@ -12,6 +12,7 @@ create table if not exists public.contacts (
   profile_name text,
   code text not null unique,
   lead_id text not null,                        -- the D1 leads.id for this enquiry; a new one after 30 quiet days
+  lead_saved boolean not null default false,    -- inserted into D1 once; later turns only update (an admin delete lasts)
   step text not null default 'start' check (step in ('start','service','language','name','business','need','timeline','done')),
   mode text not null default 'bot' check (mode in ('bot','human','stopped')),
   taken_by text,                                -- team number chatting in person ("take")

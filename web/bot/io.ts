@@ -20,7 +20,15 @@ export interface Env {
   EMBED_MODEL?: string;
   GRAPH_VERSION?: string;
   SITE_URL?: string;
+  /** Per invocation (never a binding): outside calls made so far, and when it started. Workers
+   *  Free allows 50 subrequests per invocation (D1 calls count too), so turns stop early. */
+  run?: { calls: number; t0: number };
 }
+
+/** One more outside call for this invocation's budget. */
+export const count = (env: Env) => { if (env.run) env.run.calls++; };
+/** Room for `n` more calls (and time) in this invocation? */
+export const room = (env: Env, n: number) => !env.run || (env.run.calls + n <= 48 && Date.now() - env.run.t0 < 18_000);
 
 const TIMEOUT = 8000;
 export const clip = (s: string, n: number) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
@@ -31,6 +39,7 @@ export const clip = (s: string, n: number) => (s.length > n ? `${s.slice(0, n - 
  *  the caller decides (the webhook answers 500 so Meta retries). */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function sb<T = any>(env: Env, method: string, path: string, body?: unknown, prefer = 'return=representation'): Promise<T[]> {
+  count(env);
   const r = await fetch(`${env.SUPABASE_URL.replace(/\/+$/, '')}/rest/v1/${path}`, {
     method,
     headers: { apikey: env.SUPABASE_SECRET_KEY, accept: 'application/json', 'content-type': 'application/json', prefer },
@@ -48,12 +57,14 @@ export const vec = (v: number[]) => `[${v.join(',')}]`;
 /* ---------------------------------------------------------------------------- WhatsApp */
 
 /** Sends one message; returns its id, or null when Meta refused it (logged, never thrown). */
-async function wa(env: Env, payload: Record<string, unknown>): Promise<string | null> {
+async function wa(env: Env, { to, ...payload }: { to: string } & Record<string, unknown>): Promise<string | null> {
+  count(env);
   try {
     const r = await fetch(`https://graph.facebook.com/${env.GRAPH_VERSION || 'v25.0'}/${env.WA_PHONE_NUMBER_ID}/messages`, {
       method: 'POST',
       headers: { authorization: `Bearer ${env.WA_ACCESS_TOKEN}`, 'content-type': 'application/json' },
-      body: JSON.stringify({ messaging_product: 'whatsapp', recipient_type: 'individual', ...payload }),
+      // a phone number goes in `to`; a business-scoped user id (clients with a username) in `recipient`
+      body: JSON.stringify({ messaging_product: 'whatsapp', recipient_type: 'individual', ...(/^\d+$/.test(to) ? { to } : { recipient: to }), ...payload }),
       signal: AbortSignal.timeout(TIMEOUT),
     });
     if (!r.ok) { console.error('[wa] send refused', r.status, (await r.text()).slice(0, 300)); return null; }
@@ -68,7 +79,7 @@ export interface Row { id: string; title: string; description?: string }
 export const sendList = (env: Env, to: string, body: string, button: string, rows: Row[], footer?: string) =>
   wa(env, { to, type: 'interactive', interactive: {
     type: 'list', body: { text: clip(body, 4096) }, ...(footer ? { footer: { text: clip(footer, 60) } } : {}),
-    action: { button, sections: [{ rows }] },
+    action: { button, sections: [{ title: clip(button, 24), rows }] },
   } });
 
 export const sendButtons = (env: Env, to: string, body: string, buttons: { id: string; title: string }[]) =>
@@ -86,6 +97,7 @@ export const sendTemplate = (env: Env, to: string, name: string, params: string[
 
 /** Blue ticks plus "typing…" while the reply is worked out (Meta clears it when we reply). */
 export function markRead(env: Env, messageId: string) {
+  count(env);
   return fetch(`https://graph.facebook.com/${env.GRAPH_VERSION || 'v25.0'}/${env.WA_PHONE_NUMBER_ID}/messages`, {
     method: 'POST',
     headers: { authorization: `Bearer ${env.WA_ACCESS_TOKEN}`, 'content-type': 'application/json' },
@@ -105,10 +117,11 @@ export async function validSignature(secret: string, raw: ArrayBuffer, header: s
 
 /* ---------------------------------------------------------------------------------- AI */
 
-/** Phone numbers and emails never reach an AI provider (Gemini's free tier may keep prompts). */
+/** Phone numbers and emails never reach an AI provider (Gemini's free tier may keep prompts).
+ *  Any script's digits (९८७६…, ൯൮…), split by spaces, dots, dashes, slashes or commas. */
 export const redact = (s: string) => s
   .replace(/[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g, '[email]')
-  .replace(/\+?\d[\d\s().-]{6,}\d/g, (m) => (m.replace(/\D/g, '').length >= 8 ? '[number]' : m));
+  .replace(/\+?\p{Nd}[\p{Nd}\s().\/,-]{6,}\p{Nd}/gu, (m) => (m.replace(/\P{Nd}/gu, '').length >= 8 ? '[number]' : m));
 
 export type Provider = 'groq' | 'gemini';
 type Schema = { required: string[]; properties: Record<string, { type: string; enum?: readonly string[] }> };
@@ -131,6 +144,7 @@ export async function chat<T>(env: Env, o: { system: string; user: string; schem
     const url = p === 'groq' ? 'https://api.groq.com/openai/v1/chat/completions'
       : 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions';
     const model = p === 'groq' ? env.GROQ_MODEL || 'openai/gpt-oss-20b' : env.GEMINI_MODEL || 'gemini-3.5-flash-lite';
+    count(env);
     try {
       const r = await fetch(url, {
         method: 'POST',
@@ -155,6 +169,7 @@ export async function chat<T>(env: Env, o: { system: string; user: string; schem
 /** 768 numbers for the knowledge base (Gemini embeddings), or null. */
 export async function embed(env: Env, text: string): Promise<number[] | null> {
   if (!env.GEMINI_API_KEY) return null;
+  count(env);
   try {
     const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${env.EMBED_MODEL || 'gemini-embedding-001'}:embedContent`, {
       method: 'POST',

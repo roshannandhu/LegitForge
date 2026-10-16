@@ -55,7 +55,7 @@ export default async function AdminLeads({ searchParams }: { searchParams: Promi
                   </td>
                   <td>
                     {/* the bot alerts the team on WhatsApp itself; the n8n outbox is for form leads */}
-                    {l.source === 'whatsapp' ? <span>Team alerted on WhatsApp</span> : <>
+                    {l.source === 'whatsapp' ? <span className="muted">WhatsApp chat: the bot alerts the team on WhatsApp when the brief is complete or a person is asked for</span> : <>
                       <span>{l.delivery_status === 'delivered' ? 'Delivered' : l.delivery_status === 'dead' ? 'Failed' : l.delivery_status === 'pending' ? 'Pending' : 'Not queued'}</span>
                       {l.attempts != null && <><br /><span className="muted">{l.attempts} attempts{l.last_error ? ` · ${l.last_error}` : ''}</span></>}
                       {notifications && l.delivery_status !== 'delivered' && <form action={retryLeadAlertAction.bind(null, l.id)} className="admin-inline"><button className="btn btn-ghost btn-sm">Retry alert</button></form>}
