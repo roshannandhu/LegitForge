@@ -28,8 +28,10 @@ const settle = (page) => page.evaluate(() => new Promise((done) => requestAnimat
 const scrollIdle = (page) => page.evaluate(() => new Promise((done, fail) => {
   const deadline = performance.now() + 4000;
   let previous = scrollY, still = 0;
+  // Lenis (laptops) keeps gliding below a pixel per frame after the wheel stops: scrollY can hold
+  // still for frames while it is still moving. It marks <html> with lenis-scrolling until it is done.
   const frame = () => {
-    still = scrollY === previous ? still + 1 : 0;
+    still = scrollY === previous && !document.documentElement.classList.contains('lenis-scrolling') ? still + 1 : 0;
     previous = scrollY;
     if (still >= 8) return done();
     if (performance.now() > deadline) return fail(new Error('Scroll did not settle'));
@@ -58,7 +60,7 @@ const complete = async (page) => {
   const frame = await readTrustFrame(page);
   // Responsive reflow can move the heading below entry while diagnostics still describe
   // the previous viewport. Seek the actual heading endpoint, never a stale dataset end.
-  await scrollTrustTo(page, frame.scrollY + frame.top - (frame.upper + 24) + 8);
+  await scrollTrustTo(page, Math.max(frame.scrollY + frame.top - (frame.upper + 24), frame.scrollY + frame.sectionBottom - frame.upper) + 8);
   await waitOpen(page);
   await assertTrustCopyReadable(page);
 };

@@ -11,7 +11,7 @@ export const readTrustFrame = (page) => page.locator('.cleave[data-read-first]')
     top: heading.top, bottom: heading.bottom, left: heading.left, right: heading.right,
     upper: Math.max(88, (document.querySelector('.site-header')?.getBoundingClientRect().height ?? 72) + 16),
     viewportHeight: innerHeight, viewportWidth: innerWidth, scrollY,
-    height: el.getBoundingClientRect().height, width: el.getBoundingClientRect().width,
+    height: el.getBoundingClientRect().height, width: el.getBoundingClientRect().width, sectionBottom: el.getBoundingClientRect().bottom,
     leftX: x('l'), rightX: x('r'),
     coverVisible: cover.display !== 'none' && cover.visibility === 'visible',
   };
@@ -29,7 +29,7 @@ export async function readTrustRange(page) {
     start: Number(el.dataset.scrollStart), split: Number(el.dataset.scrollSplit),
   }));
   const { start, split } = calibration;
-  const end = frame.scrollY + frame.top - (frame.upper + 24);
+  const end = Math.max(frame.scrollY + frame.top - (frame.upper + 24), frame.scrollY + frame.sectionBottom - frame.upper);
   assert.ok(Number.isFinite(start) && Number.isFinite(end) && end > start, 'no finite calibrated scroll range');
   return { start, split, end };
 }

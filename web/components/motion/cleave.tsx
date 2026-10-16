@@ -55,7 +55,7 @@ function ReadableCleave({ cover, children, label }: CleaveProps) {
     // separately measuring the remaining distance to closed and fully open.
     type Travel = { start: number; split: number; end: number; pivot?: { y: number; p: number } };
     let travel: Travel | undefined;
-    let geometry: { top: number; height: number; width: number; viewport: number; safe: number } | undefined;
+    let geometry: { top: number; height: number; bottom: number; width: number; viewport: number; safe: number } | undefined;
     let animations: Animation[] = [];
     let io: IntersectionObserver | undefined, ro: ResizeObserver | undefined, mo: MutationObserver | undefined;
     const stop = () => {
@@ -120,11 +120,16 @@ function ReadableCleave({ cover, children, label }: CleaveProps) {
         // No trapped cover in a cramped viewport or after a fast jump past the full range.
         if (entryTop <= endTop || box.left < 16 || box.right > innerWidth - 16) { fallback('geometry'); return; }
         const top = box.top + scrollY;
-        const end = top - endTop;
+        const bottom = el.getBoundingClientRect().bottom + scrollY;
+        // The split runs until the section's bottom reaches the header, not just until the
+        // heading does: about twice the scroll, so it opens slowly with the page still moving
+        // (the owner's call, 16 Oct: slower, even speed, no pause).
+        const end = Math.max(top - endTop, bottom - safe);
         const entry = top - entryTop;
         const changed = !!geometry && (Math.abs(top - geometry.top) > 1 || Math.abs(box.height - geometry.height) > 1
+          || Math.abs(bottom - geometry.bottom) > 1
           || innerWidth !== geometry.width || innerHeight !== geometry.viewport || safe !== geometry.safe);
-        geometry = { top, height: box.height, width: innerWidth, viewport: innerHeight, safe };
+        geometry = { top, height: box.height, bottom, width: innerWidth, viewport: innerHeight, safe };
         if (travel && (obscured || rebase || changed)) {
           obscured = false; rebase = false;
           if (scrollY >= end) {

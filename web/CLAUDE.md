@@ -22,7 +22,8 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
   This supersedes historical MR-first instructions in PLAN §22.3.
 - The owner retains the trust steel-split opening effect, controlled by scrolling: begin with
   the full heading readable, hold closed for 25% of remaining travel, then seek the split through
-  the remaining 75%. Scrolling down opens; scrolling up closes again, even after completion.
+  the remaining 75%. Travel ends when the section's bottom reaches the header (not the heading), and
+  the halves move linearly: slower and even (owner, 16 Oct; still no pin). Scrolling down opens; scrolling up closes again, even after completion.
   No timer/autoplay or permanent latch. Keep the paused timeline mounted, strike hallmarks once,
   freeze behind menu/intro/hidden tab, and preserve the painted frame while resizing/rebasing. All viewports remain unpinned;
   reduced motion/no-JS/failed loading show static content. Fix timing rather than removing it.
