@@ -40,7 +40,7 @@ export default async function Privacy() {
         <li><strong>Meta</strong> carries messages you choose to send through WhatsApp.</li>
         <li><strong>Google</strong> verifies administrator sign-ins.</li>
         <li><strong>Supabase</strong> (servers in Mumbai, India) stores WhatsApp conversations with our assistant and the answers it has learned from our team.</li>
-        <li><strong>Groq and Google (Gemini)</strong> read individual WhatsApp messages so the assistant can understand and answer them. Phone numbers and email addresses are removed before anything is sent. Google's free Gemini service may use what it receives to improve its products, so please do not share sensitive personal information in the chat.</li>
+        <li><strong>Groq and Google (Gemini)</strong> read individual WhatsApp messages so the assistant can understand and answer them. Phone numbers and email addresses are removed before anything is sent. Google's free Gemini service may use what it receives to improve its products, so please do not share sensitive personal information in the chat. They also turn our team's replies, and the question each one answers, into general answers for future clients and a short style guide; these hold no personal details and are used only after a team member approves them.</li>
         <li><strong>n8n and Telegram</strong> receive enquiry alerts only when that delivery integration is configured. Enquiries remain in our database if alerts are unavailable or fail.</li>
       </ul>
 
@@ -56,6 +56,7 @@ export default async function Privacy() {
           <tr><th scope="row">Site events</th><td>13 months, then removed by the scheduled cleanup</td></tr>
           <tr><th scope="row">WhatsApp messages with our assistant</th><td>90 days, then removed by the scheduled cleanup</td></tr>
           <tr><th scope="row">WhatsApp chat details (language and answers) and questions passed to our team</th><td>180 days after your last message</td></tr>
+          <tr><th scope="row">General answers the assistant has learned (no personal details)</th><td>Until our team removes them; unapproved suggestions 90 days</td></tr>
           <tr><th scope="row">Administrator sign-in records</th><td>90 days</td></tr>
         </tbody>
       </table>
@@ -63,7 +64,7 @@ export default async function Privacy() {
       <h2>Your choices</h2>
       <ul>
         <li><strong>Stop follow-up messages:</strong> reply STOP to our WhatsApp assistant, or tell us in the conversation that you do not want further messages.</li>
-        <li><strong>Delete your WhatsApp chat:</strong> send DELETE MY DATA to our WhatsApp assistant and confirm. It erases your messages, details and enquiry at once, and our team is asked to delete the alerts about you in their own WhatsApp.</li>
+        <li><strong>Delete your WhatsApp chat:</strong> send DELETE MY DATA to our WhatsApp assistant and confirm. It erases your messages, details and enquiry at once, and our team is asked to delete the alerts about you in their own WhatsApp. If the chat was blocked for abuse, only your number is kept, so the block stays.</li>
         <li><strong>See or delete your data:</strong> {email ? 'email ' : ''}{reach} and we will do it without undue delay.</li>
       </ul>
 

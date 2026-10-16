@@ -1,6 +1,7 @@
 /** Gives the bot the website's own service FAQs as approved answers (Supabase `knowledge`,
  *  source 'site'), so it can answer common questions from day one. Safe to re-run: it replaces
- *  the previous 'site' rows and leaves the team's learned answers alone.
+ *  the previous 'site' rows (keeping the approved translations and wins of unchanged answers;
+ *  the new rows go in before the old ones go) and leaves the team's learned answers alone.
  *
  *    GEMINI_API_KEY=… SUPABASE_SECRET_KEY=… npx tsx bot/seed.ts      (from web/)
  *
@@ -25,8 +26,15 @@ async function main() {
     if (!v) throw new Error(`Embedding failed for "${question}" (rate limit? run again in a minute)`);
     rows.push({ question_en: question, answer_en: a, embedding: vec(v), status: 'approved', source: 'site', decided_by: 'seed', decided_at: new Date().toISOString() });
   }
-  await sb(env, 'DELETE', 'knowledge?source=eq.site', undefined, 'return=minimal');
+  const old = await sb<{ id: number; question_en: string; answer_en: string; translations: object; translations_ok: boolean; wins: number }>(
+    env, 'GET', 'knowledge?source=eq.site&select=id,question_en,answer_en,translations,translations_ok,wins');
+  const same = new Map(old.map((k) => [`${k.question_en}\n${k.answer_en}`, k]));
+  for (const row of rows) {
+    const was = same.get(`${row.question_en}\n${row.answer_en}`);
+    if (was) Object.assign(row, { translations: was.translations, translations_ok: was.translations_ok, wins: was.wins });
+  }
   await sb(env, 'POST', 'knowledge', rows, 'return=minimal');
+  if (old.length) await sb(env, 'DELETE', `knowledge?id=in.(${old.map((k) => k.id).join(',')})`, undefined, 'return=minimal');
   console.log(`Seeded ${rows.length} approved answers from the service pages.`);
 }
 main().catch((e) => { console.error(e instanceof Error ? e.message : e); process.exitCode = 1; });

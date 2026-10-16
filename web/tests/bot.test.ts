@@ -518,10 +518,8 @@ test('WhatsApp bot (fake Meta, Supabase, Groq and Gemini; real Miniflare D1)', a
       await post([tap(TEAM[0], `dr:s:${q.id}`, 'button_reply', 'Send')]);
       assert.equal(last(CLIENT).body, 'Yes, in Malayalam and English.', 'the draft (the approved words) goes to the client as written');
       assert.equal(sb.tables.questions.at(-1)!.status, 'answered');
-      const learned = sb.tables.knowledge.at(-1)!;
-      assert.equal(learned.status, 'approved');
-      assert.equal(learned.answer_en, 'Yes, in Malayalam and English.');
-      assert.match(last(TEAM[0]).body, /Saved for next time/);
+      assert.equal(sb.tables.knowledge.length, 1, 'an approved answer sent again teaches nothing new (no duplicate)');
+      assert.match(last(TEAM[0]).body, /^Sent to #/);
       await post([tap(TEAM[1], `dr:s:${q.id}`, 'button_reply', 'Send')]);
       assert.match(last(TEAM[1]).body, /Already answered/);
 
@@ -783,6 +781,85 @@ test('WhatsApp bot (fake Meta, Supabase, Groq and Gemini; real Miniflare D1)', a
     await post([text(CLIENT2, 'How fast can you start?')]);
     assert.ok(last(CLIENT2).body.startsWith('Usually this week, after a short call.'), 'the answer from a won deal');
   });
+  /* ---- phase 2 review fixes ---- */
+
+  await t.test('phase 2 fixes: Send on an AI-written draft only suggests it; the card works by words when it is a template', async () => {
+    await reset();
+    env.TRAINING_DAYS = '14';
+    try {
+      fx.state.ai = (task, user) => {
+        if (task === 'extract') return question('Do you work weekends?');
+        if (task === 'answer') return { answer: 'We work Monday to Saturday.', answer_en: 'We work Monday to Saturday.' };
+        if (task === 'faq') { assert.ok(JSON.parse(user).client_message, 'the client\'s words are marked as theirs'); return { question_en: 'Do you work weekends?', answer_en: 'Monday to Saturday.' }; }
+        return 500;
+      };
+      await toName();
+      await post([text(CLIENT, 'Weekends?')]);
+      const alert = to(TEAM[0])[0];
+      assert.equal(alert.type, 'template', 'team window closed');
+      await post([text(TEAM[0], 'send', { context: { id: alert.id } })]);
+      assert.equal(last(CLIENT).body, 'We work Monday to Saturday.');
+      const k = sb.tables.knowledge.at(-1)!;
+      assert.equal(k.status, 'pending', 'nothing is approved unseen');
+      const card = last(TEAM[0]);
+      assert.match(card.body, /Q: Do you work weekends\?\nA: Monday to Saturday\./);
+      assert.match(card.body, /reply "approve" or "reject"/);
+      await post([text(TEAM[0], 'approve', { context: { id: card.id } })]);
+      assert.equal(sb.tables.knowledge.at(-1)!.status, 'approved');
+      await post([tap(TEAM[0], `kb:r:${k.id}`, 'button_reply', 'Reject')]);
+      assert.equal(sb.tables.knowledge.at(-1)!.status, 'rejected', 'an approved answer can be withdrawn');
+    } finally { env.TRAINING_DAYS = '0'; }
+  });
+
+  await t.test('phase 2 fixes: wins only break near-ties; Edit drops old translations; prices in any language stay with the team', async () => {
+    await reset();
+    const v = (s: string) => JSON.stringify(fakeEmbedding(s));
+    sb.tables.knowledge.push({ id: 980, question_en: 'Do you build Android apps?', answer_en: 'Yes, Android apps too.', embedding: v('Do you build Android apps?'), status: 'approved', source: 'team', wins: 0 });
+    sb.tables.knowledge.push({ id: 981, question_en: 'Do you build Android apps cheap?', answer_en: 'Yes, cheap ones.', embedding: v('Do you build Android apps cheap?'), status: 'approved', source: 'team', wins: 5 });
+    fx.state.ai = (task) => (task === 'extract' ? question('Do you build Android apps?') : 500);
+    await toName();
+    await post([text(CLIENT, 'Android apps?')]);
+    assert.ok(last(CLIENT).body.startsWith('Yes, Android apps too.'), 'the closer answer, despite the other one\'s wins');
+
+    await teamHi();
+    sb.tables.knowledge.find((k) => k.id === 980)!.translations = { ml: 'old' };
+    await post([tap(TEAM[0], 'kb:e:980', 'button_reply', 'Edit')]);
+    await post([text(TEAM[0], 'Yes, Android and iPhone apps.', { context: { id: last(TEAM[0]).id } })]);
+    const k = sb.tables.knowledge.find((x) => x.id === 980)!;
+    assert.equal(k.answer_en, 'Yes, Android and iPhone apps.');
+    assert.deepEqual(k.translations, {});
+    await post([tap(TEAM[0], 'tr:a:980', 'button_reply', 'Approve all')]);           // an old card
+    await toName(CLIENT2, 'hi');
+    fx.state.ai = (task) => (task === 'extract' ? question('Do you build Android apps?') : task === 'answer' ? { answer: 'हाँ, लगभग 15 हज़ार में।', answer_en: 'Yes, for about 15 thousand.' } : 500);
+    await post([text(CLIENT2, 'Android ऐप?')]);
+    assert.ok(!to(CLIENT2).some((m) => m.body.includes('हज़ार')), 'a price in Hindi is never sent');
+    assert.ok(last(CLIENT2).body.startsWith(TEXT.hi.checking));
+  });
+
+  await t.test('phase 2 fixes: the weekly report goes out once even when a tick fails, and team messages run once', async () => {
+    await reset();
+    await teamHi();
+    now = Date.parse('2026-10-19T04:30:00Z');                     // Monday 10:00 IST
+    await teamHi();
+    sb.state.down = true;
+    await tick(env, now).catch(() => {});
+    sb.state.down = false;
+    now += 2 * MIN;
+    await tick(env, now);
+    assert.equal(to(TEAM[0]).filter((m) => m.body.startsWith('Weekly learning report')).length, 1, 'the next tick in the hour sends it');
+    now += 2 * MIN;
+    await tick(env, now);
+    assert.equal(to(TEAM[0]).filter((m) => m.body.startsWith('Weekly learning report')).length, 1, 'once');
+
+    await toName();
+    const code = contact().code, before = to(CLIENT).length;
+    sb.tables.messages.push({ wamid: 'wamid.team.race', wa_id: null, team: TEAM[0], dir: 'in', body: `#${code} Hello from the team`, reply_id: null, ctx_id: null,
+      profile: null, question_id: null, knowledge_id: null, handled_at: null, at: new Date(now - 5 * MIN).toISOString() });
+    await Promise.all([tick(env, now), tick(env, now)]);                    // two cron runs see the same stuck message
+    assert.equal(to(CLIENT).filter((m) => m.body === 'Hello from the team').length, 1, 'claimed: sent once');
+    assert.equal(to(CLIENT).length, before + 1);
+  });
+
   /* ---- phase 1 review fixes ---- */
 
   await t.test('phase 1 fixes: STOP always opts out (after a month, or sent many times), never a flood block', async () => {
@@ -824,7 +901,7 @@ test('WhatsApp bot (fake Meta, Supabase, Groq and Gemini; real Miniflare D1)', a
     } finally { env.TRAINING_DAYS = '0'; }
   });
 
-  await t.test('phase 1 fixes: the draft card keeps the draft and its English whole (1024 / 900 limits)', async () => {
+  await t.test('phase 1 fixes: the draft card keeps the whole draft within WhatsApp limits (1024 / 900)', async () => {
     await reset();
     await teamHi();
     env.TRAINING_DAYS = '14';
@@ -836,7 +913,8 @@ test('WhatsApp bot (fake Meta, Supabase, Groq and Gemini; real Miniflare D1)', a
       const card = teamGot(TEAM[0], 'draft reply')!;
       assert.ok(card.body.length <= 1024, String(card.body.length));
       const q = sb.tables.questions.at(-1)!;
-      assert.ok(card.body.includes(q.draft) && card.body.includes(q.draft_en), 'both drafts uncut on the card');
+      assert.ok(card.body.includes(q.draft), 'the words that would be sent, uncut');
+      assert.equal(q.draft.length, 700);
       assert.ok(card.body.indexOf('Tap Send') < 900, 'the instruction survives a template too');
     } finally { env.TRAINING_DAYS = '0'; }
   });

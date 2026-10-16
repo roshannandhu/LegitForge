@@ -34,7 +34,12 @@ const AI_PER_DAY = 40;          // AI calls per client per day; past it, the fix
 const MATCH = 0.8;              // knowledge similarity needed to use an approved answer
 const SURE = 0.9;               // ...and to send it without a team member checking it first
 /** A generated answer that names money is never sent: prices are the team's to give. */
-const MONEY = /₹|\brs\.?\s*\d|\binr\b|rupees?|roopa|rupa\b|lakhs?|\$\s*\d|discount|\d+\s*%|\b\d+(\.\d+)?\s*k\b|\d{1,3}(,\d{2,3})+|രൂപ|रुपय|हज़ार|हजार|ರೂಪಾಯಿ/i;
+const MONEY = new RegExp([
+  '₹', '\\brs\\.?\\s*\\p{Nd}', '\\binr\\b', 'rupees?', 'roopa', 'rupa\\b', 'lakhs?', 'laksh', 'crores?', 'thousand', 'aayiram', '\\$\\s*\\p{Nd}',
+  'discount', '\\p{Nd}+\\s*%', '\\b\\p{Nd}+(\\.\\p{Nd}+)?\\s*k\\b', '\\p{Nd}{1,3}(,\\p{Nd}{2,3})+', '\\p{Nd}{4,}', '\\/-',
+  // Malayalam, Hindi, Kannada: rupees, thousand, lakh (ലക്ഷ്യം "goal", രൂപകൽപ്പന "design" are not money)
+  'രൂപയ', '\\p{Nd}\\s*രൂപ', 'ആയിര', '\\p{Nd}\\s*ലക്ഷ', 'रुपय', 'रु\\.?\\s*\\p{Nd}', 'लाख', 'हज़ार', 'हजार', 'ರೂಪಾಯಿ', 'ರೂ\\.?\\s*\\p{Nd}', 'ಸಾವಿರ', '\\p{Nd}\\s*ಲಕ್ಷ',
+].join('|'), 'iu');
 /** "Delete my data" in the bot's languages (the Yes/No buttons guard against false matches). */
 const DELETE_ASK = /^(please\s+)?(delete|erase|remove)\s+(all\s+)?(of\s+)?(my\s+)?(data|details|chat|info(rmation)?)\b|ente\s+data\s+delete|ഡാറ്റ\s*ഡിലീറ്റ്|डेटा\s*(हटा|डिलीट)|ಡೇಟಾ\s*ಅಳಿಸ/i;
 
@@ -47,7 +52,7 @@ interface Fields {
 export interface Contact {
   wa_id: string; phone: string | null; profile_name: string | null; code: string; lead_id: string; lead_saved: boolean;
   step: Step; mode: 'bot' | 'human' | 'stopped' | 'blocked'; taken_by: string | null; lang: Lang | null; service: ServiceKey | null;
-  fields: Fields; alerted_at: string | null; busy_until: string | null; turns: number; turns_day: string | null; last_in_at: string;
+  fields: Fields; alerted_at: string | null; busy_until: string | null; won_counted?: boolean; turns: number; turns_day: string | null; last_in_at: string;
 }
 export interface Msg {
   wamid: string; wa_id: string | null; team: string | null; dir: 'in' | 'out'; body: string | null; reply_id: string | null;
@@ -146,31 +151,37 @@ export function inbound(body: any, env: Env): Msg[] {
 
 async function processFresh(env: Env, fresh: Msg[]) {
   for (const m of fresh.filter((m) => m.team)) {
-    if (!room(env, 16)) return;                                // the cron picks up the rest
+    if (!room(env, 20)) return;                                // the cron picks up the rest
     await runTeam(env, m);
   }
   for (const waId of new Set(fresh.filter((m) => m.wa_id && !m.team).map((m) => m.wa_id!))) await runClient(env, waId);
 }
 
-/** A team message, handled once; if it fails, the member is told to send it again. Once handled
- *  it is linked to the client it was about, so DELETE MY DATA and the purge remove it too. */
+/** A team message, handled once: claimed first (the webhook and the cron never both run it); if it
+ *  fails, the member is told to send it again, unless the client already has it. Once handled it is
+ *  linked to the client it was about, so DELETE MY DATA and the purge remove it too. */
 async function runTeam(env: Env, m: Msg) {
-  const now = clock.now(), about: { wa_id?: string } = {};
+  const now = clock.now(), about: About = {};
+  const [mine] = await sb(env, 'PATCH', `messages?wamid=eq.${q(m.wamid)}&handled_at=is.null`, { handled_at: iso(now) });
+  if (!mine) return;
   try { await handleTeam(env, m, now, about); } catch (e) {
     console.error('[bot] team message failed', String(e));
-    await sendText(env, m.team!, 'That did not go through. Please send it again.');
+    await sendText(env, m.team!, about.sent ? `${about.sent} (Saving it for next time failed.)` : 'That did not go through. Please send it again.');
   }
-  await sb(env, 'PATCH', `messages?wamid=eq.${q(m.wamid)}`, { handled_at: iso(now), ...(about.wa_id ? { wa_id: about.wa_id } : {}) }, 'return=minimal');
+  if (about.wa_id) await sb(env, 'PATCH', `messages?wamid=eq.${q(m.wamid)}`, { wa_id: about.wa_id }, 'return=minimal');
 }
+/** What a team message was about, and the note once the client got it (so a later error never asks for a resend). */
+interface About { wa_id?: string; sent?: string }
 
 /* ================================================================================ clients */
 
 /** One client's unhandled messages, one turn at a time (the lock), then check again. */
 export async function runClient(env: Env, waId: string) {
-  // The worst message: AI calls, a question, and a copy (window check, send, store) per team member.
-  const per = 15 + 3 * teamIds(env).size;
+  // The worst message: AI calls, a question and a complete-brief alert, each copied to every team
+  // member (window check, send, store); 4 more for the commit (lead, handled marks, contact, more?).
+  const per = 15 + 6 * teamIds(env).size;
   for (let round = 0; round < 3; round++) {
-    if (!room(env, per + 3)) return;                           // the cron picks up the rest
+    if (!room(env, per + 4)) return;                           // the cron picks up the rest
     const now = clock.now(), until = iso(now + LOCK);
     const claimed = await claim(env, waId, now, until);
     if (!claimed) return;                                      // another invocation is on it
@@ -190,7 +201,7 @@ export async function runClient(env: Env, waId: string) {
       const optOut = pending.some((m) => /^(stop|unsubscribe)$/i.test((m.body ?? '').trim()));
       if (!optOut && (burst.length >= 10 || [...same.values()].some((n) => n >= 4))) await turn.block('a flood of messages', pending.at(-1)?.body ?? '');
       for (const m of pending) {
-        if (done.length && !room(env, per)) break;             // always at least one message per turn
+        if (done.length && !room(env, per + 4)) break;         // always at least one message per turn
         const snapshot = structuredClone(turn.c);
         try {
           await turn.handle(m); done.push(m);
@@ -406,6 +417,8 @@ class Turn {
     count(this.env);
     await this.env.DB.prepare(`DELETE FROM leads WHERE source = 'whatsapp' AND (id IN (${ids.map(() => '?').join(',')}) OR (phone IS NOT NULL AND phone = ?))`)
       .bind(...ids, c.phone ? `+${c.phone}` : null).run();
+    const theirs = await sb<Question>(this.env, 'GET', `questions?wa_id=eq.${q(c.wa_id)}&select=id`);
+    if (theirs.length) await sb(this.env, 'DELETE', `knowledge?status=eq.pending&question_id=in.(${theirs.map((x) => x.id).join(',')})`, undefined, 'return=minimal');
     await sb(this.env, 'DELETE', `questions?wa_id=eq.${q(c.wa_id)}`, undefined, 'return=minimal');
     if (c.mode === 'blocked') {
       Object.assign(c, { profile_name: null, lead_id: crypto.randomUUID(), lead_saved: true, step: 'start', taken_by: null, lang: null, service: null, fields: {}, alerted_at: null });
@@ -439,8 +452,9 @@ class Turn {
 
   private restart() {
     const prev = [...(this.c.fields.prev_leads ?? []), ...(this.c.lead_saved ? [this.c.lead_id] : [])].slice(-10);
+    // ponytail: wins follow the current enquiry only; an earlier one marked Won later is not credited
     Object.assign(this.c, {
-      lead_id: crypto.randomUUID(), lead_saved: false, step: 'start', mode: 'bot', taken_by: null, service: null,
+      lead_id: crypto.randomUUID(), lead_saved: false, won_counted: false, step: 'start', mode: 'bot', taken_by: null, service: null,
       fields: prev.length ? { prev_leads: prev } : {}, alerted_at: null,
     });
   }
@@ -529,8 +543,10 @@ class Turn {
       const v = await embed(this.env, questionEn);
       const found = v ? await sb<Knowledge>(this.env, 'POST', 'rpc/match_knowledge',
         { query_embedding: vec(v), match_threshold: MATCH, match_count: 3 }).catch(() => []) : [];
-      const matches = [...found].sort((a, b) => score(b) - score(a));
-      const top = matches[0], sure = (top?.similarity ?? 0) >= SURE;
+      // Wins only break near-ties (within 0.02 of the closest); a looser answer never wins on them.
+      const best = Math.max(0, ...found.map((k) => k.similarity ?? 0)), matches = found;
+      const top = found.filter((k) => (k.similarity ?? 0) >= best - 0.02).sort((a, b) => score(b) - score(a))[0];
+      const sure = (top?.similarity ?? 0) >= SURE;
       // A close match already has the approved words: English as written, other languages from
       // the translations the team approved. No AI call, the same answer every time.
       let answer = !sure ? undefined : !c.lang || c.lang === 'en' ? top.answer_en : top.translations_ok ? top.translations?.[c.lang] : undefined;
@@ -547,15 +563,14 @@ class Turn {
         // Sent straight away only when an approved answer matches closely and training is over;
         // otherwise the team gets the draft: one tap sends it, and that approval teaches the bot.
         if (sure && !(await training(this.env, this.now))) {
-          await sb(this.env, 'POST', 'questions', {
-            wa_id: c.wa_id, question: original, question_en: questionEn, status: 'answered', kind: 'auto', answer: clip(answer, 600),
-            answered_by: 'bot', answered_at: iso(this.now), knowledge_id: top.id,
-          }, 'return=minimal');
-          return clip(answer, 600);
+          await sb(this.env, 'POST', 'questions?on_conflict=wamid', {
+            wa_id: c.wa_id, wamid: this.wamid || null, question: original, question_en: questionEn, status: 'answered', kind: 'auto',
+            answer: clip(answer, 600), answered_by: 'bot', answered_at: iso(this.now), knowledge_id: top.id,
+          }, 'resolution=ignore-duplicates,return=minimal');
+          return answer;                                                     // whole: the approved words are never cut
         }
-        // Sized so the draft and its English fit the team's card (1024 characters, a template 900).
-        const two = !!c.lang && c.lang !== 'en';
-        await this.escalate(original, questionEn, { kind: 'draft', draft: clip(answer, two ? 420 : 600), draft_en: clip(answerEn ?? answer, two ? 330 : 600) });
+        // A draft of an approved answer keeps its id: Send then teaches nothing new (no duplicate).
+        await this.escalate(original, questionEn, { kind: 'draft', draft: clip(answer, 700), draft_en: clip(answerEn ?? answer, 700), knowledge_id: sure ? top.id : null });
         return t(c.lang, 'checking');
       }
     }
@@ -565,12 +580,12 @@ class Turn {
 
   /** A question for the team: stored, then sent with the client's words, the brief so far and,
    *  for a draft, the reply the bot would send with [Send] [Write my own]. */
-  private async escalate(original: string, questionEn: string, o: { kind: Question['kind']; draft?: string; draft_en?: string }) {
+  private async escalate(original: string, questionEn: string, o: { kind: Question['kind']; draft?: string; draft_en?: string; knowledge_id?: number | null }) {
     const c = this.c, other = c.lang && c.lang !== 'en';
     // Keyed on the client's message: a retry after a failure part-way reuses the same question.
     let [question] = await sb<Question>(this.env, 'POST', 'questions?on_conflict=wamid', {
       wa_id: c.wa_id, wamid: this.wamid || null, question: original, question_en: questionEn, status: 'pending', kind: o.kind,
-      draft: o.draft ?? null, draft_en: o.draft_en ?? null,
+      draft: o.draft ?? null, draft_en: o.draft_en ?? null, knowledge_id: o.knowledge_id ?? null,
     }, 'resolution=ignore-duplicates,return=representation');
     if (!question) [question] = await sb<Question>(this.env, 'GET', `questions?wamid=eq.${q(this.wamid)}`);
     await this.saveLead();
@@ -578,10 +593,11 @@ class Turn {
     // A draft comes first, then what to do, then the context: WhatsApp cuts a button message at
     // 1024 characters (a template at 900), and only the context may be cut, never the draft.
     const asked = `Client: "${clip(original, o.draft ? 150 : 600)}"${questionEn !== original ? `\nIn English: ${clip(questionEn, o.draft ? 150 : 600)}` : ''}`;
+    const top = `#${c.code} ${head} · ${who(c)} · ${langName(c.lang)}`, draft = `Draft reply${other ? ` (${langName(c.lang)})` : ''}: ${o.draft}`;
+    const tap = 'Tap Send, or reply to this message with your own answer.';
+    const left = 880 - top.length - draft.length - tap.length;              // the English gets what is left
     const body = (o.draft
-      ? [`#${c.code} ${head} · ${who(c)} · ${langName(c.lang)}`,
-        `Draft reply${other ? ` (${langName(c.lang)})` : ''}: ${o.draft}${other ? `\nIn English: ${o.draft_en}` : ''}`,
-        'Tap Send, or reply to this message with your own answer.', '', asked, brief(c)]
+      ? [top, `${draft}${other && o.draft_en && left > 60 ? `\nIn English: ${clip(o.draft_en, left - 15)}` : ''}`, tap, '', asked, brief(c)]
       : [`#${c.code} ${head} · ${who(c)} · ${serviceLabel(c)} · ${langName(c.lang)}`, asked, brief(c), '',
         `Reply to this message with the answer (I translate it for the client). "#${c.code} take" = chat with them yourself.`]).join('\n');
     const sent = await toTeam(this.env, this.now, body, { wa_id: c.wa_id, question_id: question.id }, undefined,
@@ -660,7 +676,7 @@ async function toTeam(env: Env, now: number, text: string, link: { wa_id?: strin
     // Outside the 24-hour window only the template goes out (no buttons): a text reply still works.
     const id = !open ? await sendTemplate(env, member, 'team_alert', [code, text])
       : buttons ? await sendButtons(env, member, text, buttons) : await sendText(env, member, text);
-    if (id) { sent++; await storeOut(env, now, id, member, text, link); }
+    if (id) { sent++; if (link.wa_id || link.question_id || link.knowledge_id) await storeOut(env, now, id, member, text, link); }
   }
   return sent;
 }
@@ -674,7 +690,7 @@ async function storeOut(env: Env, now: number, wamid: string, member: string, bo
 
 const HELP = 'Reply (swipe right) to a question or lead message to answer it, or start with #CODE then your message.\n"#CODE take" = chat with the client yourself, "#CODE bot" = hand back to the bot, "#CODE unblock" = undo a block.';
 
-async function handleTeam(env: Env, m: Msg, now: number, about: { wa_id?: string } = {}) {
+async function handleTeam(env: Env, m: Msg, now: number, about: About = {}) {
   const member = m.team!, text = (m.body ?? '').trim();
   const reply = async (body: string, link: { wa_id?: string; knowledge_id?: number; question_id?: number } = {}) => {
     const id = await sendText(env, member, body);
@@ -694,7 +710,7 @@ async function handleTeam(env: Env, m: Msg, now: number, about: { wa_id?: string
     const [question] = await sb<Question>(env, 'GET', `questions?id=eq.${dr[2]}`);
     if (!question) return reply('That question is gone (the client may have deleted their data).');
     about.wa_id = question.wa_id;
-    if (dr[1] === 's') return sendDraft(env, now, member, question, reply);
+    if (dr[1] === 's') return sendDraft(env, now, member, question, reply, about);
     return reply('Reply to this message with your answer.', { wa_id: question.wa_id, question_id: question.id });
   }
 
@@ -705,7 +721,14 @@ async function handleTeam(env: Env, m: Msg, now: number, about: { wa_id?: string
     [contact] = await sb<Contact>(env, 'GET', `contacts?code=eq.${q(code[1].toUpperCase())}`);
   } else if (m.ctx_id) {
     [o] = await sb<Msg>(env, 'GET', `messages?wamid=eq.${q(m.ctx_id)}`);
-    if (o?.knowledge_id) return saveEdit(env, now, member, o.knowledge_id, text, reply);   // only the Edit prompt has one
+    // A save-for-next-time card (a template carries no buttons): "approve" / "reject" do what the
+    // buttons do; other words on a client's card go to that client, and on the Edit prompt or a
+    // weekly card (no client) they are the better answer.
+    if (o?.knowledge_id) {
+      if (/^approve[\s.!]*$/i.test(text)) return review(env, now, member, 'a', o.knowledge_id, reply);
+      if (/^reject[\s.!]*$/i.test(text)) return review(env, now, member, 'r', o.knowledge_id, reply);
+      if (!o.wa_id) return saveEdit(env, now, member, o.knowledge_id, text, reply);
+    }
     questionId = o?.question_id ?? null;
     if (o?.wa_id) [contact] = await sb<Contact>(env, 'GET', `contacts?wa_id=eq.${q(o.wa_id)}`);
   }
@@ -740,7 +763,7 @@ async function handleTeam(env: Env, m: Msg, now: number, about: { wa_id?: string
   // "send" in reply to a draft's alert (e.g. the template, which carries no buttons) sends the draft.
   // Not "yes"/"ok" (those may be the answer itself), and never in reply to the "Write my own" prompt.
   if (pending?.kind === 'draft' && pending.draft && /^(send|👍)[\s.!]*$/i.test(rest) && (!o || (o.body ?? '').startsWith('#'))) {
-    return sendDraft(env, now, member, pending, reply);
+    return sendDraft(env, now, member, pending, reply, about);
   }
   if (pending) {
     const [won] = await sb<Question>(env, 'PATCH', `questions?id=eq.${pending.id}&status=eq.pending`,
@@ -748,7 +771,12 @@ async function handleTeam(env: Env, m: Msg, now: number, about: { wa_id?: string
     if (!won) return reply('Someone answered this a moment ago.');
   }
   const sent = await relay(env, now, contact, rest);
-  if (!sent.ok) return reply(sent.note, { wa_id: contact.wa_id });
+  if (!sent.ok) {
+    // Nothing reached the client: the question stays open (the 10-minute message, a later answer).
+    if (pending) await sb(env, 'PATCH', `questions?id=eq.${pending.id}`, { status: 'pending', answer: null, answered_by: null, answered_at: null }, 'return=minimal');
+    return reply(sent.note, { wa_id: contact.wa_id });
+  }
+  about.sent = sent.note;
   if (pending) return suggest(env, now, member, contact, pending.question_en, rest, sent.note, pending.id, reply);
   // A reply the team wrote on its own (not to a bot question) can teach the bot too, when it
   // answers what the client last asked; the AI returns nothing for small talk and scheduling.
@@ -765,22 +793,27 @@ async function suggest(env: Env, now: number, member: string, contact: Contact, 
   questionId: number | null, reply: Reply) {
   const qa = await chat<{ question_en: string; answer_en: string }>(env, {
     system: generalisePrompt, schema: QA_SCHEMA, name: 'faq', prefer: ['groq', 'gemini'],
-    user: `Client message: ${question}\nTeam reply: ${answer}`,
+    user: JSON.stringify({ client_message: question, team_reply: answer }),
   });
   if (!qa?.question_en.trim() || !qa.answer_en.trim()) return reply(note, { wa_id: contact.wa_id });
   const [k] = await sb<Knowledge>(env, 'POST', 'knowledge', {
     question_en: clip(qa.question_en, 200), answer_en: clip(qa.answer_en, 700), source: 'team', status: 'pending', question_id: questionId,
   });
-  const body = `${note}\n\nSave this for next time?\nQ: ${k.question_en}\nA: ${k.answer_en}`;
-  const id = await sendButtons(env, member, body, [
-    { id: `kb:a:${k.id}`, title: 'Approve' }, { id: `kb:e:${k.id}`, title: 'Edit' }, { id: `kb:r:${k.id}`, title: 'Reject' },
-  ]);
-  if (id) await storeOut(env, now, id, member, body, { wa_id: contact.wa_id });   // a reply to this card goes to the client
+  await card(env, now, k, note, contact.wa_id, [member]);
+}
+
+/** "Save this for next time?" with Approve / Edit / Reject. Outside a member's 24-hour window it
+ *  arrives as the template (no buttons): replying "approve", "reject" or a better answer works too. */
+async function card(env: Env, now: number, k: Knowledge, note: string, waId?: string, members?: string[]) {
+  const body = `${note ? `${note}\n\n` : ''}Save this for next time?\nQ: ${k.question_en}\nA: ${k.answer_en}\n\nTap a button, or reply "approve" or "reject"${waId ? '' : ' or a better answer'}.`;
+  return toTeam(env, now, body, { wa_id: waId, knowledge_id: k.id }, members,
+    [{ id: `kb:a:${k.id}`, title: 'Approve' }, { id: `kb:e:${k.id}`, title: 'Edit' }, { id: `kb:r:${k.id}`, title: 'Reject' }]);
 }
 
 /** After an answer is approved: one translation into every other language, shown in full, with
  *  [Approve all] [Skip]. Approved translations are used word for word (no AI at reply time). */
 async function offerTranslations(env: Env, member: string, k: { id: number; question_en: string; answer_en: string }, tone: string | null) {
+  if (redact(k.answer_en) !== k.answer_en) return;                       // the AI would see "[number]" and copy it
   const r = await chat<Record<(typeof TRANSLATED)[number], string>>(env, {
     system: translationsPrompt(tone), schema: TRANSLATIONS_SCHEMA, name: 'translations', prefer: ['gemini'], user: k.answer_en,
   });
@@ -817,8 +850,9 @@ async function relay(env: Env, now: number, c: Contact, text: string, asIs = fal
 type Reply = (body: string, link?: { wa_id?: string; knowledge_id?: number; question_id?: number }) => Promise<void>;
 
 /** [Send] on a draft: the bot's reply goes to the client as written (it is already in their
- *  language) and, since a team member approved it, it is saved as an approved answer. */
-async function sendDraft(env: Env, now: number, member: string, question: Question, reply: Reply) {
+ *  language). A draft of an approved answer teaches nothing new; any other becomes a suggested
+ *  answer that the member reads in full and approves, like a typed one. */
+async function sendDraft(env: Env, now: number, member: string, question: Question, reply: Reply, about: About = {}) {
   if (question.status !== 'pending') return reply(`Already answered by ${question.answered_by === member ? 'you' : `+${question.answered_by}`}.`);
   if (!question.draft) return reply('There is no draft for this one. Reply to this message with your answer.', { wa_id: question.wa_id, question_id: question.id });
   const [contact] = await sb<Contact>(env, 'GET', `contacts?wa_id=eq.${q(question.wa_id)}`);
@@ -832,36 +866,16 @@ async function sendDraft(env: Env, now: number, member: string, question: Questi
     await sb(env, 'PATCH', `questions?id=eq.${question.id}`, { status: 'pending', answer: null, answered_by: null, answered_at: null }, 'return=minimal');
     return reply(sent.note, { wa_id: contact.wa_id });
   }
-  // Saved like a typed answer: generalised first (no names, prices or dates), then approved, since
-  // the member approved the draft; without an embedding it waits for the usual Approve card.
-  const qa = await chat<{ question_en: string; answer_en: string }>(env, {
-    system: generalisePrompt, schema: QA_SCHEMA, name: 'faq', prefer: ['groq', 'gemini'],
-    user: `Client message: ${question.question_en}\nTeam reply: ${question.draft_en || question.draft}`,
-  });
-  if (!qa?.question_en.trim() || !qa.answer_en.trim()) return reply(`${sent.note} Nothing general to save from it.`, { wa_id: contact.wa_id });
-  const v = await embed(env, qa.question_en);
-  const [k] = await sb<Knowledge>(env, 'POST', 'knowledge', {
-    question_en: clip(qa.question_en, 200), answer_en: clip(qa.answer_en, 700), source: 'team',
-    status: v ? 'approved' : 'pending', embedding: v ? vec(v) : null, question_id: question.id, decided_by: v ? member : null, decided_at: v ? iso(now) : null,
-  }).catch(() => [] as Knowledge[]);
-  if (!k) return reply(`${sent.note} Not saved for next time (storage busy).`, { wa_id: contact.wa_id });
-  if (!v) {
-    const body = `${sent.note}\n\nSave this for next time?\nQ: ${k.question_en}\nA: ${k.answer_en}`;
-    const id = await sendButtons(env, member, body, [
-      { id: `kb:a:${k.id}`, title: 'Approve' }, { id: `kb:e:${k.id}`, title: 'Edit' }, { id: `kb:r:${k.id}`, title: 'Reject' },
-    ]);
-    if (id) await storeOut(env, now, id, member, body, { wa_id: contact.wa_id });
-    return;
-  }
-  await reply(`${sent.note} Saved for next time.`, { wa_id: contact.wa_id });
-  await offerTranslations(env, member, k, await toneOf(env));
+  about.sent = sent.note;
+  if (question.knowledge_id) return reply(sent.note, { wa_id: contact.wa_id });
+  return suggest(env, now, member, contact, question.question_en, question.draft_en || question.draft, sent.note, question.id, reply);
 }
 
 async function review(env: Env, now: number, member: string, action: 'a' | 'e' | 'r', id: number, reply: Reply) {
   if (action === 'e') return reply('Reply to this message with the corrected answer.', { knowledge_id: id });
-  if (action === 'r') {
-    const [k] = await sb(env, 'PATCH', `knowledge?id=eq.${id}&status=eq.pending`, { status: 'rejected', decided_by: member, decided_at: iso(now) });
-    return reply(k ? 'Discarded.' : 'This one was already decided.');
+  if (action === 'r') {                                                     // also withdraws an approved answer
+    const [k] = await sb(env, 'PATCH', `knowledge?id=eq.${id}&status=in.(pending,approved)`, { status: 'rejected', decided_by: member, decided_at: iso(now) });
+    return reply(k ? 'Discarded: I will not use it.' : 'This one was already discarded.');
   }
   const [k] = await sb<Knowledge>(env, 'GET', `knowledge?id=eq.${id}&status=eq.pending`);
   if (!k) return reply('This one was already decided.');
@@ -869,7 +883,8 @@ async function review(env: Env, now: number, member: string, action: 'a' | 'e' |
   if (!v) return reply('I could not save it right now. Tap Approve again in a minute.');
   const [ok] = await sb(env, 'PATCH', `knowledge?id=eq.${id}&status=eq.pending`, { status: 'approved', embedding: vec(v), decided_by: member, decided_at: iso(now) });
   await reply(ok ? 'Saved ✅ I will answer this myself next time.' : 'This one was already decided.');
-  if (ok) await offerTranslations(env, member, k, await toneOf(env));
+  // the answer is saved: a failure from here on never asks the member to tap again
+  if (ok) await offerTranslations(env, member, k, await toneOf(env)).catch((e) => console.error('[bot] translations not offered', String(e)));
 }
 
 async function saveEdit(env: Env, now: number, member: string, id: number, text: string, reply: Reply) {
@@ -877,9 +892,11 @@ async function saveEdit(env: Env, now: number, member: string, id: number, text:
   if (!k || !text) return reply(HELP);
   const v = await embed(env, k.question_en);
   if (!v) return reply('I could not save it right now. Reply with the answer again in a minute.', { knowledge_id: id });
-  await sb(env, 'PATCH', `knowledge?id=eq.${id}`, { answer_en: clip(text, 700), status: 'approved', embedding: vec(v), decided_by: member, decided_at: iso(now), translations_ok: false }, 'return=minimal');
+  // the old translations go too: an earlier "Approve all" must not bring back the old answer
+  await sb(env, 'PATCH', `knowledge?id=eq.${id}`, { answer_en: clip(text, 700), status: 'approved', embedding: vec(v), decided_by: member, decided_at: iso(now), translations: {}, translations_ok: false }, 'return=minimal');
   await reply('Saved your answer ✅ I will use it next time.');
-  await offerTranslations(env, member, { id, question_en: k.question_en, answer_en: clip(text, 700) }, await toneOf(env));
+  await offerTranslations(env, member, { id, question_en: k.question_en, answer_en: clip(text, 700) }, await toneOf(env))
+    .catch((e) => console.error('[bot] translations not offered', String(e)));
 }
 
 /* =================================================================================== cron */
@@ -897,9 +914,9 @@ export async function tick(env0: Env, now: number) {
     ]).catch((e) => console.error('[bot] purge failed', String(e)));
     await learnFromWins(env).catch((e) => console.error('[bot] won-deal learning failed', String(e)));
   }
-  const ist = new Date(now + 5.5 * HOUR);                                                  // Monday 10:00 India time
-  if (ist.getUTCDay() === 1 && ist.getUTCHours() === 10 && ist.getUTCMinutes() < 2) {
-    await weekly(env, now).catch((e) => console.error('[bot] weekly report failed', String(e)));
+  const ist = new Date(now + 5.5 * HOUR);                                                  // Monday 10 a.m. India time
+  if (ist.getUTCDay() === 1 && ist.getUTCHours() === 10) {
+    await weeklyOnce(env, now, ist.toISOString().slice(0, 10)).catch((e) => console.error('[bot] weekly report failed', String(e)));
   }
   const due = await sb<Question>(env, 'GET', `questions?status=eq.pending&client_told_at=is.null&created_at=lt.${iso(now - 10 * MIN)}&select=id,wa_id&order=created_at.asc&limit=10`);
   const told = new Set<string>();
@@ -923,6 +940,14 @@ export async function tick(env0: Env, now: number) {
   }
 }
 
+/** The weekly report, once per Monday: any tick in the 10 o'clock hour may claim it (a failed
+ *  tick is retried by the next one), and the settings row 'weekly_at' records the week sent. */
+async function weeklyOnce(env: Env, now: number, monday: string) {
+  await sb(env, 'POST', 'settings?on_conflict=key', { key: 'weekly_at', value: '2000-01-01', updated_at: iso(now) }, 'resolution=ignore-duplicates,return=minimal');
+  const [mine] = await sb(env, 'PATCH', `settings?key=eq.weekly_at&value=lt.${monday}`, { value: monday, updated_at: iso(now) });
+  if (mine) await weekly(env, now);
+}
+
 /** Monday's learning report to the team: what was asked, who answered, what still needs the
  *  team, the answers waiting for Approve (one tap each), and a refreshed tone guide. */
 export async function weekly(env: Env, now: number) {
@@ -935,7 +960,7 @@ export async function weekly(env: Env, now: number) {
   };
   const auto = qs.filter((x) => x.kind === 'auto'), team = qs.filter((x) => x.kind !== 'auto');
   const pending = await sb<Knowledge>(env, 'GET', 'knowledge?status=eq.pending&select=id,question_en,answer_en&order=created_at.desc&limit=3');
-  const tone = await updateTone(env, now);
+  const tone = await updateTone(env, now).catch(() => null);         // the report goes out without it
   const text = [
     'Weekly learning report (last 7 days)',
     `Questions: ${qs.length}. Answered by the bot: ${auto.length}. Went to the team: ${team.length}. Still open: ${qs.filter((x) => x.status === 'pending').length}.`,
@@ -946,9 +971,8 @@ export async function weekly(env: Env, now: number) {
   ].filter(Boolean).join('\n\n');
   await toTeam(env, now, text, {});
   for (const k of pending) {
-    if (!room(env, 8)) break;
-    await toTeam(env, now, `Save this for next time?\nQ: ${k.question_en}\nA: ${k.answer_en}`, {}, undefined,
-      [{ id: `kb:a:${k.id}`, title: 'Approve' }, { id: `kb:e:${k.id}`, title: 'Edit' }, { id: `kb:r:${k.id}`, title: 'Reject' }]);
+    if (!room(env, 3 * teamIds(env).size + 2)) break;
+    await card(env, now, k, '');
   }
 }
 
@@ -973,12 +997,15 @@ async function learnFromWins(env: Env) {
   const contacts = await sb<Contact>(env, 'GET', `contacts?lead_id=in.${q(`(${won.map((l) => `"${l.id}"`).join(',')})`)}&won_counted=eq.false&select=wa_id&limit=3`);
   for (const c of contacts) {
     if (!room(env, 10)) return;
-    const asked = await sb<Question>(env, 'GET', `questions?wa_id=eq.${q(c.wa_id)}&select=id,knowledge_id`);
+    // Claimed first: a failure part-way loses a win, never counts one twice.
+    const [mine] = await sb(env, 'PATCH', `contacts?wa_id=eq.${q(c.wa_id)}&won_counted=eq.false`, { won_counted: true });
+    if (!mine) continue;
+    const asked = await sb<Question>(env, 'GET', `questions?wa_id=eq.${q(c.wa_id)}&select=id,knowledge_id&limit=50`);
     const ids = new Set(asked.map((x) => x.knowledge_id).filter((id): id is number => !!id));
     if (asked.length) for (const k of await sb<Knowledge>(env, 'GET', `knowledge?question_id=in.(${asked.map((x) => x.id).join(',')})&select=id`)) ids.add(k.id);
-    if (ids.size) for (const k of await sb<Knowledge>(env, 'GET', `knowledge?id=in.(${[...ids].join(',')})&select=id,wins`)) {
+    if (ids.size) for (const k of await sb<Knowledge>(env, 'GET', `knowledge?id=in.(${[...ids].slice(0, 20).join(',')})&select=id,wins`)) {
+      if (!room(env, 2)) return;
       await sb(env, 'PATCH', `knowledge?id=eq.${k.id}`, { wins: (k.wins ?? 0) + 1 }, 'return=minimal');
     }
-    await sb(env, 'PATCH', `contacts?wa_id=eq.${q(c.wa_id)}`, { won_counted: true }, 'return=minimal');
   }
 }
