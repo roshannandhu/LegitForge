@@ -28,7 +28,7 @@ export default async function Privacy() {
       <h2>What we collect</h2>
       <ul>
         <li><strong>The contact form:</strong> your name, WhatsApp number, what you need, an optional budget and message, and your consent to be contacted on WhatsApp.</li>
-        <li><strong>WhatsApp conversations:</strong> your number and messages when you choose to contact us through WhatsApp. Our WhatsApp assistant replies automatically: it asks which service you need, your language, name, business, what you need and when, and passes questions it cannot answer to our team. The illustrative website demonstrations send no messages.</li>
+        <li><strong>WhatsApp conversations:</strong> your number and messages when you choose to contact us through WhatsApp. Our WhatsApp assistant replies automatically: it asks which service you need, your language, name, business, what you need and when, and passes questions it cannot answer to our team. Its first message says it is automated. To decide when a person should step in, the AI also notes whether a message sounds upset, urgent or abusive; our team gets these alerts, with your message and the details you gave, on their own WhatsApp. The illustrative website demonstrations send no messages.</li>
         <li><strong>Site measurement:</strong> counts of WhatsApp-link clicks, service and project opens, and confirmed form submissions, with public service/project labels, time and country when available. These events contain no names, phone numbers, messages or raw IP addresses; we create no visitor profiles or analytics cookies.</li>
         <li><strong>Abuse prevention:</strong> short-lived keyed identifiers and submission receipts prevent repeated or excessive enquiries. Human verification is used when configured.</li>
         <li><strong>Administration:</strong> administrator email addresses and sign-in security records protect access to the private dashboard.</li>
@@ -55,7 +55,7 @@ export default async function Privacy() {
           <tr><th scope="row">Submission receipts and rate-limit records</th><td>24 hours, then removed by the scheduled cleanup</td></tr>
           <tr><th scope="row">Site events</th><td>13 months, then removed by the scheduled cleanup</td></tr>
           <tr><th scope="row">WhatsApp messages with our assistant</th><td>90 days, then removed by the scheduled cleanup</td></tr>
-          <tr><th scope="row">WhatsApp chat details (language and answers)</th><td>180 days after your last message</td></tr>
+          <tr><th scope="row">WhatsApp chat details (language and answers) and questions passed to our team</th><td>180 days after your last message</td></tr>
           <tr><th scope="row">Administrator sign-in records</th><td>90 days</td></tr>
         </tbody>
       </table>
@@ -63,6 +63,7 @@ export default async function Privacy() {
       <h2>Your choices</h2>
       <ul>
         <li><strong>Stop follow-up messages:</strong> reply STOP to our WhatsApp assistant, or tell us in the conversation that you do not want further messages.</li>
+        <li><strong>Delete your WhatsApp chat:</strong> send DELETE MY DATA to our WhatsApp assistant and confirm. It erases your messages, details and enquiry at once, and our team is asked to delete the alerts about you in their own WhatsApp.</li>
         <li><strong>See or delete your data:</strong> {email ? 'email ' : ''}{reach} and we will do it without undue delay.</li>
       </ul>
 

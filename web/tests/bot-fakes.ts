@@ -7,11 +7,20 @@
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = Record<string, any>;
-const KEY: Record<string, string> = { contacts: 'wa_id', messages: 'wamid', questions: 'id', knowledge: 'id' };
-const UNIQUE: Record<string, string[]> = { contacts: ['code'] };
+const KEY: Record<string, string> = { contacts: 'wa_id', messages: 'wamid', questions: 'id', knowledge: 'id', settings: 'key' };
+const UNIQUE: Record<string, string[]> = { contacts: ['code'], questions: ['wamid'] };
+/** The schema's CHECK constraints (bot/supabase/schema.sql), so a value Postgres would refuse fails here too. */
+const CHECK: Record<string, Record<string, string[]>> = {
+  contacts: { step: ['start', 'returning', 'service', 'language', 'name', 'business', 'need', 'timeline', 'done'], mode: ['bot', 'human', 'stopped', 'blocked'], lang: ['en', 'ml', 'mg', 'hi', 'kn'] },
+  messages: { dir: ['in', 'out'] },
+  questions: { status: ['pending', 'answered'], kind: ['question', 'draft', 'decision', 'price', 'auto'] },
+  knowledge: { status: ['pending', 'approved', 'rejected'], source: ['site', 'team'] },
+};
+const broken = (table: string, row: Row) =>
+  Object.entries(CHECK[table] ?? {}).find(([col, ok]) => row[col] != null && !ok.includes(row[col]))?.[0];
 
 export function fakeSupabase(now: () => number) {
-  const tables: Record<string, Row[]> = { contacts: [], messages: [], questions: [], knowledge: [] };
+  const tables: Record<string, Row[]> = { contacts: [], messages: [], questions: [], knowledge: [], settings: [] };
   let seq = 0;
   const state = { down: false };
 
@@ -63,7 +72,8 @@ export function fakeSupabase(now: () => number) {
   function defaults(table: string, row: Row): Row {
     const t = new Date(now()).toISOString();
     if (table === 'questions') return { status: 'pending', kind: 'question', draft: null, draft_en: null, answer: null, answered_by: null, answered_at: null, client_told_at: null, created_at: t, ...row, id: row.id ?? ++seq };
-    if (table === 'knowledge') return { embedding: null, status: 'pending', question_id: null, decided_by: null, decided_at: null, created_at: t, ...row, id: row.id ?? ++seq };
+    if (table === 'knowledge') return { embedding: null, status: 'pending', question_id: null, decided_by: null, decided_at: null, translations: {}, translations_ok: false, wins: 0, created_at: t, ...row, id: row.id ?? ++seq };
+    if (table === 'contacts') return { won_counted: false, created_at: t, ...row };
     return { created_at: t, ...row };
   }
   const json = (status: number, body?: unknown) => new Response(body === undefined ? '' : JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
@@ -78,7 +88,7 @@ export function fakeSupabase(now: () => number) {
       const qv = JSON.parse(body.query_embedding) as number[];
       return json(200, tables.knowledge
         .filter((k) => k.status === 'approved' && k.embedding)
-        .map((k) => ({ id: k.id, question_en: k.question_en, answer_en: k.answer_en, similarity: cosine(qv, JSON.parse(k.embedding)) }))
+        .map((k) => ({ id: k.id, question_en: k.question_en, answer_en: k.answer_en, translations: k.translations ?? {}, translations_ok: !!k.translations_ok, wins: k.wins ?? 0, similarity: cosine(qv, JSON.parse(k.embedding)) }))
         .filter((k) => k.similarity > body.match_threshold)
         .sort((a, b) => b.similarity - a.similarity).slice(0, body.match_count));
     }
@@ -101,13 +111,16 @@ export function fakeSupabase(now: () => number) {
       const key = params.get('on_conflict') ?? KEY[table];
       const made: Row[] = [];
       for (const row of list) {
+        const bad = broken(table, row);
+        if (bad) return json(400, { code: '23514', message: `check ${bad}` });
+        if (table === 'questions' && !tables.contacts.some((c) => c.wa_id === row.wa_id)) return json(409, { code: '23503', message: 'no contact' });
         const existing = tables[table].find((r) => r[key] === row[key] && row[key] != null);
         if (existing) {
           if (prefer.includes('ignore-duplicates')) continue;
           if (prefer.includes('merge-duplicates')) { Object.assign(existing, row); made.push(existing); continue; }
           return json(409, { code: '23505', message: `duplicate ${key}` });
         }
-        for (const u of UNIQUE[table] ?? []) if (tables[table].some((r) => r[u] === row[u])) return json(409, { code: '23505', message: `duplicate ${u}` });
+        for (const u of UNIQUE[table] ?? []) if (row[u] != null && tables[table].some((r) => r[u] === row[u])) return json(409, { code: '23505', message: `duplicate ${u}` });
         tables[table].push(row);
         made.push(row);
       }
@@ -115,12 +128,22 @@ export function fakeSupabase(now: () => number) {
     }
     if (method === 'PATCH') {
       const rows = filtered(table, params);
+      const bad = broken(table, body);
+      if (bad) return json(400, { code: '23514', message: `check ${bad}` });
       for (const r of rows) Object.assign(r, structuredClone(body));
       return back(rows);
     }
     if (method === 'DELETE') {
       const gone = new Set(filtered(table, params));
       tables[table] = tables[table].filter((r) => !gone.has(r));
+      if (table === 'contacts') {                       // on delete cascade, as in the schema
+        const ids = new Set([...gone].map((c) => c.wa_id));
+        tables.questions = tables.questions.filter((x) => !ids.has(x.wa_id));
+      }
+      if (table === 'contacts' || table === 'questions') {
+        const qs = new Set(tables.questions.map((x) => x.id));
+        for (const k of tables.knowledge) if (k.question_id != null && !qs.has(k.question_id)) k.question_id = null;   // on delete set null
+      }
       return back([...gone]);
     }
     return json(405);
@@ -145,7 +168,7 @@ export function fakeEmbedding(text: string) {
   return v;
 }
 
-export type Task = 'extract' | 'answer' | 'translate' | 'faq';
+export type Task = 'extract' | 'answer' | 'translate' | 'faq' | 'translations' | 'tone';
 /** Return the JSON object the model would give, or a status number to fail with. */
 export type Responder = (task: Task, user: string, provider: 'groq' | 'gemini', system: string) => unknown;
 export interface Sent { to: string; type: string; body: string; ids: string[]; template?: string; id: string }

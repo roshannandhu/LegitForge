@@ -10,3 +10,5 @@ alter table public.questions drop constraint if exists questions_kind_check;
 alter table public.questions add constraint questions_kind_check check (kind in ('question','draft','decision','price'));
 alter table public.questions add column if not exists draft text;
 alter table public.questions add column if not exists draft_en text;
+alter table public.questions add column if not exists wamid text unique;
+alter table public.contacts add column if not exists lead_saved boolean not null default false;

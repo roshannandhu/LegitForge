@@ -165,7 +165,9 @@ change, and is recommended before real client traffic.
 1. Meta app → WhatsApp → API Setup: add both team phones and one spare "client" phone as test
    recipients. Create a system user with a permanent token (`whatsapp_business_messaging`,
    `whatsapp_business_management`); copy the App secret; choose a random verify token.
-2. Supabase: SQL editor → paste and run `web/bot/supabase/schema.sql`. Settings → API keys →
+2. Supabase: SQL editor → paste and run `web/bot/supabase/schema.sql` (a new project). A project
+   that already ran an older schema.sql instead runs each new migration once, in order, before the
+   new bot is deployed: `002_phase1.sql`, `003_phase2.sql`, … (each says what it needs). Settings → API keys →
    create a secret key (`sb_secret_…`). Reset the database password (the old one was exposed).
 3. Google AI Studio and the Groq console: create one API key each; check the model names in
    `web/bot/wrangler.jsonc` still exist.
