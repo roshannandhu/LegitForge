@@ -17,7 +17,7 @@ export const SERVICES: {
     id: 'app', name: 'Web apps',
     line: 'Bookings, dashboards, member areas and internal tools: software that works with your data.',
     audience: 'Growing businesses',
-    price: 'Quoted per project', time: 'Usually 3–6 weeks', link: 'See web app examples', href: '/services/website-development#app-example',
+    price: 'Quoted per project', time: 'Usually 3–6 weeks', link: 'See web app examples', href: '/services/website-development',
   },
   {
     id: 'whatsapp', name: 'WhatsApp automation',
@@ -51,19 +51,14 @@ export const SERVICES: {
   },
 ];
 
-/** The home ledger includes the quotation offer; full examples live on the service pages. */
+/** The home list adds the quotation offer (its demo is QuoteDemo). */
 export const HOME_SERVICES = SERVICES.flatMap((s) => s.id === 'app' ? [s, {
-  id: 'quote', name: 'Quotation and warranty systems',
+  id: 'quote' as const, name: 'Quotation and warranty systems',
   line: 'Send quotes as links or PDFs, and let customers check their warranty by QR code.',
   audience: 'Businesses selling work with a guarantee', price: 'Quoted per project', time: 'Usually 3–6 weeks',
-  link: 'See quotation and warranty systems', href: '/services/website-development#quotation',
+  link: 'See quotation and warranty systems', href: '/services/website-development',
 }] : [s]);
 
-/** Resolve comparison facts by identity: service reordering must never change their meaning. */
-export const WEBSITE_FACTS = {
-  static: (() => { const s = SERVICES.find((x) => x.id === 'website')!; return { price: s.price, time: s.time }; })(),
-  dynamic: (() => { const s = SERVICES.find((x) => x.id === 'app')!; return { price: s.price, time: s.time }; })(),
-};
 
 /* ------------------------------------------------------- trust strip §18.6
    Directly under the hero. Same wording as the Maker's promise (§6.9): repeated

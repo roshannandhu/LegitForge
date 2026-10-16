@@ -8,6 +8,12 @@
 .page-lead { max-width: 60ch; margin: 20px 0 0; }
 .page-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 32px; }
 @media (max-width: 479px) { .page-actions .btn { flex: 1 1 100%; } }
+/* a head with something beside it (a service's demo): stacked under the actions, side by side on laptops */
+.page-head-aside { min-width: 0; margin-top: 40px; }
+@media (min-width: 1024px) {
+  .page-head.has-aside { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 48px; align-items: center; }
+  .page-head-aside { margin-top: 0; }
+}
 
 /* ------------------------------------------------------------- page blocks */
 .page-block { padding-top: 72px; }   /* top only: .wrap owns the side padding */
@@ -59,10 +65,7 @@
 .service-audience { flex-basis: 100%; max-width: 65ch; margin: 0; color: var(--text-muted); }
 .service-audience .type-label, .service-directory-audience .type-label { color: var(--text); margin-right: 6px; }
 .service-builds .tile { padding: 20px 24px; }
-.service-included, .service-preparation { max-width: 75ch; }
 .service-caption { max-width: 65ch; margin: 0 0 20px; font-size: 14px; line-height: 1.55; color: var(--text-muted); }
-.demo-caption { max-width: 65ch; margin: 16px 0 0; font-size: 14px; line-height: 1.55; color: var(--text-muted); }
-.service-primary-demo { margin-top: 20px; }
 .service-directory { display: grid; margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--line); }
 .service-directory > li { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 8px 16px; padding: 28px 0; border-bottom: 1px solid var(--line); }
 .service-directory .fire-num { padding-top: 5px; }
@@ -73,24 +76,9 @@
 .service-directory-facts > p { margin: 0 0 8px; }
 .service-directory-facts > p:first-child { font-size: 15px; font-weight: 600; }
 .service-directory-facts .text-link { display: inline-flex; align-items: center; min-height: 44px; font-size: 15px; }
-.service-disclosures { display: grid; gap: 12px; }
-.service-disclosure { min-width: 0; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); scroll-margin-top: 88px; }
-.service-disclosure > summary { display: flex; align-items: center; justify-content: space-between; gap: 20px; min-height: 56px; padding: 16px 20px; font-weight: 600; line-height: 1.45; list-style: none; cursor: pointer; }
-.service-disclosure > summary::-webkit-details-marker { display: none; }
-.service-disclosure > summary::after { content: '+'; flex: none; color: var(--accent); font-size: 24px; font-weight: 400; }
-.service-disclosure[open] > summary::after { content: '−'; }
-.service-disclosure[open] > summary { border-bottom: 1px solid var(--line); }
-.service-disclosure-body { min-width: 0; padding: 24px 20px; }
-.service-disclosure-body.prose p { margin: 0; }
-.service-disclosure-body > .section, .service-disclosure-body > div > .section { padding: 0; }
-.service-disclosure-body .wrap { padding-right: 0; padding-left: 0; }
-.service-disclosure-body h3 { margin: 0 0 12px; }
-/* the embedded examples have no title of their own (the summary is it): their lead starts flush */
-.service-disclosure-body .type-lead:first-child { margin-top: 0; }
 @media (min-width: 768px) {
   .service-directory > li { grid-template-columns: 36px minmax(0, 1fr) minmax(200px, .4fr); gap: 24px; }
   .service-directory-facts { grid-column: auto; }
-  .service-disclosure-body { padding: 28px; }
 }
 
 /* ----------------------------------------------------------------- work */

@@ -24,7 +24,6 @@ export function ServiceDemo({ kind }: { kind: DemoKind }) {
           {kind === 'nfc' && <NfcDemo />}
         </div>
       </DemoPlayer>
-      <p className="demo-caption">Illustrative example. Names, figures and activity are sample data.</p>
       <DemoTranscript kind={kind} />
     </>
   );

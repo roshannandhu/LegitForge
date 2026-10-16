@@ -28,15 +28,6 @@ export function Analytics() {
   const pathname = usePathname();
   useEffect(() => {
     if (pathname.startsWith('/admin')) return;
-    const redirectDemo = () => {
-      if (pathname !== '/') return;
-      const hash = location.hash;
-      const target = hash === '#live-test' ? '/services/whatsapp-automation' :
-        ['#quotation', '#compare', '#app-example'].includes(hash) ? '/services/website-development' : null;
-      if (target) location.replace(target + hash);
-    };
-    redirectDemo();
-    window.addEventListener('hashchange', redirectDemo);
     const match = /^\/(services|work)\/([a-z0-9-]+)$/.exec(pathname);
     if (match) track(match[1] === 'services' ? 'service_open' : 'project_open', { slug: match[2] });
     const onClick = (event: MouseEvent) => {
@@ -47,7 +38,6 @@ export function Analytics() {
     document.addEventListener('click', onClick);
     return () => {
       document.removeEventListener('click', onClick);
-      window.removeEventListener('hashchange', redirectDemo);
     };
   }, [pathname]);
   return null;

@@ -85,11 +85,12 @@ function audit() {
     ...ids.slice(1).map((id, i) => !before(ids[i], id) && `${id} is out of order`),
     document.getElementById('work') && !before('work', 'services') && 'work must precede services',
     document.getElementById('proof') && !before('proof', 'services') && 'testimonials must precede services',
-    ['quotation', 'compare', 'live-test'].some((id) => document.getElementById(id)) && 'detailed demos still on home',
+    ['compare', 'live-test'].some((id) => document.getElementById(id)) && 'removed demos are back on home',
+    document.querySelectorAll('#services .fire .demo-player').length !== 8 && 'every home service needs its demo',
     document.querySelector('#promises')?.closest('.cleave[data-read-first]')?.dataset.pin !== 'off' && 'readable trust opening is missing or pinned',
     document.querySelector('#trust-h')?.textContent.trim() !== 'What you can count on.' && 'persistent trust heading is missing',
     document.querySelectorAll('#cta-h').length !== 1 && 'closing CTA heading must appear once',
-    [...document.querySelectorAll('.service-ledger > li')].map((li) => li.dataset.service).join(',') !== 'website,app,quote,whatsapp,n8n,seo,nfc,signage' && 'home service order changed',
+    [...document.querySelectorAll('.fires > li')].map((li) => li.dataset.service).join(',') !== 'website,app,quote,whatsapp,n8n,seo,nfc,signage' && 'home service order changed',
     document.querySelector('#proof .engraved-grid') && 'duplicate promises in proof section',
   ].filter(Boolean) : [];
   return {
@@ -345,10 +346,8 @@ if (!only || only === 'flow') {
   await ctx.addInitScript(() => localStorage.setItem('lf-intro-seen', '1'));
   await ctx.addInitScript(LITE_INIT, LITE);
   const page = await ctx.newPage();
-  const demoRoutes = {
-    website: '/services/website-development', app: '/services/website-development', quote: '/services/website-development',
-    whatsapp: '/services/whatsapp-automation', n8n: '/services/n8n-automation', seo: '/services/seo', nfc: '/services/nfc', signage: '/services/digital-signage',
-  };
+  // every demo plays on the home page, beside its service
+  const demoRoutes = Object.fromEntries(['website', 'app', 'quote', 'whatsapp', 'n8n', 'seo', 'nfc', 'signage'].map((k) => [k, '/']));
   let currentRoute = '';
   for (const [kind, route] of Object.entries(demoRoutes)) {
     if (route !== currentRoute) { await page.goto(BASE + route, { waitUntil: 'networkidle' }); currentRoute = route; }
@@ -379,21 +378,15 @@ if (!only || only === 'flow') {
   await ctx.close();
 }
 
-// Old demo bookmarks keep opening the relocated content, with their section anchor intact.
+// Old demo bookmarks (/#quotation, /#app-example) land on their service on the home page.
 if (!only || only === 'anchors') {
   console.log('\nlegacy demo links');
   const ctx = await browser.newContext({ reducedMotion: 'reduce' });
   const page = await ctx.newPage();
-  for (const [hash, route] of [['quotation', '/services/website-development'], ['compare', '/services/website-development'], ['app-example', '/services/website-development'], ['live-test', '/services/whatsapp-automation']]) {
+  for (const hash of ['quotation', 'app-example']) {
     await page.goto(`${BASE}/#${hash}`, { waitUntil: 'networkidle' });
-    await page.waitForURL(`${BASE}${route}#${hash}`);
-    await page.waitForSelector(`#${hash}`, { state: 'visible' });
-    const open = await page.locator(`#${hash}`).evaluate((el) => {
-      for (let parent = el.parentElement; parent; parent = parent.parentElement) if (parent instanceof HTMLDetailsElement && !parent.open) return false;
-      return true;
-    });
-    if (!open) fail('anchors', `#${hash} stayed inside a closed disclosure`);
-    pass(`#${hash} opens ${route}`);
+    const ok = new URL(page.url()).pathname === '/' && await page.locator(`#${hash} .demo-player`).isVisible();
+    ok ? pass(`/#${hash} shows its demo on the home page`) : fail('anchors', `/#${hash} did not land on its home demo`);
   }
   await ctx.close();
 }

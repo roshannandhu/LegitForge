@@ -19,16 +19,12 @@ export interface ServicePage {
   lead: string;
   audience: string;
   builds: { h: string; p: string }[];
-  included: string[];
   /** The two facts in "Quotes and timelines" and on /services: a few words each. */
   price: string;
   timeline: string;
   /** The conditions under the facts, said once per page: what is separate, what moves dates. */
   priceNote: string;
-  preparation: string[];
   /** Only what the cards, the price note and the FAQ don't already say. */
-  details: { h: string; p: string }[];
-  serviceTags: string[];      // related work requires matching recorded project tags
   faq: { q: string; a: string }[];
 }
 
@@ -50,27 +46,9 @@ const SERVICE_PAGE_CONTENT: ServicePage[] = [
       { h: 'Web apps', p: 'Bookings, member areas, dashboards and internal tools, with logins, agreed user roles and records your team can manage. Integrations and payment flows are scoped separately.' },
       { h: 'Quotation and warranty systems', p: 'Prepare quotes from saved items, share a link or PDF, and let customers look up warranty records by QR code. Exports, reminders and approval steps are agreed in the scope.' },
     ],
-    included: [
-      'A clickable design to review on your phone before the build',
-      'The agreed pages, content editor or app workflows, tested on phone and desktop',
-      'Website search basics: titles, descriptions and sitemap, with suitable structured data',
-      'Enquiry handling and spam protection where a form is included',
-      'Account handover, a short training video and 30 days of free fixes after launch',
-    ],
     price: 'Fixed written quote after scoping',
     timeline: 'Websites 1–2 weeks · web apps 3–6 weeks',
     priceNote: 'We quote after discussing your pages, features and integrations, and confirm dates once content and scope are ready. Hosting, paid tools and any ongoing support are agreed separately.',
-    preparation: [
-      'Your logo, business details, service text and images, or a list of content you need help preparing',
-      'The pages or workflows you need, and examples of the records your team handles',
-      'Access to your domain and any accounts the agreed build will connect',
-    ],
-    // "website or app" is the Compare example and "quotation and warranty" the Quotation example
-    // (page.tsx adds both as disclosures); content and later changes are the FAQ's
-    details: [
-      { h: 'Roles, data and integrations', p: 'We define who can view, edit or approve records, what data is required, and which existing tools need to connect. Payment providers, messaging accounts, data imports and backup arrangements belong in the written scope.' },
-    ],
-    serviceTags: ['website', 'websites', 'static website', 'dynamic website', 'website development', 'website-development', 'web design', 'web app', 'web apps', 'webapp', 'quotation', 'quote', 'quotes', 'warranty'],
     faq: [
       { q: 'Can I start with a website and add an app later?', a: 'Yes. We can plan the website around your current needs and discuss later workflows separately. We explain which decisions affect a future addition before agreeing the first build.' },
       { q: 'Can I update the site myself?', a: 'Yes, for the content fields agreed in the scope. Editable websites have an editor; web apps have the relevant admin tools. We provide a short training video at handover.' },
@@ -95,28 +73,10 @@ const SERVICE_PAGE_CONTENT: ServicePage[] = [
       { h: 'Team handoff and alerts', p: 'Agree who receives an enquiry, where it is recorded and how your team takes over. Alert channels and working hours are part of the setup.' },
       { h: 'Customer updates', p: 'Appointment reminders or order updates using the agreed platform features and approved message content. Consent and opt-out handling are included in the flow design.' },
     ],
-    included: [
-      'An account and number eligibility check for the official WhatsApp Business Platform',
-      'A written flow with answers and messages approved by you',
-      'The agreed data destination and human handoff route',
-      'Testing of the scoped flows and connected accounts before launch',
-      'Handover notes and 30 days of free fixes after launch',
-    ],
     price: 'Fixed written quote for the build',
     timeline: 'Usually 1–2 weeks',
     priceNote: 'The time counts from when scope and account access are ready; account eligibility, verification and message approvals can move the launch date. Ongoing support, platform messaging charges and other paid integrations are separate and explained before you approve.',
-    preparation: [
-      'Your business details and access to the account and number you want to use',
-      'Approved answers, prices or policies, plus the enquiries the flow should handle',
-      'A person or team for handoff, and access to the agreed sheet, CRM or booking system',
-    ],
     // human handoff is the "Team handoff" card and an FAQ; costs are the price note; each demo
-    // carries its own "illustrative" label, so nothing here repeats it
-    details: [
-      { h: 'Account setup and launch', p: 'We check the current platform requirements for your account and number before committing to an integration. Verification, number setup, message approval and testing may all be needed.' },
-      { h: 'Connected tools and customer data', p: 'Specify which details should be collected and where they belong. We agree access, consent, retention and failure handling for each connected tool as part of the project.' },
-    ],
-    serviceTags: ['whatsapp', 'whatsapp automation', 'whatsapp-automation', 'whatsapp chatbot', 'whatsapp bot'],
     faq: [
       { q: 'Can I keep my current number?', a: 'We check the options for your current setup and account eligibility before agreeing the work. Depending on those requirements, the integration may use your current number or a separate business number.' },
       { q: 'Can the bot answer everything?', a: 'It handles the approved topics and flows in your scope. Questions outside those flows need a human handoff. AI answers, if included, require their own agreed limits and testing.' },
@@ -140,27 +100,9 @@ const SERVICE_PAGE_CONTENT: ServicePage[] = [
       { h: 'Schedule → team report', p: 'A scheduled run gathers the agreed figures and sends a summary to your chosen channel. The result depends on access to the source records.' },
       { h: 'Message → assisted draft', p: 'An optional AI step can classify an enquiry, extract fields or prepare a draft. We agree where a person must review the result before it is used.' },
     ],
-    included: [
-      'A workflow map showing the trigger, actions and expected result',
-      'Connections to the accounts agreed in your scope',
-      'Testing of normal runs, duplicate inputs and scoped failure cases',
-      'A configured failure alert route and recovery instructions',
-      'Handover notes, agreed hosting setup and 30 days of free fixes after launch',
-    ],
     price: 'Fixed written quote per workflow',
     timeline: 'Simple workflows 2–5 days',
     priceNote: 'The time counts from when access and example records are ready; more connections or approvals get their own schedule. Hosting, paid app or AI usage and any ongoing support are agreed separately.',
-    preparation: [
-      'The repeated task, its trigger and the result you want',
-      'Access to the connected tools, plus example inputs and records',
-      'A workflow owner, failure alert destination and any approval rules',
-    ],
-    // failures and maintenance are the FAQ's (with the failure alert in "included")
-    details: [
-      { h: 'Connections and permissions', p: 'Each app needs suitable account access and a supported way to connect. We confirm those requirements before quoting; paid app plans, usage limits or missing features can change what is possible.' },
-      { h: 'AI and approval steps', p: 'AI is an optional step rather than a requirement. We discuss the records it may read, its usage costs and when a human must approve a result before an external action.' },
-    ],
-    serviceTags: ['n8n', 'n8n automation', 'n8n-automation', 'workflow automation'],
     faq: [
       { q: 'Do I need a new app?', a: 'Usually the goal is to connect your existing tools. We check their connection options and access requirements first; a custom app is only a separate option when the workflow needs one.' },
       { q: 'What happens if a connected service is unavailable?', a: 'The workflow uses the failure handling and alert route agreed for that task. We document how to inspect the failure and retry safely; an unavailable account or service may need your team to intervene.' },
@@ -184,27 +126,9 @@ const SERVICE_PAGE_CONTENT: ServicePage[] = [
       { h: 'Useful service and area pages', p: 'Explain what you offer, where you work and how to contact you. Improve existing pages or write the additional pages agreed in your scope.' },
       { h: 'Search basics and reporting', p: 'Address agreed title, description, sitemap, indexing and page performance issues. Report available impressions, clicks or contact activity, with the source and next actions explained.' },
     ],
-    included: [
-      'An initial audit and an agreed list of priorities',
-      'The listing changes and website improvements specified in the quote',
-      'Focus services and search areas agreed with you',
-      'Guidance for requesting honest customer reviews',
-      'A reporting schedule and available metrics agreed for ongoing work',
-    ],
     price: 'Setup and monthly work quoted in writing',
     timeline: 'Initial setup 1–2 weeks',
     priceNote: 'The quote sets the pages, listing work and reporting included, and any monthly work: content updates, listing checks and reports. New pages or locations are agreed before they are added. Setup time counts from when access and content are ready.',
-    preparation: [
-      'Access to your Google Business Profile and the website or content editor',
-      'Accurate hours, services, contact details, service areas and suitable photos',
-      'Search or analytics account access where available, and the enquiries you want to track',
-    ],
-    details: [
-      { h: 'Choosing search areas', p: 'We agree the services and locations you actually cover, then review relevant searches and existing pages. The work focuses on useful, accurate information rather than creating pages for places you do not serve.' },
-      { h: 'Understanding reports', p: 'Reports use the data the connected accounts make available. Impressions and clicks are different from enquiries; calls or messages can only be reported where suitable tracking exists. We name the source and its limits.' },
-      { h: 'Reviews and listing access', p: 'Customers should be invited to leave an honest review without selecting a rating for them. Listing ownership, account access and platform verification may need to be resolved before changes can be published.' },
-    ],
-    serviceTags: ['seo', 'local seo', 'google business profile', 'search optimisation', 'search optimization'],
     faq: [
       { q: 'Can you guarantee a ranking?', a: 'No. Search platforms decide the results, which vary with location, competition and other factors. We commit to the agreed work and explain the available measurements.' },
       { q: 'How long until I see a change?', a: 'We agree dates for the work, then review the available data over time. Search platforms may take time to process changes, and the timing or size of an improvement cannot be guaranteed.' },
@@ -228,27 +152,9 @@ const SERVICE_PAGE_CONTENT: ServicePage[] = [
       { h: 'Warranty and service stickers', p: 'Link a product to the agreed warranty lookup or service page. Individual product records and integrations are scoped with the system they connect to.' },
       { h: 'Menus and product links', p: 'Open a menu, catalogue or product page from a table or shelf. A managed destination can be updated later without replacing the physical tag.' },
     ],
-    included: [
-      'The agreed card or tag quantities and design for your approval',
-      'NFC programming and testing on compatible phones',
-      'The destination page or link setup agreed in your scope',
-      'A QR code fallback for phones that cannot read the tag',
-      'Instructions for use and the agreed process for later link updates',
-    ],
     price: 'Fixed written quote per order',
     timeline: 'About a week after artwork approval',
     priceNote: 'The quote covers the physical items and any page or system work; quantity, material, artwork and destination updates are agreed before production. Printing, quantities and delivery can move the date.',
-    preparation: [
-      'Your logo, artwork and the quantity and type of cards or tags you need',
-      'The contact details or destination links each item should open',
-      'Approval of the design and a delivery location before production',
-    ],
-    // phone compatibility and changing a link are the FAQ's
-    details: [
-      { h: 'Materials and quantities', p: 'Tell us whether the item belongs in a wallet, on a counter or on a product. We agree material, dimensions, finish, placement and quantities before approving the artwork and quote.' },
-      { h: 'Warranty records and measurement', p: 'A warranty tag needs the appropriate product record and lookup page. Optional visit counts require agreed tracking on the destination; they count recorded visits rather than every physical tap.' },
-    ],
-    serviceTags: ['nfc', 'nfc cards', 'nfc tags', 'nfc business card', 'review tag', 'review tags'],
     faq: [
       { q: 'Does tapping work on every phone?', a: 'No. The phone needs compatible NFC support, and its settings, case or the tag’s placement may affect reading. We provide a QR fallback and test the agreed tag setup before handover.' },
       { q: 'Do customers need a special app?', a: 'The tag or QR code opens a normal link in the phone browser. The destination may have its own requirements, such as a login to post a review.' },
@@ -272,26 +178,9 @@ const SERVICE_PAGE_CONTENT: ServicePage[] = [
       { h: 'Downloaded offline playback', p: 'The player can continue scheduled playback of content already downloaded to the device. An internet connection is needed to receive new content and dashboard updates.' },
       { h: 'Advertising and screen status', p: 'Available plan features include advertising slots, playback reports and screen status. We confirm the features and reporting you need in your subscription quote.' },
     ],
-    included: [
-      'The MR Signage player for compatible Android TVs and tablets',
-      'The web dashboard and user roles included in your chosen plan',
-      'Pairing and setup of the first screens agreed in your quote',
-      'Player and dashboard updates within the subscription',
-      'Support from the people who build MR Signage',
-    ],
     price: 'Monthly subscription per screen',
     timeline: 'First screens typically in a day',
     priceNote: 'The plan confirms screen count, storage, features and support; any hardware and installation work are agreed separately. The day counts from when compatible hardware, internet access and your media are ready; larger rollouts get an agreed schedule.',
-    preparation: [
-      'Screen count, locations and the Android TV, TV box or tablet models you will use',
-      'Internet access for pairing and updates, plus your images or videos',
-      'Playlist schedules, screen groups and the people who need dashboard access',
-    ],
-    // hardware, offline playback and plans are the FAQ's (with the price note and the cards)
-    details: [
-      { h: 'Publishing responsibilities', p: 'Your team supplies and approves the content and schedules. We help with the agreed initial setup and explain publishing, updates and support at handover.' },
-    ],
-    serviceTags: ['mr signage', 'digital signage', 'digital-signage', 'signage'],
     faq: [
       { q: 'Can I use the screens I already have?', a: 'Usually, if they are Android TVs, TV boxes or tablets on Android 8.0 or newer. We check your models, storage and screen placement before agreeing setup; we can discuss hardware options if needed.' },
       { q: 'What happens without internet?', a: 'The player can keep playing content it has already downloaded. New content, schedule changes and remote status need the connection to return; device power, storage and local settings also affect playback.' },

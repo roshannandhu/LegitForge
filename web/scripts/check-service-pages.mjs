@@ -23,13 +23,13 @@ async function noOverflow(page, label) {
   assert.ok(size.content <= size.w + 1, label + ': horizontal overflow');
 }
 async function keyboardDisclosure(page) {
-  const details = page.locator('.service-disclosure').first();
+  const details = page.locator('.faq-item').first();
   const summary = details.locator('summary');
   await summary.scrollIntoViewIfNeeded();
   await summary.focus();
   await page.keyboard.press('Enter');
   assert.equal(await details.evaluate((el) => el.open), true, 'Enter did not open native details');
-  assert.equal(await details.locator('.service-disclosure-body').isVisible(), true, 'expanded detail is hidden');
+  assert.equal(await details.locator('p').isVisible(), true, 'expanded answer is hidden');
   await page.keyboard.press('Space');
   assert.equal(await details.evaluate((el) => el.open), false, 'Space did not close native details');
 }
@@ -61,13 +61,15 @@ try {
         const root = page.locator('[data-service-page]');
         assert.equal(await root.getAttribute('data-service-page'), slug);
         const order = await root.locator('[data-service-section]').evaluateAll((nodes) => nodes.map((node) => node.dataset.serviceSection));
-        const expected = ['builds', ...(order.includes('work') ? ['work'] : []), 'included', 'pricing', 'preparation', 'example', 'details', 'faq'];
-        assert.deepEqual(order, expected, slug + ': service journey order');
-        assert.equal(await root.locator('[data-service-demo="primary"]').count(), 1, 'missing single primary demo');
-        assert.ok(await root.locator('[data-service-section="preparation"] li').count() >= 3, 'missing practical preparation checklist');
+        assert.deepEqual(order, ['builds', 'pricing', 'faq'], slug + ': service journey order');
+        assert.equal(await root.locator('.demo-player').count(), 1, 'a service page shows exactly one demo');
+        assert.equal(await root.locator('.page-head [data-service-demo="primary"] .demo-player').count(), 1, 'demo is not in the page head');
+        if (width >= 1024) {
+          const [copy, demo] = await root.locator('.page-head.has-aside > div').evaluateAll((els) => els.map((el) => el.getBoundingClientRect()));
+          assert.ok(demo.left >= copy.right - 1, 'demo is not beside the heading on a laptop');
+        }
         assert.equal(await root.locator('#price h2').innerText(), 'Quotes and timelines');
-        assert.match(await root.locator('.demo-caption').first().innerText(), /Illustrative example.*sample data/);
-        assert.equal(await root.locator('.service-disclosure[open]').count(), 0, 'extra detail opened before visitor requested it');
+        assert.equal(await root.locator('.work-grid, .project-card').count(), 0, 'projects shown on a service page');
         const text = await root.innerText();
         assert.doesNotMatch(text, /What people tell us before they call|Prices, up front|pass on at cost|#1 on Google Maps|few dollars a month|five-star review/i);
         const contact = await root.locator('.page-actions a.btn-primary').first().getAttribute('href');
@@ -75,45 +77,19 @@ try {
         if (slug === 'website-development') {
           const headings = await root.locator('[data-service-section="builds"] h3').allTextContents();
           assert.ok(headings.includes('Business websites') && headings.includes('Web apps'), 'combined service needs distinct website/app sections');
-          if (process.env.ALLOW_EMPTY_COMPANY === '1') assert.equal(await root.locator('[data-service-section="work"]').count(), 1, 'matching local project was omitted');
-        } else if (process.env.ALLOW_EMPTY_COMPANY === '1') {
-          assert.equal(await root.locator('[data-service-section="work"]').count(), 0, 'unrelated website fixture shown as service proof');
         }
         await keyboardDisclosure(page);
         await noOverflow(page, slug);
         if (width === 375 || width === 1440) await page.screenshot({ path: `.check/service-${slug}-${width}-${theme}.png`, fullPage: true });
         assert.deepEqual(errors, [], 'service runtime error');
         passed++;
-        console.log(`✓ ${width}x${height}-${theme} ${slug}: scope, work, quotes, preparation and keyboard details`);
+        console.log(`✓ ${width}x${height}-${theme} ${slug}: demo at the top, scope, quotes and keyboard FAQ`);
       }
     } finally { await context.close(); }
   }
-  // Deep links must reveal postponed examples, including a fresh navigation and a
-  // second click on the same fragment after its native disclosure was closed.
   const context = await browser.newContext({ viewport: { width: 375, height: 812 }, reducedMotion: 'reduce' });
   await setup(context);
   const page = await context.newPage();
-  for (const [slug, hash] of [['website-development', 'compare'], ['website-development', 'app-example'],
-    ['website-development', 'quotation'], ['whatsapp-automation', 'live-test']]) {
-    await page.goto(BASE + '/services/' + slug + '#' + hash, { waitUntil: 'networkidle' });
-    await page.locator('#' + hash).waitFor({ state: 'visible' });
-    await page.waitForTimeout(200);
-    const state = await page.locator('#' + hash).evaluate((el) => {
-      const box = el.getBoundingClientRect();
-      return { open: !!el.closest('details')?.open, y: box.top };
-    });
-    assert.equal(state.open, true, hash + ': disclosure remained closed');
-    assert.ok(state.y >= 40 && state.y < 200, hash + ': anchor covered by header or displaced');
-    await page.locator('#' + hash).evaluate((el, hash) => {
-      el.closest('details').open = false;
-      document.querySelectorAll('[data-check-link]').forEach((link) => link.remove());
-      const link = document.createElement('a'); link.href = '#' + hash; link.textContent = 'Open example';
-      link.dataset.checkLink = ''; document.querySelector('[data-service-page] .page-actions').append(link);
-    }, hash);
-    await page.locator('[data-check-link]').click();
-    await page.locator('#' + hash).waitFor({ state: 'visible' });
-    console.log('✓ direct and repeated #' + hash + ' opens its matching example');
-  }
   await page.goto(BASE + '/services/website-development#price', { waitUntil: 'networkidle' });
   await page.evaluate(() => scrollTo({ top: document.body.scrollHeight, behavior: 'instant' }));
   await settle(page);
@@ -126,12 +102,12 @@ try {
   const nativePage = await native.newPage();
   for (const slug of routes) {
     await nativePage.goto(BASE + '/services/' + slug, { waitUntil: 'networkidle' });
-    const disclosure = nativePage.locator('.service-disclosure').first();
+    const disclosure = nativePage.locator('.faq-item').first();
     await disclosure.locator('summary').click();
     assert.equal(await disclosure.evaluate((el) => el.open), true, 'no-JS disclosure failed');
     await noOverflow(nativePage, slug + ' no-JS');
   }
   await native.close();
-  console.log(linksOnly ? 'All four demo deep links and six no-JavaScript pages passed.'
-    : `All ${passed} service layouts, four demo deep links and six no-JavaScript pages passed.`);
+  console.log(linksOnly ? 'The pricing anchor and six no-JavaScript pages passed.'
+    : `All ${passed} service layouts, the pricing anchor and six no-JavaScript pages passed.`);
 } finally { await browser.close(); }

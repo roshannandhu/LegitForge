@@ -10,8 +10,9 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
 
 ## Current owner decisions (7 October 2026)
 - Website/CMS/enquiry fixes only; real WhatsApp/n8n/AI infrastructure remains future work.
-- Compact homepage; detailed illustrative demos live on service/inner pages. Preserve the intro,
-  Anybody font, forge palette and retained motion. Relocation is explicitly authorised.
+- Home "What we offer" shows each service with its demo beside it (components/sections/services.tsx,
+  the "fires" layout; the quote entry uses QuoteDemo). Owner's call, 16 Oct 2026, reversing the 3 Oct
+  compact home. Preserve the intro, Anybody font, forge palette and retained motion.
 - MR Signage is LAST in service lists, pricing/quotation rows, enquiry options and summaries.
   This supersedes historical MR-first instructions in PLAN §22.3.
 - The owner retains the trust steel-split opening effect, controlled by scrolling: begin with
@@ -20,11 +21,12 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
   No timer/autoplay or permanent latch. Keep the paused timeline mounted, strike hallmarks once,
   freeze behind menu/intro/hidden tab, and preserve the painted frame while resizing/rebasing. All viewports remain unpinned;
   reduced motion/no-JS/failed loading show static content. Fix timing rather than removing it.
-- Six service URLs; websites/apps remain together with clear sections. Short overview and
-  deliverables → genuinely relevant published work → included work, quotes/timelines and client
-  preparation → primary illustrative demo → native expandable details/additional demos and FAQ.
-  Old demo hashes open their disclosure. Keep costs/scope visible, index compact and sample
-  figures labelled. Match project tags, never unrelated broad categories. No fictional client
+- Six service URLs; websites/apps remain together with clear sections. Service page (16 Oct
+  2026): heading with the service's demo beside it (PageHead `aside`; under it on phones) → what
+  we build → quotes and timelines → FAQ → contact. No projects, "what's included", preparation
+  checklist, "more detail" disclosures or visible demo caption (the owner removed them); the
+  Compare and LiveTest examples are gone. Old /#quotation and /#app-example land on the home demos.
+  Keep costs/scope visible and sample figures labelled. No fictional client
   quotations, measured-demo claims, ranking guarantees or new mandatory care/ownership terms.
 - Custom written quotes after scoping, no invented starting prices/budget bands/client metrics.
 - Describe simulations as illustrative. Never call a scripted stopwatch a measured real reply.
@@ -152,9 +154,7 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
   screen/month. No fake starting prices or placeholder budget bands.
 - Service pages say each fact once (lib/pages.ts): `price`/`timeline` are a few words (the
   "Quotes and timelines" boxes and /services), their conditions live once in `priceNote`; a
-  detail or FAQ never restates a card, the price note or another answer; the demo caption is the
-  only "illustrative" label per demo. Compare, Quotation and LiveTest have no title of their own:
-  the disclosure's summary names them.
+  FAQ never restates a card, the price note or another answer.
 - Service demos (DemoPlayer): DEMOS[kind] is the intro (builds the finished frame once), then
   FLOWS[kind] keeps the demo working forever as a repeat:-1 timeline: no reset, no fade (plan F).
   Each cycle ends where the next begins; rotating text uses txt() (keeps React's text node) and

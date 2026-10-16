@@ -27,16 +27,18 @@ export function Breadcrumbs({ crumbs }: { crumbs: Crumb[] }) {
   );
 }
 
-/** Inner-page header: breadcrumbs, H1, lead, optional actions. */
-export function PageHead({ crumbs, title, lead, children }: {
-  crumbs: Crumb[]; title: string; lead?: string; children?: React.ReactNode;
+/** Inner-page header: breadcrumbs, H1, lead, optional actions, and an optional aside (a service's
+ *  demo) beside them on laptops, under them on phones. */
+export function PageHead({ crumbs, title, lead, children, aside }: {
+  crumbs: Crumb[]; title: string; lead?: string; children?: React.ReactNode; aside?: React.ReactNode;
 }) {
-  return (
-    <header className="page-head wrap">
-      <Breadcrumbs crumbs={crumbs} />
-      <h1 className="type-h2 page-title">{title}</h1>
-      {lead && <p className="type-lead page-lead">{lead}</p>}
-      {children && <div className="page-actions">{children}</div>}
-    </header>
-  );
+  const copy = <>
+    <Breadcrumbs crumbs={crumbs} />
+    <h1 className="type-h2 page-title">{title}</h1>
+    {lead && <p className="type-lead page-lead">{lead}</p>}
+    {children && <div className="page-actions">{children}</div>}
+  </>;
+  return aside
+    ? <header className="page-head has-aside wrap"><div>{copy}</div><div className="page-head-aside">{aside}</div></header>
+    : <header className="page-head wrap">{copy}</header>;
 }
