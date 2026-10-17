@@ -9,6 +9,9 @@
  *  Team (phase 4): alerts go first to whoever handles the service (Admin → Team, D1 bot_team),
  *  to the others 10 minutes later if nobody replied; "busy" / "free" / "off"; website form
  *  enquiries reach the team here too; a 10 a.m. summary on working days; "#CODE update: …".
+ *  Sales (phase 5): a call the client's way (WhatsApp, phone or Meet) at a free time from the
+ *  team's Google Calendar, with a reminder; "#CODE quote <link>", "#CODE pay <amount>"; a Google
+ *  review request after a Won lead, then a referral ask; one revival template after 30 quiet days.
  *
  *  Durability: inbound messages are stored in Supabase before Meta gets its 200 (Supabase down →
  *  500, Meta retries). A per-contact lock (busy_until) runs one turn at a time. A turn keeps
@@ -18,8 +21,10 @@
 
 import { isOpenNow } from '../lib/business-hours';
 import { serviceOfLabel } from '../lib/wa-services';
+import { bookCall, calendarOn, callEvent, cancelCall, freeSlots } from './calendar';
+import { inr, paymentLink, rupees } from './pay';
 import {
-  ANSWER_SCHEMA, BRIEF_PROMPT, DETAILS, EXTRACT_SCHEMA, FACTS, FIELDS, LANG_PROMPT, LANGS, QA_SCHEMA, SERVICES, TEXT, TEXT_SCHEMA, TIMELINES,
+  ANSWER_SCHEMA, BRIEF_PROMPT, DETAILS, LOCALE, fill, EXTRACT_SCHEMA, FACTS, FIELDS, LANG_PROMPT, LANGS, QA_SCHEMA, SERVICES, TEXT, TEXT_SCHEMA, TIMELINES,
   TRANSLATED, TRANSLATIONS_SCHEMA, answerPrompt, extractPrompt, generalisePrompt, langFromText, langName, prefilledService,
   scriptLang, serviceByKey, serviceFromText, t, tonePrompt, translatePrompt, translationsPrompt,
   type Field, type Lang, type ServiceKey, type Step,
@@ -47,7 +52,7 @@ const MONEY = new RegExp([
   'രൂപയ', '\\p{Nd}\\s*രൂപ', 'ആയിര', '\\p{Nd}\\s*ലക്ഷ', 'रुपय', 'रु\\.?\\s*\\p{Nd}', 'लाख', 'हज़ार', 'हजार', 'ರೂಪಾಯಿ', 'ರೂ\\.?\\s*\\p{Nd}', 'ಸಾವಿರ', '\\p{Nd}\\s*ಲಕ್ಷ',
 ].join('|'), 'iu');
 /** STOP, typed or spoken (a transcript ends with a full stop). */
-const STOP = /^(stop|unsubscribe)[\s.!]*$/i;
+const STOP = /^(stop|unsubscribe)(\s+promotions)?[\s.!]*$/i;     // "Stop promotions": Meta's marketing opt-out button
 /** "Delete my data" in the bot's languages (the Yes/No buttons guard against false matches). */
 const DELETE_ASK = /^(please\s+)?(delete|erase|remove)\s+(all\s+)?(of\s+)?(my\s+)?(data|details|chat|info(rmation)?)\b|ente\s+data\s+delete|ഡാറ്റ\s*ഡിലീറ്റ്|डेटा\s*(हटा|डिलीट)|ಡೇಟಾ\s*ಅಳಿಸ/i;
 
@@ -60,6 +65,7 @@ interface Fields {
   flags?: number;            // abusive messages flagged so far (the second one blocks)
   call_at?: string;          // last "arrange a call" alert, so repeated taps alert once a day
   person_at?: string;        // asked for a person: they wait for the team, not for a reminder
+  call_how?: How;            // how they want the call: WhatsApp, phone or Google Meet
   prev_leads?: string[];     // earlier enquiries' D1 lead ids (DELETE MY DATA removes them too)
 }
 export interface Contact {
@@ -67,6 +73,11 @@ export interface Contact {
   step: Step; mode: 'bot' | 'human' | 'stopped' | 'blocked'; taken_by: string | null; lang: Lang | null; service: ServiceKey | null;
   fields: Fields; alerted_at: string | null; busy_until: string | null; won_counted?: boolean; turns: number; turns_day: string | null; last_in_at: string;
   nudged_at: string | null;  // the one reminder after 3 quiet hours mid-brief (once per enquiry)
+  quote_at?: string | null;  // a quote went out ("#CODE quote"): their next message is passed to the team
+  review_at?: string | null; // the Google review request went out (a Won lead): a referral ask follows
+  referred_at?: string | null;
+  revived_at?: string | null; // the one revival template after 30 quiet days
+  pay_at?: string | null;    // the last payment link (a double tap sends one)
 }
 export interface Msg {
   wamid: string; wa_id: string | null; team: string | null; dir: 'in' | 'out'; body: string | null; reply_id: string | null;
@@ -302,6 +313,16 @@ interface Extract {
   question_en: string; commitment: boolean; price: boolean; mood: 'calm' | 'upset' | 'urgent'; abusive: boolean;
 }
 type Alert = 'complete' | 'person' | 'call' | 'upset' | 'urgent';
+type How = 'wa' | 'ph' | 'meet';
+const HOW: How[] = ['wa', 'ph', 'meet'];
+const HOW_LABEL: Record<How, string> = { wa: 'WhatsApp call', ph: 'phone call', meet: 'Google Meet' };
+/** "Thu, 16 Oct, 11:30 am" the client's way, India time. */
+const slotFormat = (lang: string) => new Intl.DateTimeFormat(LOCALE[lang as Lang] ?? 'en-IN',
+  { timeZone: 'Asia/Kolkata', weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
+export const slotTime = (lang: string) => new Intl.DateTimeFormat(LOCALE[lang as Lang] ?? 'en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
+const slotDay = (lang: string) => new Intl.DateTimeFormat(LOCALE[lang as Lang] ?? 'en-IN', { timeZone: 'Asia/Kolkata', weekday: 'long' });
+interface CallRow { id: number; wa_id: string; event_id: string | null; start_at: string; how: How; meet: string | null }
+
 const ALERT_HEAD: Record<Alert, string> = {
   complete: 'new lead (brief complete)', person: 'new lead (asked for a person)', call: '📞 wants a call to discuss a quote',
   upset: '⚠ upset client: please take over now', urgent: '⚠ urgent: please take over now',
@@ -360,7 +381,8 @@ class Turn {
     }
     if (c.mode === 'blocked') return;                                       // the team unblocks with "#CODE unblock"
     if (STOP.test(text)) { c.last_in_at = m.at; c.mode = 'stopped'; await this.say(t(c.lang, 'stopped')); return; }
-    if (Date.parse(c.last_in_at) < this.now - 30 * DAY && this.welcomeBack()) {
+    const askedForReview = !!c.review_at && Date.parse(c.review_at) > this.now - 30 * DAY;   // their reply to it is not a "return"
+    if (Date.parse(c.last_in_at) < this.now - 30 * DAY && !askedForReview && this.welcomeBack()) {
       c.last_in_at = m.at;
       if (kind === 'media' && value !== 'voice') await this.keep(value, id, name);   // a photo sent first is still kept
       await sendButtons(this.env, c.wa_id, t(lang, 'welcomeBack'), TEXT[lang].retBtn.map((title, i) => ({ id: `ret:${i ? 'new' : 'same'}`, title })));
@@ -369,6 +391,12 @@ class Turn {
     c.last_in_at = m.at;
     if (c.mode === 'stopped') c.mode = 'bot';                               // any later message restarts the chat
     if (kind === 'media' && value !== 'voice') file = await this.keep(value, id, name);
+    if (c.quote_at && c.mode !== 'human' && Date.parse(m.at) >= Date.parse(c.quote_at)) {   // (a person on the chat sees it anyway)
+      // cleared only if no newer quote went out meanwhile (this turn's copy is left as it was)
+      const [mine] = await sb(this.env, 'PATCH', `contacts?wa_id=eq.${q(c.wa_id)}&quote_at=eq.${q(c.quote_at)}`, { quote_at: null });
+      if (mine) await toTeam(this.env, this.now, `#${c.code} replied after the quote: "${clip(text || (file ? '📎 a file' : m.reply_id ?? ''), 300)}"`,
+        { wa_id: c.wa_id }, (await route(this.env, this.now, c.service)).all);
+    }
     if (c.mode === 'human') {
       // With a person on the chat the bot stays quiet and forwards: to whoever took it, or to
       // the whole team while nobody has (an upset or urgent client waiting for anyone).
@@ -397,7 +425,7 @@ class Turn {
     if (!text) { await this.say(t(c.lang, 'pleaseType')); return; }
 
     // Taps work at any step (an old menu tapped later just updates the answer).
-    if ((kind === 'ret' || kind === 'call') && c.step === 'start') { c.step = 'service'; await this.ask(text); return; }   // an old button on a fresh chat
+    if (['ret', 'call', 'how', 'slot'].includes(kind) && c.step === 'start') { c.step = 'service'; await this.ask(text); return; }   // an old button on a fresh chat
     if (kind === 'ret') {
       if (c.step !== 'returning') { await this.ask(); return; }            // an old welcome-back button: ignore it
       if (value === 'new') { this.restart(); c.step = 'service'; await this.ask(text); return; }
@@ -408,11 +436,28 @@ class Turn {
     }
     if (kind === 'call') {
       if (value !== 'y') { await this.ask('', t(c.lang, 'keepGoing')); return; }
-      if (!c.fields.call_at || Date.parse(c.fields.call_at) < this.now - DAY) {   // repeated taps alert once a day
+      if (!c.fields.call_at || Date.parse(c.fields.call_at) < this.now - DAY) {   // the team hears at once (once a day)
         c.fields.call_at = iso(this.now);
         await this.alertTeam('call');
       }
-      await this.say(t(c.lang, 'callSoon'));
+      if (!c.phone) {                                                        // no number to call (a username): Google Meet
+        c.fields.call_how = 'meet';
+        if (!(await this.offerSlots())) await this.callByTeam();
+        return;
+      }
+      const asked = await sendButtons(this.env, c.wa_id, t(lang, 'howAsk'), TEXT[lang].howBtn.map((title, i) => ({ id: `how:${HOW[i]}`, title })));
+      if (!asked) await this.say(t(c.lang, 'callSoon'));
+      return;
+    }
+    if (kind === 'how' && (HOW as string[]).includes(value)) {
+      c.fields.call_how = c.phone ? value as How : 'meet';
+      if (!(await this.offerSlots())) await this.callByTeam();
+      return;
+    }
+    if (kind === 'slot') {
+      if (!c.fields.call_how) await this.callByTeam();
+      else if (value === 'other') await this.otherTime();
+      else await this.book(Number(value) * MIN);
       return;
     }
     if (kind === 'svc' && serviceByKey(value)) {
@@ -499,8 +544,14 @@ class Turn {
     if (theirs.length) await sb(this.env, 'DELETE', `knowledge?status=eq.pending&question_id=in.(${theirs.map((x) => x.id).join(',')})`, undefined, 'return=minimal');
     await sb(this.env, 'DELETE', `questions?wa_id=eq.${q(c.wa_id)}`, undefined, 'return=minimal');
     for (const id of ids) await dropFiles(this.env, `leads/${id}/`);
+    const stuck: number[] = [];                                             // calendar events Google would not delete
+    for (const call of await sb<CallRow>(this.env, 'GET', `calls?wa_id=eq.${q(c.wa_id)}&select=id,event_id,start_at`)) {
+      if (call.event_id && !(await cancelCall(this.env, call.event_id))) stuck.push(Date.parse(call.start_at));
+    }
+    await sb(this.env, 'DELETE', `calls?wa_id=eq.${q(c.wa_id)}`, undefined, 'return=minimal');
     if (c.mode === 'blocked') {
-      Object.assign(c, { profile_name: null, lead_id: crypto.randomUUID(), lead_saved: true, step: 'start', taken_by: null, lang: null, service: null, fields: {}, alerted_at: null });
+      Object.assign(c, { profile_name: null, lead_id: crypto.randomUUID(), lead_saved: true, step: 'start', taken_by: null, lang: null, service: null, fields: {}, alerted_at: null,
+        quote_at: null, review_at: null, referred_at: null, revived_at: null, pay_at: null });
     } else {
       await sb(this.env, 'DELETE', `contacts?wa_id=eq.${q(c.wa_id)}`, undefined, 'return=minimal');
     }
@@ -508,7 +559,8 @@ class Turn {
     await sb(this.env, 'DELETE', `messages?wa_id=eq.${q(c.wa_id)}`, undefined, 'return=minimal');
     this.erased = true;
     c.lead_saved = true;                                                    // nothing re-creates the lead this turn
-    await toTeam(this.env, this.now, `#${c.code} asked to delete their data. Their chat, details and WhatsApp leads are erased; please also delete #${c.code}'s messages in your own WhatsApp.`, {});
+    await toTeam(this.env, this.now, `#${c.code} asked to delete their data. Their chat, details and WhatsApp leads are erased; please also delete #${c.code}'s messages in your own WhatsApp.`
+      + (stuck.length ? ` Also delete the call on the calendar at ${stuck.map(istTime).join(', ')} (Google did not let me).` : ''), {});
     await this.say(t(c.lang, 'deleted'));
   }
 
@@ -536,6 +588,7 @@ class Turn {
     Object.assign(this.c, {
       lead_id: crypto.randomUUID(), lead_saved: false, won_counted: false, step: 'start', mode: 'bot', taken_by: null, service: null,
       fields: { ...(prev.length ? { prev_leads: prev } : {}), since: iso(this.now) }, alerted_at: null, nudged_at: null,
+      quote_at: null, revived_at: null,                                     // a review request is once per client
     });
   }
 
@@ -627,6 +680,7 @@ class Turn {
       if (plain) { c.fields.notes = join(c.fields.notes, text); prefix ||= t(lang, 'noted'); }
       if (!c.alerted_at) await this.alertTeam('complete');                  // an earlier alert that didn't go out
       if (prefix) await this.say(prefix);
+      await this.refer().catch((e) => console.error('[bot] referral not sent', String(e)));
       return;
     }
     await this.advance(prefix);
@@ -710,6 +764,101 @@ class Turn {
       this.toneText = row?.value ?? null;
     }
     return this.toneText;
+  }
+
+  /** Free half hours from the team's calendar as a list (and "Another time"); false when there is
+   *  no calendar, no free time, or the list could not be sent (the team arranges it then). The
+   *  time is the row's title (24 characters in every language), the weekday its description. */
+  private async offerSlots(prefix = '') {
+    const c = this.c, lang = c.lang ?? 'en';
+    if (!calendarOn(this.env)) return false;
+    const slots = await freeSlots(this.env, this.now);
+    if (!slots?.length) return false;
+    const time = slotTime(lang), day = slotDay(lang);
+    return !!(await sendList(this.env, c.wa_id, (prefix ? `${prefix}\n\n` : '') + t(lang, 'slotAsk'), t(lang, 'slotBtn'), [
+      ...slots.map((ms) => ({ id: `slot:${Math.round(ms / MIN)}`, title: clip(time.format(new Date(ms)), 24), description: clip(day.format(new Date(ms)), 72) })),
+      { id: 'slot:other', title: t(lang, 'otherTime') },
+    ]));
+  }
+
+  /** No calendar, no free time, "Another time" or a refused booking: the team arranges the call.
+   *  (They were alerted when the client said yes; this says how, and anything to know.) */
+  private async callByTeam(note = '') {
+    const c = this.c, how = c.fields.call_how;
+    await toTeam(this.env, this.now, `#${c.code} 📞 ${who(c)} wants ${how ? `a ${HOW_LABEL[how]}` : 'a call'}: please arrange the time with them.`
+      + `${note ? ` ${note}` : ''}${c.phone ? `\nWhatsApp: wa.me/${c.phone}` : ''}`, { wa_id: c.wa_id }, (await route(this.env, this.now, c.service)).all);
+    await this.say(t(c.lang, 'callSoon'));
+  }
+
+  /** This client's future calls taken off the calendar (another time, or a newer booking), but
+   *  not the one at `keep`; returns their times. */
+  private async dropCalls(keep?: number) {
+    const rows = await sb<CallRow>(this.env, 'GET', `calls?wa_id=eq.${q(this.c.wa_id)}&reminded=eq.false&start_at=gt.${iso(this.now)}&select=id,event_id,start_at`);
+    const gone: number[] = [];
+    for (const r of rows) {
+      if (Date.parse(r.start_at) === keep) continue;
+      if (r.event_id) await cancelCall(this.env, r.event_id);
+      await sb(this.env, 'DELETE', `calls?id=eq.${r.id}`, undefined, 'return=minimal');
+      gone.push(Date.parse(r.start_at));
+    }
+    return gone;
+  }
+
+  /** The chosen half hour: claimed in Supabase first (one call per half hour: two clients never
+   *  share it), checked on the calendar and booked there, confirmed in their language with the
+   *  way to join; a newer booking replaces an older one; the team is told. A double tap or a
+   *  retried turn finds it already theirs and only confirms it again. */
+  private async book(start: number) {
+    const c = this.c, lang = c.lang ?? 'en', how = c.fields.call_how!;
+    if (!(start > this.now + HOUR)) { if (!(await this.offerSlots())) await this.callByTeam(); return; }   // an old list
+    const at = `calls?wa_id=eq.${q(c.wa_id)}&start_at=eq.${q(iso(start))}`;
+    let [mine] = await sb<CallRow>(this.env, 'GET', `${at}&select=id,event_id,how,meet`);
+    if (mine?.event_id) { await this.sayBooked(start, mine.how, mine.meet); return; }
+    if (!mine) {
+      [mine] = await sb<CallRow>(this.env, 'POST', 'calls?on_conflict=start_at', { wa_id: c.wa_id, start_at: iso(start), how }, 'resolution=ignore-duplicates,return=representation');
+      if (!mine) { if (!(await this.offerSlots(t(lang, 'slotTaken')))) await this.callByTeam(); return; }   // another client has it
+    }
+    const ev = await bookCall(this.env, start, {
+      title: `Call: ${who(c)} (#${c.code}) · ${HOW_LABEL[how]}`, meet: how === 'meet', key: `${c.code}-${start / MIN}-${mine.id}`,
+      description: [brief(c), c.phone ? `WhatsApp: wa.me/${c.phone}` : '', `Language: ${langName(c.lang)}. Booked by the WhatsApp bot.`].filter(Boolean).join('\n'),
+    });
+    if (ev === 'taken' || !ev) {
+      await sb(this.env, 'DELETE', `calls?id=eq.${mine.id}`, undefined, 'return=minimal');
+      if (ev === 'taken') { if (!(await this.offerSlots(t(lang, 'slotTaken')))) await this.callByTeam(); }
+      else await this.callByTeam(`They chose ${istTime(start)}, but the calendar did not take it.`);
+      return;
+    }
+    await sb(this.env, 'PATCH', `calls?id=eq.${mine.id}`, { event_id: ev.id, meet: ev.meet, how }, 'return=minimal');
+    const replaced = await this.dropCalls(start);
+    await this.sayBooked(start, how, ev.meet);
+    await this.saveLead();
+    await toTeam(this.env, this.now, [`#${c.code} 📅 call booked: ${istTime(start)} · ${HOW_LABEL[how]}`, `Name: ${who(c)}`,
+      c.phone ? `WhatsApp: wa.me/${c.phone}` : '', ev.meet ? `Meet: ${ev.meet}` : how === 'meet' ? 'No Meet link was made: please send them one.' : '',
+      replaced.length ? `(Instead of ${replaced.map(istTime).join(', ')}: taken off the calendar.)` : '',
+      ev.link ? `Calendar: ${ev.link}` : ''].filter(Boolean).join('\n'), { wa_id: c.wa_id }, (await route(this.env, this.now, c.service)).all);
+  }
+
+  private async sayBooked(start: number, how: How, meet: string | null) {
+    const lang = this.c.lang ?? 'en';
+    const join = how === 'meet' ? (meet ? fill(t(lang, 'howMeet'), { link: meet }) : t(lang, 'meetLater')) : t(lang, how === 'wa' ? 'howWa' : 'howPhone');
+    await this.say(`${fill(t(lang, 'booked'), { time: slotFormat(lang).format(new Date(start)) })}\n${join}`);
+  }
+
+  /** "Another time": the team arranges it, and a time they had booked comes off the calendar. */
+  private async otherTime() {
+    const was = await this.dropCalls();
+    await this.callByTeam(was.length ? `They want another time instead of ${was.map(istTime).join(', ')} (taken off the calendar).` : '');
+  }
+
+  /** After a Google review request, their next ordinary message gets one referral ask (only when
+   *  Admin → Company has the WhatsApp number to share). */
+  async refer() {
+    const c = this.c;
+    if (!c.review_at || c.referred_at || c.mode !== 'bot') return;
+    const link = await shareLink(this.env);
+    if (!link) return;
+    c.referred_at = iso(this.now);
+    await this.say(fill(t(c.lang, 'referral'), { link }));
   }
 
   /** One more AI call within the client's daily cap (and this invocation's budget)? */
@@ -805,6 +954,7 @@ class Turn {
       ...(said ? [`Message: "${clip(said, 300)}"`] : []),
       `Timeline: ${f.timeline || '-'}`, `Language: ${langName(c.lang)}`,
       ...(f.files?.length ? [`Files: ${f.files.length} (Admin → Leads)`] : []),
+      ...(why === 'call' && f.call_how ? [`Call: ${HOW_LABEL[f.call_how]}`] : []),
       `Need: ${clip(f.need || '-', 400)}`,
       ...(shown(f.details) ? [`Details: ${clip(f.details!, 200)}`] : []), ...(shown(f.refs) ? [`Websites they like: ${clip(f.refs!, 200)}`] : []),
       ...(f.notes ? [`Notes: ${clip(f.notes, 300)}`] : []),
@@ -1004,7 +1154,7 @@ async function storeOut(env: Env, now: number, wamid: string, member: string, bo
   }, 'return=minimal');
 }
 
-const HELP = 'Reply (swipe right) to a question or lead message to answer it, or start with #CODE then your message.\n"#CODE take" = chat with the client yourself, "#CODE bot" = hand back to the bot, "#CODE unblock" = undo a block, "#CODE update: …" = a project update in their language.\n"busy", "busy 1h", "off", "free" = who gets alerts first; "who" = everyone\'s status.';
+const HELP = 'Reply (swipe right) to a question or lead message to answer it, or start with #CODE then your message.\n"#CODE take" = chat with the client yourself, "#CODE bot" = hand back to the bot, "#CODE unblock" = undo a block, "#CODE update: …" = a project update in their language.\n"#CODE quote <link>", "#CODE pay 5000" = send a quote or an advance payment link.\n"busy", "busy 1h", "off", "free" = who gets alerts first; "who" = everyone\'s status.';
 
 async function handleTeam(env: Env, m: Msg, now: number, about: About = {}) {
   const member = m.team!, text = (m.body ?? '').trim();
@@ -1020,6 +1170,26 @@ async function handleTeam(env: Env, m: Msg, now: number, about: About = {}) {
     if (tr[1] === 's') return reply('Skipped: the bot translates this answer itself when it is needed.');
     const [ok] = await sb(env, 'PATCH', `knowledge?id=eq.${tr[2]}`, { translations_ok: true });
     return reply(ok ? 'Translations saved ✅ The bot uses them word for word.' : HELP);
+  }
+  // [Yes, send] on a payment card (the team approves every amount): one link, however many taps.
+  const pb = /^pay:(y|n)(?::([A-Z0-9]{5}):(\d+(?:\.\d{1,2})?))?$/.exec(m.reply_id ?? '');
+  if (pb) {
+    if (pb[1] === 'n' || !pb[2]) return reply('Cancelled: nothing was sent.');
+    const [contact] = await sb<Contact>(env, 'GET', `contacts?code=eq.${pb[2]}`);
+    if (!contact) return reply('That client is gone (they may have deleted their data).');
+    about.wa_id = contact.wa_id;
+    const amount = Number(pb[3]), lang = contact.lang ?? 'en';
+    if (contact.mode === 'stopped' || contact.mode === 'blocked') return reply(`#${contact.code} ${contact.mode === 'stopped' ? 'opted out' : 'is blocked'}, so no payment link was made.`);
+    const [mine] = await sb(env, 'PATCH', `contacts?wa_id=eq.${q(contact.wa_id)}&or=(pay_at.is.null,pay_at.lt.${iso(now - MIN)})`, { pay_at: iso(now) });
+    if (!mine) return reply(`A payment link went to #${contact.code} less than a minute ago, so this one (${inr(amount)}) was not sent. Tap again in a minute to send it.`);
+    const giveBack = () => sb(env, 'PATCH', `contacts?wa_id=eq.${q(contact.wa_id)}&pay_at=eq.${q(iso(now))}`, { pay_at: contact.pay_at ?? null }, 'return=minimal');
+    const link = await paymentLink(env, amount, { code: contact.code, name: who(contact), phone: contact.phone, reference: `${contact.code}-${now}` });
+    const text = link ? fill(t(lang, 'pay'), { amount: inr(amount), link })
+      : env.UPI_ID ? fill(t(lang, 'payUpi'), { amount: inr(amount), upi: env.UPI_ID, code: `#${contact.code}` }) : null;
+    if (!text) { await giveBack(); return reply('Razorpay did not make the link, so nothing was sent. Try again in a minute.'); }
+    const sent = await relay(env, now, contact, text, true, { template: true });
+    if (sent.ok) about.sent = sent.note; else await giveBack();
+    return reply(sent.ok ? `${sent.note} ${inr(amount)}${link ? `: ${link}` : ' by UPI'}` : sent.note, { wa_id: contact.wa_id });
   }
   const dr = /^dr:([sw]):(\d+)$/.exec(m.reply_id ?? '');
   if (dr) {
@@ -1075,6 +1245,33 @@ async function handleTeam(env: Env, m: Msg, now: number, about: About = {}) {
     return reply(take
       ? `You have #${contact.code}. Their messages come to you here; reply to them to answer.\n"#${contact.code} bot" hands back to the bot.`
       : `The bot is back on #${contact.code}.`);
+  }
+
+  // "quote <link>": the word, then a link (anything else, e.g. "quote ready", is an ordinary message)
+  const quote = /^quote\b[\s:,-]*(\S+:\/\/\S*)([\s\S]*)$/i.exec(rest);
+  if (quote) {
+    const link = quote[1];
+    if (!/^https:\/\//i.test(link) || quote[2].trim()) return reply(`Send just the quote's https link after the word, e.g. "#${contact.code} quote https://…".`);
+    const sent = await relay(env, now, contact, fill(t(contact.lang, 'quote'), { link }), true, { template: true });
+    if (!sent.ok) return reply(sent.note, { wa_id: contact.wa_id });
+    about.sent = sent.note;
+    count(env);
+    await env.DB.prepare(`UPDATE leads SET status = CASE WHEN status IN ('new', 'contacted') THEN 'quoted' ELSE status END WHERE id = ?`).bind(contact.lead_id).run();
+    await sb(env, 'PATCH', `contacts?wa_id=eq.${q(contact.wa_id)}`, { quote_at: iso(now) }, 'return=minimal');
+    return reply(`${sent.note} The lead is marked Quoted; I'll pass on their reply.`, { wa_id: contact.wa_id });
+  }
+  // "pay 5000" (an amount, nothing else) asks the member to confirm; "pay the balance later" is just a message
+  const pay = /^pay\b[\s:]*(.*)$/i.exec(rest), amount = pay ? rupees(pay[1]) : null;
+  if (amount) {
+    if (!(env.RAZORPAY_KEY_ID && env.RAZORPAY_KEY_SECRET) && !env.UPI_ID) return reply('No payment method is set up: add the Razorpay keys or UPI_ID to the bot (SETUP.md).');
+    const body = `Send #${contact.code} (${who(contact)}) a payment link for ${inr(amount)}?`;
+    const id = await sendButtons(env, member, body, [{ id: `pay:y:${contact.code}:${amount}`, title: 'Yes, send' }, { id: 'pay:n', title: 'Cancel' }]);
+    if (!id) return reply('I could not send the confirm card. Please send it again.');
+    await storeOut(env, now, id, member, body, { wa_id: contact.wa_id });
+    return;
+  }
+  if (o?.body?.startsWith('Send #') && o.body.includes('a payment link for')) {
+    return reply(`Tap "Yes, send" on the card, or send "#${contact.code} pay <amount>" again.`);
   }
 
   const up = code ? /^update\s*:\s*/i.exec(rest) : null;                   // only "#CODE update: …" (a reply may start with "Update")
@@ -1280,9 +1477,14 @@ export async function tick(env0: Env, now: number) {
     if (!room(env, 24)) break;
     await runClient(env, waId).catch((e) => console.error('[bot] retry failed', String(e)));
   }
+  if (room(env, 12)) await remind(env, now).catch((e) => console.error('[bot] call reminders failed', String(e)));
   // then alerts: passed on after 10 minutes, website form enquiries, the 10 a.m. summary
   if (room(env, 10)) await passOn(env, now).catch((e) => console.error('[bot] pass-on failed', String(e)));
   if (room(env, 12)) await formLeads(env, now).catch((e) => console.error('[bot] form leads failed', String(e)));
+  if (isOpenNow(new Date(now))) {                                          // sales asks: working hours, after the alerts
+    if (room(env, 12)) await reviews(env, now).catch((e) => console.error('[bot] review requests failed', String(e)));
+    if (room(env, 12)) await revive(env, now).catch((e) => console.error('[bot] revivals failed', String(e)));
+  }
   if (ist.getUTCHours() === 10 && isOpenNow(new Date(now)) && room(env, 9 + teamIds(env).size)) {   // 10 a.m. on working days
     await morning(env, now, ist.toISOString().slice(0, 10)).catch((e) => console.error('[bot] morning summary failed', String(e)));
   }
@@ -1296,6 +1498,81 @@ async function weeklyOnce(env: Env, now: number, monday: string) {
   await sb(env, 'POST', 'settings?on_conflict=key', { key: 'weekly_at', value: '2000-01-01', updated_at: iso(now) }, 'resolution=ignore-duplicates,return=minimal');
   const [mine] = await sb(env, 'PATCH', `settings?key=eq.weekly_at&value=lt.${monday}`, { value: monday, updated_at: iso(now) });
   if (mine) await weekly(env, now);
+}
+
+/** 30 minutes before a booked call: the client (the call_reminder template after their 24-hour
+ *  window) and the team. */
+async function remind(env: Env, now: number) {
+  const due = await sb<CallRow>(env, 'GET', `calls?reminded=eq.false&start_at=gt.${iso(now)}&start_at=lt.${iso(now + 35 * MIN)}&limit=5`);
+  for (const call of due) {
+    if (!room(env, 3 * teamIds(env).size + 6)) return;
+    const [mine] = await sb(env, 'PATCH', `calls?id=eq.${call.id}&reminded=eq.false`, { reminded: true });
+    if (!mine) continue;
+    const [c] = await sb<Contact>(env, 'GET', `contacts?wa_id=eq.${q(call.wa_id)}`);
+    if (!c || c.mode === 'stopped' || c.mode === 'blocked') continue;
+    let start = Date.parse(call.start_at);
+    if (call.event_id) {                                                     // moved or cancelled in Google Calendar since?
+      const ev = await callEvent(env, call.event_id);
+      if (ev === 'gone') continue;
+      if (ev) start = ev.start;
+      if (start - now > 35 * MIN || start < now) { if (start > now) await sb(env, 'PATCH', `calls?id=eq.${call.id}`, { start_at: iso(start), reminded: false }, 'return=minimal'); continue; }
+    }
+    const lang = c.lang ?? 'en';
+    const join = call.how === 'meet' ? (call.meet ? fill(t(lang, 'howMeet'), { link: call.meet }) : '') : t(lang, call.how === 'wa' ? 'howWa' : 'howPhone');
+    const text = `${fill(t(lang, 'reminder'), { time: slotFormat(lang).format(new Date(start)) })}\n${join}`.trim();
+    if (Date.parse(c.last_in_at) > now - 24 * HOUR) await sendText(env, c.wa_id, text);
+    else await sendTemplate(env, c.wa_id, 'call_reminder', [c.fields.name || c.profile_name || 'there', text]);
+    await toTeam(env, now, `#${c.code} 📅 call in 30 minutes: ${istTime(start)} · ${HOW_LABEL[call.how]}${c.phone ? ` · wa.me/${c.phone}` : ''}${call.meet ? `\nMeet: ${call.meet}` : ''}`,
+      { wa_id: c.wa_id });
+  }
+}
+
+/** The studio's WhatsApp link to share (Admin → Company), else the website. */
+async function shareLink(env: Env) {
+  count(env);
+  const row = await env.DB.prepare('SELECT data FROM company WHERE id = 1').first<{ data: string }>().catch(() => null);
+  let digits = '';
+  try { digits = String((JSON.parse(row?.data ?? '{}') as { whatsapp?: string }).whatsapp ?? '').replace(/\D/g, ''); } catch { /* none */ }
+  return digits ? `https://wa.me/${digits}` : '';
+}
+
+/** A WhatsApp lead marked Won in Admin → Leads gets one polite Google review request (the
+ *  review_request template after their 24-hour window). Off until GOOGLE_REVIEW_URL is set. */
+async function reviews(env: Env, now: number) {
+  if (!env.GOOGLE_REVIEW_URL) return;
+  count(env);
+  const won = (await env.DB.prepare(`SELECT id FROM leads WHERE source = 'whatsapp' AND status = 'won' AND review_asked_at IS NULL
+    ORDER BY created_at DESC LIMIT 3`).all<{ id: string }>()).results;
+  for (const l of won) {
+    if (!room(env, 6)) return;
+    count(env);
+    const mine = await env.DB.prepare(`UPDATE leads SET review_asked_at = datetime('now') WHERE id = ? AND review_asked_at IS NULL`).bind(l.id).run();
+    if (!mine.meta.changes) continue;
+    let [c] = await sb<Contact>(env, 'GET', `contacts?lead_id=eq.${q(l.id)}`);
+    if (!c) [c] = await sb<Contact>(env, 'GET', `contacts?fields->prev_leads=cs.${q(JSON.stringify([l.id]))}`);   // an earlier enquiry
+    if (!c || c.review_at || c.mode === 'stopped' || c.mode === 'blocked' || Date.parse(c.last_in_at) < now - 60 * DAY) continue;
+    const sent = Date.parse(c.last_in_at) > now - 24 * HOUR
+      ? await sendText(env, c.wa_id, fill(t(c.lang, 'review'), { link: env.GOOGLE_REVIEW_URL }))
+      : await sendTemplate(env, c.wa_id, 'review_request', [c.fields.name || c.profile_name || 'there', env.GOOGLE_REVIEW_URL]);
+    if (sent) await sb(env, 'PATCH', `contacts?wa_id=eq.${q(c.wa_id)}`, { review_at: iso(now) }, 'return=minimal');
+  }
+}
+
+/** One approved marketing template to a lead that went quiet 30 days ago and was not won or
+ *  lost. Off until REVIVE_TEMPLATE is set (each message costs money: Meta's marketing rate). */
+async function revive(env: Env, now: number) {
+  if (!env.REVIVE_TEMPLATE) return;
+  const cold = await sb<Contact>(env, 'GET', `contacts?mode=eq.bot&revived_at=is.null&step=neq.start&last_in_at=lt.${iso(now - 30 * DAY)}`
+    + `&last_in_at=gt.${iso(now - 37 * DAY)}&select=wa_id,lead_id,fields,profile_name&limit=3`);
+  for (const c of cold) {
+    if (!room(env, 4)) return;
+    const [mine] = await sb(env, 'PATCH', `contacts?wa_id=eq.${q(c.wa_id)}&revived_at=is.null`, { revived_at: iso(now) });
+    if (!mine) continue;
+    count(env);
+    const lead = await env.DB.prepare('SELECT status FROM leads WHERE id = ?').bind(c.lead_id).first<{ status: string }>();
+    if (!lead || lead.status === 'won' || lead.status === 'lost') continue;
+    await sendTemplate(env, c.wa_id, env.REVIVE_TEMPLATE, [c.fields.name || c.profile_name || 'there']);
+  }
 }
 
 const sqlTime = (ms: number) => iso(ms).replace('T', ' ').slice(0, 19);       // D1's datetime('now') format (UTC)

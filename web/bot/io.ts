@@ -36,6 +36,11 @@ export interface Env {
   UPI_ID?: string;
   GOOGLE_REVIEW_URL?: string;
   REVIVE_TEMPLATE?: string;
+  /** More channels (phase 7, bot/channels.ts): the Facebook Page's access token (Messenger and
+   *  Instagram replies), the Page id and the Instagram account id (only their messages are read). */
+  FB_PAGE_TOKEN?: string;
+  FB_PAGE_ID?: string;
+  IG_ACCOUNT_ID?: string;
   GRAPH_VERSION?: string;
   /** Days after the first client during which every AI answer is a draft for the team (default 14; 0 = off). */
   TRAINING_DAYS?: string;

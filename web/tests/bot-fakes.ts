@@ -8,8 +8,8 @@
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = Record<string, any>;
-const KEY: Record<string, string> = { contacts: 'wa_id', messages: 'wamid', questions: 'id', knowledge: 'id', settings: 'key', alerts: 'id' };
-const UNIQUE: Record<string, string[]> = { contacts: ['code'], questions: ['wamid'] };
+const KEY: Record<string, string> = { contacts: 'wa_id', messages: 'wamid', questions: 'id', knowledge: 'id', settings: 'key', alerts: 'id', calls: 'id' };
+const UNIQUE: Record<string, string[]> = { contacts: ['code'], questions: ['wamid'], calls: ['start_at'] };
 /** The schema's CHECK constraints (bot/supabase/schema.sql), so a value Postgres would refuse fails here too. */
 const CHECK: Record<string, Record<string, string[]>> = {
   contacts: { step: ['start', 'returning', 'service', 'language', 'name', 'business', 'need', 'details', 'refs', 'timeline', 'done'], mode: ['bot', 'human', 'stopped', 'blocked'], lang: ['en', 'ml', 'mg', 'hi', 'kn'] },
@@ -21,7 +21,7 @@ const broken = (table: string, row: Row) =>
   Object.entries(CHECK[table] ?? {}).find(([col, ok]) => row[col] != null && !ok.includes(row[col]))?.[0];
 
 export function fakeSupabase(now: () => number) {
-  const tables: Record<string, Row[]> = { contacts: [], messages: [], questions: [], knowledge: [], settings: [], alerts: [] };
+  const tables: Record<string, Row[]> = { contacts: [], messages: [], questions: [], knowledge: [], settings: [], alerts: [], calls: [] };
   let seq = 0;
   const state = { down: false };
 
@@ -51,6 +51,7 @@ export function fakeSupabase(now: () => number) {
       case 'lte': return v != null && cmp(v, val) <= 0;
       case 'gte': return v != null && cmp(v, val) >= 0;
       case 'in': return v != null && split(val.replace(/^\(|\)$/g, '')).includes(String(v));
+      case 'cs': { const want = JSON.parse(val) as unknown[]; return Array.isArray(v) && want.every((x) => v.includes(x)); }
       default: throw new Error(`fake PostgREST: unsupported operator ${op}`);
     }
   }
@@ -63,6 +64,7 @@ export function fakeSupabase(now: () => number) {
         const d = part.indexOf('.');
         return test(row, part.slice(0, d), part.slice(d + 1));
       });
+      if (k.includes('->')) { const [col, key] = k.split('->'); return test({ [k]: row[col]?.[key] }, k, v); }   // a jsonb field
       return test(row, k, v);
     }));
   }
@@ -75,6 +77,7 @@ export function fakeSupabase(now: () => number) {
     if (table === 'questions') return { status: 'pending', kind: 'question', draft: null, draft_en: null, answer: null, answered_by: null, answered_at: null, client_told_at: null, created_at: t, ...row, id: row.id ?? ++seq };
     if (table === 'knowledge') return { embedding: null, status: 'pending', question_id: null, decided_by: null, decided_at: null, translations: {}, translations_ok: false, wins: 0, created_at: t, ...row, id: row.id ?? ++seq };
     if (table === 'contacts') return { won_counted: false, created_at: t, ...row };
+    if (table === 'calls') return { event_id: null, meet: null, reminded: false, created_at: t, ...row, id: row.id ?? ++seq };
     if (table === 'alerts') return { wa_id: null, lead_id: null, question_id: null, buttons: null, later: [], next_at: null, link: {}, created_at: t, ...row, id: row.id ?? ++seq };
     return { created_at: t, ...row };
   }
@@ -142,6 +145,7 @@ export function fakeSupabase(now: () => number) {
         const ids = new Set([...gone].map((c) => c.wa_id));
         tables.questions = tables.questions.filter((x) => !ids.has(x.wa_id));
         tables.alerts = tables.alerts.filter((x) => !ids.has(x.wa_id));
+        tables.calls = tables.calls.filter((x) => !ids.has(x.wa_id));
       }
       if (table === 'contacts' || table === 'questions') {
         const qs = new Set(tables.questions.map((x) => x.id));
@@ -186,6 +190,9 @@ export function installFakes(sb: ReturnType<typeof fakeSupabase>) {
     media: {} as Record<string, { type: string; bytes: Uint8Array; size?: number; status?: number }>,
     /** Groq Whisper: the words for a voice note (given the language hint), or a status to fail with. */
     voice: ((): string | number => 500) as (lang: string) => string | number,
+    /** Google Calendar: busy times and the events the bot made; Razorpay: the links asked for. */
+    calendar: { busy: [] as { start: string; end: string }[], events: [] as Row[] },
+    razorpay: [] as Row[],
   };
   const whisper: string[] = [], downloads: string[] = [];
   let n = 0;
@@ -195,6 +202,44 @@ export function installFakes(sb: ReturnType<typeof fakeSupabase>) {
     counter.calls++;
     const url = new URL(typeof input === 'string' || input instanceof URL ? input : input.url);
     if (url.host === 'sb.test') return sb.handle(url, init);
+    if (url.host === 'oauth2.googleapis.com') {
+      const b = new URLSearchParams(String(init.body));
+      return b.get('refresh_token') === 'grefresh' && b.get('grant_type') === 'refresh_token' && b.get('client_id') === 'gid' && b.get('client_secret') === 'gsecret'
+        ? Response.json({ access_token: 'g-access' }) : new Response('{}', { status: 400 });
+    }
+    if (url.host === 'www.googleapis.com') {
+      if ((init.headers as Record<string, string>)?.authorization !== 'Bearer g-access') return new Response('{}', { status: 401 });
+      const cal = state.calendar;
+      if (url.pathname.endsWith('/freeBusy')) {
+        const b = JSON.parse(String(init.body)), from = Date.parse(b.timeMin), to = Date.parse(b.timeMax);
+        const busy = [...cal.busy, ...cal.events.map((e) => ({ start: e.start.dateTime, end: e.end.dateTime }))]
+          .filter((x) => Date.parse(x.start) < to && Date.parse(x.end) > from);
+        return Response.json({ calendars: { [b.items[0].id]: { busy } } });
+      }
+      if ((init.method ?? 'GET') === 'POST' && url.pathname.endsWith('/events')) {
+        const b = JSON.parse(String(init.body)), id = b.id ?? `ev-${cal.events.length + 1}`;
+        if (cal.events.some((e) => e.id === id)) return new Response('{}', { status: 409 });
+        const meet = b.conferenceData && url.searchParams.get('conferenceDataVersion') === '1';   // as Google: no Meet without it
+        const ev = { ...b, id, hangoutLink: meet ? `https://meet.google.com/abc-${id}` : undefined, htmlLink: `https://calendar.google.com/event?eid=${id}` };
+        cal.events.push(ev);
+        return Response.json(ev);
+      }
+      if ((init.method ?? 'GET') === 'GET' && url.pathname.includes('/events/')) {
+        const ev = cal.events.find((e) => e.id === decodeURIComponent(url.pathname.split('/').pop()!));
+        return ev ? Response.json(ev) : new Response('{}', { status: 404 });
+      }
+      if (init.method === 'DELETE') {
+        const id = decodeURIComponent(url.pathname.split('/').pop()!);
+        cal.events = cal.events.filter((e) => e.id !== id);
+        return new Response(null, { status: 204 });
+      }
+    }
+    if (url.host === 'api.razorpay.com') {
+      if ((init.headers as Record<string, string>)?.authorization !== `Basic ${btoa('rzp_test_x:rzp-secret')}`) return new Response('{}', { status: 401 });
+      const b = JSON.parse(String(init.body));
+      state.razorpay.push(b);
+      return Response.json({ id: `plink_${state.razorpay.length}`, short_url: `https://rzp.io/i/lf${state.razorpay.length}` });
+    }
     if (url.host === 'graph.facebook.com' && (init.method ?? 'GET') === 'GET') {        // a media id's address
       const id = decodeURIComponent(url.pathname.split('/').pop()!), f = state.media[id];
       if (!f) return new Response('{"error":{}}', { status: 404 });

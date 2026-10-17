@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
 import { Miniflare, convertV4MiniflareOptions } from 'miniflare';
 import worker, { clock, tick, type Env } from '../bot/worker';
-import { DETAILS, LANGS, TEXT } from '../bot/text';
+import { DETAILS, LANGS, TEXT, fill } from '../bot/text';
 import { fakeEmbedding, fakeSupabase, installFakes, type Responder, type Sent } from './bot-fakes';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -39,11 +39,13 @@ test('WhatsApp bot (fake Meta, Supabase, Groq and Gemini; real Miniflare D1)', a
   const reset = async () => {
     for (const rows of Object.values(sb.tables)) rows.length = 0;
     fx.sent.length = 0; fx.aiBodies.length = 0; fx.whisper.length = 0;
-    Object.assign(fx.state, { ai: (() => 500) as Responder, graphDown: false, embedDown: false, onSend: undefined, media: {}, voice: () => 500 });
+    Object.assign(fx.state, { ai: (() => 500) as Responder, graphDown: false, embedDown: false, onSend: undefined, media: {}, voice: () => 500,
+      calendar: { busy: [], events: [] }, razorpay: [] });
     const files = (await bucket.list()).objects.map((o) => o.key);
     if (files.length) await bucket.delete(files);
     await db.exec('DELETE FROM projects');
     await db.exec('DELETE FROM bot_team');
+    await db.exec('DELETE FROM company');
     sb.state.down = false;
     now = OPEN;
     await db.exec('DELETE FROM leads');
@@ -135,6 +137,8 @@ test('WhatsApp bot (fake Meta, Supabase, Groq and Gemini; real Miniflare D1)', a
     for (const l of Object.values(TEXT)) {
       assert.ok(l.menu.length <= 20, l.menu);
       for (const b of l.tl) assert.ok(b.length <= 20, b);
+      for (const b of [...l.howBtn, l.skip, l.slotBtn, ...l.callBtn, ...l.delBtn, ...l.retBtn]) assert.ok(b.length <= 20, b);   // buttons, list button
+      assert.ok(l.otherTime.length <= 24, l.otherTime);                     // a list row
     }
     for (const l of LANGS) assert.ok(l.title.length <= 24);
     const row = await lead();
@@ -597,7 +601,9 @@ test('WhatsApp bot (fake Meta, Supabase, Groq and Gemini; real Miniflare D1)', a
     const code = contact().code;
     assert.ok(teamGot(TEAM[0], `#${code} price question`));
     await post([tap(CLIENT, 'call:y', 'button_reply')]);
-    assert.equal(last(CLIENT).body, TEXT.en.callSoon);
+    assert.deepEqual(last(CLIENT).ids, ['how:wa', 'how:ph', 'how:meet'], 'how they want to talk (phase 5)');
+    await post([tap(CLIENT, 'how:wa', 'button_reply')]);
+    assert.equal(last(CLIENT).body, TEXT.en.callSoon, 'no calendar: the team arranges it');
     assert.ok(teamGot(TEAM[0], 'wants a call'));
     await post([tap(CLIENT, 'call:n', 'button_reply')]);
     assert.equal(last(CLIENT).body, `${TEXT.en.keepGoing}\n\n${TEXT.en.name}`);
@@ -1509,5 +1515,266 @@ test('WhatsApp bot (fake Meta, Supabase, Groq and Gemini; real Miniflare D1)', a
     await teamHi();
     await tick(env, now);
     assert.match(teamGot(TEAM[0], 'Good morning')!.body, /Waiting over 2 hours for a first reply: 1 /);
+  });
+  /* ---- phase 5: calls and sales ---- */
+
+  const calendarEnv = { GOOGLE_CLIENT_ID: 'gid', GOOGLE_CLIENT_SECRET: 'gsecret', GOOGLE_REFRESH_TOKEN: 'grefresh', CALENDAR_ID: 'legitforge@gmail.com' };
+  const noCalendar = () => { for (const k of Object.keys(calendarEnv)) delete (env as Row)[k]; };
+  const priceAsk = async (who = CLIENT) => {
+    fx.state.ai = (task) => (task === 'extract' ? { ...question('How much for a website?'), price: true } : 500);
+    await toName(who);
+    await post([text(who, 'How much will it cost?')]);
+    fx.state.ai = () => 500;
+    assert.deepEqual(last(who).ids, ['call:y', 'call:n']);
+  };
+  const istAt = (s: string) => Date.parse(`${s.replace(' ', 'T')}:00+05:30`);
+
+  await t.test('phase 5: a call the client’s way at a free time from the calendar, a Meet link, a reminder, and DELETE MY DATA cancels it', async () => {
+    await reset();
+    await teamHi();
+    Object.assign(env, calendarEnv);
+    try {
+      fx.state.calendar.busy.push({ start: new Date(istAt('2026-10-14 13:00')).toISOString(), end: new Date(istAt('2026-10-14 13:30')).toISOString() });
+      await priceAsk();
+      await post([tap(CLIENT, 'call:y', 'button_reply')]);
+      assert.deepEqual(last(CLIENT).ids, ['how:wa', 'how:ph', 'how:meet']);
+      await post([tap(CLIENT, 'how:meet', 'button_reply')]);
+      const list = last(CLIENT);
+      assert.equal(list.type, 'list');
+      assert.equal(list.ids.length, 9, 'eight times and "Another time"');
+      const first = istAt('2026-10-14 13:30');
+      assert.equal(list.ids[0], `slot:${first / MIN}`, 'the busy 13:00 is left out');
+      await post([tap(CLIENT, list.ids[0])]);
+      const ev = fx.state.calendar.events[0];
+      assert.ok(ev.conferenceData, 'a Meet link was asked for');
+      assert.match(ev.summary, /Ravi.*Google Meet/);
+      assert.match(last(CLIENT).body, /^Done! Your call is booked for .*\(India time\)\.\nJoin on Google Meet: https:\/\/meet\.google\.com\//);
+      const code = contact().code;
+      assert.ok(teamGot(TEAM[0], `#${code} 📅 call booked`));
+      now = first - 30 * MIN;
+      await tick(env, now);
+      assert.ok(last(CLIENT).body.startsWith('Reminder: our call is at'));
+      assert.ok(teamGot(TEAM[0], `#${code} 📅 call in 30 minutes`));
+      const n = to(CLIENT).length;
+      await tick(env, now + 2 * MIN);
+      assert.equal(to(CLIENT).length, n, 'one reminder');
+      await post([text(CLIENT, 'delete my data')]);
+      await post([tap(CLIENT, 'del:y', 'button_reply')]);
+      assert.equal(fx.state.calendar.events.length, 0, 'off the calendar');
+    } finally { noCalendar(); }
+  });
+
+  await t.test('phase 5: a time taken meanwhile is offered again; with no calendar the team arranges the call', async () => {
+    await reset();
+    await teamHi();
+    Object.assign(env, calendarEnv);
+    try {
+      await priceAsk();
+      await post([tap(CLIENT, 'call:y', 'button_reply')]);
+      await post([tap(CLIENT, 'how:wa', 'button_reply')]);
+      const pick = last(CLIENT).ids[0], start = Number(pick.split(':')[1]) * MIN;
+      fx.state.calendar.busy.push({ start: new Date(start).toISOString(), end: new Date(start + 30 * MIN).toISOString() });   // someone else took it
+      await post([tap(CLIENT, pick)]);
+      assert.equal(fx.state.calendar.events.length, 0);
+      assert.ok(last(CLIENT).body.startsWith(TEXT.en.slotTaken));
+      assert.equal(last(CLIENT).type, 'list');
+      await post([tap(CLIENT, 'slot:other')]);
+      assert.equal(last(CLIENT).body, TEXT.en.callSoon);
+      assert.ok(teamGot(TEAM[0], 'wants a call to discuss a quote'), 'told when they said yes');
+      assert.ok(teamGot(TEAM[0], 'wants a WhatsApp call: please arrange the time'), 'and how, when no time was booked');
+    } finally { noCalendar(); }
+    await priceAsk(CLIENT2);
+    await post([tap(CLIENT2, 'call:y', 'button_reply')]);
+    await post([tap(CLIENT2, 'how:ph', 'button_reply')]);
+    assert.equal(last(CLIENT2).body, TEXT.en.callSoon, 'no calendar: the team calls');
+    assert.ok(teamGot(TEAM[0], `#${contact(CLIENT2).code} 📞 Ravi wants a phone call`));
+  });
+
+  await t.test('phase 5: "#CODE quote <link>" marks the lead Quoted and passes their reply on', async () => {
+    await reset();
+    await teamHi();
+    await toName();
+    const code = contact().code;
+    await post([text(TEAM[0], `#${code} quote http://quotes.example/1`)]);
+    assert.match(last(TEAM[0]).body, /Send just the quote's https link/);
+    await post([text(TEAM[0], `#${code} quote ready by Friday`)]);
+    assert.equal(last(CLIENT).body, 'quote ready by Friday', 'the word alone is an ordinary message');
+    await post([text(TEAM[0], `#${code} quote https://quotes.example/q/1`)]);
+    assert.equal(last(CLIENT).body, 'Here is your quote from Legit Forge: https://quotes.example/q/1\nReply here if you have any questions.');
+    assert.equal((await lead())?.status, 'quoted');
+    await post([text(CLIENT, 'Looks good, can we start Monday?')]);
+    assert.ok(teamGot(TEAM[0], `#${code} replied after the quote: "Looks good, can we start Monday?"`));
+    const n = to(TEAM[1]).filter((m) => m.body.includes('replied after the quote')).length;
+    await post([text(CLIENT, 'Also need a logo')]);
+    assert.equal(to(TEAM[1]).filter((m) => m.body.includes('replied after the quote')).length, n, 'only the first reply');
+  });
+
+  await t.test('phase 5: "#CODE pay 5,000" asks the member first, then sends one link (Razorpay, or the UPI ID)', async () => {
+    await reset();
+    await teamHi();
+    await toName();
+    const code = contact().code;
+    await post([text(TEAM[0], `#${code} pay 5,000`)]);
+    assert.match(last(TEAM[0]).body, /No payment method is set up/);
+    Object.assign(env, { RAZORPAY_KEY_ID: 'rzp_test_x', RAZORPAY_KEY_SECRET: 'rzp-secret' });
+    try {
+      const before = to(CLIENT).length;
+      await post([text(TEAM[0], `#${code} pay 5,000`)]);
+      assert.deepEqual(last(TEAM[0]).ids, [`pay:y:${code}:5000`, 'pay:n']);
+      assert.equal(to(CLIENT).length, before, 'nothing to the client before the member says yes');
+      await post([tap(TEAM[0], `pay:y:${code}:5000`, 'button_reply', 'Yes, send')]);
+      assert.equal(last(CLIENT).body, 'Here is the link to pay the advance of ₹5,000: https://rzp.io/i/lf1\nThank you!');
+      assert.equal(fx.state.razorpay[0].amount, 500000, 'in paise');
+      await post([tap(TEAM[1], `pay:y:${code}:5000`, 'button_reply', 'Yes, send')]);
+      assert.match(last(TEAM[1]).body, /less than a minute ago, so this one \(₹5,000\) was not sent/);
+      assert.equal(fx.state.razorpay.length, 1, 'one link');
+    } finally { delete env.RAZORPAY_KEY_ID; delete env.RAZORPAY_KEY_SECRET; }
+    env.UPI_ID = 'legitforge@okicici';
+    try {
+      now += 2 * MIN;
+      await post([text(TEAM[0], `#${code} pay ₹1500`)]);
+      await post([tap(TEAM[0], `pay:y:${code}:1500`, 'button_reply', 'Yes, send')]);
+      assert.equal(last(CLIENT).body, `Please pay the advance of ₹1,500 by UPI to legitforge@okicici (Legit Forge), with #${code} in the note. Thank you!`);
+      await post([tap(TEAM[0], 'pay:n', 'button_reply', 'Cancel')]);
+      assert.match(last(TEAM[0]).body, /^Cancelled/);
+    } finally { delete env.UPI_ID; }
+  });
+
+  await t.test('phase 5: a Won lead gets one review request, then one referral ask', async () => {
+    await reset();
+    await db.prepare('INSERT INTO company (id, data) VALUES (1, ?)').bind(JSON.stringify({ whatsapp: '919999999999' })).run();
+    await toName();
+    await toTimeline();
+    await post([tap(CLIENT, 'tl:1', 'button_reply')]);
+    await db.prepare(`UPDATE leads SET status = 'won' WHERE phone = ?`).bind(`+${CLIENT}`).run();
+    await tick(env, now);
+    assert.ok(!to(CLIENT).some((m) => m.body.includes('Google review')), 'off until the review link is set');
+    env.GOOGLE_REVIEW_URL = 'https://g.page/r/legitforge/review';
+    try {
+      await tick(env, now);
+      assert.equal(last(CLIENT).body, fill(TEXT.en.review, { link: 'https://g.page/r/legitforge/review' }));
+      const n = to(CLIENT).length;
+      await tick(env, now + 2 * MIN);
+      assert.equal(to(CLIENT).length, n, 'once');
+      await post([text(CLIENT, 'Done, five stars!')]);
+      assert.equal(last(CLIENT).body, fill(TEXT.en.referral, { link: 'https://wa.me/919999999999' }));
+      await post([text(CLIENT, 'Sure, will do')]);
+      assert.equal(to(CLIENT).filter((m) => m.body.startsWith('One more thing')).length, 1, 'one referral ask');
+    } finally { delete env.GOOGLE_REVIEW_URL; }
+  });
+
+  await t.test('phase 5: one revival template after 30 quiet days, only when switched on and never for Won or Lost leads', async () => {
+    await reset();
+    await toName();
+    await post([text(CLIENT, 'Ravi')]);
+    await toName(CLIENT2);
+    await post([text(CLIENT2, 'Asha')]);
+    await db.prepare(`UPDATE leads SET status = 'lost' WHERE phone = ?`).bind(`+${CLIENT2}`).run();
+    now += 31 * 24 * 60 * MIN;                                    // Saturday 11:00 IST: open
+    await tick(env, now);
+    assert.ok(!to(CLIENT).some((m) => m.type === 'template'), 'off by default (each one costs money)');
+    env.REVIVE_TEMPLATE = 'lf_follow_up';
+    try {
+      await tick(env, now);
+      assert.equal(last(CLIENT).template, 'lf_follow_up');
+      assert.equal(last(CLIENT).body, 'Ravi');
+      await tick(env, now + 2 * MIN);
+      assert.equal(to(CLIENT).filter((m) => m.template === 'lf_follow_up').length, 1, 'once');
+      assert.ok(!to(CLIENT2).some((m) => m.template === 'lf_follow_up'), 'not a lost lead');
+    } finally { delete env.REVIVE_TEMPLATE; }
+  });
+  /* ---- phase 5 review fixes ---- */
+
+  await t.test('phase 5 fixes: a double tap confirms again, a new time replaces the old, "Another time" frees it, two clients never share one', async () => {
+    await reset();
+    await teamHi();
+    Object.assign(env, calendarEnv);
+    try {
+      await priceAsk();
+      await post([tap(CLIENT, 'call:y', 'button_reply')]);
+      await post([tap(CLIENT, 'how:wa', 'button_reply')]);
+      const ids = last(CLIENT).ids;
+      await post([tap(CLIENT, ids[0])]);
+      await post([tap(CLIENT, ids[0])]);
+      assert.equal(fx.state.calendar.events.length, 1, 'one event');
+      assert.ok(last(CLIENT).body.startsWith('Done! Your call is booked'), 'the double tap is confirmed, not "taken"');
+      await post([tap(CLIENT, ids[1])]);
+      assert.equal(fx.state.calendar.events.length, 1, 'the new time replaced the old one');
+      assert.equal(sb.tables.calls.length, 1);
+      assert.match(teamGot(TEAM[0], 'call booked')!.body, /Instead of .*taken off the calendar/);
+      await post([tap(CLIENT, 'slot:other')]);
+      assert.equal(fx.state.calendar.events.length, 0, '"Another time" frees it');
+      assert.match(teamGot(TEAM[0], 'please arrange the time')!.body, /instead of/);
+
+      await priceAsk(CLIENT2);
+      await post([tap(CLIENT2, 'call:y', 'button_reply')]);
+      await post([tap(CLIENT2, 'how:ph', 'button_reply')]);
+      const slot = last(CLIENT2).ids[0];
+      sb.tables.calls.push({ id: 999, wa_id: CLIENT, start_at: new Date(Number(slot.split(':')[1]) * MIN).toISOString(), how: 'wa', event_id: null, meet: null, reminded: false });
+      await post([tap(CLIENT2, slot)]);
+      assert.ok(last(CLIENT2).body.startsWith(TEXT.en.slotTaken), 'claimed by another client a moment before');
+    } finally { noCalendar(); }
+  });
+
+  await t.test('phase 5 fixes: a call moved or cancelled in Google Calendar is reminded at its new time, or not at all', async () => {
+    await reset();
+    await teamHi();
+    Object.assign(env, calendarEnv);
+    try {
+      await priceAsk();
+      await post([tap(CLIENT, 'call:y', 'button_reply')]);
+      await post([tap(CLIENT, 'how:wa', 'button_reply')]);
+      const slot = last(CLIENT).ids[0], start = Number(slot.split(':')[1]) * MIN;
+      await post([tap(CLIENT, slot)]);
+      const ev = fx.state.calendar.events[0];
+      ev.start.dateTime = new Date(start + 2 * 60 * MIN).toISOString();   // moved two hours later by the team
+      now = start - 30 * MIN;
+      await tick(env, now);
+      assert.ok(!to(CLIENT).some((m) => m.body.startsWith('Reminder')), 'not at the old time');
+      now = start + 90 * MIN;
+      await tick(env, now);
+      assert.ok(last(CLIENT).body.startsWith('Reminder: our call is at'), 'at the new time');
+      fx.state.calendar.events.length = 0;                                   // cancelled
+      sb.tables.calls[0].reminded = false;
+      await tick(env, now + 2 * MIN);
+      assert.equal(to(CLIENT).filter((m) => m.body.startsWith('Reminder')).length, 1, 'a cancelled call: no reminder');
+    } finally { noCalendar(); }
+  });
+
+  await t.test('phase 5 fixes: "pay" only with an amount; nothing for opted-out clients; a reply to the review request is no "return"', async () => {
+    await reset();
+    await teamHi();
+    await toName();
+    const code = contact().code;
+    env.UPI_ID = 'legitforge@okicici';
+    try {
+      await post([text(TEAM[0], `#${code} pay the balance after delivery`)]);
+      assert.equal(last(CLIENT).body, 'pay the balance after delivery', 'an ordinary message');
+      await post([text(TEAM[0], `#${code} pay Rs. 1.14/-`)]);
+      assert.deepEqual(last(TEAM[0]).ids, [`pay:y:${code}:1.14`, 'pay:n']);
+      contact().mode = 'stopped';
+      await post([tap(TEAM[0], `pay:y:${code}:1.14`, 'button_reply', 'Yes, send')]);
+      assert.match(last(TEAM[0]).body, /opted out, so no payment link was made/);
+      assert.equal(contact().pay_at ?? null, null, 'nothing claimed');
+    } finally { delete env.UPI_ID; }
+
+    await reset();
+    await db.prepare('INSERT INTO company (id, data) VALUES (1, ?)').bind(JSON.stringify({ whatsapp: '919999999999' })).run();
+    await toName();
+    await toTimeline();
+    await post([tap(CLIENT, 'tl:1', 'button_reply')]);
+    now += 40 * 24 * 60 * MIN;                                    // a Monday, 40 days on: the deal closed by phone
+    await db.prepare(`UPDATE leads SET status = 'won' WHERE phone = ?`).bind(`+${CLIENT}`).run();
+    env.GOOGLE_REVIEW_URL = 'https://g.page/r/legitforge/review';
+    try {
+      contact().last_in_at = new Date(now - 20 * 24 * 60 * MIN).toISOString();   // within the 60-day limit
+      await tick(env, now);
+      assert.ok(to(CLIENT).some((m) => m.template === 'review_request'), 'outside the window: the template');
+      now += 25 * 24 * 60 * MIN;                                  // they reply 25 days later, 45 days after their last message
+      contact().last_in_at = new Date(now - 45 * 24 * 60 * MIN).toISOString();
+      await post([text(CLIENT, 'Done, five stars!')]);
+      assert.ok(!to(CLIENT).some((m) => m.ids.includes('ret:same')), 'not "welcome back"');
+      assert.equal(last(CLIENT).body, fill(TEXT.en.referral, { link: 'https://wa.me/919999999999' }));
+    } finally { delete env.GOOGLE_REVIEW_URL; }
   });
 });

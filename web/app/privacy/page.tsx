@@ -38,7 +38,8 @@ export default async function Privacy() {
       <ul>
         <li><strong>Cloudflare</strong> hosts this website and our database, and stores files you send our WhatsApp assistant.</li>
         <li><strong>Meta</strong> carries messages you choose to send through WhatsApp.</li>
-        <li><strong>Google</strong> verifies administrator sign-ins.</li>
+        <li><strong>Google</strong> verifies administrator sign-ins, and our team's Google Calendar holds calls you book with us (your name, number and what you need).</li>
+        <li><strong>Razorpay</strong> receives your name and number to create a payment link we send you, and handles the payment.</li>
         <li><strong>Supabase</strong> (servers in Mumbai, India) stores WhatsApp conversations with our assistant and the answers it has learned from our team.</li>
         <li><strong>Groq and Google (Gemini)</strong> read individual WhatsApp messages so the assistant can understand and answer them; Groq also turns voice notes into text (Groq does not keep them). Phone numbers and email addresses are removed from text before it is sent; voice notes go to Groq as recorded, so please do not say sensitive details in them. Google's free Gemini service may use what it receives to improve its products, so please do not share sensitive personal information in the chat. They also turn our team's replies, and the question each one answers, into general answers for future clients and a short style guide; these hold no personal details and are used only after a team member approves them.</li>
         <li><strong>Our team's own WhatsApp</strong> gets each website enquiry too, through our WhatsApp assistant.</li>
@@ -46,7 +47,7 @@ export default async function Privacy() {
       </ul>
 
       <h2>Why</h2>
-      <p>Only to reply to your enquiry, prepare a quote, and — if you become a client — deliver and support your project. We do not sell or share your details for marketing.</p>
+      <p>Only to reply to your enquiry, prepare a quote, and — if you become a client — deliver and support your project. If an enquiry goes quiet we may send one follow-up message; after a project we may ask once for a Google review and whether you know someone who needs our services. Reply STOP to stop all of these. We do not sell or share your details for marketing.</p>
 
       <h2>How long we keep it</h2>
       <table className="legal-table">
@@ -57,6 +58,7 @@ export default async function Privacy() {
           <tr><th scope="row">Site events</th><td>13 months, then removed by the scheduled cleanup</td></tr>
           <tr><th scope="row">WhatsApp messages with our assistant, and files you send it</th><td>90 days, then removed by the scheduled cleanup</td></tr>
           <tr><th scope="row">WhatsApp chat details (language and answers) and questions passed to our team</th><td>180 days after your last message</td></tr>
+          <tr><th scope="row">Calls you book with us (on our team's Google Calendar)</th><td>Until our team removes them; DELETE MY DATA removes them at once</td></tr>
           <tr><th scope="row">General answers the assistant has learned (no personal details)</th><td>Until our team removes them; unapproved suggestions 90 days</td></tr>
           <tr><th scope="row">Administrator sign-in records</th><td>90 days</td></tr>
         </tbody>

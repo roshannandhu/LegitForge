@@ -6,7 +6,7 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
 ## Active Working Directives
 - **Working Directory**: Always work in the `web/` directory. All application code, tests, and configuration live in `web/`.
 - **Target Branch**: Always branch from and target `main-exh9xw`.
-- **Verification**: Run `npm run test:backend` (89 tests, including the WhatsApp bot's) and `npm run build` inside `web/`; review page markup directly or inspect generated static files since browser checks (`check.mjs`) require an active dev server.
+- **Verification**: Run `npm run test:backend` (101 tests, including the WhatsApp bot's) and `npm run build` inside `web/`; review page markup directly or inspect generated static files since browser checks (`check.mjs`) require an active dev server.
 
 ## Current owner decisions (7 October 2026)
 - WhatsApp enquiry bot (16 Oct 2026, owner's decisions; supersedes SETUP.md Part 2 §3–§9): a separate
@@ -166,6 +166,12 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
   "off [3d]", "free", "who", "#CODE update: …" (the `project_update` template after 24 h).
   Website form leads reach the team through the bot (leads.wa_alerted_at); relays set
   leads.first_reply_at (Admin → Leads shows the 2-hour promise); a 10 a.m. summary on working days.
+- Sales (phase 5): a call the client's way (how:wa|ph|meet → slot:<minutes>), free half hours
+  from the Google Calendar (bot/calendar.ts, the GOOGLE_* secrets; without them the team arranges
+  it), a Meet link, a reminder 30 min before (Supabase `calls`); "#CODE quote <link>" (lead →
+  quoted, their next message goes to the team), "#CODE pay <amount>" (the member confirms; Razorpay
+  link or UPI ID, bot/pay.ts); a review request for Won leads (GOOGLE_REVIEW_URL), then one
+  referral ask; one revival template after 30 quiet days (REVIVE_TEMPLATE, off by default).
 - Fixed text in bot/text.ts must stay within WhatsApp limits (tests check them): list rows ≤ 10,
   row title ≤ 24, buttons ≤ 3 with titles ≤ 20.
 

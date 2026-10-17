@@ -15,6 +15,11 @@ create table if not exists public.contacts (
   lead_saved boolean not null default false,    -- inserted into D1 once; later turns only update (an admin delete lasts)
   won_counted boolean not null default false,   -- this chat's answers got their win (lead marked Won)
   nudged_at timestamptz,                        -- the one reminder after 3 quiet hours mid-brief
+  quote_at timestamptz,                         -- a quote went out: their next message goes to the team
+  review_at timestamptz,                        -- the Google review request went out (a Won lead)
+  referred_at timestamptz,                      -- ...and the referral ask after it
+  revived_at timestamptz,                       -- the one revival template after 30 quiet days
+  pay_at timestamptz,                           -- the last payment link (a double tap sends one)
   step text not null default 'start' check (step in ('start','returning','service','language','name','business','need','details','refs','timeline','done')),
   mode text not null default 'bot' check (mode in ('bot','human','stopped','blocked')),
   taken_by text,                                -- team number chatting in person ("take")
@@ -104,6 +109,20 @@ create table if not exists public.alerts (
 );
 create index if not exists alerts_due on public.alerts (next_at) where next_at is not null;
 
+-- Calls booked on the team's Google Calendar (phase 5): reminded 30 minutes before.
+create table if not exists public.calls (
+  id bigint generated always as identity primary key,
+  wa_id text not null references public.contacts(wa_id) on delete cascade,
+  event_id text,                                -- the Google Calendar event (cancelled on DELETE MY DATA)
+  start_at timestamptz not null,
+  how text not null check (how in ('wa','ph','meet')),
+  meet text,                                    -- the Google Meet link
+  reminded boolean not null default false,
+  created_at timestamptz not null default now()
+);
+create index if not exists calls_due on public.calls (start_at) where not reminded;
+create unique index if not exists calls_slot on public.calls (start_at);   -- one call per half hour: the booking's claim
+
 -- The team's tone guide ('tone'), refreshed weekly.
 create table if not exists public.settings (
   key text primary key,
@@ -129,11 +148,12 @@ alter table public.questions enable row level security;
 alter table public.knowledge enable row level security;
 alter table public.settings enable row level security;
 alter table public.alerts enable row level security;
+alter table public.calls enable row level security;
 
 -- Supabase no longer exposes new tables to the REST API by default (from 30 Oct 2026): grant
 -- the secret key's role explicitly, and nobody else.
 grant usage on schema public to service_role;
-grant select, insert, update, delete on public.contacts, public.messages, public.questions, public.knowledge, public.settings, public.alerts to service_role;
+grant select, insert, update, delete on public.contacts, public.messages, public.questions, public.knowledge, public.settings, public.alerts, public.calls to service_role;
 grant usage, select on all sequences in schema public to service_role;
 revoke all on function public.match_knowledge(extensions.vector, float, int) from public, anon, authenticated;
 grant execute on function public.match_knowledge(extensions.vector, float, int) to service_role;

@@ -168,7 +168,7 @@ change, and is recommended before real client traffic.
    `whatsapp_business_management`); copy the App secret; choose a random verify token.
 2. Supabase: SQL editor → paste and run `web/bot/supabase/schema.sql` (a new project). A project
    that already ran an older schema.sql instead runs each new migration once, in order, before the
-   new bot is deployed: `002_phase1.sql`, `003_phase2.sql`, `004_phase3.sql`, `005_phase4.sql`, … (each says what it
+   new bot is deployed: `002_phase1.sql`, `003_phase2.sql`, `004_phase3.sql`, `005_phase4.sql`, `006_phase5.sql`, … (each says what it
    needs). The website's D1 migrations (e.g. `0012_whatsapp_brief.sql`: the lead's brief and files)
    must also be applied before the bot is deployed (the website deploy does this). Settings → API keys →
    create a secret key (`sb_secret_…`). Reset the database password (the old one was exposed).
@@ -189,6 +189,24 @@ change, and is recommended before real client traffic.
    Forge: {{2}}" (for "#CODE update: …" after a client's 24-hour window).
    Then Admin → Team → WhatsApp alerts: add each team number (as in TEAM_WHATSAPP) and tick the
    services they should hear about first; the others get each enquiry 10 minutes later.
+   Phase 5 templates (Meta refuses bodies that are mostly variables or end with one): **utility**
+   `call_reminder` ("Hi {{1}}, this is a reminder from Legit Forge: {{2}} Reply here if you need
+   another time."), `review_request` ("Hi {{1}}, thank you for choosing Legit Forge! A short Google
+   review would help us a lot: {{2}} Thank you!"), and, only if you want cold leads revived and your
+   clients agreed to receive offers on WhatsApp (Meta's policy; each costs the marketing rate), a
+   **marketing** template whose name goes in `REVIVE_TEMPLATE` (body with {{1}} = the client's name,
+   with Meta's "Stop promotions" button: the bot treats it as STOP).
+9. Calls on the Google Calendar (optional; without it the team arranges calls in the chat): in the
+   Google Cloud project used for the admin sign-in, enable the Google Calendar API, make an OAuth
+   client, publish the consent screen (In production: a Testing app's refresh token stops after 7
+   days), and get a refresh token for legitforge@gmail.com with the scopes `calendar.events` and
+   `calendar.freebusy` (e.g. the OAuth Playground with your own client). Then
+   `npx wrangler secret put GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` / `GOOGLE_REFRESH_TOKEN`
+   with `-c bot/wrangler.jsonc`. `CALENDAR_ID` in bot/wrangler.jsonc is legitforge@gmail.com.
+10. Payments and reviews (optional): Razorpay keys as the secrets `RAZORPAY_KEY_ID` and
+   `RAZORPAY_KEY_SECRET` (payment links), or your UPI ID in `UPI_ID` (bot/wrangler.jsonc); your
+   Google review link in `GOOGLE_REVIEW_URL`. Every payment amount is confirmed by the team member
+   in WhatsApp before it is sent.
 8. Test from the spare phone (team phones always count as team). Then add the new SIM
    (Production setup), get the display name approved, switch the app to Live, change
    `WA_PHONE_NUMBER_ID` in `web/bot/wrangler.jsonc`, and put the new number in Admin → Company.

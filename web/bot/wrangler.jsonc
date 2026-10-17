@@ -2,7 +2,9 @@
  *    npx wrangler deploy -c bot/wrangler.jsonc
  *  It shares the website's D1 database (leads) but never applies migrations (no migrations_dir).
  *  Secrets (wrangler secret put <NAME> -c bot/wrangler.jsonc): WA_ACCESS_TOKEN, WA_APP_SECRET,
- *  WA_VERIFY_TOKEN, TEAM_WHATSAPP, SUPABASE_SECRET_KEY, GROQ_API_KEY, GEMINI_API_KEY.
+ *  WA_VERIFY_TOKEN, TEAM_WHATSAPP, SUPABASE_SECRET_KEY, GROQ_API_KEY, GEMINI_API_KEY; optional:
+ *  GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN (calls on the Google Calendar),
+ *  RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET (payment links).
  *  Meta webhook: https://legitforge-bot.<account subdomain>.workers.dev/webhook
  *  Before each deploy: the Supabase migrations in bot/supabase/ (002, 003, 004, …) are run, and the
  *  website's D1 migrations are applied (the site deploy does it): the bot writes their columns. */
@@ -32,6 +34,10 @@
     "GEMINI_MODEL": "gemini-3.5-flash-lite",
     "EMBED_MODEL": "gemini-embedding-001",
     "WHISPER_MODEL": "whisper-large-v3-turbo",   // Groq: voice notes to text
+    "CALENDAR_ID": "legitforge@gmail.com",       // the calendar calls are booked on (needs the GOOGLE_* secrets)
+    "UPI_ID": "",                                // e.g. legitforge@okicici: payment requests by UPI when there is no Razorpay
+    "GOOGLE_REVIEW_URL": "",                     // the Google review link: set it to ask Won clients for a review
+    "REVIVE_TEMPLATE": "",                       // an approved MARKETING template for leads quiet 30 days (costs per message; empty = off)
     "TRAINING_DAYS": "14"                        // every AI answer is a draft for the team for 14 days after the first client
   },
   "observability": { "enabled": true }
