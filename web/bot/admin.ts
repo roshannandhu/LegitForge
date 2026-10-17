@@ -5,6 +5,7 @@
 
 import { WorkerEntrypoint } from 'cloudflare:workers';
 import { clip, clock, embed, q, sb, sbCount, vec, type Env } from './io';
+import { MONEY } from './text';
 
 export type Speaker = 'client' | 'bot' | 'team' | 'alert';
 export interface ChatLine { at: string; who: Speaker; body: string }
@@ -19,6 +20,7 @@ export interface Insights {
 }
 
 type Row = Record<string, unknown>;
+const NO_MONEY = 'The bot never sends an answer with prices, amounts, percentages or long numbers (those are the team’s to give): leave this one to the team, or write it without them.';
 const KEY = (s: string) => s.trim().toLowerCase().replace(/[?.!\s]+$/, '');
 
 export class BotAdmin extends WorkerEntrypoint<Env> {
@@ -32,14 +34,18 @@ export class BotAdmin extends WorkerEntrypoint<Env> {
     if (!c) return null;
     // the newest 500, oldest first (a long chat keeps its latest messages)
     const rows = (await sb<Row>(env, 'GET', `messages?wa_id=eq.${q(String(c.wa_id))}&order=at.desc,wamid.desc&limit=500&select=at,dir,team,body,reply_id`)).reverse();
-    return {
-      code: String(c.code), name: ((c.fields as Row)?.name as string) || (c.profile_name as string) || null,
-      lines: rows.map((r) => ({
+    const lines: ChatLine[] = [];
+    for (const r of rows) {
+      const line: ChatLine = {
         at: String(r.at),
-        who: r.team ? (r.dir === 'in' ? 'team' : 'alert') : r.dir === 'in' ? 'client' : 'bot',
+        who: r.team ? (r.dir === 'in' ? 'team' : 'alert') : r.dir === 'in' ? 'client' : r.reply_id === 'team' ? 'team' : 'bot',
         body: clip(String(r.body ?? (String(r.reply_id ?? '').startsWith('media:') ? '📎 a file or voice note' : r.reply_id ?? '')), 4000),
-      })),
-    };
+      };
+      const before = lines.findLast((l) => l.who === 'alert');                 // the same alert to each member: shown once
+      if (line.who === 'alert' && before?.body === line.body && Date.parse(line.at) - Date.parse(before.at) < 60_000) continue;
+      lines.push(line);
+    }
+    return { code: String(c.code), name: ((c.fields as Row)?.name as string) || (c.profile_name as string) || null, lines };
   }
 
   /** What the bot knows (newest first), optionally one status. */
@@ -48,14 +54,18 @@ export class BotAdmin extends WorkerEntrypoint<Env> {
     return sb<Answer>(this.env, 'GET', `knowledge?select=id,question_en,answer_en,status,source,wins,translations_ok,created_at&order=created_at.desc&limit=300${only}`);
   }
 
-  /** A new or corrected answer, approved at once (the admin wrote it). Old translations go: the
-   *  bot translates it itself until the team approves new ones in WhatsApp. */
+  /** A new or corrected answer, approved at once (the admin wrote it). A changed answer drops its
+   *  approved translations: the bot then translates it for each client as it goes. */
   async saveAnswer(v: { id?: number; question_en: string; answer_en: string; by: string }): Promise<{ ok: true; id: number } | { error: string }> {
     const question = clip(v.question_en.trim(), 200), answer = clip(v.answer_en.trim(), 700);
     if (question.length < 5 || answer.length < 2) return { error: 'Write the question and the answer.' };
+    if (MONEY.test(answer)) return { error: NO_MONEY };
+    const [old] = v.id ? await sb<{ answer_en: string }>(this.env, 'GET', `knowledge?id=eq.${Number(v.id)}&select=answer_en`) : [];
+    if (v.id && !old) return { error: 'That answer is gone.' };
     const e = await embed(this.env, question);
     if (!e) return { error: 'The AI is busy (embedding); try again in a minute.' };
-    const row = { question_en: question, answer_en: answer, embedding: vec(e), status: 'approved', decided_by: clip(v.by, 120), decided_at: new Date(clock.now()).toISOString(), translations: {}, translations_ok: false };
+    const row = { question_en: question, answer_en: answer, embedding: vec(e), status: 'approved', decided_by: clip(v.by, 120), decided_at: new Date(clock.now()).toISOString(),
+      ...(old?.answer_en === answer ? {} : { translations: {}, translations_ok: false }) };
     if (v.id) {
       const [k] = await sb<{ id: number }>(this.env, 'PATCH', `knowledge?id=eq.${Number(v.id)}`, row);
       return k ? { ok: true, id: k.id } : { error: 'That answer is gone.' };
@@ -66,8 +76,9 @@ export class BotAdmin extends WorkerEntrypoint<Env> {
 
   /** Switch an answer off (rejected: never used) or on again (approved; embedded if it never was). */
   async setAnswer(id: number, on: boolean, by: string): Promise<{ ok: true } | { error: string }> {
-    const [k] = await sb<{ id: number; question_en: string; embedding: string | null }>(this.env, 'GET', `knowledge?id=eq.${Number(id)}&select=id,question_en,embedding`);
+    const [k] = await sb<{ id: number; question_en: string; answer_en: string; embedding: string | null }>(this.env, 'GET', `knowledge?id=eq.${Number(id)}&select=id,question_en,answer_en,embedding`);
     if (!k) return { error: 'That answer is gone.' };
+    if (on && MONEY.test(k.answer_en)) return { error: NO_MONEY };
     let embedding: string | undefined;
     if (on && !k.embedding) {
       const e = await embed(this.env, k.question_en);

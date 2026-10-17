@@ -1964,4 +1964,56 @@ test('WhatsApp bot (fake Meta, Supabase, Groq and Gemini; real Miniflare D1)', a
     assert.equal(leadScore({ service: 'website', fields: { timeline: 'urgent, this week', business: 'B', need: 'x'.repeat(41), details: '5 pages' } }), 'hot');
     assert.equal(leadScore({ service: 'website', fields: { timeline: 'Just exploring' } }), 'cold');
   });
+  await t.test('phase 6 critic: answers with money are refused; a question-only fix keeps the translations; the purge keeps switched-off answers', async () => {
+    await reset();
+    const admin = new BotAdmin({} as never, env);
+    assert.ok('error' in (await admin.saveAnswer({ question_en: 'Do NGOs get a discount?', answer_en: 'Yes, 10% off.', by: 'owner' })), 'never an answer the bot would not send');
+    sb.tables.knowledge.push({ id: 710, question_en: 'Do you do logos?', answer_en: 'Yes.', status: 'approved', source: 'site', embedding: JSON.stringify(fakeEmbedding('x')),
+      translations: { ml: 'ഉണ്ട്.' }, translations_ok: true });
+    assert.ok('ok' in (await admin.saveAnswer({ id: 710, question_en: 'Do you design logos?', answer_en: 'Yes.', by: 'owner' })));
+    const k = sb.tables.knowledge.find((x) => x.id === 710)!;
+    assert.deepEqual(k.translations, { ml: 'ഉണ്ട്.' }, 'the same answer keeps its approved translations');
+    assert.equal(k.translations_ok, true);
+    sb.tables.knowledge.push({ id: 711, question_en: 'Price list?', answer_en: 'From 15,000.', status: 'rejected', source: 'team', embedding: null });
+    assert.ok('error' in (await admin.setAnswer(711, true, 'owner')), 'not switched on either');
+
+    now = Date.parse('2027-03-01T21:30:00Z');
+    const old = new Date(now - 200 * 24 * 60 * MIN).toISOString(), lately = new Date(now - 5 * 24 * 60 * MIN).toISOString();
+    sb.tables.knowledge.push(
+      { id: 720, question_en: 'Site FAQ', answer_en: 'A', status: 'rejected', source: 'site', created_at: old, decided_at: old },
+      { id: 721, question_en: 'Switched off lately', answer_en: 'B', status: 'rejected', source: 'team', created_at: old, decided_at: lately },
+      { id: 722, question_en: 'Switched off long ago', answer_en: 'C', status: 'rejected', source: 'team', created_at: old, decided_at: old },
+      { id: 723, question_en: 'Never approved', answer_en: 'D', status: 'pending', source: 'team', created_at: old },
+    );
+    await tick(env, now);
+    const ids = sb.tables.knowledge.map((x) => x.id);
+    assert.ok(ids.includes(720) && ids.includes(721), 'the site’s answers, and answers switched off in the last 90 days');
+    assert.ok(!ids.includes(722) && !ids.includes(723));
+  });
+
+  await t.test('phase 6 critic: paused, no "team will reply in 2 hours", one forward for a reply to a quote; the chat viewer shows one alert and the team’s words', async () => {
+    await reset();
+    await teamHi();
+    const admin = new BotAdmin({} as never, env);
+    fx.state.ai = (task) => (task === 'extract' ? question('Do you build Shopify stores?') : task === 'answer' ? { answer: '', answer_en: '' } : 500);
+    await toName();
+    const code = contact().code;
+    await post([text(CLIENT, 'Shopify?')]);
+    const alert = teamGot(TEAM[0], 'question')!;
+    await post([text(TEAM[1], `#${code} quote https://quotes.example/q/1`)]);
+    await db.prepare(`INSERT INTO bot_settings (key, value) VALUES ('paused', '1'), ('away', 'We are on leave until Monday.')`).run();
+    now += 11 * MIN;
+    await tick(env, now);
+    assert.ok(!to(CLIENT).some((m) => m.body === TEXT.en.teamSoon), 'they had the away message instead');
+    fx.state.ai = () => 500;
+    await post([text(CLIENT, 'Looks good')]);
+    assert.equal(to(TEAM[0]).filter((m) => m.body.includes('Looks good')).length, 1, 'one forward, not two');
+
+    await db.prepare(`DELETE FROM bot_settings`).run();
+    await post([text(TEAM[0], 'We can start Monday.', { context: { id: alert.id } })]);
+    const lines = (await admin.chat(contact().lead_id))!.lines;
+    assert.equal(lines.filter((l) => l.who === 'alert' && l.body === alert.body).length, 1, 'one alert to two members is one line');
+    const said = lines.filter((l) => l.body === 'We can start Monday.');
+    assert.deepEqual(said.map((l) => l.who), ['team', 'team'], 'the team’s message and its copy to the client, never the bot’s');
+  });
 });

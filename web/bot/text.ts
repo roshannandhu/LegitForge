@@ -398,6 +398,14 @@ export const DETAILS: Record<Lang, Record<Asked, string>> = {
 /** The language question goes to someone whose language we don't know yet: say it in all of them. */
 export const LANG_PROMPT = [TEXT.en.lang, TEXT.ml.lang, TEXT.hi.lang, TEXT.kn.lang].join('\n');
 /** Timeline buttons answer in English for the team, whatever the client's language. */
+/** A generated answer that names money is never sent: prices are the team's to give. */
+export const MONEY = new RegExp([
+  '₹', '\\brs\\.?\\s*\\p{Nd}', '\\binr\\b', 'rupees?', 'roopa', 'rupa\\b', 'lakhs?', 'laksh', 'crores?', 'thousand', 'aayiram', '\\$\\s*\\p{Nd}',
+  'discount', '\\p{Nd}+\\s*%', '\\b\\p{Nd}+(\\.\\p{Nd}+)?\\s*k\\b', '\\p{Nd}{1,3}(,\\p{Nd}{2,3})+', '\\p{Nd}{4,}', '\\/-',
+  // Malayalam, Hindi, Kannada: rupees, thousand, lakh (ലക്ഷ്യം "goal", രൂപകൽപ്പന "design" are not money)
+  'രൂപയ', '\\p{Nd}\\s*രൂപ', 'ആയിര', '\\p{Nd}\\s*ലക്ഷ', 'रुपय', 'रु\\.?\\s*\\p{Nd}', 'लाख', 'हज़ार', 'हजार', 'ರೂಪಾಯಿ', 'ರೂ\\.?\\s*\\p{Nd}', 'ಸಾವಿರ', '\\p{Nd}\\s*ಲಕ್ಷ',
+].join('|'), 'iu');
+
 export const TIMELINES = ['As soon as possible', 'Within a month', 'Just exploring'] as const;
 
 /* ------------------------------------------------------------------------------------- AI */

@@ -33,6 +33,7 @@ export async function setAnswerAction(id: number, on: boolean, _: FormState): Pr
 
 export async function saveBotSettingsAction(_: FormState, f: FormData): Promise<FormState> {
   await requireAdmin();
+  if (f.get('paused') === 'on' && !str(f, 'away', 600)) return { error: 'Write the away message clients get while the bot is paused.' };
   await saveBotSettings({ paused: f.get('paused') === 'on', away: str(f, 'away', 600), afterHours: str(f, 'after_hours', 600) });
   revalidatePath('/admin/whatsapp/settings');
   return { ok: f.get('paused') === 'on' ? 'Saved. The bot is paused: clients get your away message and the team gets every message.' : 'Saved.' };

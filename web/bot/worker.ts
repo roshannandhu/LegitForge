@@ -24,7 +24,7 @@ import { serviceOfLabel } from '../lib/wa-services';
 import { bookCall, calendarOn, callEvent, cancelCall, freeSlots } from './calendar';
 import { inr, paymentLink, rupees } from './pay';
 import {
-  ANSWER_SCHEMA, BRIEF_PROMPT, DETAILS, LOCALE, fill, EXTRACT_SCHEMA, FACTS, FIELDS, LANG_PROMPT, LANGS, QA_SCHEMA, SERVICES, TEXT, TEXT_SCHEMA, TIMELINES,
+  ANSWER_SCHEMA, BRIEF_PROMPT, DETAILS, LOCALE, fill, EXTRACT_SCHEMA, FACTS, FIELDS, LANG_PROMPT, LANGS, MONEY, QA_SCHEMA, SERVICES, TEXT, TEXT_SCHEMA, TIMELINES,
   TRANSLATED, TRANSLATIONS_SCHEMA, answerPrompt, extractPrompt, generalisePrompt, langFromText, langName, prefilledService,
   scriptLang, serviceByKey, serviceFromText, t, tonePrompt, translatePrompt, translationsPrompt,
   type Field, type Lang, type ServiceKey, type Step,
@@ -45,13 +45,6 @@ const AI_PER_DAY = 40;          // AI calls per client per day; past it, the fix
 const FILE_MAX = 20 * 1024 * 1024, FILES_MAX = 20, VOICE_MAX = 5 * 1024 * 1024;   // per file, per enquiry, per voice note
 const MATCH = 0.8;              // knowledge similarity needed to use an approved answer
 const SURE = 0.9;               // ...and to send it without a team member checking it first
-/** A generated answer that names money is never sent: prices are the team's to give. */
-const MONEY = new RegExp([
-  '₹', '\\brs\\.?\\s*\\p{Nd}', '\\binr\\b', 'rupees?', 'roopa', 'rupa\\b', 'lakhs?', 'laksh', 'crores?', 'thousand', 'aayiram', '\\$\\s*\\p{Nd}',
-  'discount', '\\p{Nd}+\\s*%', '\\b\\p{Nd}+(\\.\\p{Nd}+)?\\s*k\\b', '\\p{Nd}{1,3}(,\\p{Nd}{2,3})+', '\\p{Nd}{4,}', '\\/-',
-  // Malayalam, Hindi, Kannada: rupees, thousand, lakh (ലക്ഷ്യം "goal", രൂപകൽപ്പന "design" are not money)
-  'രൂപയ', '\\p{Nd}\\s*രൂപ', 'ആയിര', '\\p{Nd}\\s*ലക്ഷ', 'रुपय', 'रु\\.?\\s*\\p{Nd}', 'लाख', 'हज़ार', 'हजार', 'ರೂಪಾಯಿ', 'ರೂ\\.?\\s*\\p{Nd}', 'ಸಾವಿರ', '\\p{Nd}\\s*ಲಕ್ಷ',
-].join('|'), 'iu');
 /** STOP, typed or spoken (a transcript ends with a full stop). */
 const STOP = /^(stop|unsubscribe)(\s+promotions)?[\s.!]*$/i;     // "Stop promotions": Meta's marketing opt-out button
 /** "Delete my data" in the bot's languages (the Yes/No buttons guard against false matches). */
@@ -121,7 +114,7 @@ async function flushOut(env: Env, now: number) {
     let prev = 0;                                                            // when each went (a millisecond apart at least, in order)
     const rows = out.filter((o) => live.has(o.to)).map((o) => {
       prev = Math.max(o.at, prev + 1);
-      return { wamid: o.wamid, wa_id: o.to, team: null, dir: 'out', body: clip(o.body, 4000), reply_id: null, ctx_id: null, profile: null,
+      return { wamid: o.wamid, wa_id: o.to, team: null, dir: 'out', body: clip(o.body, 4000), reply_id: o.team ? 'team' : null, ctx_id: null, profile: null,
         question_id: null, knowledge_id: null, handled_at: iso(now), at: iso(prev) };
     });
     if (rows.length) await sb(env, 'POST', 'messages?on_conflict=wamid', rows, 'resolution=ignore-duplicates,return=minimal');
@@ -460,7 +453,7 @@ class Turn {
     c.last_in_at = m.at;
     if (c.mode === 'stopped') c.mode = 'bot';                               // any later message restarts the chat
     if (kind === 'media' && value !== 'voice') file = await this.keep(value, id, name);
-    if (c.quote_at && c.mode !== 'human' && Date.parse(m.at) >= Date.parse(c.quote_at)) {   // (a person on the chat sees it anyway)
+    if (c.quote_at && c.mode !== 'human' && !paused && Date.parse(m.at) >= Date.parse(c.quote_at)) {   // (a person on the chat, or the paused forward, has it anyway)
       // cleared only if no newer quote went out meanwhile (this turn's copy is left as it was)
       const [mine] = await sb(this.env, 'PATCH', `contacts?wa_id=eq.${q(c.wa_id)}&quote_at=eq.${q(c.quote_at)}`, { quote_at: null });
       if (mine) await toTeam(this.env, this.now, `#${c.code} replied after the quote: "${clip(text || (file ? '📎 a file' : m.reply_id ?? ''), 300)}"`,
@@ -1473,6 +1466,8 @@ async function relay(env: Env, now: number, c: Contact, text: string, asIs = fal
   if (closed && out.length > 800) return { ok: false, note: `#${c.code}'s 24-hour window has closed: the project_update template takes 800 characters at most, so please shorten it.` };
   const id = closed ? await sendTemplate(env, c.wa_id, 'project_update', [c.fields.name || c.profile_name || 'there', out])
     : await sendText(env, c.wa_id, o.prefix ? `${o.prefix}\n${out}` : out);
+  const sentOut = env.run?.out?.find((x) => x.wamid === id);
+  if (sentOut) sentOut.team = true;                                          // the chat viewer shows it as the team's
   if (!id) {
     return { ok: false, note: closed ? `#${c.code}'s 24-hour window has closed and the project_update template did not go out (is it approved?).${direct}` : `Sending to #${c.code} failed.${direct}` };
   }
@@ -1550,7 +1545,9 @@ async function cron(env: Env, now: number) {
     await Promise.all([
       sb(env, 'DELETE', `messages?at=lt.${iso(now - 90 * DAY)}`, undefined, 'return=minimal'),
       sb(env, 'DELETE', `contacts?last_in_at=lt.${iso(now - 180 * DAY)}`, undefined, 'return=minimal'),
-      sb(env, 'DELETE', `knowledge?status=in.(pending,rejected)&created_at=lt.${iso(now - 90 * DAY)}`, undefined, 'return=minimal'),
+      // learned answers nobody approved; a switched-off one 90 days after it was switched off (the site's own answers stay)
+      sb(env, 'DELETE', `knowledge?source=eq.team&status=eq.pending&created_at=lt.${iso(now - 90 * DAY)}`, undefined, 'return=minimal'),
+      sb(env, 'DELETE', `knowledge?source=eq.team&status=eq.rejected&decided_at=lt.${iso(now - 90 * DAY)}`, undefined, 'return=minimal'),
       sb(env, 'DELETE', `alerts?created_at=lt.${iso(now - DAY)}`, undefined, 'return=minimal'),        // a pass-on needs 10 minutes
     ]).catch((e) => console.error('[bot] purge failed', String(e)));
     await purgeFiles(env, now).catch((e) => console.error('[bot] file purge failed', String(e)));
@@ -1569,7 +1566,9 @@ async function cron(env: Env, now: number) {
     told.add(question.wa_id);
     const [c] = await sb<Contact>(env, 'GET', `contacts?wa_id=eq.${q(question.wa_id)}`);
     if (!c || c.mode === 'stopped' || c.mode === 'blocked' || Date.parse(c.last_in_at) < now - 24 * HOUR) continue;
-    const own = !isOpenNow(new Date(now)) && (await settingsOf(env)).after_hours;
+    const s = await settingsOf(env);
+    if (s.paused === '1') continue;                                            // they had the away message
+    const own = !isOpenNow(new Date(now)) && s.after_hours;
     await sendText(env, c.wa_id, own ? await inTheirWords(env, c.lang, own) : t(c.lang, isOpenNow(new Date(now)) ? 'teamSoon' : 'teamLater'));
   }
   const stale = await sb<Msg>(env, 'GET', `messages?dir=eq.in&handled_at=is.null&at=lt.${iso(now - 2 * MIN)}&order=at.asc&limit=20`);
@@ -1685,7 +1684,7 @@ async function shareLink(env: Env) {
 /** A WhatsApp lead marked Won in Admin → Leads gets one polite Google review request (the
  *  review_request template after their 24-hour window). Off until GOOGLE_REVIEW_URL is set. */
 async function reviews(env: Env, now: number) {
-  if (!env.GOOGLE_REVIEW_URL) return;
+  if (!env.GOOGLE_REVIEW_URL || (await settingsOf(env)).paused === '1') return;
   count(env);
   const won = (await env.DB.prepare(`SELECT id FROM leads WHERE source = 'whatsapp' AND status = 'won' AND review_asked_at IS NULL
     ORDER BY created_at DESC LIMIT 3`).all<{ id: string }>()).results;

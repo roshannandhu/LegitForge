@@ -50,7 +50,7 @@ export interface Env {
   run?: {
     calls: number; t0: number; open?: Set<string>; roster?: unknown[]; settings?: Record<string, string>;
     /** What went out this run, stored in one write at its end (worker.ts flushOut). */
-    out?: { wamid: string; to: string; body: string; at: number; options?: { id: string; title: string }[] }[];
+    out?: { wamid: string; to: string; body: string; at: number; options?: { id: string; title: string }[]; team?: boolean }[];
     /** Clients erased this run: nothing of theirs is stored afterwards. */
     gone?: Set<string>;
   };
