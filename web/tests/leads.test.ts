@@ -11,8 +11,9 @@ import { authorizedSession, signSession, readSession, SESSION_HOURS } from '../l
 const lead = { name: 'Synthetic Test', phone: '+91 9000000000', need: 'Not sure yet', budget: '', message: 'Local test only' };
 const now = 1_800_000_000_000;
 const uuid = () => crypto.randomUUID();
-const request = (id?: string, html = false, changed = false) => {
+const request = (id?: string, html = false, changed = false, page?: string) => {
   const body = new FormData();
+  if (page) body.set('page', page);
   for (const [key, value] of Object.entries({ ...lead, ...(changed ? { message: 'Changed test' } : {}), consent: 'yes' })) body.set(key, value);
   if (id) body.set('submission_id', id);
   return new Request('https://legitforge.pages.dev/api/leads', { method: 'POST', headers: { accept: html ? 'text/html' : 'application/json', 'cf-connecting-ip': '192.0.2.10' }, body });
@@ -98,9 +99,11 @@ test('website backend contracts on real Miniflare D1', async (t) => {
       await reset();
       assert.equal(alertsConfigured({ N8N_LEAD_WEBHOOK_URL: env.N8N_LEAD_WEBHOOK_URL }), false);
       assert.equal(alertsConfigured({ ...env, N8N_LEAD_WEBHOOK_URL: 'http://insecure.invalid' }), false);
-      const response = await handleLeadRequest(request(uuid()), { env: { DB: db, HASH_SALT: env.HASH_SALT }, now: () => now });
+      // with the page the form was on (Admin → WhatsApp: which page brought them)
+      const response = await handleLeadRequest(request(uuid(), false, false, '/contact'), { env: { DB: db, HASH_SALT: env.HASH_SALT }, now: () => now });
       assert.equal(response.status, 200);
       assert.deepEqual(await counts(), [1, 1, 1, 0]);
+      assert.equal((await db.prepare('SELECT page FROM leads').first<{ page: string }>())?.page, 'Site form: /contact');
     });
     await t.test('notification leases exclude overlapping sends and retry the stable lead ID', async () => {
       await reset();

@@ -55,6 +55,9 @@ export default async function AdminLeads({ searchParams }: { searchParams: Promi
               {leads.map((l) => (
                 <tr key={l.id}>
                   <td className="muted">{l.created_at.slice(0, 16).replace('T', ' ')}<br />{l.source}{l.language ? ` · ${l.language}` : ''}
+                    {l.score && <><br /><span className={`pill${l.score === 'hot' ? ' is-on' : ''}`}>{l.score === 'hot' ? '🔥 hot' : l.score}</span></>}
+                    {l.page && <><br />{l.page}</>}
+                    {l.source === 'whatsapp' && <><br /><a className="text-link" href={`/admin/leads/${l.id}/chat`}>Chat</a></>}
                     {/* first column: on a phone the table scrolls sideways, and this stays in view */}
                     <form action={deleteLeadAction.bind(null, l.id)} className="admin-inline admin-lead-delete">
                       <ConfirmSubmit message={`Delete the lead from ${l.name ?? 'this person'}? This can't be undone (Export CSV first to keep a copy).`}>Delete</ConfirmSubmit>

@@ -100,6 +100,9 @@ export function fakeSupabase(now: () => number) {
     const table = path, params = url.searchParams;
     if (method === 'GET') {
       let rows = filtered(table, params);
+      if (prefer.includes('count=exact')) {                         // sbCount: the total in Content-Range
+        return new Response('[]', { status: 200, headers: { 'content-type': 'application/json', 'content-range': `0-0/${rows.length}` } });
+      }
       const order = params.get('order');
       if (order) {
         const keys = order.split(',').map((o) => o.split('.'));

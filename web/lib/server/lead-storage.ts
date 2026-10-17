@@ -25,15 +25,15 @@ export type StoreResult = { accepted: true; duplicate: boolean; id: string } | {
 /** A single transaction: the count is part of the write, so simultaneous requests cannot all
  *  pass a detached rate check. An attempt UUID gates each dependent write; a replay creates
  *  no extra lead, rate event or outbox job. Keep legacy rate_events in the same hourly count. */
-export async function storeLead(db: D1Database, lead: Lead, key: string, hash: string, rateKey: string, now: number, alert: boolean): Promise<StoreResult> {
+export async function storeLead(db: D1Database, lead: Lead, key: string, hash: string, rateKey: string, now: number, alert: boolean, page: string | null = null): Promise<StoreResult> {
   const attempt = crypto.randomUUID();
   const results = await db.batch([
     db.prepare('DELETE FROM lead_receipts WHERE submission_key = ? AND expires_at <= ?').bind(key, now),
-    db.prepare(`INSERT INTO leads (id,source,name,phone,service,budget,message,whatsapp_consent)
-      SELECT ?, 'form', ?, ?, ?, ?, ?, 1
+    db.prepare(`INSERT INTO leads (id,source,name,phone,service,budget,message,whatsapp_consent,page)
+      SELECT ?, 'form', ?, ?, ?, ?, ?, 1, ?
       WHERE NOT EXISTS (SELECT 1 FROM lead_receipts WHERE submission_key = ?)
         AND (SELECT COUNT(*) FROM rate_events WHERE key = ? AND at > ?) < 5`)
-      .bind(attempt, lead.name, lead.phone, lead.need, lead.budget || null, lead.message || null, key, rateKey, now - WINDOW),
+      .bind(attempt, lead.name, lead.phone, lead.need, lead.budget || null, lead.message || null, page, key, rateKey, now - WINDOW),
     db.prepare(`INSERT INTO lead_receipts(submission_key,request_hash,lead_id,accepted_at,expires_at)
       SELECT ?, ?, id, ?, ? FROM leads WHERE id = ?`)
       .bind(key, hash, now, now + RECEIPT_TTL, attempt),

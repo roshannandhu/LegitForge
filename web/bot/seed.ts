@@ -26,8 +26,12 @@ async function main() {
     if (!v) throw new Error(`Embedding failed for "${question}" (rate limit? run again in a minute)`);
     rows.push({ question_en: question, answer_en: a, embedding: vec(v), status: 'approved', source: 'site', decided_by: 'seed', decided_at: new Date().toISOString() });
   }
-  const old = await sb<{ id: number; question_en: string; answer_en: string; translations: object; translations_ok: boolean; wins: number }>(
-    env, 'GET', 'knowledge?source=eq.site&select=id,question_en,answer_en,translations,translations_ok,wins');
+  const all = await sb<{ id: number; question_en: string; answer_en: string; translations: object; translations_ok: boolean; wins: number; decided_by: string | null }>(
+    env, 'GET', 'knowledge?source=eq.site&select=id,question_en,answer_en,translations,translations_ok,wins,decided_by');
+  // answers edited or switched off in Admin → WhatsApp stay as the admin left them
+  const kept = all.filter((k) => k.decided_by && k.decided_by !== 'seed'), old = all.filter((k) => !kept.includes(k));
+  const mine = new Set(kept.map((k) => k.question_en));
+  rows.splice(0, rows.length, ...rows.filter((r) => !mine.has(r.question_en)));
   const same = new Map(old.map((k) => [`${k.question_en}\n${k.answer_en}`, k]));
   for (const row of rows) {
     const was = same.get(`${row.question_en}\n${row.answer_en}`);

@@ -80,7 +80,9 @@ export async function handleLeadRequest(req: Request, options: Options): Promise
     // Preserve the old salted key so pre-deploy hourly rate history still counts.
     const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(ip + env.HASH_SALT));
     const rateKey = `lead:${[...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('')}`;
-    const result = await storeLead(env.DB, lead, key, hash, rateKey, now, alertsConfigured(env));
+    const from = String(form.get('page') ?? '');
+    const page = /^\/[\w/-]{0,80}$/.test(from) ? `Site form: ${from}` : null;   // never part of the lead's identity (hash)
+    const result = await storeLead(env.DB, lead, key, hash, rateKey, now, alertsConfigured(env), page);
     if (!result.accepted) return reply({ error: result.conflict ? 'conflict' : 'rate-limited' }, result.conflict ? 409 : 429);
     if (!result.duplicate) try { options.onStored?.(result.id, lead.need); } catch { /* a saved lead survives scheduling failure */ }
     return reply({ ok: true, stored: true, duplicate: result.duplicate });

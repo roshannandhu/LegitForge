@@ -6,7 +6,7 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
 ## Active Working Directives
 - **Working Directory**: Always work in the `web/` directory. All application code, tests, and configuration live in `web/`.
 - **Target Branch**: Always branch from and target `main-exh9xw`.
-- **Verification**: Run `npm run test:backend` (101 tests, including the WhatsApp bot's) and `npm run build` inside `web/`; review page markup directly or inspect generated static files since browser checks (`check.mjs`) require an active dev server.
+- **Verification**: Run `npm run test:backend` (111 tests, including the WhatsApp bot's) and `npm run build` inside `web/`; review page markup directly or inspect generated static files since browser checks (`check.mjs`) require an active dev server.
 
 ## Current owner decisions (7 October 2026)
 - WhatsApp enquiry bot (16 Oct 2026, owner's decisions; supersedes SETUP.md Part 2 §3–§9): a separate
@@ -172,6 +172,13 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
   quoted, their next message goes to the team), "#CODE pay <amount>" (the member confirms; Razorpay
   link or UPI ID, bot/pay.ts); a review request for Won leads (GOOGLE_REVIEW_URL), then one
   referral ask; one revival template after 30 quiet days (REVIVE_TEMPLATE, off by default).
+- Admin (phase 6): Admin → WhatsApp (dashboard, answers, settings) and Admin → Leads → Chat read
+  Supabase through the bot's private RPC entrypoint (bot/admin.ts BotAdmin; the website's service
+  binding BOT, typed in lib/admin/bot.ts): the website holds no Supabase key, and the bot deploys
+  first. Pause/away/after-hours and saved replies ("#CODE /code") are D1 bot_settings and
+  bot_replies (0015); every bot message to a client is stored at the end of its run (flushOut);
+  leads.score (hot = everyone at once) and leads.page; a monthly report on the 1st.
+  tests/runtime.mjs maps 'cloudflare:workers' to tests/stubs/cloudflare-workers.mjs.
 - Fixed text in bot/text.ts must stay within WhatsApp limits (tests check them): list rows ≤ 10,
   row title ≤ 24, buttons ≤ 3 with titles ≤ 20.
 

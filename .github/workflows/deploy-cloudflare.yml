@@ -90,13 +90,14 @@ jobs:
       - name: Database migrations
         run: npx wrangler d1 migrations apply legitforge --remote
 
+      - name: WhatsApp bot Worker
+        # bot/wrangler.jsonc: separate Worker on the same D1 (after the migrations above), deployed before
+        # the website, whose BOT binding calls its BotAdmin entrypoint. Its secrets are set once by hand
+        # (bot/wrangler.jsonc header), and its Supabase migrations (bot/supabase/) are run by hand first.
+        run: npx wrangler deploy -c bot/wrangler.jsonc
+
       - name: Deploy the checked Worker
         run: npx opennextjs-cloudflare deploy
-
-      - name: WhatsApp bot Worker
-        # bot/wrangler.jsonc: separate Worker on the same D1 (after the migrations above). Its secrets are
-        # set once by hand (bot/wrangler.jsonc header); without them it answers Meta with errors only.
-        run: npx wrangler deploy -c bot/wrangler.jsonc
 
       - name: Live data on the new pages
         # The build renders no database data (lib/build-cache.ts). Marking the data tags as changed

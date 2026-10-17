@@ -43,6 +43,7 @@ export function Quench() {
       submission.current = { fingerprint, id: crypto.randomUUID() };
     }
     data.set('submission_id', submission.current.id);
+    data.set('page', location.pathname);                 // Admin → WhatsApp: which page brought them
 
     pending.current = true;
     setState('sending');

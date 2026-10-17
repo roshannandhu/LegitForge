@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
 import { Miniflare, convertV4MiniflareOptions } from 'miniflare';
-import worker, { clock, tick, type Env } from '../bot/worker';
+import worker, { BotAdmin, clock, leadScore, pageFrom, tick, type Env } from '../bot/worker';
 import { DETAILS, LANGS, TEXT, fill } from '../bot/text';
 import { fakeEmbedding, fakeSupabase, installFakes, type Responder, type Sent } from './bot-fakes';
 
@@ -46,6 +46,8 @@ test('WhatsApp bot (fake Meta, Supabase, Groq and Gemini; real Miniflare D1)', a
     await db.exec('DELETE FROM projects');
     await db.exec('DELETE FROM bot_team');
     await db.exec('DELETE FROM company');
+    await db.exec('DELETE FROM bot_settings');
+    await db.exec('DELETE FROM bot_replies');
     sb.state.down = false;
     now = OPEN;
     await db.exec('DELETE FROM leads');
@@ -1776,5 +1778,190 @@ test('WhatsApp bot (fake Meta, Supabase, Groq and Gemini; real Miniflare D1)', a
       assert.ok(!to(CLIENT).some((m) => m.ids.includes('ret:same')), 'not "welcome back"');
       assert.equal(last(CLIENT).body, fill(TEXT.en.referral, { link: 'https://wa.me/919999999999' }));
     } finally { delete env.GOOGLE_REVIEW_URL; }
+  });
+  /* ---- phase 6: admin and insights ---- */
+
+  await t.test('phase 6: the bot’s own messages are kept for the chat viewer (not after DELETE MY DATA), and Admin reads them through the entrypoint', async () => {
+    await reset();
+    await teamHi();
+    await post([text(CLIENT, "Hi Legit Forge, I'd like to talk about SEO.")]);
+    now += 5000;                                                    // they tap a few seconds later
+    await post([tap(CLIENT, 'lang:en')]);
+    const out = sb.tables.messages.filter((m) => m.wa_id === CLIENT && m.dir === 'out');
+    assert.ok(out.some((m) => m.body === TEXT.en.name), 'the bot’s question, stored');
+    assert.ok(!sb.tables.messages.some((m) => m.dir === 'out' && m.team == null && TEAM.includes(m.wa_id)), 'never a team member as a client');
+    assert.equal((await lead())?.page, 'Site: SEO page', 'which page brought them');
+    const admin = new BotAdmin({} as never, env);
+    const chat = (await admin.chat(contact().lead_id))!;
+    assert.equal(chat.code, contact().code);
+    assert.deepEqual(chat.lines.map((l) => l.who).slice(0, 2), ['client', 'bot']);
+    assert.equal(await admin.chat(crypto.randomUUID()), null);
+    await post([text(CLIENT, 'delete my data')]);
+    await post([tap(CLIENT, 'del:y', 'button_reply')]);
+    assert.equal(sb.tables.messages.filter((m) => m.wa_id === CLIENT).length, 0, 'not even the "deleted" confirmation');
+  });
+
+  await t.test('phase 6: Admin manages what the bot knows and sees the top questions', async () => {
+    await reset();
+    const admin = new BotAdmin({} as never, env);
+    const made = await admin.saveAnswer({ question_en: 'Do you build Android apps?', answer_en: 'Yes, Android and iPhone apps.', by: 'owner@legitforge.example' });
+    assert.ok('ok' in made);
+    const k = sb.tables.knowledge.find((x) => x.id === (made as { id: number }).id)!;
+    assert.equal(k.status, 'approved');
+    assert.ok(k.embedding, 'embedded so the bot can find it');
+    fx.state.ai = (task) => (task === 'extract' ? question('Do you build Android apps?') : 500);
+    await toName();
+    await post([text(CLIENT, 'Android apps?')]);
+    assert.ok(last(CLIENT).body.startsWith('Yes, Android and iPhone apps.'), 'used at once');
+    assert.deepEqual(await admin.setAnswer(k.id, false, 'owner@legitforge.example'), { ok: true });
+    assert.equal(k.status, 'rejected');
+    assert.deepEqual((await admin.answers('rejected')).map((a) => a.id), [k.id]);
+    const ins = await admin.insights(30);
+    assert.equal(ins.questions, 1);
+    assert.equal(ins.byBot, 1);
+    assert.equal(ins.top[0].question, 'Do you build Android apps?');
+    assert.deepEqual(await admin.saveAnswer({ question_en: '?', answer_en: '', by: 'x' }), { error: 'Write the question and the answer.' });
+  });
+
+  await t.test('phase 6: paused, the bot sends the away message once and passes everything to the team; saved replies; the after-hours message', async () => {
+    await reset();
+    await teamHi();
+    await toName(CLIENT, 'ml');                                     // (before the pause: they chose Malayalam)
+    await db.prepare(`INSERT INTO bot_settings (key, value) VALUES ('paused', '1'), ('away', 'We are on leave until Monday. We will reply then.'),
+      ('after_hours', 'We are closed now and will reply in the morning.')`).run();
+    fx.state.ai = (task, user) => (task === 'translate' ? { text: /leave/.test(user) ? 'ഞങ്ങൾ തിങ്കളാഴ്ച വരെ അവധിയിലാണ്.' : 'രാവിലെ മറുപടി നൽകും.' } : 500);
+    await post([text(CLIENT, 'Ravi')]);
+    const code = contact().code;
+    assert.ok(to(CLIENT).some((m) => m.body === 'ഞങ്ങൾ തിങ്കളാഴ്ച വരെ അവധിയിലാണ്.'), 'the away message, in their language');
+    assert.ok(teamGot(TEAM[0], `#${code} (bot paused)`), 'the team gets the message');
+    const n = to(CLIENT).length;
+    await post([text(CLIENT, 'Hello?')]);
+    assert.equal(to(CLIENT).length, n, 'once every 12 hours');
+    await db.prepare(`UPDATE bot_settings SET value = '' WHERE key = 'paused'`).run();
+
+    await db.prepare(`INSERT INTO bot_replies (key, text) VALUES ('portfolio', 'Our recent work: https://legitforge.pages.dev/work')`).run();
+    await toName(CLIENT2);
+    const code2 = contact(CLIENT2).code;
+    await post([text(TEAM[0], `#${code2} /portfolio`)]);
+    assert.equal(last(CLIENT2).body, 'Our recent work: https://legitforge.pages.dev/work');
+    await post([text(TEAM[0], `#${code2} /nope`)]);
+    assert.equal(last(TEAM[0]).body, 'Saved replies: /portfolio');
+
+    fx.state.ai = (task) => (task === 'extract' ? question('Do you work on Sundays?') : task === 'translate' ? { text: 'രാവിലെ മറുപടി നൽകും.' } : 500);
+    now = SUNDAY;
+    await toName(CLIENT3);
+    await post([text(CLIENT3, 'Sundays?')]);
+    now += 11 * MIN;
+    await tick(env, now);
+    assert.equal(last(CLIENT3).body, 'We are closed now and will reply in the morning.', 'the admin’s words (English client)');
+  });
+
+  await t.test('phase 6: a hot lead (soon, clear, keen) is scored on the lead and reaches everyone at once', async () => {
+    await reset();
+    await teamHi();
+    await seat(TEAM[0], ['website']);
+    await seat(TEAM[1], ['seo']);
+    await toName();
+    for (const a of ['Ravi', 'Ravi Bakery', 'A website where people can order cakes and pay online']) await post([text(CLIENT, a)]);
+    await post([text(CLIENT, 'Five pages, I have a domain')]);
+    await post([tap(CLIENT, 'skip:refs', 'button_reply')]);
+    await post([tap(CLIENT, 'tl:0', 'button_reply')]);
+    assert.equal((await lead())?.score, 'hot');
+    const code = contact().code;
+    for (const m of TEAM) assert.match(teamGot(m, `#${code}`)!.body, /🔥 new lead/, 'not in turns: everyone');
+    await toName(CLIENT2);
+    await post([text(CLIENT2, 'Asha')]);
+    assert.equal((await lead(CLIENT2))?.score, 'cold');
+  });
+
+  await t.test('phase 6: the monthly report on the 1st', async () => {
+    await reset();
+    for (const [id, source, service, status] of [['m1', 'whatsapp', 'Website', 'won'], ['m2', 'form', 'SEO', 'new'], ['m3', 'whatsapp', 'Website', 'lost']]) {
+      await db.prepare(`INSERT INTO leads (id, source, service, status, created_at) VALUES (?, ?, ?, ?, '2026-10-10 10:00:00')`).bind(id, source, service, status).run();
+    }
+    now = Date.parse('2026-11-01T04:30:00Z');                     // 1 November, 10:00 IST
+    await teamHi();
+    await tick(env, now);
+    const report = teamGot(TEAM[0], 'Monthly report: October 2026')!;
+    assert.match(report.body, /Enquiries: 3 \(whatsapp 2, form 1\)\. Won: 1, lost: 1\./);
+    assert.match(report.body, /By service: Website 2, SEO 1\./);
+    await tick(env, now + 2 * MIN);
+    assert.equal(to(TEAM[0]).filter((m) => m.body.startsWith('Monthly report')).length, 1, 'once');
+  });
+  /* ---- phase 6 review fixes ---- */
+
+  await t.test('phase 6 fixes: Admin edits re-embed and drop old translations; "Use it" embeds; an earlier enquiry’s chat is found', async () => {
+    await reset();
+    const admin = new BotAdmin({} as never, env);
+    sb.tables.knowledge.push({ id: 700, question_en: 'Do you do logos?', answer_en: 'Yes.', status: 'approved', source: 'team', embedding: JSON.stringify(fakeEmbedding('x')),
+      translations: { ml: 'old' }, translations_ok: true });
+    assert.ok('ok' in (await admin.saveAnswer({ id: 700, question_en: 'Do you design logos?', answer_en: 'Yes, simple logos.', by: 'owner' })));
+    const k = sb.tables.knowledge.find((x) => x.id === 700)!;
+    assert.deepEqual(k.translations, {});
+    assert.equal(k.translations_ok, false);
+    assert.equal(k.embedding, JSON.stringify(fakeEmbedding('Do you design logos?')), 'embedded again for the new question');
+    sb.tables.knowledge.push({ id: 701, question_en: 'Do you host?', answer_en: 'Yes.', status: 'pending', source: 'team', embedding: null });
+    assert.deepEqual(await admin.setAnswer(701, true, 'owner'), { ok: true });
+    assert.ok(sb.tables.knowledge.find((x) => x.id === 701)!.embedding, 'switched on with an embedding');
+
+    await toName();
+    for (const a of ['Ravi', 'Ravi Bakery', 'A website']) await post([text(CLIENT, a)]);
+    const first = contact().lead_id;
+    now += 31 * 24 * 60 * MIN;
+    await post([text(CLIENT, 'Hi')]);
+    await post([tap(CLIENT, 'ret:new', 'button_reply')]);
+    assert.notEqual(contact().lead_id, first);
+    assert.ok(await admin.chat(first), 'the earlier enquiry still opens its chat');
+  });
+
+  await t.test('phase 6 fixes: saved replies by swipe-reply answer the open question; "/list" lists; a hot lead keeps the bot going', async () => {
+    await reset();
+    await teamHi();
+    await db.prepare(`INSERT INTO bot_replies (key, text) VALUES ('portfolio', 'Our recent work: https://legitforge.pages.dev/work')`).run();
+    fx.state.ai = (task) => (task === 'extract' ? question('Can I see your work?') : 500);
+    await toName();
+    await post([text(CLIENT, 'Your work?')]);
+    const alert = teamGot(TEAM[0], 'question')!;
+    await post([text(TEAM[0], '/portfolio', { context: { id: alert.id } })]);
+    assert.equal(last(CLIENT).body, 'Our recent work: https://legitforge.pages.dev/work');
+    assert.equal(sb.tables.questions.at(-1)!.status, 'answered', 'no "the team will reply" later');
+    await post([text(TEAM[0], `#${contact().code} /list`)]);
+    assert.equal(last(TEAM[0]).body, 'Saved replies: /portfolio');
+
+    fx.state.ai = () => 500;
+    await toName(CLIENT2);
+    for (const a of ['Asha', 'Asha Clinic', 'A website where patients can book appointments online']) await post([text(CLIENT2, a)]);
+    await post([text(CLIENT2, 'Five pages')]);
+    await post([tap(CLIENT2, 'skip:refs', 'button_reply')]);
+    await post([text(CLIENT2, 'Urgent, this week please')]);
+    const hot = teamGot(TEAM[0], `#${contact(CLIENT2).code} 🔥`)!;
+    assert.ok(hot, 'a typed "this week" is hot too');
+    assert.doesNotMatch(hot.body, /The bot has stopped/, 'the bot carries on');
+    assert.equal(contact(CLIENT2).mode, 'bot');
+  });
+
+  await t.test('phase 6 fixes: paused, a returning client reaches the team (no welcome-back), and no reminders go out', async () => {
+    await reset();
+    await teamHi();
+    await toName();
+    await post([text(CLIENT, 'Ravi')]);
+    await db.prepare(`INSERT INTO bot_settings (key, value) VALUES ('paused', '1'), ('away', 'We are on leave until Monday.')`).run();
+    now += 3 * 60 * MIN + MIN;
+    await tick(env, now);
+    assert.ok(!to(CLIENT).some((m) => m.body === TEXT.en.nudge), 'no "still there?" while paused');
+    now += 31 * 24 * 60 * MIN;
+    await teamHi();
+    await post([text(CLIENT, 'Need a new site by Friday')]);
+    assert.ok(!to(CLIENT).some((m) => m.ids.includes('ret:same')), 'no welcome-back question');
+    assert.ok(teamGot(TEAM[0], 'Need a new site by Friday'), 'the team has their words');
+    assert.equal(last(CLIENT).body, 'We are on leave until Monday.');
+  });
+
+  await t.test('phase 6 fixes: which page brought them, and the lead score from typed timelines', () => {
+    assert.equal(pageFrom("Hi Legit Forge, I'd like to talk about SEO."), 'Site: SEO page');
+    assert.equal(pageFrom("Hi, I'd like to talk about my shop"), 'WhatsApp (typed)', 'not a page that does not exist');
+    assert.equal(pageFrom('Hello Legit Forge!', 'Hello Legit Forge!'), 'Site: WhatsApp button', 'the greeting set in Admin → Company');
+    assert.equal(leadScore({ service: 'website', fields: { timeline: 'urgent, this week', business: 'B', need: 'x'.repeat(41), details: '5 pages' } }), 'hot');
+    assert.equal(leadScore({ service: 'website', fields: { timeline: 'Just exploring' } }), 'cold');
   });
 });

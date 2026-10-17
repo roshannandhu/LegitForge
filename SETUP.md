@@ -203,7 +203,11 @@ change, and is recommended before real client traffic.
    `calendar.freebusy` (e.g. the OAuth Playground with your own client). Then
    `npx wrangler secret put GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` / `GOOGLE_REFRESH_TOKEN`
    with `-c bot/wrangler.jsonc`. `CALENDAR_ID` in bot/wrangler.jsonc is legitforge@gmail.com.
-10. Payments and reviews (optional): Razorpay keys as the secrets `RAZORPAY_KEY_ID` and
+10. Admin → WhatsApp (dashboard, answers, chats) reads the bot through the website's `BOT` service
+   binding (web/wrangler.jsonc), so the bot must be deployed first (the GitHub workflow does
+   this); before that, those pages say the bot is not reachable. D1 migration 0015 (the site
+   deploy applies it) holds the bot's pause switch, away messages and saved replies.
+11. Payments and reviews (optional): Razorpay keys as the secrets `RAZORPAY_KEY_ID` and
    `RAZORPAY_KEY_SECRET` (payment links), or your UPI ID in `UPI_ID` (bot/wrangler.jsonc); your
    Google review link in `GOOGLE_REVIEW_URL`. Every payment amount is confirmed by the team member
    in WhatsApp before it is sent.

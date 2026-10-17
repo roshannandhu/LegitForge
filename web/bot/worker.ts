@@ -19,7 +19,7 @@
  *  unhandled and the 2-minute cron picks it up. A message that fails part-way is rolled back in
  *  memory and retried; finished ones are marked handled before the state is saved. */
 
-import { isOpenNow } from '../lib/business-hours';
+import { isOpenNow, replyDeadline } from '../lib/business-hours';
 import { serviceOfLabel } from '../lib/wa-services';
 import { bookCall, calendarOn, callEvent, cancelCall, freeSlots } from './calendar';
 import { inr, paymentLink, rupees } from './pay';
@@ -30,13 +30,14 @@ import {
   type Field, type Lang, type ServiceKey, type Step,
 } from './text';
 import {
-  chat, clip, count, embed, markRead, media, q, redact, room, sb, sendButtons, sendList, sendTemplate, sendText, transcribe, validSignature, vec,
+  chat, clip, clock, count, embed, markRead, media, q, redact, room, sb, sbCount, sendButtons, sendList, sendTemplate, sendText, transcribe, validSignature, vec,
   type Env, type Provider,
 } from './io';
 
 export type { Env };
-/** Tests move time. */
-export const clock = { now: () => Date.now() };
+/** Admin → WhatsApp reads the bot through this entrypoint (the website's BOT service binding). */
+export { BotAdmin } from './admin';
+export { clock };                                                // tests move time
 const iso = (ms: number) => new Date(ms).toISOString();
 const MIN = 60_000, HOUR = 60 * MIN, DAY = 24 * HOUR;
 const LOCK = 45_000;            // longer than a turn can run (room() stops new work after 18 s)
@@ -66,6 +67,8 @@ interface Fields {
   call_at?: string;          // last "arrange a call" alert, so repeated taps alert once a day
   person_at?: string;        // asked for a person: they wait for the team, not for a reminder
   call_how?: How;            // how they want the call: WhatsApp, phone or Google Meet
+  away_at?: string;          // the last away message (the bot paused): once every 12 hours
+  page?: string;             // where the enquiry started (the site's WhatsApp buttons): Admin → WhatsApp
   prev_leads?: string[];     // earlier enquiries' D1 lead ids (DELETE MY DATA removes them too)
 }
 export interface Contact {
@@ -103,7 +106,72 @@ const host = (env: Env) => (env.SITE_URL || 'https://legitforge.pages.dev').repl
 const footer = (env: Env) => `Automated assistant · ${host(env)}/privacy`;
 const ACK = /^(hi+|hello|hey|hai|ok(ay)?|k|thanks?( you)?|thank you|namaskaram|namaste|👍|🙏)[\s!.]*$/i;
 /** Each invocation gets its own call budget (io.ts room()). */
-const withRun = (env: Env): Env => ({ ...env, run: { calls: 0, t0: Date.now() } });
+const withRun = (env: Env): Env => ({ ...env, run: { calls: 0, t0: Date.now(), out: [], gone: new Set() } });
+
+/** The bot's own messages to clients this run, in one write (Admin → Leads → Chat shows them; the
+ *  team's copies are stored as they go). Never for a client who was erased in the meantime. */
+async function flushOut(env: Env, now: number) {
+  const team = teamIds(env), out = (env.run?.out ?? []).filter((o) => !team.has(o.to) && !env.run?.gone?.has(o.to));
+  if (env.run) env.run.out = [];
+  if (!out.length) return;
+  try {
+    // only clients who still exist: a DELETE MY DATA in another run meanwhile keeps nothing of theirs
+    const to = [...new Set(out.map((o) => o.to))];
+    const live = new Set((await sb<{ wa_id: string }>(env, 'GET', `contacts?wa_id=in.${q(`(${to.map((w) => `"${w}"`).join(',')})`)}&select=wa_id`)).map((r) => r.wa_id));
+    let prev = 0;                                                            // when each went (a millisecond apart at least, in order)
+    const rows = out.filter((o) => live.has(o.to)).map((o) => {
+      prev = Math.max(o.at, prev + 1);
+      return { wamid: o.wamid, wa_id: o.to, team: null, dir: 'out', body: clip(o.body, 4000), reply_id: null, ctx_id: null, profile: null,
+        question_id: null, knowledge_id: null, handled_at: iso(now), at: iso(prev) };
+    });
+    if (rows.length) await sb(env, 'POST', 'messages?on_conflict=wamid', rows, 'resolution=ignore-duplicates,return=minimal');
+  } catch (e) { console.error('[bot] sent messages not stored', String(e)); }
+}
+
+/** Admin → WhatsApp → Settings (D1 bot_settings, migration 0015), read once a run. */
+async function settingsOf(env: Env): Promise<Record<string, string>> {
+  if (env.run?.settings) return env.run.settings;
+  count(env);
+  // one read for both: the settings, and the greeting the site's WhatsApp buttons open with (Admin → Company)
+  const rows = (await env.DB.prepare(`SELECT key, value FROM bot_settings
+    UNION ALL SELECT 'site_greeting', json_extract(data, '$.whatsappText') FROM company WHERE id = 1`).all<{ key: string; value: string }>()
+    .catch(() => ({ results: [] as { key: string; value: string }[] }))).results;
+  const s = Object.fromEntries(rows.map((r) => [r.key, r.value]));
+  if (env.run) env.run.settings = s;
+  return s;
+}
+
+/** The team's English words (an away message, a saved reply) in the client's language; as written
+ *  when the AI is busy or the text holds numbers or emails (they are never sent for translation). */
+async function inTheirWords(env: Env, lang: string | null, text: string) {
+  if (!lang || lang === 'en' || redact(text) !== text) return text;
+  const r = await chat<{ text: string }>(env, { system: translatePrompt(lang), user: text, schema: TEXT_SCHEMA, name: 'translate', prefer: writer(lang) });
+  return r?.text.trim() || text;
+}
+
+/** Where a WhatsApp enquiry started: the site's buttons open WhatsApp with their own words. */
+export function pageFrom(text: string, greeting = '') {
+  if (greeting && text.trim() === greeting.trim()) return 'Site: WhatsApp button';            // Admin → Company's own words
+  const topic = /i'd like to talk about (.+?)\.?\s*$/i.exec(text)?.[1];
+  if (topic?.toLowerCase() === 'a project') return 'Site: WhatsApp button';
+  if (topic && (prefilledService(text) || /^websites and web apps$/i.test(topic))) return `Site: ${clip(topic, 40)} page`;
+  if (/a project like the ones on your site|examples of your work/i.test(text)) return 'Site: work page';
+  if (/portfolio on your site/i.test(text)) return 'Site: team page';
+  return 'WhatsApp (typed)';
+}
+
+/** Hot / warm / cold from the brief: how soon, how clear, how keen (a call, a person). */
+export function leadScore(c: Pick<Contact, 'fields' | 'service'>): 'hot' | 'warm' | 'cold' {
+  const f = c.fields, typed = f.timeline ?? '';
+  // the buttons, or typed words that say soon (in English: the AI reads other languages into English)
+  let n = typed === TIMELINES[0] || /asap|as soon|urgent|today|tomorrow|this week|next week|immediately|days?\b/i.test(typed) ? 2
+    : typed && typed !== TIMELINES[2] && !/explor|not sure|no hurry|later/i.test(typed) ? 1 : 0;
+  if ((f.need ?? '').length > 40) n++;
+  if (shown(f.details)) n++;
+  if (f.business) n++;
+  if (f.call_at || f.person_at) n += 2;
+  return n >= 5 ? 'hot' : n >= 3 ? 'warm' : 'cold';
+}
 
 /* ================================================================================ webhook */
 
@@ -135,7 +203,7 @@ export default {
       console.error('[bot] could not store inbound messages; Meta will retry', String(err));
       return new Response('Retry later', { status: 500 });
     }
-    if (fresh.length) ctx.waitUntil(processFresh(e, fresh).catch((err) => console.error('[bot] turn failed', String(err))));
+    if (fresh.length) ctx.waitUntil(processFresh(e, fresh).catch((err) => console.error('[bot] turn failed', String(err))).finally(() => flushOut(e, clock.now())));
     return new Response('ok');
   },
   async scheduled(controller: { scheduledTime: number }, env: Env, ctx: Ctx) {
@@ -382,7 +450,8 @@ class Turn {
     if (c.mode === 'blocked') return;                                       // the team unblocks with "#CODE unblock"
     if (STOP.test(text)) { c.last_in_at = m.at; c.mode = 'stopped'; await this.say(t(c.lang, 'stopped')); return; }
     const askedForReview = !!c.review_at && Date.parse(c.review_at) > this.now - 30 * DAY;   // their reply to it is not a "return"
-    if (Date.parse(c.last_in_at) < this.now - 30 * DAY && !askedForReview && this.welcomeBack()) {
+    const paused = (await settingsOf(this.env)).paused === '1';                         // (paused: everything goes to the team)
+    if (!paused && Date.parse(c.last_in_at) < this.now - 30 * DAY && !askedForReview && this.welcomeBack()) {
       c.last_in_at = m.at;
       if (kind === 'media' && value !== 'voice') await this.keep(value, id, name);   // a photo sent first is still kept
       await sendButtons(this.env, c.wa_id, t(lang, 'welcomeBack'), TEXT[lang].retBtn.map((title, i) => ({ id: `ret:${i ? 'new' : 'same'}`, title })));
@@ -397,17 +466,28 @@ class Turn {
       if (mine) await toTeam(this.env, this.now, `#${c.code} replied after the quote: "${clip(text || (file ? '📎 a file' : m.reply_id ?? ''), 300)}"`,
         { wa_id: c.wa_id }, (await route(this.env, this.now, c.service)).all);
     }
-    if (c.mode === 'human') {
-      // With a person on the chat the bot stays quiet and forwards: to whoever took it, or to
-      // the whole team while nobody has (an upset or urgent client waiting for anyone).
+    if (c.step === 'start') c.fields.page ??= pageFrom(text, await greetingOf(this.env));   // kept even when the bot is paused
+    if (c.mode === 'human' || paused) {
+      // With a person on the chat (or the bot paused) the bot stays quiet and forwards: to whoever
+      // took it, or to the whole team while nobody has (an upset or urgent client waiting for anyone).
       const team = teamIds(this.env);
       if (c.taken_by && !team.has(c.taken_by)) c.taken_by = null;           // that person left the team
       const to = c.taken_by ? [c.taken_by] : (await route(this.env, this.now, c.service)).all;   // nobody who is off
       const what = value === 'voice' ? 'a voice note' : 'a file';
       const said = kind !== 'media' ? text || m.reply_id : value === 'voice' && text ? `🎤 ${text}`
         : `📎 sent ${what}${file === 'saved' ? ' (Admin → Leads)' : ' I could not save (too big or unavailable): ask for a link'}${text ? `: ${text}` : ''}`;
-      if (to.length && (await toTeam(this.env, this.now, `#${c.code} ${who(c)}: ${said}`, { wa_id: c.wa_id }, to))) return;
-      c.mode = 'bot'; c.taken_by = null;                                    // nobody could be reached: the bot carries on
+      const reached = to.length ? await toTeam(this.env, this.now, `#${c.code}${paused && c.mode !== 'human' ? ' (bot paused)' : ''} ${who(c)}: ${said}`, { wa_id: c.wa_id }, to) : 0;
+      if (paused && (c.mode !== 'human' || !reached)) {                     // (a taker nobody could reach: the away message too)
+        // the away message (Admin → WhatsApp → Settings) once every 12 hours, in their language
+        const away = (await settingsOf(this.env)).away;
+        if (away && (!c.fields.away_at || Date.parse(c.fields.away_at) < this.now - 12 * HOUR)) {
+          c.fields.away_at = iso(this.now);
+          await this.say(await inTheirWords(this.env, c.lang, away));
+        }
+        if (reached || away) return;                                         // nobody and no away message: the bot answers after all
+        if (c.mode === 'human') { c.mode = 'bot'; c.taken_by = null; }
+      } else if (reached) return;
+      if (c.mode === 'human') { c.mode = 'bot'; c.taken_by = null; }         // nobody could be reached: the bot carries on
     }
     if (file && value === 'voice' && !text) { await this.say(t(c.lang, 'pleaseType')); return; }   // (the recording is kept for the team)
     if (file) {
@@ -558,6 +638,7 @@ class Turn {
     await sb(this.env, 'DELETE', `alerts?wa_id=eq.${q(c.wa_id)}`, undefined, 'return=minimal');      // (a blocked record keeps its row)
     await sb(this.env, 'DELETE', `messages?wa_id=eq.${q(c.wa_id)}`, undefined, 'return=minimal');
     this.erased = true;
+    this.env.run?.gone?.add(c.wa_id);
     c.lead_saved = true;                                                    // nothing re-creates the lead this turn
     await toTeam(this.env, this.now, `#${c.code} asked to delete their data. Their chat, details and WhatsApp leads are erased; please also delete #${c.code}'s messages in your own WhatsApp.`
       + (stuck.length ? ` Also delete the call on the calendar at ${stuck.map(istTime).join(', ')} (Google did not let me).` : ''), {});
@@ -667,7 +748,7 @@ class Turn {
         return;
       }
       if (x.kind === 'question' && x.question_en) prefix = await this.answerOrAsk(text, x.question_en, x.commitment);
-      else if (x.kind === 'person') { await this.alertTeam('person'); c.fields.person_at = iso(this.now); prefix = t(lang, 'person'); }
+      else if (x.kind === 'person') { c.fields.person_at = iso(this.now); await this.alertTeam('person'); prefix = t(lang, 'person'); }
       else if (x.kind === 'off_topic') prefix = t(lang, 'offTopic');
     }
     const plain = (!x || x.kind === 'answer') && !ACK.test(text);
@@ -946,9 +1027,10 @@ class Turn {
     const c = this.c;
     if (why === 'complete' && c.alerted_at) return 1;
     await this.saveLead(why === 'complete' ? await this.briefDoc() : undefined);   // stored before its notification
-    const f = c.fields, urgent = why === 'upset' || why === 'urgent';
+    const f = c.fields, hot = leadScore(c) === 'hot', urgent = why === 'upset' || why === 'urgent';
+    const everyone = urgent || (why !== 'call' && hot);                      // hot leads: everyone at once (the bot carries on)
     const sent = await alertTurns(this.env, this.now, { wa_id: c.wa_id, service: c.service }, [
-      `#${c.code} ${ALERT_HEAD[why]}`,
+      `#${c.code} ${hot ? '🔥 ' : ''}${ALERT_HEAD[why]}`,
       `Name: ${f.name || c.profile_name || '-'}`, `Business: ${f.business || '-'}`, `Service: ${serviceLabel(c)}`,
       c.phone ? `WhatsApp: wa.me/${c.phone}` : 'WhatsApp: no phone number shared (username)',
       ...(said ? [`Message: "${clip(said, 300)}"`] : []),
@@ -961,7 +1043,7 @@ class Turn {
       '', urgent
         ? `The bot has stopped. Reply to this message to talk to them; "#${c.code} bot" hands back to the bot.`
         : 'Reply to this message to write to the client.',
-    ].join('\n'), { wa_id: c.wa_id }, undefined, urgent);
+    ].join('\n'), { wa_id: c.wa_id }, undefined, everyone);
     if (!sent) console.error(`[bot] lead #${c.code} reached no team member (TEAM_WHATSAPP, template?); retried on their next message`);
     else if (why === 'complete') c.alerted_at = iso(this.now);
     if (sent) await this.alerted();
@@ -983,12 +1065,12 @@ class Turn {
       shown(f.refs) && `Websites they like: ${f.refs}`, f.timeline && `Timeline: ${f.timeline}`, f.notes && `Notes: ${f.notes}`]
       .filter(Boolean).join('\n') || null;
     const values = [f.name || c.profile_name || null, c.phone ? `+${c.phone}` : null, serviceByKey(c.service ?? '')?.lead ?? null, message,
-      c.lang ? langName(c.lang) : null, f.files?.length ? JSON.stringify(f.files) : null, doc ?? null];
+      c.lang ? langName(c.lang) : null, f.files?.length ? JSON.stringify(f.files) : null, leadScore(c), f.page ?? null, doc ?? null];
     count(this.env);
     const r = await (c.lead_saved
-      ? this.env.DB.prepare('UPDATE leads SET name = ?, phone = ?, service = ?, message = ?, language = ?, files = ?, brief = COALESCE(?, brief) WHERE id = ?').bind(...values, c.lead_id)
-      : this.env.DB.prepare(`INSERT OR IGNORE INTO leads (name, phone, service, message, language, files, brief, id, source, whatsapp_consent)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'whatsapp', 1)`).bind(...values, c.lead_id)).run();
+      ? this.env.DB.prepare('UPDATE leads SET name = ?, phone = ?, service = ?, message = ?, language = ?, files = ?, score = ?, page = COALESCE(page, ?), brief = COALESCE(?, brief) WHERE id = ?').bind(...values, c.lead_id)
+      : this.env.DB.prepare(`INSERT OR IGNORE INTO leads (name, phone, service, message, language, files, score, page, brief, id, source, whatsapp_consent)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'whatsapp', 1)`).bind(...values, c.lead_id)).run();
     if (c.lead_saved && !r.meta.changes && !f.lead_gone) {
       // Deleted in Admin → Leads: it stays deleted, and files sent since go too (none are kept from now on).
       f.lead_gone = true;
@@ -1247,6 +1329,23 @@ async function handleTeam(env: Env, m: Msg, now: number, about: About = {}) {
       : `The bot is back on #${contact.code}.`);
   }
 
+  // "#CODE /portfolio": a saved reply (Admin → WhatsApp → Settings), in their language; "/list" shows them.
+  const saved = /^\/([a-z0-9-]{2,24})$/i.exec(rest);
+  if (saved) {
+    count(env);
+    const all = (await env.DB.prepare('SELECT key, text FROM bot_replies ORDER BY key').all<{ key: string; text: string }>().catch(() => ({ results: [] as { key: string; text: string }[] }))).results;
+    const hit = saved[1].toLowerCase() === 'list' ? undefined : all.find((r) => r.key === saved[1].toLowerCase());
+    if (!hit) return reply(all.length ? `Saved replies: ${all.map((r) => `/${r.key}`).join(', ')}` : 'No saved replies yet (Admin → WhatsApp → Settings).');
+    const sent = await relay(env, now, contact, hit.text);
+    if (sent.ok) {
+      about.sent = sent.note;
+      // it answers the question they are waiting on (the oldest open one), like a typed reply
+      const [open] = questionId ? await sb<Question>(env, 'GET', `questions?id=eq.${questionId}&status=eq.pending&select=id`)
+        : await sb<Question>(env, 'GET', `questions?wa_id=eq.${q(contact.wa_id)}&status=eq.pending&order=created_at.asc&limit=1&select=id`);
+      if (open) await sb(env, 'PATCH', `questions?id=eq.${open.id}&status=eq.pending`, { status: 'answered', answer: clip(hit.text, 2000), answered_by: member, answered_at: iso(now) }, 'return=minimal');
+    }
+    return reply(sent.note, { wa_id: contact.wa_id });
+  }
   // "quote <link>": the word, then a link (anything else, e.g. "quote ready", is an ordinary message)
   const quote = /^quote\b[\s:,-]*(\S+:\/\/\S*)([\s\S]*)$/i.exec(rest);
   if (quote) {
@@ -1442,6 +1541,10 @@ async function saveEdit(env: Env, now: number, member: string, id: number, text:
  *  reply" message (once per client per run), then stuck messages, all within one call budget. */
 export async function tick(env0: Env, now: number) {
   const env = withRun(env0);
+  try { await cron(env, now); } finally { await flushOut(env, now); }
+}
+
+async function cron(env: Env, now: number) {
   const d = new Date(now);
   if (d.getUTCHours() === 21 && d.getUTCMinutes() >= 30 && d.getUTCMinutes() < 32) {   // ~03:00 IST, once a day
     await Promise.all([
@@ -1466,7 +1569,8 @@ export async function tick(env0: Env, now: number) {
     told.add(question.wa_id);
     const [c] = await sb<Contact>(env, 'GET', `contacts?wa_id=eq.${q(question.wa_id)}`);
     if (!c || c.mode === 'stopped' || c.mode === 'blocked' || Date.parse(c.last_in_at) < now - 24 * HOUR) continue;
-    await sendText(env, c.wa_id, t(c.lang, isOpenNow(new Date(now)) ? 'teamSoon' : 'teamLater'));
+    const own = !isOpenNow(new Date(now)) && (await settingsOf(env)).after_hours;
+    await sendText(env, c.wa_id, own ? await inTheirWords(env, c.lang, own) : t(c.lang, isOpenNow(new Date(now)) ? 'teamSoon' : 'teamLater'));
   }
   const stale = await sb<Msg>(env, 'GET', `messages?dir=eq.in&handled_at=is.null&at=lt.${iso(now - 2 * MIN)}&order=at.asc&limit=20`);
   for (const m of stale.filter((m) => m.team)) {
@@ -1478,6 +1582,9 @@ export async function tick(env0: Env, now: number) {
     await runClient(env, waId).catch((e) => console.error('[bot] retry failed', String(e)));
   }
   if (room(env, 12)) await remind(env, now).catch((e) => console.error('[bot] call reminders failed', String(e)));
+  if (ist.getUTCDate() === 1 && ist.getUTCHours() === 10 && room(env, 10 + teamIds(env).size)) {      // the 1st of the month, 10 a.m.
+    await monthly(env, now, ist.toISOString().slice(0, 7)).catch((e) => console.error('[bot] monthly report failed', String(e)));
+  }
   // then alerts: passed on after 10 minutes, website form enquiries, the 10 a.m. summary
   if (room(env, 10)) await passOn(env, now).catch((e) => console.error('[bot] pass-on failed', String(e)));
   if (room(env, 12)) await formLeads(env, now).catch((e) => console.error('[bot] form leads failed', String(e)));
@@ -1498,6 +1605,40 @@ async function weeklyOnce(env: Env, now: number, monday: string) {
   await sb(env, 'POST', 'settings?on_conflict=key', { key: 'weekly_at', value: '2000-01-01', updated_at: iso(now) }, 'resolution=ignore-duplicates,return=minimal');
   const [mine] = await sb(env, 'PATCH', `settings?key=eq.weekly_at&value=lt.${monday}`, { value: monday, updated_at: iso(now) });
   if (mine) await weekly(env, now);
+}
+
+/** The 1st of the month: last month's enquiries (by source, service and outcome), the 2-hour
+ *  promise, and what the bot answered by itself. Once a month (settings 'monthly_at'). */
+async function monthly(env: Env, now: number, month: string) {
+  await sb(env, 'POST', 'settings?on_conflict=key', { key: 'monthly_at', value: '2000-01', updated_at: iso(now) }, 'resolution=ignore-duplicates,return=minimal');
+  const [last] = await sb<{ value: string }>(env, 'GET', 'settings?key=eq.monthly_at&select=value');
+  if (!last || last.value >= month) return;
+  const [y, m] = month.split('-').map(Number), from = `${new Date(Date.UTC(y, m - 2, 1)).toISOString().slice(0, 10)} 00:00:00`, to = `${month}-01 00:00:00`;
+  count(env);
+  const rows = (await env.DB.prepare(`SELECT source, service, status, score, created_at, wa_alerted_at, first_reply_at FROM leads
+    WHERE source != 'demo' AND created_at >= ? AND created_at < ? LIMIT 5000`).bind(from, to)
+    .all<{ source: string; service: string | null; status: string; score: string | null; created_at: string; wa_alerted_at: string | null; first_reply_at: string | null }>()).results;
+  // the 2-hour promise (in working hours, from when the team was told), as Admin → Leads counts it
+  const d1 = (t: string) => Date.parse(`${t.replace(' ', 'T')}Z`);
+  const owed = rows.filter((r) => r.source === 'form' || r.wa_alerted_at);
+  const met = owed.filter((r) => r.first_reply_at && d1(r.first_reply_at) <= replyDeadline(new Date(d1(r.wa_alerted_at ?? r.created_at))).getTime()).length;
+  const window = `questions?created_at=gte.${q(`${from.slice(0, 10)}T00:00:00Z`)}&created_at=lt.${q(`${month}-01T00:00:00Z`)}`;
+  const [asked, auto] = await Promise.all([sbCount(env, window), sbCount(env, `${window}&kind=eq.auto`)]);
+  const tally = (pick: (r: (typeof rows)[number]) => string | null, list = rows) => {
+    const n = new Map<string, number>();
+    for (const r of list) { const k = pick(r) ?? '—'; n.set(k, (n.get(k) ?? 0) + 1); }
+    return [...n].sort((a, b) => b[1] - a[1]).slice(0, 6).map(([k, v]) => `${k} ${v}`).join(', ') || '—';
+  };
+  const text = [
+    `Monthly report: ${new Date(Date.UTC(y, m - 2, 1)).toLocaleString('en-IN', { month: 'long', year: 'numeric', timeZone: 'UTC' })}`,
+    `Enquiries: ${rows.length} (${tally((r) => r.source)}). Won: ${rows.filter((r) => r.status === 'won').length}, lost: ${rows.filter((r) => r.status === 'lost').length}.`,
+    `By service: ${tally((r) => r.service)}.`, `Lead score (WhatsApp): ${tally((r) => r.score, rows.filter((r) => r.source === 'whatsapp'))}.`,
+    `First reply within the 2-hour promise: ${met} of ${owed.length}.`,
+    `Questions: ${asked}, answered by the bot: ${auto}.`,
+    'Details: Admin → WhatsApp.',
+  ].join('\n');
+  const [mine] = await sb(env, 'PATCH', `settings?key=eq.monthly_at&value=eq.${q(last.value)}`, { value: month, updated_at: iso(now) });
+  if (mine) await toTeam(env, now, text, {}, (await route(env, now, null)).all);
 }
 
 /** 30 minutes before a booked call: the client (the call_reminder template after their 24-hour
@@ -1525,6 +1666,11 @@ async function remind(env: Env, now: number) {
     await toTeam(env, now, `#${c.code} 📅 call in 30 minutes: ${istTime(start)} · ${HOW_LABEL[call.how]}${c.phone ? ` · wa.me/${c.phone}` : ''}${call.meet ? `\nMeet: ${call.meet}` : ''}`,
       { wa_id: c.wa_id });
   }
+}
+
+/** The greeting the site's own WhatsApp buttons open with (Admin → Company), once a run. */
+async function greetingOf(env: Env) {
+  return (await settingsOf(env)).site_greeting || "Hi Legit Forge, I'd like to talk about a project.";   // lib/site.ts COMPANY_DEFAULTS
 }
 
 /** The studio's WhatsApp link to share (Admin → Company), else the website. */
@@ -1561,7 +1707,7 @@ async function reviews(env: Env, now: number) {
 /** One approved marketing template to a lead that went quiet 30 days ago and was not won or
  *  lost. Off until REVIVE_TEMPLATE is set (each message costs money: Meta's marketing rate). */
 async function revive(env: Env, now: number) {
-  if (!env.REVIVE_TEMPLATE) return;
+  if (!env.REVIVE_TEMPLATE || (await settingsOf(env)).paused === '1') return;
   const cold = await sb<Contact>(env, 'GET', `contacts?mode=eq.bot&revived_at=is.null&step=neq.start&last_in_at=lt.${iso(now - 30 * DAY)}`
     + `&last_in_at=gt.${iso(now - 37 * DAY)}&select=wa_id,lead_id,fields,profile_name&limit=3`);
   for (const c of cold) {
@@ -1664,7 +1810,7 @@ async function purgeFiles(env: Env, now: number) {
 /** One gentle reminder to a client who stopped answering mid-brief: 3 hours later, in working
  *  hours, inside their 24-hour window, never while they wait for the team. Once per enquiry. */
 async function nudge(env: Env, now: number) {
-  if (!isOpenNow(new Date(now))) return;
+  if (!isOpenNow(new Date(now)) || (await settingsOf(env)).paused === '1') return;
   const quiet = await sb<Contact>(env, 'GET', `contacts?mode=eq.bot&nudged_at=is.null&step=in.(service,language,name,business,need,details,refs,timeline)`
     + `&last_in_at=lt.${iso(now - 3 * HOUR)}&last_in_at=gt.${iso(now - 23 * HOUR)}&select=wa_id,lang,fields&limit=5`);
   for (const c of quiet) {

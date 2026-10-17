@@ -158,6 +158,9 @@ export interface LeadRow {
   /** Migration 0013: when the bot alerted the team about a form lead, and the first human reply. */
   wa_alerted_at?: string | null;
   first_reply_at?: string | null;
+  /** Migration 0015: hot / warm / cold (the bot), and the page that brought it. */
+  score?: 'hot' | 'warm' | 'cold' | null;
+  page?: string | null;
 }
 
 export async function listLeads(status?: LeadStatus) {

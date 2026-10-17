@@ -47,13 +47,22 @@ export interface Env {
   SITE_URL?: string;
   /** Per invocation (never a binding): outside calls made so far, and when it started. Workers
    *  Free allows 50 subrequests per invocation (D1 calls count too), so turns stop early. */
-  run?: { calls: number; t0: number; open?: Set<string>; roster?: unknown[] };
+  run?: {
+    calls: number; t0: number; open?: Set<string>; roster?: unknown[]; settings?: Record<string, string>;
+    /** What went out this run, stored in one write at its end (worker.ts flushOut). */
+    out?: { wamid: string; to: string; body: string; at: number; options?: { id: string; title: string }[] }[];
+    /** Clients erased this run: nothing of theirs is stored afterwards. */
+    gone?: Set<string>;
+  };
 }
 
 /** One more outside call for this invocation's budget. */
 export const count = (env: Env) => { if (env.run) env.run.calls++; };
 /** Room for `n` more calls (and time) in this invocation? */
 export const room = (env: Env, n: number) => !env.run || (env.run.calls + n <= 48 && Date.now() - env.run.t0 < 18_000);
+
+/** Now (tests move it). */
+export const clock = { now: () => Date.now() };
 
 const TIMEOUT = 8000;
 const graph = (env: Env) => `https://graph.facebook.com/${env.GRAPH_VERSION || 'v25.0'}`;
@@ -77,6 +86,16 @@ export async function sb<T = any>(env: Env, method: string, path: string, body?:
   return text ? JSON.parse(text) : [];
 }
 export const q = encodeURIComponent;
+
+/** How many rows match (PostgREST's exact count, not capped by its 1,000-row page). */
+export async function sbCount(env: Env, path: string): Promise<number> {
+  count(env);
+  const r = await fetch(`${env.SUPABASE_URL.replace(/\/+$/, '')}/rest/v1/${path}${path.includes('?') ? '&' : '?'}select=*&limit=1`, {
+    headers: { apikey: env.SUPABASE_SECRET_KEY, prefer: 'count=exact' }, signal: AbortSignal.timeout(TIMEOUT),
+  });
+  if (!r.ok) throw Object.assign(new Error(`supabase count ${path.split('?')[0]}: ${r.status}`), { status: r.status });
+  return Number(r.headers.get('content-range')?.split('/')[1]) || 0;
+}
 /** A pgvector value as PostgREST takes it. */
 export const vec = (v: number[]) => `[${v.join(',')}]`;
 
@@ -94,7 +113,11 @@ async function wa(env: Env, { to, ...payload }: { to: string } & Record<string, 
       signal: AbortSignal.timeout(TIMEOUT),
     });
     if (!r.ok) { console.error('[wa] send refused', r.status, (await r.text()).slice(0, 300)); return null; }
-    return ((await r.json()) as { messages?: { id: string }[] }).messages?.[0]?.id ?? null;
+    const id = ((await r.json()) as { messages?: { id: string }[] }).messages?.[0]?.id ?? null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const p = payload as any;
+    if (id) env.run?.out?.push({ wamid: id, to, at: clock.now(), body: String(p.text?.body ?? p.interactive?.body?.text ?? p.template?.components?.[0]?.parameters?.map((x: { text: string }) => x.text).join(' | ') ?? '') });
+    return id;
   } catch (e) { console.error('[wa] send failed', String(e).slice(0, 200)); return null; }
 }
 

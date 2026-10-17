@@ -4,6 +4,7 @@ import { openSlots } from '../bot/calendar';
 import { inr, rupees } from '../bot/pay';
 import { slotTime } from '../bot/worker';
 import { LANGS } from '../bot/text';
+import { WEEK } from '../lib/admin/bot';
 
 /** India time as a timestamp, e.g. ist('2026-10-15 10:00'). */
 const ist = (s: string) => Date.parse(`${s.replace(' ', 'T')}:00+05:30`);
@@ -38,4 +39,15 @@ test('call slot rows: a time fits a WhatsApp list row (24 characters) and no two
     for (const tt of titles) assert.ok(tt.length <= 24, `${key}: ${tt}`);
     assert.equal(new Set(titles).size, titles.length, `${key}: ${titles.join(' | ')}`);
   }
+});
+
+test('the dashboard’s weeks: Monday to Sunday go to their Monday (a Monday is its own week)', async () => {
+  const sqlite = 'node:sqlite';                        // @types/node 20 has no types for it yet
+  const { DatabaseSync } = await import(sqlite);
+  const db = new DatabaseSync(':memory:');
+  const week = (created_at: string) => (db.prepare(`SELECT ${WEEK} AS w FROM (SELECT ? AS created_at)`).get(created_at) as { w: string }).w;
+  assert.equal(week('2026-10-12 10:00:00'), '2026-10-12', 'Monday');
+  assert.equal(week('2026-10-13 10:00:00'), '2026-10-12', 'Tuesday');
+  assert.equal(week('2026-10-18 23:59:00'), '2026-10-12', 'Sunday');
+  assert.equal(week('2026-10-19 00:00:00'), '2026-10-19', 'the next Monday');
 });
