@@ -46,6 +46,14 @@ export function openSlots(now: number, busy: { start: number; end: number }[], m
   return out;
 }
 
+/** A half hour the bot could have offered: on the hour or half hour, in working hours on a
+ *  working day, within 14 days (a website chat can send any button id it likes). */
+export function offerable(start: number, now: number): boolean {
+  const { days, from, to } = SITE.hours, d = new Date(start + IST), mins = d.getUTCHours() * 60 + d.getUTCMinutes();
+  return Number.isFinite(start) && start % SLOT === 0 && start <= now + 15 * 86_400_000 && (days as readonly number[]).includes(d.getUTCDay())
+    && mins >= from * 60 && mins + SLOT / 60_000 <= to * 60;
+}
+
 /** Free slots from the calendar, or null when it can't be read (the team arranges the call). */
 export async function freeSlots(env: Env, now: number): Promise<number[] | null> {
   const access = await token(env);

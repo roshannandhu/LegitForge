@@ -21,7 +21,9 @@
 
 import { isOpenNow, replyDeadline } from '../lib/business-hours';
 import { serviceOfLabel } from '../lib/wa-services';
-import { bookCall, calendarOn, callEvent, cancelCall, freeSlots } from './calendar';
+import { CHANNEL_SQL } from '../lib/wa-services';
+import { bookCall, calendarOn, callEvent, cancelCall, freeSlots, offerable } from './calendar';
+import { CHANNEL_LABEL, channelOf, metaInbound, type Option } from './channels';
 import { inr, paymentLink, rupees } from './pay';
 import {
   ANSWER_SCHEMA, BRIEF_PROMPT, DETAILS, LOCALE, fill, EXTRACT_SCHEMA, FACTS, FIELDS, LANG_PROMPT, LANGS, MONEY, QA_SCHEMA, SERVICES, TEXT, TEXT_SCHEMA, TIMELINES,
@@ -58,6 +60,7 @@ interface Fields {
   since?: string;            // when this enquiry started (the brief lists its own questions only)
   flags?: number;            // abusive messages flagged so far (the second one blocks)
   call_at?: string;          // last "arrange a call" alert, so repeated taps alert once a day
+  arrange_at?: string;       // last "please arrange the time" note to the team (once a day too)
   person_at?: string;        // asked for a person: they wait for the team, not for a reminder
   call_how?: How;            // how they want the call: WhatsApp, phone or Google Meet
   away_at?: string;          // the last away message (the bot paused): once every 12 hours
@@ -115,8 +118,10 @@ async function flushOut(env: Env, now: number) {
     const rows = out.filter((o) => live.has(o.to)).map((o) => {
       prev = Math.max(o.at, prev + 1);
       return { wamid: o.wamid, wa_id: o.to, team: null, dir: 'out', body: clip(o.body, 4000), reply_id: o.team ? 'team' : null, ctx_id: null, profile: null,
-        question_id: null, knowledge_id: null, handled_at: iso(now), at: iso(prev) };
+        question_id: null, knowledge_id: null, handled_at: iso(now), at: iso(prev),
+        options: (o.to.startsWith('web:') && o.options?.length ? o.options : null) as Option[] | null | undefined };
     });
+    if (!rows.some((r) => r.options)) for (const r of rows) delete r.options;   // (one batch: every row has the same columns)
     if (rows.length) await sb(env, 'POST', 'messages?on_conflict=wamid', rows, 'resolution=ignore-duplicates,return=minimal');
   } catch (e) { console.error('[bot] sent messages not stored', String(e)); }
 }
@@ -173,6 +178,7 @@ type Ctx = Pick<ExecutionContext, 'waitUntil'>;
 export default {
   async fetch(req: Request, env: Env, ctx: Ctx): Promise<Response> {
     const url = new URL(req.url);
+    if (url.pathname === '/chat') return webChat(req, env, ctx);
     if (url.pathname !== '/webhook') return new Response('Not found', { status: 404 });
     if (req.method === 'GET') {
       const p = url.searchParams;
@@ -186,7 +192,9 @@ export default {
     }
     let body: unknown;
     try { body = JSON.parse(new TextDecoder().decode(raw)); } catch { return new Response('Bad JSON', { status: 400 }); }
-    const rows = inbound(body, env);
+    const rows = [...inbound(body, env), ...metaInbound(body, env, clock.now()).map((r): Msg => ({
+      ...r, team: null, dir: 'in', ctx_id: null, profile: null, question_id: null, knowledge_id: null, handled_at: null,
+    }))];
     if (!rows.length) return new Response('ok');               // delivery/read statuses: nothing to do
     const e = withRun(env);
     let fresh: Msg[];
@@ -283,7 +291,7 @@ export async function runClient(env: Env, waId: string) {
     let committed = false;
     try {
       const pending = await sb<Msg>(env, 'GET', `messages?wa_id=eq.${q(waId)}&team=is.null&dir=eq.in&handled_at=is.null&order=at.asc,wamid.asc&limit=10`);
-      if (pending.length && turn.c.mode !== 'stopped' && turn.c.mode !== 'blocked') void markRead(env, pending[pending.length - 1].wamid);
+      if (pending.length && turn.c.mode !== 'stopped' && turn.c.mode !== 'blocked' && channelOf(waId) === 'whatsapp') void markRead(env, pending[pending.length - 1].wamid);
       // A flood blocks the chat (the team can undo it): 10 texts, or the same longer text 4 times,
       // sent within a minute. Photos, a backlog from our own delays and repeated STOPs never count.
       const newest = Date.parse(pending.at(-1)?.at ?? '');
@@ -302,6 +310,11 @@ export async function runClient(env: Env, waId: string) {
           if (turn.erased) break;                              // the rest of the batch was erased with it
         } catch (e) {
           Object.assign(turn.c, snapshot);                     // retried later from the state before it
+          if (Date.parse(m.at) < now - 30 * MIN) {             // failing for half an hour: let it go (it would hold up the cron's retries)
+            console.error('[bot] gave up on a message after 30 minutes of failures', m.wamid, String(e));
+            done.push(m);
+            continue;
+          }
           console.error('[bot] message failed; the cron retries it', String(e));
           break;
         }
@@ -459,7 +472,9 @@ class Turn {
       if (mine) await toTeam(this.env, this.now, `#${c.code} replied after the quote: "${clip(text || (file ? '📎 a file' : m.reply_id ?? ''), 300)}"`,
         { wa_id: c.wa_id }, (await route(this.env, this.now, c.service)).all);
     }
-    if (c.step === 'start') c.fields.page ??= pageFrom(text, await greetingOf(this.env));   // kept even when the bot is paused
+    if (c.step === 'start') {                                              // kept even when the bot is paused
+      c.fields.page ??= channelOf(c.wa_id) === 'whatsapp' ? pageFrom(text, await greetingOf(this.env)) : CHANNEL_LABEL[channelOf(c.wa_id)];
+    }
     if (c.mode === 'human' || paused) {
       // With a person on the chat (or the bot paused) the bot stays quiet and forwards: to whoever
       // took it, or to the whole team while nobody has (an upset or urgent client waiting for anyone).
@@ -610,6 +625,8 @@ class Turn {
    *  code, block, today's AI count) so deleting can't be used to get unblocked. */
   private async erase() {
     const c = this.c, ids = [c.lead_id, ...(c.fields.prev_leads ?? [])];
+    // the team is told only if it has something of theirs (an alert or a question on its phones)
+    const told = !!c.alerted_at || (await sb(this.env, 'GET', `messages?wa_id=eq.${q(c.wa_id)}&team=not.is.null&select=wamid&limit=1`)).length > 0;
     count(this.env);
     await this.env.DB.prepare(`DELETE FROM leads WHERE source = 'whatsapp' AND (id IN (${ids.map(() => '?').join(',')}) OR (phone IS NOT NULL AND phone = ?))`)
       .bind(...ids, c.phone ? `+${c.phone}` : null).run();
@@ -633,8 +650,10 @@ class Turn {
     this.erased = true;
     this.env.run?.gone?.add(c.wa_id);
     c.lead_saved = true;                                                    // nothing re-creates the lead this turn
-    await toTeam(this.env, this.now, `#${c.code} asked to delete their data. Their chat, details and WhatsApp leads are erased; please also delete #${c.code}'s messages in your own WhatsApp.`
-      + (stuck.length ? ` Also delete the call on the calendar at ${stuck.map(istTime).join(', ')} (Google did not let me).` : ''), {});
+    if (told || stuck.length) {
+      await toTeam(this.env, this.now, `#${c.code} asked to delete their data. Their chat, details and WhatsApp leads are erased; please also delete #${c.code}'s messages in your own WhatsApp.`
+        + (stuck.length ? ` Also delete the call on the calendar at ${stuck.map(istTime).join(', ')} (Google did not let me).` : ''), {});
+    }
     await this.say(t(c.lang, 'deleted'));
   }
 
@@ -859,8 +878,11 @@ class Turn {
    *  (They were alerted when the client said yes; this says how, and anything to know.) */
   private async callByTeam(note = '') {
     const c = this.c, how = c.fields.call_how;
-    await toTeam(this.env, this.now, `#${c.code} 📞 ${who(c)} wants ${how ? `a ${HOW_LABEL[how]}` : 'a call'}: please arrange the time with them.`
-      + `${note ? ` ${note}` : ''}${c.phone ? `\nWhatsApp: wa.me/${c.phone}` : ''}`, { wa_id: c.wa_id }, (await route(this.env, this.now, c.service)).all);
+    if (note || !c.fields.arrange_at || Date.parse(c.fields.arrange_at) < this.now - DAY) {   // once a day, unless there is news
+      c.fields.arrange_at = iso(this.now);
+      await toTeam(this.env, this.now, `#${c.code} 📞 ${who(c)} wants ${how ? `a ${HOW_LABEL[how]}` : 'a call'}: please arrange the time with them.`
+        + `${note ? ` ${note}` : ''}${c.phone ? `\nWhatsApp: wa.me/${c.phone}` : ''}`, { wa_id: c.wa_id }, (await route(this.env, this.now, c.service)).all);
+    }
     await this.say(t(c.lang, 'callSoon'));
   }
 
@@ -884,7 +906,7 @@ class Turn {
    *  retried turn finds it already theirs and only confirms it again. */
   private async book(start: number) {
     const c = this.c, lang = c.lang ?? 'en', how = c.fields.call_how!;
-    if (!(start > this.now + HOUR)) { if (!(await this.offerSlots())) await this.callByTeam(); return; }   // an old list
+    if (!(start > this.now + HOUR) || !offerable(start, this.now)) { if (!(await this.offerSlots())) await this.callByTeam(); return; }   // an old list
     const at = `calls?wa_id=eq.${q(c.wa_id)}&start_at=eq.${q(iso(start))}`;
     let [mine] = await sb<CallRow>(this.env, 'GET', `${at}&select=id,event_id,how,meet`);
     if (mine?.event_id) { await this.sayBooked(start, mine.how, mine.meet); return; }
@@ -1000,7 +1022,7 @@ class Turn {
     const asked = (await sb<Question>(this.env, 'GET', `questions?wa_id=eq.${q(c.wa_id)}${f.since ? `&created_at=gte.${q(f.since)}` : ''}`
       + '&order=created_at.desc&limit=10&select=question_en,status').catch(() => [] as Question[])).reverse();
     const doc = [
-      `Enquiry brief #${c.code} · ${iso(this.now).slice(0, 10)} · WhatsApp · ${langName(c.lang)}`, '',
+      `Enquiry brief #${c.code} · ${iso(this.now).slice(0, 10)} · ${CHANNEL_LABEL[channelOf(c.wa_id)]} · ${langName(c.lang)}`, '',
       line('Client', f.name || c.profile_name || undefined), line('Business', f.business), line('Service', serviceLabel(c)), '',
       line('What they need', f.need),
       ...(applies(c, 'details') ? [line('Details', f.details)] : []),
@@ -1025,7 +1047,8 @@ class Turn {
     const sent = await alertTurns(this.env, this.now, { wa_id: c.wa_id, service: c.service }, [
       `#${c.code} ${hot ? '🔥 ' : ''}${ALERT_HEAD[why]}`,
       `Name: ${f.name || c.profile_name || '-'}`, `Business: ${f.business || '-'}`, `Service: ${serviceLabel(c)}`,
-      c.phone ? `WhatsApp: wa.me/${c.phone}` : 'WhatsApp: no phone number shared (username)',
+      c.phone ? `WhatsApp: wa.me/${c.phone}` : channelOf(c.wa_id) === 'whatsapp' ? 'WhatsApp: no phone number shared (username)'
+        : `${CHANNEL_LABEL[channelOf(c.wa_id)]}: no phone number (reply to this message: the bot passes it on)`,
       ...(said ? [`Message: "${clip(said, 300)}"`] : []),
       `Timeline: ${f.timeline || '-'}`, `Language: ${langName(c.lang)}`,
       ...(f.files?.length ? [`Files: ${f.files.length} (Admin → Leads)`] : []),
@@ -1063,7 +1086,7 @@ class Turn {
     const r = await (c.lead_saved
       ? this.env.DB.prepare('UPDATE leads SET name = ?, phone = ?, service = ?, message = ?, language = ?, files = ?, score = ?, page = COALESCE(page, ?), brief = COALESCE(?, brief) WHERE id = ?').bind(...values, c.lead_id)
       : this.env.DB.prepare(`INSERT OR IGNORE INTO leads (name, phone, service, message, language, files, score, page, brief, id, source, whatsapp_consent)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'whatsapp', 1)`).bind(...values, c.lead_id)).run();
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'whatsapp', ?)`).bind(...values, c.lead_id, channelOf(c.wa_id) === 'whatsapp' ? 1 : 0)).run();   // (consent: they wrote on WhatsApp)
     if (c.lead_saved && !r.meta.changes && !f.lead_gone) {
       // Deleted in Admin → Leads: it stays deleted, and files sent since go too (none are kept from now on).
       f.lead_gone = true;
@@ -1308,7 +1331,7 @@ async function handleTeam(env: Env, m: Msg, now: number, about: About = {}) {
   }
   if (/^delete$/i.test(rest)) {
     // A client asked the team to delete their data: they confirm it themselves with the buttons.
-    if (Date.parse(contact.last_in_at) < now - 24 * HOUR) return reply(`#${contact.code}'s 24-hour window has closed; ask them to send "delete my data".`);
+    if (!canText(contact, now)) return reply(`#${contact.code}'s 24-hour ${CHANNEL_LABEL[channelOf(contact.wa_id)]} window has closed; ask them to send "delete my data".`);
     const lang = contact.lang ?? 'en';
     await sendButtons(env, contact.wa_id, t(lang, 'deleteAsk'), TEXT[lang].delBtn.map((title, i) => ({ id: `del:${i ? 'n' : 'y'}`, title })));
     return reply(`Sent #${contact.code} the delete question; they confirm it themselves.`);
@@ -1453,8 +1476,9 @@ async function relay(env: Env, now: number, c: Contact, text: string, asIs = fal
   const direct = c.phone ? ` Message them directly: wa.me/${c.phone}` : '';
   if (c.mode === 'stopped') return { ok: false, note: `#${c.code} opted out, so nothing was sent.` };
   if (c.mode === 'blocked') return { ok: false, note: `#${c.code} is blocked, so nothing was sent. "#${c.code} unblock" first.` };
-  const closed = Date.parse(c.last_in_at) < now - 24 * HOUR;
-  if (closed && !o.template) return { ok: false, note: `#${c.code}'s 24-hour WhatsApp window has closed, so I can't send this.${direct}` };
+  const ch = channelOf(c.wa_id);
+  const closed = !canText(c, now);
+  if (closed && (!o.template || ch !== 'whatsapp')) return { ok: false, note: `#${c.code}'s 24-hour ${CHANNEL_LABEL[ch]} window has closed, so I can't send this.${direct}` };
   let out = text, asWritten = false;
   if (c.lang && c.lang !== 'en' && !asIs) {
     if (redact(text) !== text) asWritten = true;
@@ -1475,7 +1499,8 @@ async function relay(env: Env, now: number, c: Contact, text: string, asIs = fal
   // the first human reply is what Admin → Leads measures against the 2-hour promise
   await env.DB.prepare(`UPDATE leads SET last_contact_at = datetime('now'), first_reply_at = COALESCE(first_reply_at, datetime('now')) WHERE id = ?`).bind(c.lead_id).run()
     .catch((e) => console.error('[bot] contact time not saved', String(e)));       // the client has it: never "send it again"
-  return { ok: true, note: `Sent to #${c.code} ✅${closed ? ' (as the project_update template: their 24-hour window had closed)' : ''}${asWritten ? ' (as you wrote it: numbers and emails are never sent for translation)' : ''}` };
+  return { ok: true, note: `Sent to #${c.code} ✅${closed ? ' (as the project_update template: their 24-hour window had closed)' : ''}${asWritten ? ' (as you wrote it: numbers and emails are never sent for translation)' : ''}`
+    + (ch === 'web' ? ' (in their website chat: they see it while it is open, or when they come back to the site)' : '') };
 }
 
 type Reply = (body: string, link?: { wa_id?: string; knowledge_id?: number; question_id?: number }) => Promise<void>;
@@ -1549,6 +1574,7 @@ async function cron(env: Env, now: number) {
       sb(env, 'DELETE', `knowledge?source=eq.team&status=eq.pending&created_at=lt.${iso(now - 90 * DAY)}`, undefined, 'return=minimal'),
       sb(env, 'DELETE', `knowledge?source=eq.team&status=eq.rejected&decided_at=lt.${iso(now - 90 * DAY)}`, undefined, 'return=minimal'),
       sb(env, 'DELETE', `alerts?created_at=lt.${iso(now - DAY)}`, undefined, 'return=minimal'),        // a pass-on needs 10 minutes
+      env.DB.prepare('DELETE FROM bot_limits WHERE at < ?').bind(now - DAY).run(),                     // the website chat's limits
     ]).catch((e) => console.error('[bot] purge failed', String(e)));
     await purgeFiles(env, now).catch((e) => console.error('[bot] file purge failed', String(e)));
     await learnFromWins(env).catch((e) => console.error('[bot] won-deal learning failed', String(e)));
@@ -1565,7 +1591,7 @@ async function cron(env: Env, now: number) {
     if (!won || told.has(question.wa_id)) continue;
     told.add(question.wa_id);
     const [c] = await sb<Contact>(env, 'GET', `contacts?wa_id=eq.${q(question.wa_id)}`);
-    if (!c || c.mode === 'stopped' || c.mode === 'blocked' || Date.parse(c.last_in_at) < now - 24 * HOUR) continue;
+    if (!c || c.mode === 'stopped' || c.mode === 'blocked' || !canText(c, now)) continue;
     const s = await settingsOf(env);
     if (s.paused === '1') continue;                                            // they had the away message
     const own = !isOpenNow(new Date(now)) && s.after_hours;
@@ -1606,6 +1632,110 @@ async function weeklyOnce(env: Env, now: number, monday: string) {
   if (mine) await weekly(env, now);
 }
 
+/** Can a client get a plain message now: the website chat always; WhatsApp, Messenger and
+ *  Instagram within 24 hours of their last message. */
+const canText = (c: Pick<Contact, 'wa_id' | 'last_in_at'>, now: number) => channelOf(c.wa_id) === 'web' || Date.parse(c.last_in_at) > now - 24 * HOUR;
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+const TAP = /^(?!media:)[a-z]{2,6}:[\w.-]{1,40}(:[\w.-]{1,60})?$/;
+
+/** The website chat's limits, counted in D1 (bot_limits, migration 0016: atomic, and DELETE MY
+ *  DATA does not reset them): 10 messages a minute per chat; new chats 20 an hour per address
+ *  and 100 an hour in all. An address is kept only as a salted hash, for a day.
+ *  ponytail: a busy hour can still be filled from many addresses; Turnstile on a chat's first
+ *  message if that ever happens. */
+async function limited(env: Env, session: string, ip: string, now: number): Promise<'rate-limited' | 'busy' | null> {
+  const bump = (key: string) => env.DB.prepare('INSERT INTO bot_limits (key, n, at) VALUES (?, 1, ?) ON CONFLICT(key) DO UPDATE SET n = n + 1 RETURNING n').bind(key, now);
+  const minute = Math.floor(now / MIN), hour = Math.floor(now / HOUR);
+  count(env);
+  const [chat, seen] = await env.DB.batch<{ n: number }>([bump(`m:${session}:${minute}`), env.DB.prepare('SELECT n FROM bot_limits WHERE key = ?').bind(`s:${session}`)]);
+  if ((chat.results[0]?.n ?? 0) > 10) return 'rate-limited';
+  if (seen.results.length) return null;
+  const hash = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${ip}|${env.WA_APP_SECRET ?? ''}`)));
+  const where = [...hash.slice(0, 8)].map((b) => b.toString(16).padStart(2, '0')).join('');
+  count(env);
+  const [mine, all] = await env.DB.batch<{ n: number }>([bump(`a:${where}:${hour}`), bump(`h:${hour}`)]);
+  if ((mine.results[0]?.n ?? 0) > 20 || (all.results[0]?.n ?? 0) > 100) return 'busy';
+  count(env);
+  await env.DB.prepare('INSERT OR IGNORE INTO bot_limits (key, n, at) VALUES (?, 1, ?)').bind(`s:${session}`, now).run();
+  return null;
+}
+
+/** A request body of at most `max` bytes, read no further (null when it is longer). */
+async function capped(req: Request, max: number): Promise<string | null> {
+  if (Number(req.headers.get('content-length') ?? 0) > max) return null;
+  const reader = req.body?.getReader();
+  if (!reader) return '';
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.length;
+    if (size > max) { await reader.cancel().catch(() => {}); return null; }
+    chunks.push(value);
+  }
+  const all = new Uint8Array(size);
+  let at = 0;
+  for (const c of chunks) { all.set(c, at); at += c.length; }
+  return new TextDecoder().decode(all);
+}
+
+/** The website's chat bubble (components/chat): POST a message (or a tap on a button the bot
+ *  sent there, never one made up), GET the chat (the newest 50 first, then whatever came after
+ *  a time, with two minutes of overlap: a run stores its replies when it ends, and the bubble
+ *  drops what it already has). The session id (a random UUID kept in that browser) is the
+ *  chat's only key. Limits: limited() above; the flood rule, AI cap and DELETE MY DATA apply as
+ *  on WhatsApp. */
+async function webChat(req: Request, env: Env, ctx: Ctx): Promise<Response> {
+  const site = `https://${host(env)}`;
+  const origin = req.headers.get('origin');
+  const cors = { 'access-control-allow-origin': origin === site || origin === 'https://legitforge.pages.dev' ? origin : site,
+    'access-control-allow-methods': 'GET, POST', 'access-control-allow-headers': 'content-type', 'access-control-max-age': '86400', vary: 'origin' };
+  const reply = (body: unknown, status = 200) => Response.json(body, { status, headers: cors });
+  if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
+  const now = clock.now(), e = withRun(env);
+  if (req.method === 'GET') {
+    const u = new URL(req.url), session = u.searchParams.get('session') ?? '', after = Date.parse(u.searchParams.get('after') ?? '');
+    if (!UUID.test(session)) return reply({ error: 'bad-session' }, 400);
+    const first = !Number.isFinite(after), dir = first ? 'desc' : 'asc';
+    const rows = await sb(e, 'GET', `messages?wa_id=eq.${q(`web:${session}`)}&team=is.null${first ? '' : `&at=gt.${q(iso(after - 2 * MIN))}`}`
+      + `&order=at.${dir},wamid.${dir}&limit=${first ? 50 : 200}&select=wamid,at,dir,body,options`).catch(() => null);
+    return rows ? reply({ messages: first ? rows.reverse() : rows }) : reply({ error: 'unavailable' }, 503);
+  }
+  if (req.method !== 'POST') return reply({ error: 'method' }, 405);
+  const raw = await capped(req, 4000).catch(() => null);
+  if (raw === null) return reply({ error: 'too-large' }, 413);
+  let b: { session?: unknown; text?: unknown; reply?: { id?: unknown; title?: unknown } };
+  try { b = JSON.parse(raw); } catch { return reply({ error: 'bad-request' }, 400); }
+  const session = String(b?.session ?? ''), text = typeof b?.text === 'string' ? b.text.trim().slice(0, 1000) : '';
+  const tap = b?.reply && TAP.test(String(b.reply.id ?? '')) ? { id: String(b.reply.id), title: clip(String(b.reply.title ?? ''), 60) } : null;
+  if (!UUID.test(session) || (!text && !tap)) return reply({ error: 'bad-request' }, 400);
+  const waId = `web:${session}`;
+  try {
+    const hit = await limited(e, session, req.headers.get('cf-connecting-ip') ?? '', now);
+    if (hit) return reply({ error: hit }, 429);
+    let notice: string | undefined;
+    if (tap) {
+      // only a button of the bot's latest message here (WhatsApp sends only ids the bot made)
+      const [latest] = await sb<{ options: Option[] | null }>(e, 'GET', `messages?wa_id=eq.${q(waId)}&team=is.null&dir=eq.out&order=at.desc,wamid.desc&limit=1&select=options`);
+      if (!latest?.options?.some((o) => o.id === tap.id)) return reply({ error: 'old-button' }, 409);
+      if (tap.id === 'del:y') {                                    // the confirmation: nothing of theirs is kept to show it later
+        const [c] = await sb<{ lang: string | null }>(e, 'GET', `contacts?wa_id=eq.${q(waId)}&select=lang`);
+        notice = t(c?.lang, 'deleted');
+      }
+    }
+    const row: Msg = { wamid: `web.${crypto.randomUUID()}`, wa_id: waId, team: null, dir: 'in', body: tap ? tap.title || tap.id : text,
+      reply_id: tap?.id ?? null, ctx_id: null, profile: null, question_id: null, knowledge_id: null, handled_at: null, at: iso(now) };
+    await sb(e, 'POST', 'messages', row, 'return=minimal');
+    ctx.waitUntil(processFresh(e, [row]).catch((err) => console.error('[bot] web turn failed', String(err))).finally(() => flushOut(e, clock.now())));
+    return reply({ ok: true, id: row.wamid, at: row.at, ...(notice ? { erased: true, notice } : {}) }, 202);
+  } catch (err) {
+    console.error('[bot] web chat unavailable', String(err));
+    return reply({ error: 'unavailable' }, 503);
+  }
+}
+
 /** The 1st of the month: last month's enquiries (by source, service and outcome), the 2-hour
  *  promise, and what the bot answered by itself. Once a month (settings 'monthly_at'). */
 async function monthly(env: Env, now: number, month: string) {
@@ -1614,7 +1744,7 @@ async function monthly(env: Env, now: number, month: string) {
   if (!last || last.value >= month) return;
   const [y, m] = month.split('-').map(Number), from = `${new Date(Date.UTC(y, m - 2, 1)).toISOString().slice(0, 10)} 00:00:00`, to = `${month}-01 00:00:00`;
   count(env);
-  const rows = (await env.DB.prepare(`SELECT source, service, status, score, created_at, wa_alerted_at, first_reply_at FROM leads
+  const rows = (await env.DB.prepare(`SELECT ${CHANNEL_SQL} AS source, service, status, score, created_at, wa_alerted_at, first_reply_at FROM leads
     WHERE source != 'demo' AND created_at >= ? AND created_at < ? LIMIT 5000`).bind(from, to)
     .all<{ source: string; service: string | null; status: string; score: string | null; created_at: string; wa_alerted_at: string | null; first_reply_at: string | null }>()).results;
   // the 2-hour promise (in working hours, from when the team was told), as Admin → Leads counts it
@@ -1631,7 +1761,7 @@ async function monthly(env: Env, now: number, month: string) {
   const text = [
     `Monthly report: ${new Date(Date.UTC(y, m - 2, 1)).toLocaleString('en-IN', { month: 'long', year: 'numeric', timeZone: 'UTC' })}`,
     `Enquiries: ${rows.length} (${tally((r) => r.source)}). Won: ${rows.filter((r) => r.status === 'won').length}, lost: ${rows.filter((r) => r.status === 'lost').length}.`,
-    `By service: ${tally((r) => r.service)}.`, `Lead score (WhatsApp): ${tally((r) => r.score, rows.filter((r) => r.source === 'whatsapp'))}.`,
+    `By service: ${tally((r) => r.service)}.`, `Lead score (chats): ${tally((r) => r.score, rows.filter((r) => r.source !== 'form'))}.`,
     `First reply within the 2-hour promise: ${met} of ${owed.length}.`,
     `Questions: ${asked}, answered by the bot: ${auto}.`,
     'Details: Admin → WhatsApp.',
@@ -1660,9 +1790,10 @@ async function remind(env: Env, now: number) {
     const lang = c.lang ?? 'en';
     const join = call.how === 'meet' ? (call.meet ? fill(t(lang, 'howMeet'), { link: call.meet }) : '') : t(lang, call.how === 'wa' ? 'howWa' : 'howPhone');
     const text = `${fill(t(lang, 'reminder'), { time: slotFormat(lang).format(new Date(start)) })}\n${join}`.trim();
-    if (Date.parse(c.last_in_at) > now - 24 * HOUR) await sendText(env, c.wa_id, text);
-    else await sendTemplate(env, c.wa_id, 'call_reminder', [c.fields.name || c.profile_name || 'there', text]);
-    await toTeam(env, now, `#${c.code} 📅 call in 30 minutes: ${istTime(start)} · ${HOW_LABEL[call.how]}${c.phone ? ` · wa.me/${c.phone}` : ''}${call.meet ? `\nMeet: ${call.meet}` : ''}`,
+    const reminded = canText(c, now) ? await sendText(env, c.wa_id, text)
+      : await sendTemplate(env, c.wa_id, 'call_reminder', [c.fields.name || c.profile_name || 'there', text]);
+    await toTeam(env, now, `#${c.code} 📅 call in 30 minutes: ${istTime(start)} · ${HOW_LABEL[call.how]}${c.phone ? ` · wa.me/${c.phone}` : ''}${call.meet ? `\nMeet: ${call.meet}` : ''}`
+      + (reminded ? '' : `\n(They were not reminded: ${channelOf(c.wa_id) === 'whatsapp' ? 'the call_reminder template did not go out' : `their ${CHANNEL_LABEL[channelOf(c.wa_id)]} window has closed`}.)`),
       { wa_id: c.wa_id });
   }
 }
@@ -1696,7 +1827,7 @@ async function reviews(env: Env, now: number) {
     let [c] = await sb<Contact>(env, 'GET', `contacts?lead_id=eq.${q(l.id)}`);
     if (!c) [c] = await sb<Contact>(env, 'GET', `contacts?fields->prev_leads=cs.${q(JSON.stringify([l.id]))}`);   // an earlier enquiry
     if (!c || c.review_at || c.mode === 'stopped' || c.mode === 'blocked' || Date.parse(c.last_in_at) < now - 60 * DAY) continue;
-    const sent = Date.parse(c.last_in_at) > now - 24 * HOUR
+    const sent = canText(c, now)
       ? await sendText(env, c.wa_id, fill(t(c.lang, 'review'), { link: env.GOOGLE_REVIEW_URL }))
       : await sendTemplate(env, c.wa_id, 'review_request', [c.fields.name || c.profile_name || 'there', env.GOOGLE_REVIEW_URL]);
     if (sent) await sb(env, 'PATCH', `contacts?wa_id=eq.${q(c.wa_id)}`, { review_at: iso(now) }, 'return=minimal');
@@ -1757,7 +1888,7 @@ async function morning(env: Env, now: number, day: string) {
   // since the last summary (a Monday covers Saturday too), at most 3 days; the very first covers a day
   const since = last.value === '2000-01-01' ? now - DAY : Math.max(now - 3 * DAY, Date.parse(`${last.value}T10:00:00+05:30`) || 0);
   count(env);
-  const leads = (await env.DB.prepare(`SELECT id, name, service, source, status, first_reply_at, created_at FROM leads
+  const leads = (await env.DB.prepare(`SELECT id, name, service, ${CHANNEL_SQL} AS source, status, first_reply_at, created_at FROM leads
     WHERE created_at >= ? ORDER BY created_at LIMIT 30`).bind(sqlTime(since)).all<FormLead>()).results;
   count(env);
   // waiting = the team was told (or a form lead) and nobody has replied for 2 hours
@@ -1767,12 +1898,13 @@ async function morning(env: Env, now: number, day: string) {
   const open = await sb<Question>(env, 'GET', 'questions?status=eq.pending&kind=neq.auto&select=wa_id,question_en&order=created_at.asc&limit=5');
   const recent = await sb<Contact>(env, 'GET', `contacts?mode=in.(bot,human)&last_in_at=gt.${iso(now - 2 * DAY)}&select=code,profile_name,fields&limit=100`);
   const hot = recent.filter((c) => c.fields.timeline === TIMELINES[0] || c.fields.call_at).slice(0, 5);
-  const wa = leads.filter((l) => l.source === 'whatsapp').length;
+  const wa = leads.filter((l) => l.source === 'whatsapp').length, form = leads.filter((l) => l.source === 'form').length;
+  const chats = leads.length - wa - form;                                    // the website chat, Messenger, Instagram
   // The counts and what to act on first: outside a member's window this goes as the template,
   // which stops at 900 characters, so only the lists at the end can be cut.
   const text = [
     `Good morning ☀️ Since ${istTime(since)}:`,
-    `New enquiries: ${leads.length}${leads.length ? ` (WhatsApp ${wa}, website form ${leads.length - wa})` : ''}. Open questions: ${open.length}${open.length === 5 ? '+' : ''}.`,
+    `New enquiries: ${leads.length}${leads.length ? ` (WhatsApp ${wa}, ${chats ? `chat ${chats}, ` : ''}website form ${form})` : ''}. Open questions: ${open.length}${open.length === 5 ? '+' : ''}.`,
     ...(hot.length ? [`Hot: ${hot.map((c) => `#${c.code} ${c.fields.name || c.profile_name || ''}`.trim() + (c.fields.call_at ? ' (asked for a call)' : ' (as soon as possible)')).join(', ')}`] : []),
     ...(waiting ? [`Waiting over 2 hours for a first reply: ${waiting} (Admin → Leads)`] : []),
     ...leads.slice(0, 8).map((l) => `• ${l.name ?? 'No name'} · ${l.service ?? 'service not chosen'} · ${l.status}`),

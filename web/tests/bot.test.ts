@@ -4,6 +4,7 @@ import { readFile, readdir } from 'node:fs/promises';
 import { Miniflare, convertV4MiniflareOptions } from 'miniflare';
 import worker, { BotAdmin, clock, leadScore, pageFrom, tick, type Env } from '../bot/worker';
 import { DETAILS, LANGS, TEXT, fill } from '../bot/text';
+import { parts } from '../bot/channels';
 import { fakeEmbedding, fakeSupabase, installFakes, type Responder, type Sent } from './bot-fakes';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -45,6 +46,7 @@ test('WhatsApp bot (fake Meta, Supabase, Groq and Gemini; real Miniflare D1)', a
     if (files.length) await bucket.delete(files);
     await db.exec('DELETE FROM projects');
     await db.exec('DELETE FROM bot_team');
+    await db.exec('DELETE FROM bot_limits');
     await db.exec('DELETE FROM company');
     await db.exec('DELETE FROM bot_settings');
     await db.exec('DELETE FROM bot_replies');
@@ -675,7 +677,7 @@ test('WhatsApp bot (fake Meta, Supabase, Groq and Gemini; real Miniflare D1)', a
     assert.equal(sb.tables.contacts.find((c) => c.wa_id === CLIENT), undefined);
     assert.equal(sb.tables.messages.filter((m) => m.wa_id === CLIENT && m.dir === 'in').length, 0);
     assert.equal(await lead(), null);
-    assert.ok(teamGot(TEAM[0], `#${code} asked to delete their data`));
+    assert.ok(!teamGot(TEAM[0], `#${code} asked to delete their data`), 'the team had nothing of theirs (no alert, no question): no notice');
     await post([text(CLIENT, 'Hi again')]);
     assert.equal(last(CLIENT).type, 'list', 'a later message starts fresh');
     assert.notEqual(contact().code, code);
@@ -2015,5 +2017,116 @@ test('WhatsApp bot (fake Meta, Supabase, Groq and Gemini; real Miniflare D1)', a
     assert.equal(lines.filter((l) => l.who === 'alert' && l.body === alert.body).length, 1, 'one alert to two members is one line');
     const said = lines.filter((l) => l.body === 'We can start Monday.');
     assert.deepEqual(said.map((l) => l.who), ['team', 'team'], 'the team’s message and its copy to the client, never the bot’s');
+  });
+  /* ---- phase 7: more channels ---- */
+
+  const web = (session: string, message: Row, origin = 'https://legitforge.pages.dev') => {
+    now += 1000;                                                    // a second between messages, as in a real chat
+    return run(new Request('https://bot.test/chat', { method: 'POST', headers: { origin, 'content-type': 'application/json' }, body: JSON.stringify({ session, ...message }) }));
+  };
+  const webRead = async (session: string, after = '') =>
+    (await (await run(new Request(`https://bot.test/chat?session=${session}&after=${encodeURIComponent(after)}`))).json()) as { messages: Row[] };
+
+  await t.test('phase 7: the website chat bubble talks to the same bot (menu, taps, the brief, the team)', async () => {
+    await reset();
+    await teamHi();
+    const s = crypto.randomUUID();
+    const res = await web(s, { text: 'Hi' });
+    assert.equal(res.status, 202);
+    assert.equal(res.headers.get('access-control-allow-origin'), 'https://legitforge.pages.dev');
+    let { messages } = await webRead(s);
+    assert.equal(messages.at(-1)!.body, TEXT.en.welcome);
+    assert.ok((messages.at(-1)!.options as Row[]).some((o) => o.id === 'svc:website'), 'the menu as options');
+    await web(s, { reply: { id: 'svc:website', title: 'Website' } });
+    await web(s, { reply: { id: 'lang:en', title: 'English' } });
+    ({ messages } = await webRead(s, messages.at(-1)!.at));
+    assert.equal(messages.at(-1)!.body, TEXT.en.name);
+    for (const a of ['Ravi', 'Ravi Bakery', 'A website']) await web(s, { text: a });
+    await web(s, { reply: { id: 'skip:details', title: 'Skip' } });
+    await web(s, { reply: { id: 'skip:refs', title: 'Skip' } });
+    await web(s, { reply: { id: 'tl:1', title: 'Within a month' } });
+    const code = contact(`web:${s}`).code;
+    assert.match(teamGot(TEAM[0], `#${code} new lead`)!.body, /Website chat: no phone number \(reply to this message/);
+    const row = await db.prepare('SELECT page, whatsapp_consent, source FROM leads WHERE id = ?').bind(contact(`web:${s}`).lead_id).first<Row>();
+    assert.deepEqual(row, { page: 'Website chat', whatsapp_consent: 0, source: 'whatsapp' }, 'the channel, and no WhatsApp consent');
+    now += 1000;
+    await post([text(TEAM[0], `#${code} Hi Ravi, we can start next week.`)]);
+    ({ messages } = await webRead(s));
+    assert.equal(messages.at(-1)!.body, 'Hi Ravi, we can start next week.', 'the team reply reaches the bubble');
+    assert.equal(fx.sent.filter((m) => m.to === `web:${s}`).length, 0, 'nothing went to WhatsApp');
+  });
+
+  await t.test('phase 7: the bubble is limited (bad sessions, floods, too many new chats) and answers CORS', async () => {
+    await reset();
+    assert.equal((await web('not-a-uuid', { text: 'Hi' })).status, 400);
+    assert.equal((await web(crypto.randomUUID(), { reply: { id: 'media:image:1', title: 'x' } })).status, 400, 'no forged file ids');
+    const pre = await run(new Request('https://bot.test/chat', { method: 'OPTIONS', headers: { origin: 'https://legitforge.pages.dev' } }));
+    assert.equal(pre.status, 204);
+    assert.match(pre.headers.get('access-control-allow-methods') ?? '', /POST/);
+    const s = crypto.randomUUID();
+    for (let i = 0; i < 10; i++) assert.equal((await web(s, { text: `message ${i}` })).status, 202);
+    assert.equal((await web(s, { text: 'one more' })).status, 429);
+    for (let i = 0; i < 19; i++) assert.equal((await web(crypto.randomUUID(), { text: 'Hi' })).status, 202);    // 20 new chats with the one above
+    assert.equal((await web(crypto.randomUUID(), { text: 'Hi' })).status, 429, 'a cap on new chats an hour from one address');
+    assert.equal((await web(s, { text: 'still me' })).status, 429, 'still 10 a minute for a chat it knows');
+    now += 2 * MIN;
+    assert.equal((await web(s, { text: 'a minute later' })).status, 202, 'a known chat is not a new one');
+    const big = await run(new Request('https://bot.test/chat', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ session: s, text: 'x'.repeat(5000) }) }));
+    assert.equal(big.status, 413);
+  });
+
+  await t.test('phase 7: Messenger and Instagram messages get the same bot, with quick replies', async () => {
+    await reset();
+    Object.assign(env, { FB_PAGE_TOKEN: 'page-token', FB_PAGE_ID: 'PAGE1', IG_ACCOUNT_ID: 'IG1' });
+    try {
+      const meta = (object: string, recipient: string, sender: string, message: Row) => {
+        const body = JSON.stringify({ object, entry: [{ id: recipient, messaging: [{ sender: { id: sender }, recipient: { id: recipient }, timestamp: now, message }] }] });
+        return hex(body).then((sig) => run(new Request('https://bot.test/webhook', { method: 'POST', headers: { 'x-hub-signature-256': `sha256=${sig}` }, body })));
+      };
+      await meta('page', 'PAGE1', 'PSID9', { mid: 'm.1', text: 'Hi' });
+      const first = fx.sent.filter((m) => m.to === 'meta:PSID9').at(-1)!;
+      assert.ok(first.body.startsWith(TEXT.en.welcome));
+      assert.match(first.body, /\/privacy$/, 'the privacy link the WhatsApp list has as its footer');
+      assert.ok(first.ids.includes('svc:website'), 'the menu as quick replies');
+      await meta('page', 'PAGE1', 'PSID9', { mid: 'm.2', text: 'Website', quick_reply: { payload: 'svc:website' } });
+      assert.equal(contact('fb:PSID9').service, 'website');
+      await meta('page', 'PAGE1', 'PSID9', { mid: 'm.3', text: 'echo', is_echo: true });
+      await meta('page', 'OTHER', 'PSID8', { mid: 'm.4', text: 'Hi' });
+      assert.ok(!sb.tables.contacts.some((c) => c.wa_id === 'fb:PSID8'), 'only our own Page');
+      await meta('instagram', 'IG1', 'IGSID7', { mid: 'm.5', text: 'Hello' });
+      assert.ok(contact('ig:IGSID7'), 'Instagram too');
+      assert.ok(fx.sent.filter((m) => m.to === 'meta:IGSID7').at(-1)!.body.startsWith(TEXT.en.welcome));
+    } finally { delete env.FB_PAGE_TOKEN; delete env.FB_PAGE_ID; delete env.IG_ACCOUNT_ID; }
+  });
+  await t.test('phase 7 fixes: the bubble takes only buttons the bot offered; DELETE MY DATA answers in the response', async () => {
+    await reset();
+    await teamHi();
+    const s = crypto.randomUUID();
+    assert.equal((await web(s, { reply: { id: 'del:y', title: 'Yes' } })).status, 409, 'no button before the bot sent one');
+    await web(s, { text: 'Hi' });
+    assert.equal((await web(s, { reply: { id: 'slot:29870970', title: '3 am' } })).status, 409, 'not one of the menu’s buttons');
+    assert.equal((await web(s, { reply: { id: 'svc:website', title: 'Website' } })).status, 202);
+    assert.equal((await web(s, { reply: { id: 'svc:seo', title: 'SEO' } })).status, 409, 'an older message’s button');
+    await web(s, { text: 'Delete my data' });
+    const res = await web(s, { reply: { id: 'del:y', title: 'Yes, delete' } });
+    assert.equal(res.status, 202);
+    assert.deepEqual(await res.json().then((b: Row) => [b.erased, b.notice]), [true, TEXT.en.deleted]);
+    assert.ok(!sb.tables.contacts.some((c) => c.wa_id === `web:${s}`), 'erased');
+    assert.ok(!fx.sent.some((m) => TEAM.includes(m.to) && m.body.includes('asked to delete their data')), 'the team had nothing of theirs');
+
+    await toName();
+    assert.ok(sb.tables.messages.filter((m) => m.wa_id === CLIENT && m.dir === 'out').every((m) => !('options' in m)),
+      'WhatsApp rows carry no options column (WhatsApp keeps working before 007_phase7.sql)');
+  });
+
+  await t.test('phase 7 fixes: Instagram texts are cut to 1,000 bytes, Messenger to 2,000 characters', () => {
+    const ml = 'ഞങ്ങൾ വെബ്സൈറ്റുകൾ നിർമ്മിക്കുന്നു. '.repeat(25);          // about 2,800 bytes: three parts
+    const ig = parts(ml, true);
+    assert.ok(ig.length > 1 && ig.every((p) => new TextEncoder().encode(p).length <= 1000), 'every Instagram part fits');
+    assert.equal(ig.join(' ').replace(/\s+/g, ' ').trim(), ml.replace(/\s+/g, ' ').trim(), 'nothing lost or added');
+    assert.deepEqual(parts('Short.', true), ['Short.']);
+    const long = parts('ഞങ്ങൾ '.repeat(1000), true);
+    assert.ok(long.length === 5 && long[4].endsWith('…') && long.every((p) => new TextEncoder().encode(p).length <= 1000), 'five at most, the last clipped');
+    assert.ok(parts('a'.repeat(4500), false).every((p) => p.length <= 2000));
   });
 });

@@ -3,6 +3,8 @@
  *  embeddings, and Meta's webhook signature. Every call has a timeout and none throws on an AI
  *  failure: the bot always has a fixed reply to fall back on. */
 
+import { metaSend, shown } from './channels';
+
 export interface Env {
   DB: D1Database;
   /** The website's R2 bucket: files clients send go under leads/<lead id>/ (private; only
@@ -103,6 +105,13 @@ export const vec = (v: number[]) => `[${v.join(',')}]`;
 
 /** Sends one message; returns its id, or null when Meta refused it (logged, never thrown). */
 async function wa(env: Env, { to, ...payload }: { to: string } & Record<string, unknown>): Promise<string | null> {
+  if (/^(web|fb|ig):/.test(to)) {
+    // The other channels (phase 7): the website chat is stored for the bubble to read (no
+    // templates: it has no 24-hour window to open); Messenger and Instagram go through Meta.
+    const id = to.startsWith('web:') ? (payload.type === 'template' ? null : `web.out.${crypto.randomUUID()}`) : await metaSend(env, to, payload);
+    if (id) env.run?.out?.push({ wamid: id, to, at: clock.now(), ...shown(payload) });
+    return id;
+  }
   count(env);
   try {
     const r = await fetch(`${graph(env)}/${env.WA_PHONE_NUMBER_ID}/messages`, {
@@ -114,9 +123,7 @@ async function wa(env: Env, { to, ...payload }: { to: string } & Record<string, 
     });
     if (!r.ok) { console.error('[wa] send refused', r.status, (await r.text()).slice(0, 300)); return null; }
     const id = ((await r.json()) as { messages?: { id: string }[] }).messages?.[0]?.id ?? null;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const p = payload as any;
-    if (id) env.run?.out?.push({ wamid: id, to, at: clock.now(), body: String(p.text?.body ?? p.interactive?.body?.text ?? p.template?.components?.[0]?.parameters?.map((x: { text: string }) => x.text).join(' | ') ?? '') });
+    if (id) env.run?.out?.push({ wamid: id, to, at: clock.now(), ...shown(payload) });
     return id;
   } catch (e) { console.error('[wa] send failed', String(e).slice(0, 200)); return null; }
 }

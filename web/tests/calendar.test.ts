@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { openSlots } from '../bot/calendar';
+import { offerable, openSlots } from '../bot/calendar';
 import { inr, rupees } from '../bot/pay';
 import { slotTime } from '../bot/worker';
 import { LANGS } from '../bot/text';
@@ -50,4 +50,13 @@ test('the dashboard’s weeks: Monday to Sunday go to their Monday (a Monday is 
   assert.equal(week('2026-10-13 10:00:00'), '2026-10-12', 'Tuesday');
   assert.equal(week('2026-10-18 23:59:00'), '2026-10-12', 'Sunday');
   assert.equal(week('2026-10-19 00:00:00'), '2026-10-19', 'the next Monday');
+});
+
+test('a website chat cannot book a time the bot would never offer', () => {
+  const now = Date.parse('2026-10-19T04:30:00Z');                 // Monday 10:00 IST
+  assert.equal(offerable(Date.parse('2026-10-20T05:30:00Z'), now), true, 'Tuesday 11:00 IST');
+  assert.equal(offerable(Date.parse('2026-10-20T21:30:00Z'), now), false, '03:00 IST');
+  assert.equal(offerable(Date.parse('2026-10-20T05:37:00Z'), now), false, 'off the half hour');
+  assert.equal(offerable(Date.parse('2027-10-20T05:30:00Z'), now), false, 'a year ahead');
+  assert.equal(offerable(Infinity, now), false);
 });

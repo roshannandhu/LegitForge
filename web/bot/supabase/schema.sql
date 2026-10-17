@@ -41,6 +41,7 @@ create table if not exists public.messages (
   wa_id text,                                   -- the client
   team text,                                    -- the team member (team messages only)
   dir text not null check (dir in ('in','out')),
+  options jsonb,                                -- the buttons / list rows of an outgoing message (the website chat shows them)
   body text,
   reply_id text,                                -- menu / button id, or "[audio]" etc.
   ctx_id text,                                  -- the message this one replies to

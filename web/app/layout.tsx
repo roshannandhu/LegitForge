@@ -13,6 +13,7 @@ import { NOINDEX, SITE, shownEmail } from '@/lib/site';
 import { Analytics } from '@/components/analytics';
 import { getCompany } from '@/lib/company';
 import { CompanyProvider } from '@/components/company-context';
+import { ChatBubble } from '@/components/chat/chat-bubble';
 import './globals.css';
 import '@/components/layout/layout.css';
 
@@ -99,6 +100,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <Header />
               <main id="main">{children}</main>
               <Footer company={company} />
+              <ChatBubble />
               <div className="vt-seam" aria-hidden="true" />
             </CompanyProvider>
           </MotionProvider>

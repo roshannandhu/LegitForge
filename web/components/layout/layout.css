@@ -149,3 +149,22 @@ html.menu-open { overflow: hidden; }
 }
 .footer-base p { margin: 0; }
 .footer-base a { color: var(--text); text-decoration: underline; text-underline-offset: 3px; }
+
+/* The website chat bubble (components/chat/chat-bubble.tsx; the panel's own CSS loads with it). */
+.chat-bubble {
+  position: fixed; right: calc(16px + env(safe-area-inset-right)); bottom: calc(16px + env(safe-area-inset-bottom));
+  z-index: calc(var(--z-overlay) - 1);                                        /* under the header and the open phone menu */
+  display: inline-flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 20px;
+  border: 1px solid var(--line); border-radius: 999px; background: var(--accent); color: var(--accent-ink);
+  font: inherit; font-weight: 700; cursor: pointer; box-shadow: 0 8px 24px rgb(0 0 0 / .24);
+}
+.chat-bubble:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+/* The panel's stand-in when its code could not load (chat.css came with that code). */
+.chat-panel-down {
+  position: fixed; right: calc(16px + env(safe-area-inset-right)); bottom: calc(76px + env(safe-area-inset-bottom)); z-index: calc(var(--z-overlay) - 1);
+  display: grid; gap: 12px; justify-items: start; width: min(380px, calc(100vw - 32px)); padding: 16px;
+  border: 1px solid var(--line); border-radius: 16px; background: var(--surface); color: var(--text);
+}
+.chat-panel-down[hidden] { display: none; }
+.chat-panel-down p { margin: 0; }
+@media print { .chat-bubble, .chat-panel-down { display: none; } }

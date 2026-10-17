@@ -51,6 +51,7 @@ export function fakeSupabase(now: () => number) {
       case 'lte': return v != null && cmp(v, val) <= 0;
       case 'gte': return v != null && cmp(v, val) >= 0;
       case 'in': return v != null && split(val.replace(/^\(|\)$/g, '')).includes(String(v));
+      case 'like': return v != null && (val.endsWith('*') ? String(v).startsWith(val.slice(0, -1)) : String(v) === val);   // prefixes only
       case 'cs': { const want = JSON.parse(val) as unknown[]; return Array.isArray(v) && want.every((x) => v.includes(x)); }
       default: throw new Error(`fake PostgREST: unsupported operator ${op}`);
     }
@@ -261,6 +262,14 @@ export function installFakes(sb: ReturnType<typeof fakeSupabase>) {
       whisper.push(lang);
       const out = state.voice(lang);
       return typeof out === 'number' ? new Response('{}', { status: out }) : Response.json({ text: out });
+    }
+    if (url.host === 'graph.facebook.com' && url.pathname.endsWith('/me/messages')) {     // Messenger / Instagram Send API
+      const b = JSON.parse(String(init.body));
+      if ((init.headers as Record<string, string>)?.authorization !== 'Bearer page-token') return new Response('{}', { status: 401 });
+      const s: Sent = { id: `meta.out.${++n}`, to: `meta:${b.recipient.id}`, type: 'meta', body: b.message.text,
+        ids: (b.message.quick_replies ?? []).map((x: { payload: string }) => x.payload) };
+      sent.push(s);
+      return Response.json({ recipient_id: b.recipient.id, message_id: s.id });
     }
     if (url.host === 'graph.facebook.com') {
       const b = JSON.parse(String(init.body));

@@ -1,3 +1,4 @@
+import { CHANNEL_SQL } from '@/lib/wa-services';
 import 'server-only';
 import { getEnv } from '../cf';
 import { adminDb } from './db';
@@ -76,7 +77,7 @@ export async function dashboard(days = 90): Promise<Dashboard> {
   const db = await adminDb(), since = `-${Math.min(Math.max(Math.round(days), 1), 730)} days`;
   const by = async (col: string) => (await db.prepare(`SELECT COALESCE(${col}, '—') AS label, COUNT(*) AS n FROM leads
     WHERE source != 'demo' AND created_at > datetime('now', ?) GROUP BY 1 ORDER BY n DESC LIMIT 12`).bind(since).all<Count>()).results;
-  const [service, language, source, score, status, page] = await Promise.all(['service', 'language', 'source', 'score', 'status',
+  const [service, language, source, score, status, page] = await Promise.all(['service', 'language', CHANNEL_SQL, 'score', 'status',
     "COALESCE(page, CASE source WHEN 'form' THEN 'Site form' END)"].map(by));
   const weeks = (await db.prepare(`SELECT ${WEEK} AS week, COUNT(*) AS n, SUM(CASE WHEN status = 'won' THEN 1 ELSE 0 END) AS won
     FROM leads WHERE source != 'demo' AND created_at >= date('now', '-6 days', 'weekday 1', '-49 days') GROUP BY 1 ORDER BY 1`).all<{ week: string; n: number; won: number }>()).results;

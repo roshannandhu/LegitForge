@@ -37,6 +37,8 @@
     "CALENDAR_ID": "legitforge@gmail.com",       // the calendar calls are booked on (needs the GOOGLE_* secrets)
     "UPI_ID": "",                                // e.g. legitforge@okicici: payment requests by UPI when there is no Razorpay
     "GOOGLE_REVIEW_URL": "",                     // the Google review link: set it to ask Won clients for a review
+    "FB_PAGE_ID": "",                            // Messenger: the Facebook Page id (FB_PAGE_TOKEN secret)
+    "IG_ACCOUNT_ID": "",                         // Instagram: the professional account id
     "REVIVE_TEMPLATE": "",                       // an approved MARKETING template for leads quiet 30 days (costs per message; empty = off)
     "TRAINING_DAYS": "14"                        // every AI answer is a draft for the team for 14 days after the first client
   },

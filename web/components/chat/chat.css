@@ -1,0 +1,27 @@
+/* The chat panel (components/chat/chat-panel.tsx), loaded with it. Theme tokens only. */
+.chat-panel {
+  --chat-top: 80px;                                 /* the header (72px) and a gap: the panel never goes under it */
+  position: fixed; right: calc(16px + env(safe-area-inset-right)); bottom: calc(76px + env(safe-area-inset-bottom)); z-index: calc(var(--z-overlay) - 1);
+  display: grid; grid-template-rows: auto 1fr auto auto;
+  width: min(380px, calc(100vw - 32px)); height: min(560px, calc(100dvh - 76px - var(--chat-top) - env(safe-area-inset-bottom)));
+  border: 1px solid var(--line); border-radius: 16px; background: var(--surface); color: var(--text);
+  box-shadow: 0 16px 48px rgb(0 0 0 / .28); overflow: hidden;
+}
+.chat-panel[hidden] { display: none; }
+@media (max-width: 767px) { .chat-panel { --chat-top: 68px; } }          /* the phone header is 60px */
+.chat-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; padding: 12px 48px 12px 16px; border-bottom: 1px solid var(--line); position: relative; }
+.chat-head span { color: var(--text-muted); font-size: 14px; }
+.chat-x { position: absolute; top: 4px; right: 4px; width: 44px; height: 44px; border: 0; background: none; color: inherit; font-size: 24px; cursor: pointer; }
+.chat-log { overflow-y: auto; padding: 16px; display: grid; align-content: start; gap: 12px; }
+.chat-hint { margin: 0; color: var(--text-muted); font-size: 15px; }
+.chat-line { display: grid; gap: 8px; justify-items: start; }
+.chat-line p { margin: 0; max-width: 85%; padding: 8px 12px; border-radius: 12px; background: var(--surface-2); white-space: pre-wrap; overflow-wrap: anywhere; font-size: 15px; }
+.chat-line.is-mine { justify-items: end; }
+.chat-line.is-mine p { background: var(--accent); color: var(--accent-ink); }
+.chat-options { display: flex; flex-wrap: wrap; gap: 8px; }
+.chat-options button { min-height: 44px; padding: 0 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--bg); color: var(--text); font: inherit; font-size: 14px; cursor: pointer; }
+.chat-options button:focus-visible, .chat-x:focus-visible, .chat-form textarea:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.chat-error { margin: 0; padding: 8px 16px; color: var(--text); font-weight: 700; font-size: 14px; }
+.chat-form { display: flex; gap: 8px; padding: 12px; border-top: 1px solid var(--line); }
+.chat-form textarea { flex: 1; min-height: 44px; max-height: 120px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); color: var(--text); font: inherit; resize: none; }
+@media print { .chat-panel { display: none; } }                          /* after the rules above, so it wins */

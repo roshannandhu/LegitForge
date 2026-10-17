@@ -81,6 +81,10 @@ Gemini keys, a test from a spare phone. Details: `SETUP.md`.
 | Monthly report | 1st of the month on WhatsApp. |
 
 ## Phase 7: more channels (after WhatsApp is settled)
+Built: the website chat bubble (shown once `BOT_CHAT_URL` is set), Messenger and Instagram (once the
+Page is linked and FB_PAGE_TOKEN, FB_PAGE_ID and IG_ACCOUNT_ID are set). Files and voice notes are
+WhatsApp only for now; templates (reminders after 24 hours) have no equivalent on these channels.
+
 Website chat bubble (free), Instagram DMs and Facebook Messenger (free via Meta, linked business
 accounts needed), all using the same knowledge, languages and team hand-off.
 

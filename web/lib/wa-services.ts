@@ -18,3 +18,10 @@ export const serviceByKey = (key: string) => SERVICES.find((s) => s.key === key)
 /** A lead's service wording (the form's or the bot's) back to the bot's key. */
 export const serviceOfLabel = (label: string | null | undefined): ServiceKey | null =>
   !label ? null : label.startsWith('Website') ? 'website' : SERVICES.find((s) => s.lead === label)?.key ?? null;
+
+/** The bot's channels (phase 7): a client's id carries it ("web:", "fb:", "ig:"; WhatsApp has
+ *  none). Their enquiries are leads with source 'whatsapp' and the channel's label as the page,
+ *  so reports tell them apart with CHANNEL_SQL. */
+export type Channel = 'whatsapp' | 'web' | 'fb' | 'ig';
+export const CHANNEL_LABEL: Record<Channel, string> = { whatsapp: 'WhatsApp', web: 'Website chat', fb: 'Messenger', ig: 'Instagram' };
+export const CHANNEL_SQL = "CASE WHEN page IN ('Website chat', 'Messenger', 'Instagram') THEN page ELSE source END";
