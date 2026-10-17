@@ -2,6 +2,7 @@ import { requireAdmin } from '@/lib/admin/auth';
 import { listMembers } from '@/lib/admin/db';
 import { createMemberAction, importTeamAction, moveMemberAction, publishMemberAction } from '../actions';
 import { ActionForm, Submit } from '../ui';
+import { BotAlerts } from './bot-alerts';
 
 export default async function AdminTeam() {
   await requireAdmin();                            // each page checks too: a layout can be skipped
@@ -61,6 +62,7 @@ export default async function AdminTeam() {
         </div>
         </>
       )}
+      <BotAlerts />
     </>
   );
 }

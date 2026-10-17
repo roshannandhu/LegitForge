@@ -29,6 +29,21 @@ export function replyByLabel(now = new Date()) {
   return nextLabel(now, (parseFloat(SITE.replyWithin) || 2) * 60, true);
 }
 
+/** When the reply promise for something that arrived at `t` runs out, by the rule replyByLabel
+ *  shows: within the promise while open (never past closing), else that long after the next
+ *  opening. For Admin → Leads (the 2-hour promise). */
+export function replyDeadline(t: Date): Date {
+  const { days, from, to } = SITE.hours;
+  const within = (parseFloat(SITE.replyWithin) || 2) * 3_600_000, H = 3_600_000, D = 24 * H;
+  const IST = 5.5 * H;                             // ponytail: the studio's zone (India, no DST); read SITE.hours.timeZone if it ever moves
+  const local = t.getTime() + IST, start = Math.floor(local / D) * D, mins = (local - start) / 60_000, dow = new Date(start).getUTCDay();
+  const works = (d: number) => (days as readonly number[]).includes(d);
+  if (works(dow) && mins >= from * 60 && mins < to * 60) return new Date(Math.min(t.getTime() + within, start + to * H - IST));
+  if (works(dow) && mins < from * 60) return new Date(start + from * H + within - IST);
+  for (let k = 1; k <= 7; k++) if (works((dow + k) % 7)) return new Date(start + k * D + from * H + within - IST);
+  return new Date(t.getTime() + within);
+}
+
 /** When the forge next opens (plan D #13), e.g. "10 a.m. tomorrow"; "" while open. */
 export function opensNextLabel(now = new Date()) {
   return isOpenNow(now) ? '' : nextLabel(now, 0, false);

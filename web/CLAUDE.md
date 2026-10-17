@@ -6,7 +6,7 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
 ## Active Working Directives
 - **Working Directory**: Always work in the `web/` directory. All application code, tests, and configuration live in `web/`.
 - **Target Branch**: Always branch from and target `main-exh9xw`.
-- **Verification**: Run `npm run test:backend` (80 tests, including the WhatsApp bot's) and `npm run build` inside `web/`; review page markup directly or inspect generated static files since browser checks (`check.mjs`) require an active dev server.
+- **Verification**: Run `npm run test:backend` (89 tests, including the WhatsApp bot's) and `npm run build` inside `web/`; review page markup directly or inspect generated static files since browser checks (`check.mjs`) require an active dev server.
 
 ## Current owner decisions (7 October 2026)
 - WhatsApp enquiry bot (16 Oct 2026, owner's decisions; supersedes SETUP.md Part 2 §3–§9): a separate
@@ -159,6 +159,13 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
   them from app/admin/leads/files/[...key]); leads.files and leads.brief from D1 migration 0012.
   One reminder 3 h after a client goes quiet mid-brief (working hours). Published work for the
   service is sent after the brief.
+- Team (phase 4): client alerts go in turns (worker.ts alertTurns/route/passOn): first whoever has
+  the service ticked in Admin → Team → WhatsApp alerts (D1 bot_team, 0013; the bot's service keys
+  live in lib/wa-services.ts so the admin can use them), the others 10 minutes later unless someone
+  took it up (Supabase `alerts`); upset/urgent reach everyone not off. Team commands "busy [2h]",
+  "off [3d]", "free", "who", "#CODE update: …" (the `project_update` template after 24 h).
+  Website form leads reach the team through the bot (leads.wa_alerted_at); relays set
+  leads.first_reply_at (Admin → Leads shows the 2-hour promise); a 10 a.m. summary on working days.
 - Fixed text in bot/text.ts must stay within WhatsApp limits (tests check them): list rows ≤ 10,
   row title ≤ 24, buttons ≤ 3 with titles ≤ 20.
 

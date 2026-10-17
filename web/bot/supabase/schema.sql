@@ -88,6 +88,22 @@ create table if not exists public.knowledge (
 );
 -- ponytail: no vector index; a full scan is instant at a few hundred answers (add HNSW past ~10k)
 
+-- Alerts in turns (phase 4): the first team members get a client's alert at once; `later` get it
+-- after next_at if nobody has taken it up (worker.ts passOn()).
+create table if not exists public.alerts (
+  id bigint generated always as identity primary key,
+  wa_id text references public.contacts(wa_id) on delete cascade,   -- null for a website form lead
+  lead_id text,                                 -- a form lead (D1 leads.id)
+  question_id bigint,
+  body text not null,
+  link jsonb not null default '{}',
+  buttons jsonb,
+  later text[] not null default '{}',
+  next_at timestamptz,                          -- when `later` get it (null: done)
+  created_at timestamptz not null default now()
+);
+create index if not exists alerts_due on public.alerts (next_at) where next_at is not null;
+
 -- The team's tone guide ('tone'), refreshed weekly.
 create table if not exists public.settings (
   key text primary key,
@@ -112,11 +128,12 @@ alter table public.messages enable row level security;
 alter table public.questions enable row level security;
 alter table public.knowledge enable row level security;
 alter table public.settings enable row level security;
+alter table public.alerts enable row level security;
 
 -- Supabase no longer exposes new tables to the REST API by default (from 30 Oct 2026): grant
 -- the secret key's role explicitly, and nobody else.
 grant usage on schema public to service_role;
-grant select, insert, update, delete on public.contacts, public.messages, public.questions, public.knowledge, public.settings to service_role;
+grant select, insert, update, delete on public.contacts, public.messages, public.questions, public.knowledge, public.settings, public.alerts to service_role;
 grant usage, select on all sequences in schema public to service_role;
 revoke all on function public.match_knowledge(extensions.vector, float, int) from public, anon, authenticated;
 grant execute on function public.match_knowledge(extensions.vector, float, int) to service_role;

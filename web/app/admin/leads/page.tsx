@@ -1,6 +1,6 @@
 import { requireAdmin } from '@/lib/admin/auth';
 import { LEAD_STATUSES, type LeadStatus } from '@/lib/admin/db';
-import { leadPage } from '@/lib/admin/lead-delivery';
+import { d1Time, leadPage, promise, replyStart, replyStats, type DeliveryLead } from '@/lib/admin/lead-delivery';
 import { getEnv } from '@/lib/cf';
 import { alertsConfigured } from '@/lib/server/lead-delivery';
 import { markLeadContactedAction, retryLeadAlertAction } from './delivery-actions';
@@ -13,6 +13,17 @@ const keys = (files?: string | null): string[] => {
   catch { return []; }
 };
 
+/** "2 h 05 min". */
+const span = (ms: number) => { const m = Math.max(0, Math.round(ms / 60_000)); return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')} min`; };
+/** The 2-hour promise (in working hours, from the team's first alert) for one enquiry. */
+function ReplyTime({ l }: { l: DeliveryLead }) {
+  const kept = promise(l);
+  if (l.first_reply_at) {
+    return <p><span className={`pill${kept === 'met' ? ' is-on' : ''}`}>First reply after {span(d1Time(l.first_reply_at) - replyStart(l))}{kept === 'missed' ? ' (late)' : ''}</span></p>;
+  }
+  return kept === 'missed' && l.status === 'new' ? <p className="muted">No reply recorded yet: past the 2-hour promise</p> : null;
+}
+
 export default async function AdminLeads({ searchParams }: { searchParams: Promise<{ status?: string; page?: string }> }) {
   await requireAdmin();                            // each page checks too: a layout can be skipped
   const params = await searchParams;
@@ -21,12 +32,14 @@ export default async function AdminLeads({ searchParams }: { searchParams: Promi
   const requestedPage = Number(params.page);
   const { leads, page, pages, total } = await leadPage(status, Number.isSafeInteger(requestedPage) ? requestedPage : 1);
   const notifications = alertsConfigured(await getEnv());
+  const stats = await replyStats();
   const pageUrl = (n: number) => `/admin/leads?${new URLSearchParams({ ...(status ? { status } : {}), page: String(n) })}`;
   return (
     <>
       <h1 className="type-h2">Leads</h1>
       <p className="muted">Every enquiry from the website form and the WhatsApp bot lands here ({total} so far). Each one is saved first, then an alert is sent, so a failed alert never loses an enquiry. WhatsApp enquiries fill in as the client answers the bot.</p>
-      {!notifications && <p role="status">Alerts not configured. Review new enquiries here; saved enquiries remain available.</p>}
+      {stats.total > 0 && <p className="muted">Last 30 days: {stats.fast} of {stats.total} enquiries got a first reply within the 2-hour promise (working hours, from when the team was told; replies through the bot, or “Record contact today”).</p>}
+      {!notifications && <p role="status">n8n alerts are not configured: form enquiries reach the team through the WhatsApp bot instead (once it is live). Saved enquiries remain available here.</p>}
       <div className="admin-actions admin-lead admin-leads-filter">
         <a className="btn btn-ghost btn-sm" href="/admin/leads" aria-current={!status ? 'page' : undefined}>All</a>
         {LEAD_STATUSES.map((s) => <a key={s} className="btn btn-ghost btn-sm" href={`/admin/leads?status=${s}`} aria-current={status === s ? 'page' : undefined}>{s}</a>)}
@@ -68,6 +81,8 @@ export default async function AdminLeads({ searchParams }: { searchParams: Promi
                       {l.attempts != null && <><br /><span className="muted">{l.attempts} attempts{l.last_error ? ` · ${l.last_error}` : ''}</span></>}
                       {notifications && l.delivery_status !== 'delivered' && <form action={retryLeadAlertAction.bind(null, l.id)} className="admin-inline"><button className="btn btn-ghost btn-sm">Retry alert</button></form>}
                     </>}
+                    {l.source === 'form' && l.wa_alerted_at && <p className="muted">Team alerted on WhatsApp {l.wa_alerted_at.slice(0, 16)}</p>}
+                    <ReplyTime l={l} />
                     <p className="muted">Last contact: {l.last_contact_at?.slice(0, 16) ?? 'Not recorded'}</p>
                     <form action={markLeadContactedAction.bind(null, l.id)} className="admin-inline"><button className="btn btn-ghost btn-sm">Record contact today</button></form>
                   </td>

@@ -26,6 +26,6 @@ export async function retryLeadAlertAction(id: string) {
 /** Manual contact evidence; changing a pipeline status alone does not claim a conversation. */
 export async function markLeadContactedAction(id: string) {
   await requireAdmin();
-  await (await adminDb()).prepare("UPDATE leads SET last_contact_at = datetime('now') WHERE id = ?").bind(id).run();
+  await (await adminDb()).prepare("UPDATE leads SET last_contact_at = datetime('now'), first_reply_at = COALESCE(first_reply_at, datetime('now')) WHERE id = ?").bind(id).run();
   revalidatePath('/admin/leads');
 }

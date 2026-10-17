@@ -8,7 +8,7 @@
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = Record<string, any>;
-const KEY: Record<string, string> = { contacts: 'wa_id', messages: 'wamid', questions: 'id', knowledge: 'id', settings: 'key' };
+const KEY: Record<string, string> = { contacts: 'wa_id', messages: 'wamid', questions: 'id', knowledge: 'id', settings: 'key', alerts: 'id' };
 const UNIQUE: Record<string, string[]> = { contacts: ['code'], questions: ['wamid'] };
 /** The schema's CHECK constraints (bot/supabase/schema.sql), so a value Postgres would refuse fails here too. */
 const CHECK: Record<string, Record<string, string[]>> = {
@@ -21,7 +21,7 @@ const broken = (table: string, row: Row) =>
   Object.entries(CHECK[table] ?? {}).find(([col, ok]) => row[col] != null && !ok.includes(row[col]))?.[0];
 
 export function fakeSupabase(now: () => number) {
-  const tables: Record<string, Row[]> = { contacts: [], messages: [], questions: [], knowledge: [], settings: [] };
+  const tables: Record<string, Row[]> = { contacts: [], messages: [], questions: [], knowledge: [], settings: [], alerts: [] };
   let seq = 0;
   const state = { down: false };
 
@@ -75,6 +75,7 @@ export function fakeSupabase(now: () => number) {
     if (table === 'questions') return { status: 'pending', kind: 'question', draft: null, draft_en: null, answer: null, answered_by: null, answered_at: null, client_told_at: null, created_at: t, ...row, id: row.id ?? ++seq };
     if (table === 'knowledge') return { embedding: null, status: 'pending', question_id: null, decided_by: null, decided_at: null, translations: {}, translations_ok: false, wins: 0, created_at: t, ...row, id: row.id ?? ++seq };
     if (table === 'contacts') return { won_counted: false, created_at: t, ...row };
+    if (table === 'alerts') return { wa_id: null, lead_id: null, question_id: null, buttons: null, later: [], next_at: null, link: {}, created_at: t, ...row, id: row.id ?? ++seq };
     return { created_at: t, ...row };
   }
   const json = (status: number, body?: unknown) => new Response(body === undefined ? '' : JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
@@ -140,6 +141,7 @@ export function fakeSupabase(now: () => number) {
       if (table === 'contacts') {                       // on delete cascade, as in the schema
         const ids = new Set([...gone].map((c) => c.wa_id));
         tables.questions = tables.questions.filter((x) => !ids.has(x.wa_id));
+        tables.alerts = tables.alerts.filter((x) => !ids.has(x.wa_id));
       }
       if (table === 'contacts' || table === 'questions') {
         const qs = new Set(tables.questions.map((x) => x.id));

@@ -41,6 +41,7 @@ export default async function Privacy() {
         <li><strong>Google</strong> verifies administrator sign-ins.</li>
         <li><strong>Supabase</strong> (servers in Mumbai, India) stores WhatsApp conversations with our assistant and the answers it has learned from our team.</li>
         <li><strong>Groq and Google (Gemini)</strong> read individual WhatsApp messages so the assistant can understand and answer them; Groq also turns voice notes into text (Groq does not keep them). Phone numbers and email addresses are removed from text before it is sent; voice notes go to Groq as recorded, so please do not say sensitive details in them. Google's free Gemini service may use what it receives to improve its products, so please do not share sensitive personal information in the chat. They also turn our team's replies, and the question each one answers, into general answers for future clients and a short style guide; these hold no personal details and are used only after a team member approves them.</li>
+        <li><strong>Our team's own WhatsApp</strong> gets each website enquiry too, through our WhatsApp assistant.</li>
         <li><strong>n8n and Telegram</strong> receive enquiry alerts only when that delivery integration is configured. Enquiries remain in our database if alerts are unavailable or fail.</li>
       </ul>
 

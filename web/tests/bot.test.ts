@@ -43,6 +43,7 @@ test('WhatsApp bot (fake Meta, Supabase, Groq and Gemini; real Miniflare D1)', a
     const files = (await bucket.list()).objects.map((o) => o.key);
     if (files.length) await bucket.delete(files);
     await db.exec('DELETE FROM projects');
+    await db.exec('DELETE FROM bot_team');
     sb.state.down = false;
     now = OPEN;
     await db.exec('DELETE FROM leads');
@@ -1307,5 +1308,206 @@ test('WhatsApp bot (fake Meta, Supabase, Groq and Gemini; real Miniflare D1)', a
     await tick(env, now);
     assert.equal((await bucket.list({ prefix: 'leads/' })).objects.length, 0);
     assert.equal(sb.tables.settings.find((x) => x.key === 'purge_cursor')?.value, '', 'reached the end');
+  });
+  /* ---- phase 4: team workflow ---- */
+
+  const seat = (whatsapp: string, services: string[], status = 'free', until: string | null = null) =>
+    db.prepare('INSERT INTO bot_team (whatsapp, name, services, status, status_until) VALUES (?, ?, ?, ?, ?)')
+      .bind(whatsapp, whatsapp === TEAM[0] ? 'Roshan' : 'Anu', JSON.stringify(services), status, until).run();
+  const complete = async (who = CLIENT) => { await toName(who); await toTimeline(who); await post([tap(who, 'tl:1', 'button_reply')]); return contact(who).code; };
+
+  await t.test('phase 4: an enquiry goes first to whoever handles its service; the other gets it 10 minutes later unless someone replied', async () => {
+    await reset();
+    await teamHi();
+    await seat(TEAM[0], ['website', 'app']);
+    await seat(TEAM[1], ['whatsapp', 'n8n']);
+    const code = await complete();
+    assert.ok(teamGot(TEAM[0], `#${code} new lead`), 'the website person');
+    assert.ok(!teamGot(TEAM[1], `#${code}`), 'not yet the other');
+    now += 9 * MIN;
+    await tick(env, now);
+    assert.ok(!teamGot(TEAM[1], `#${code}`), 'not before 10 minutes');
+    now += 2 * MIN;
+    await tick(env, now);
+    assert.match(teamGot(TEAM[1], `#${code} new lead`)!.body, /Passed on: nobody replied in 10 minutes/);
+    await tick(env, now + 2 * MIN);
+    assert.equal(to(TEAM[1]).filter((m) => m.body.includes(`#${code}`)).length, 1, 'once');
+
+    const code2 = await complete(CLIENT2);
+    await post([text(TEAM[0], 'Hi, calling you in 5 minutes.', { context: { id: teamGot(TEAM[0], `#${code2}`)!.id } })]);
+    now += 11 * MIN;
+    await tick(env, now);
+    assert.ok(!teamGot(TEAM[1], `#${code2}`), 'Roshan replied: not passed on');
+  });
+
+  await t.test('phase 4: "off", "busy", "free" and "who"; an upset client reaches everyone who is not off', async () => {
+    await reset();
+    await teamHi();
+    await post([text(TEAM[0], 'off')]);
+    assert.match(last(TEAM[0]).body, /^Off: you get no client alerts/);
+    const code = await complete();
+    assert.ok(teamGot(TEAM[1], `#${code} new lead`));
+    now += 11 * MIN;
+    await tick(env, now);
+    assert.ok(!teamGot(TEAM[0], `#${code}`), 'off: never passed on either');
+
+    await post([text(TEAM[1], 'busy 1h')]);
+    assert.match(last(TEAM[1]).body, /^Busy until .*: the others are alerted first\./);
+    await post([text(TEAM[0], 'free')]);
+    const code2 = await complete(CLIENT2);
+    assert.ok(teamGot(TEAM[0], `#${code2}`) && !teamGot(TEAM[1], `#${code2}`), 'the free one first');
+    await post([text(TEAM[0], 'who')]);
+    assert.match(last(TEAM[0]).body, /free[\s\S]*busy until/);
+
+    fx.state.ai = (task) => (task === 'extract' ? { ...blank, kind: 'answer', mood: 'urgent' } : 500);
+    await toName(CLIENT3);
+    await post([text(CLIENT3, 'My site is down, help now!')]);
+    const code3 = contact(CLIENT3).code;
+    for (const m of TEAM) assert.ok(teamGot(m, `#${code3}`), 'urgent: everyone at once, busy or not');
+    now += 61 * MIN;                                              // the hour of "busy" is over
+    fx.state.ai = () => 500;
+    const code4 = await complete('919844444444');
+    assert.ok(teamGot(TEAM[0], `#${code4}`) && teamGot(TEAM[1], `#${code4}`), 'both free again: both first');
+  });
+
+  await t.test('phase 4: website form enquiries reach the team through the bot, once, in turns', async () => {
+    await reset();
+    await teamHi();
+    await seat(TEAM[1], ['seo']);
+    await db.prepare(`INSERT INTO leads (id, source, name, phone, service, message, whatsapp_consent, created_at) VALUES ('form-1', 'form', 'Meera', '+91 98000 00000', 'SEO', 'Rank my clinic in Calicut', 1, ?)`)
+      .bind(new Date(now).toISOString().replace('T', ' ').slice(0, 19)).run();
+    await tick(env, now);
+    const alert = teamGot(TEAM[1], 'New website enquiry')!;
+    assert.match(alert.body, /Name: Meera[\s\S]*Service: SEO[\s\S]*Rank my clinic[\s\S]*wa\.me\/919800000000/);
+    assert.ok(!teamGot(TEAM[0], 'New website enquiry'), 'the SEO person first');
+    assert.ok((await db.prepare(`SELECT wa_alerted_at FROM leads WHERE id = 'form-1'`).first<Row>())!.wa_alerted_at);
+    now += 11 * MIN;
+    await tick(env, now);
+    assert.match(teamGot(TEAM[0], 'New website enquiry')!.body, /Passed on/);
+    await tick(env, now + 2 * MIN);
+    assert.equal(to(TEAM[1]).filter((m) => m.body.startsWith('New website enquiry')).length, 1, 'once');
+  });
+
+  await t.test('phase 4: the 10 a.m. summary on working days, once', async () => {
+    await reset();
+    await teamHi();
+    await toName();
+    await toTimeline();
+    await post([tap(CLIENT, 'tl:0', 'button_reply')]);           // as soon as possible: hot
+    fx.state.ai = (task) => (task === 'extract' ? question('Do you do hosting?') : 500);
+    await toName(CLIENT2);
+    await post([text(CLIENT2, 'Hosting?')]);
+    fx.state.ai = () => 500;
+    now = Date.parse('2026-10-15T04:30:00Z');                     // Thursday 10:00 IST
+    await teamHi();
+    await tick(env, now);
+    const summary = teamGot(TEAM[0], 'Good morning')!;
+    assert.match(summary.body, /New enquiries: 2 \(WhatsApp 2, website form 0\)/);
+    assert.match(summary.body, /Open questions: 1\./);
+    assert.match(summary.body, /\n• "Do you do hosting\?"$/, 'the lists come last (a template may cut them, never the counts)');
+    assert.match(summary.body, new RegExp(`Hot: #${contact().code} Ravi \\(as soon as possible\\)`));
+    await tick(env, now + 2 * MIN);
+    assert.equal(to(TEAM[0]).filter((m) => m.body.startsWith('Good morning')).length, 1, 'once a day');
+    now = Date.parse('2026-10-18T04:30:00Z');                     // Sunday 10:00 IST: closed
+    await teamHi();
+    await tick(env, now);
+    assert.equal(to(TEAM[0]).filter((m) => m.body.startsWith('Good morning')).length, 1, 'not on Sundays');
+  });
+
+  await t.test('phase 4: the first reply is timed; "#CODE update" goes in their language, or as a template after 24 hours', async () => {
+    await reset();
+    await teamHi();
+    fx.state.ai = (task, user) => (task === 'translate' ? { text: /design/.test(user) ? 'ആദ്യ ഡിസൈൻ തയ്യാറാണ്' : 'ശരി' } : 500);
+    await toName(CLIENT, 'ml');
+    const code = contact().code;
+    await post([text(TEAM[0], `#${code} update: the first design is ready`)]);
+    assert.equal(last(CLIENT).body, `${TEXT.ml.update}\nആദ്യ ഡിസൈൻ തയ്യാറാണ്`);
+    assert.ok((await lead())?.first_reply_at, 'the first human reply');
+    await db.prepare(`UPDATE leads SET first_reply_at = '2026-10-14 05:40:00' WHERE phone = ?`).bind(`+${CLIENT}`).run();
+    await post([text(TEAM[0], `#${code} Okay`)]);
+    assert.equal((await lead())?.first_reply_at, '2026-10-14 05:40:00', 'only the first one counts');
+    now += 25 * 60 * MIN;
+    await teamHi();
+    await post([text(TEAM[0], `#${code} update: the first design is ready`)]);
+    const sent = last(CLIENT);
+    assert.equal(sent.template, 'project_update');
+    assert.equal(sent.body, 'Ravi | ആദ്യ ഡിസൈൻ തയ്യാറാണ്');
+    assert.match(last(TEAM[0]).body, /as the project_update template/);
+    await post([text(TEAM[0], `#${code} Thanks`)]);
+    assert.match(last(TEAM[0]).body, /window has closed/, 'other messages still wait for the client');
+  });
+  /* ---- phase 4 review fixes ---- */
+
+  await t.test('phase 4 fixes: a question taken by the first member is not passed on; the pass-on skips who went off; nothing is kept', async () => {
+    await reset();
+    await teamHi();
+    await seat(TEAM[0], ['website']);
+    await seat(TEAM[1], ['seo']);
+    fx.state.ai = (task) => (task === 'extract' ? question('Can you start tomorrow?', true) : 500);
+    await toName();
+    await post([text(CLIENT, 'Start tomorrow?')]);
+    const code = contact().code;
+    assert.ok(teamGot(TEAM[0], `#${code}`) && !teamGot(TEAM[1], `#${code}`));
+    await post([text(TEAM[0], `#${code} take`)]);
+    now += 11 * MIN;
+    await tick(env, now);
+    assert.ok(!teamGot(TEAM[1], `#${code}`), 'taken: not passed on, though the question is still open');
+    assert.equal(sb.tables.alerts.length, 0, 'claimed rows are deleted');
+
+    await toName(CLIENT2);
+    await post([text(CLIENT2, 'Start tomorrow?')]);
+    const code2 = contact(CLIENT2).code;
+    await post([text(TEAM[1], 'off')]);
+    now += 11 * MIN;
+    await tick(env, now);
+    assert.ok(!teamGot(TEAM[1], `#${code2}`), 'off since the alert: skipped');
+  });
+
+  await t.test('phase 4 fixes: form leads already handled are not alerted, and one nobody got is tried again', async () => {
+    await reset();
+    const at = new Date(now).toISOString().replace('T', ' ').slice(0, 19);
+    await db.prepare(`INSERT INTO leads (id, source, name, phone, service, message, status, created_at) VALUES ('form-2', 'form', 'Old', '+919800000001', 'SEO', 'x', 'contacted', ?)`).bind(at).run();
+    await db.prepare(`INSERT INTO leads (id, source, name, phone, service, message, created_at) VALUES ('form-3', 'form', 'Meera', '+919800000002', 'SEO', 'Rank my clinic', ?)`).bind(at).run();
+    env.TEAM_WHATSAPP = '';
+    try {
+      await tick(env, now);
+      assert.equal((await db.prepare(`SELECT wa_alerted_at FROM leads WHERE id = 'form-3'`).first<Row>())!.wa_alerted_at, null, 'nobody reached: not marked');
+    } finally { env.TEAM_WHATSAPP = TEAM.join(','); }
+    await teamHi();
+    await tick(env, now + 2 * MIN);
+    assert.ok(teamGot(TEAM[0], 'Name: Meera'), 'the next run tries again');
+    assert.ok(!teamGot(TEAM[0], 'Name: Old'), 'a contacted lead is not alerted');
+  });
+
+  await t.test('phase 4 fixes: "Update ..." as a reply answers the question; a long update after 24 h is refused; "free" works as a reply', async () => {
+    await reset();
+    await teamHi();
+    fx.state.ai = (task) => (task === 'extract' ? question('Can I update the content myself?') : 500);
+    await toName();
+    await post([text(CLIENT, 'Can I update it myself?')]);
+    const alert = teamGot(TEAM[0], 'question')!;
+    await post([text(TEAM[0], 'Update it any time from the dashboard we give you.', { context: { id: alert.id } })]);
+    assert.equal(last(CLIENT).body, 'Update it any time from the dashboard we give you.');
+    assert.equal(sb.tables.questions.at(-1)!.status, 'answered');
+    const code = contact().code;
+    now += 25 * 60 * MIN;
+    await teamHi();
+    await post([text(TEAM[0], `#${code} update: ${'x'.repeat(850)}`)]);
+    assert.match(last(TEAM[0]).body, /800 characters at most/);
+    await post([text(TEAM[0], 'off')]);
+    await post([text(TEAM[0], 'free', { context: { id: last(TEAM[0]).id } })]);
+    assert.match(last(TEAM[0]).body, /^You are free/);
+  });
+
+  await t.test('phase 4 fixes: the morning summary counts only enquiries the team was told about as waiting', async () => {
+    await reset();
+    await teamHi();
+    const old = new Date(now - 5 * 60 * MIN).toISOString().replace('T', ' ').slice(0, 19);
+    await db.prepare(`INSERT INTO leads (id, source, name, created_at) VALUES ('wa-hi', 'whatsapp', 'Only said hi', ?)`).bind(old).run();
+    await db.prepare(`INSERT INTO leads (id, source, name, created_at, wa_alerted_at) VALUES ('wa-told', 'whatsapp', 'Told', ?, ?)`).bind(old, old).run();
+    now = Date.parse('2026-10-15T04:30:00Z');
+    await teamHi();
+    await tick(env, now);
+    assert.match(teamGot(TEAM[0], 'Good morning')!.body, /Waiting over 2 hours for a first reply: 1 /);
   });
 });

@@ -28,13 +28,21 @@ export interface Env {
   GOOGLE_CLIENT_SECRET?: string;
   GOOGLE_REFRESH_TOKEN?: string;
   CALENDAR_ID?: string;
+  /** Sales (phase 5, bot/pay.ts and worker.ts): Razorpay keys for payment links (else the UPI ID
+   *  is given in words), the Google review link, and the approved marketing template that revives
+   *  leads after 30 quiet days (empty = off: each one costs money). */
+  RAZORPAY_KEY_ID?: string;
+  RAZORPAY_KEY_SECRET?: string;
+  UPI_ID?: string;
+  GOOGLE_REVIEW_URL?: string;
+  REVIVE_TEMPLATE?: string;
   GRAPH_VERSION?: string;
   /** Days after the first client during which every AI answer is a draft for the team (default 14; 0 = off). */
   TRAINING_DAYS?: string;
   SITE_URL?: string;
   /** Per invocation (never a binding): outside calls made so far, and when it started. Workers
    *  Free allows 50 subrequests per invocation (D1 calls count too), so turns stop early. */
-  run?: { calls: number; t0: number; open?: Set<string> };
+  run?: { calls: number; t0: number; open?: Set<string>; roster?: unknown[] };
 }
 
 /** One more outside call for this invocation's budget. */

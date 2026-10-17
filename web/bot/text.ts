@@ -9,21 +9,9 @@ export type Field = 'name' | 'business' | 'need' | 'details' | 'refs' | 'timelin
  *  (websites they like) are asked only where they apply (worker.ts applies()). */
 export const FIELDS: Field[] = ['name', 'business', 'need', 'details', 'refs', 'timeline'];
 
-/** The first menu, in the site's service order (MR Signage last, then the free-chat row).
- *  `lead` is what Admin → Leads shows; the form's own wording where one exists (lib/lead.ts). */
-export const SERVICES = [
-  { key: 'website', title: 'Website', description: 'Business site or landing page', lead: 'Website' },
-  { key: 'app', title: 'Web app', description: 'Bookings, dashboards, logins', lead: 'Web app' },
-  { key: 'quote', title: 'Quotation / warranty', description: 'Quotes as links, warranty by QR', lead: 'Quotation or warranty system' },
-  { key: 'whatsapp', title: 'WhatsApp automation', description: 'Replies, enquiries, bookings', lead: 'WhatsApp automation' },
-  { key: 'n8n', title: 'n8n workflows', description: 'Connect forms, sheets and tools', lead: 'n8n workflow' },
-  { key: 'seo', title: 'SEO', description: 'Google search and Maps', lead: 'SEO' },
-  { key: 'nfc', title: 'NFC cards / tags', description: 'Tap to share a link', lead: 'NFC cards or tags' },
-  { key: 'signage', title: 'MR Signage', description: 'Digital signage for TVs', lead: 'MR Signage (digital signage)' },
-  { key: 'other', title: 'Something else / chat', description: 'Tell us in your own words', lead: 'Not sure yet' },
-] as const;
-export type ServiceKey = (typeof SERVICES)[number]['key'];
-export const serviceByKey = (key: string) => SERVICES.find((s) => s.key === key);
+/** The first menu (lib/wa-services.ts: the admin routes alerts by the same keys). */
+import { SERVICES, serviceByKey, type ServiceKey } from '../lib/wa-services';
+export { SERVICES, serviceByKey, type ServiceKey };
 
 /** The site's WhatsApp buttons open with "Hi Legit Forge, I'd like to talk about <topic>."
  *  (app/services/[slug]/page.tsx). "websites and web apps" is two services, so it gets the menu. */
@@ -70,7 +58,7 @@ export function langFromText(text: string): Lang {
 export type TextKey = 'welcome' | 'menu' | 'lang' | 'name' | 'business' | 'need' | 'timeline' | 'done' | 'noted'
   | 'checking' | 'teamSoon' | 'teamLater' | 'person' | 'offTopic' | 'pleaseType' | 'stopped'
   | 'price' | 'callSoon' | 'keepGoing' | 'deleteAsk' | 'deleted' | 'kept' | 'welcomeBack' | 'sameProject'
-  | 'refs' | 'skip' | 'fileSaved' | 'fileBig' | 'nudge' | 'work';
+  | 'refs' | 'skip' | 'fileSaved' | 'fileBig' | 'nudge' | 'work' | 'update';
 type Pair = [string, string];
 
 export const TEXT: Record<Lang, Record<TextKey, string> & { tl: [string, string, string]; callBtn: Pair; delBtn: Pair; retBtn: Pair }> = {
@@ -109,6 +97,7 @@ export const TEXT: Record<Lang, Record<TextKey, string> & { tl: [string, string,
     fileBig: 'I cannot save that file (over 20 MB, or too many files). Please share a link instead.',
     nudge: 'Just checking in 🙂 Whenever you are ready, reply here and we will continue where we left off.',
     work: 'Meanwhile, here is some of our recent work:',
+    update: 'Update on your project:',
   },
   ml: {
     welcome: 'നമസ്കാരം! 👋 ഇത് Legit Forge-ന്റെ ഓട്ടോമേറ്റഡ് അസിസ്റ്റന്റ് ആണ്. എന്ത് സഹായമാണ് വേണ്ടത്? താഴെ നിന്ന് തിരഞ്ഞെടുക്കൂ.',
@@ -145,6 +134,7 @@ export const TEXT: Record<Lang, Record<TextKey, string> & { tl: [string, string,
     fileBig: 'ഈ ഫയൽ സേവ് ചെയ്യാൻ കഴിയില്ല (20 MB-ൽ കൂടുതൽ, അല്ലെങ്കിൽ ഫയലുകൾ കൂടുതലാണ്). ദയവായി ഒരു ലിങ്ക് ഷെയർ ചെയ്യൂ.',
     nudge: 'ഒന്ന് ഓർമ്മിപ്പിക്കാൻ 🙂 സൗകര്യം പോലെ ഇവിടെ മറുപടി നൽകൂ, നിർത്തിയിടത്ത് നിന്ന് തുടരാം.',
     work: 'അതുവരെ, ഞങ്ങളുടെ ചില സമീപകാല വർക്കുകൾ കാണാം:',
+    update: 'നിങ്ങളുടെ പ്രോജക്റ്റിന്റെ പുതിയ വിവരം:',
   },
   mg: {
     welcome: 'Namaskaram! 👋 Ith Legit Forge-inte automated assistant aanu. Enthu sahayamaanu vendath? Thazhe ninnu choose cheyyoo.',
@@ -181,6 +171,7 @@ export const TEXT: Record<Lang, Record<TextKey, string> & { tl: [string, string,
     fileBig: 'Ee file save cheyyan pattilla (20 MB-il kooduthal, allenkil files kooduthalanu). Dayavaayi oru link share cheyyoo.',
     nudge: 'Onnu ormmippikkan 🙂 Saukaryam pole ivide reply cheyyoo, nirthiyidathu ninnu thudaraam.',
     work: 'Athuvare, njangalude chila recent works kaanaam:',
+    update: 'Ningalude project-nte update:',
   },
   hi: {
     welcome: 'नमस्ते! 👋 यह Legit Forge का ऑटोमेटेड असिस्टेंट है। आपको किस चीज़ में मदद चाहिए? नीचे से चुनें।',
@@ -217,6 +208,7 @@ export const TEXT: Record<Lang, Record<TextKey, string> & { tl: [string, string,
     fileBig: 'यह फ़ाइल सेव नहीं हो सकती (20 MB से बड़ी, या बहुत सारी फ़ाइलें)। कृपया इसकी जगह लिंक शेयर करें।',
     nudge: 'बस याद दिला रहे हैं 🙂 जब भी आप तैयार हों, यहाँ जवाब दें, हम वहीं से आगे बढ़ेंगे।',
     work: 'तब तक, हमारा कुछ हालिया काम देखें:',
+    update: 'आपके प्रोजेक्ट का अपडेट:',
   },
   kn: {
     welcome: 'ನಮಸ್ಕಾರ! 👋 ಇದು Legit Forge ನ ಸ್ವಯಂಚಾಲಿತ ಸಹಾಯಕ. ನಿಮಗೆ ಯಾವುದರಲ್ಲಿ ಸಹಾಯ ಬೇಕು? ಕೆಳಗಿನಿಂದ ಆಯ್ಕೆಮಾಡಿ.',
@@ -253,6 +245,7 @@ export const TEXT: Record<Lang, Record<TextKey, string> & { tl: [string, string,
     fileBig: 'ಈ ಫೈಲ್ ಉಳಿಸಲು ಆಗುವುದಿಲ್ಲ (20 MB ಗಿಂತ ದೊಡ್ಡದು, ಅಥವಾ ತುಂಬಾ ಫೈಲ್‌ಗಳು). ದಯವಿಟ್ಟು ಬದಲಿಗೆ ಲಿಂಕ್ ಹಂಚಿಕೊಳ್ಳಿ.',
     nudge: 'ಒಮ್ಮೆ ನೆನಪಿಸುತ್ತಿದ್ದೇವೆ 🙂 ನಿಮಗೆ ಅನುಕೂಲವಾದಾಗ ಇಲ್ಲಿ ಉತ್ತರಿಸಿ, ನಿಲ್ಲಿಸಿದಲ್ಲಿಂದ ಮುಂದುವರಿಸೋಣ.',
     work: 'ಅಲ್ಲಿಯವರೆಗೆ, ನಮ್ಮ ಇತ್ತೀಚಿನ ಕೆಲವು ಕೆಲಸಗಳನ್ನು ನೋಡಿ:',
+    update: 'ನಿಮ್ಮ ಪ್ರಾಜೆಕ್ಟ್‌ನ ಅಪ್‌ಡೇಟ್:',
   },
 };
 export const t = (lang: string | null | undefined, key: TextKey) => (TEXT[(lang as Lang)] ?? TEXT.en)[key];

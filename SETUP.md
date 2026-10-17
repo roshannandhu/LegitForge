@@ -168,7 +168,7 @@ change, and is recommended before real client traffic.
    `whatsapp_business_management`); copy the App secret; choose a random verify token.
 2. Supabase: SQL editor → paste and run `web/bot/supabase/schema.sql` (a new project). A project
    that already ran an older schema.sql instead runs each new migration once, in order, before the
-   new bot is deployed: `002_phase1.sql`, `003_phase2.sql`, `004_phase3.sql`, … (each says what it
+   new bot is deployed: `002_phase1.sql`, `003_phase2.sql`, `004_phase3.sql`, `005_phase4.sql`, … (each says what it
    needs). The website's D1 migrations (e.g. `0012_whatsapp_brief.sql`: the lead's brief and files)
    must also be applied before the bot is deployed (the website deploy does this). Settings → API keys →
    create a secret key (`sb_secret_…`). Reset the database password (the old one was exposed).
@@ -184,7 +184,11 @@ change, and is recommended before real client traffic.
 6. Proofread the Malayalam, Manglish, Hindi and Kannada messages in `web/bot/text.ts`, then load
    the website's FAQ answers: `GEMINI_API_KEY=… SUPABASE_SECRET_KEY=… npx tsx bot/seed.ts`.
 7. WhatsApp Manager → templates: a **utility** template `team_alert`, English, body e.g.
-   "New Legit Forge enquiry {{1}}: {{2}}. Reply to this message to answer."
+   "New Legit Forge enquiry {{1}}: {{2}}. Reply to this message to answer." And a **utility**
+   template `project_update`, English, body e.g. "Hi {{1}}, an update on your project from Legit
+   Forge: {{2}}" (for "#CODE update: …" after a client's 24-hour window).
+   Then Admin → Team → WhatsApp alerts: add each team number (as in TEAM_WHATSAPP) and tick the
+   services they should hear about first; the others get each enquiry 10 minutes later.
 8. Test from the spare phone (team phones always count as team). Then add the new SIM
    (Production setup), get the display name approved, switch the app to Live, change
    `WA_PHONE_NUMBER_ID` in `web/bot/wrangler.jsonc`, and put the new number in Admin → Company.

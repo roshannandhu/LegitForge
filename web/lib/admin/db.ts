@@ -155,6 +155,9 @@ export interface LeadRow {
   language: string | null;
   brief?: string | null;
   files?: string | null;
+  /** Migration 0013: when the bot alerted the team about a form lead, and the first human reply. */
+  wa_alerted_at?: string | null;
+  first_reply_at?: string | null;
 }
 
 export async function listLeads(status?: LeadStatus) {
