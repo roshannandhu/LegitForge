@@ -9,8 +9,8 @@ function AnswerForm({ a }: { a?: Answer }) {
       {a && <input type="hidden" name="id" value={a.id} />}
       <label className="field"><span>Question (English)</span><input name="question" required maxLength={200} defaultValue={a?.question_en} placeholder="Do you build websites in Malayalam?" /></label>
       <label className="field"><span>Answer (English: the bot translates it for each client)</span><textarea name="answer" required maxLength={700} defaultValue={a?.answer_en} /></label>
-      <label className="field"><span>Check again by <small>(optional: after this date the bot asks the team instead, until it is saved again)</small></span>
-        <input type="date" name="review_at" defaultValue={a?.review_at?.slice(0, 10) ?? ''} /></label>
+      <label className="field"><span>Check again by <small>(optional: after this day, India time, the bot asks the team instead, until it is saved again)</small></span>
+        <input type="date" name="review_at" defaultValue={a?.review_at && Date.parse(a.review_at) > Date.now() ? a.review_at.slice(0, 10) : ''} /></label>
       <div className="admin-actions"><Submit>{a ? 'Save' : 'Add answer'}</Submit></div>
     </ActionForm>
   );

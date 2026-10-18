@@ -7,6 +7,7 @@
 import { revalidatePath } from 'next/cache';
 import { requireAdmin } from '@/lib/admin/auth';
 import { BOT_LANGS, bot, deletePhrase, deleteReply, savePhrase, saveBotSettings, saveReply } from '@/lib/admin/bot';
+import { MONEY } from '@/lib/wa-services';
 import type { FormState } from '../actions';
 
 const str = (f: FormData, k: string, max: number) => String(f.get(k) ?? '').trim().slice(0, max);
@@ -96,7 +97,7 @@ export async function savePhraseAction(_: FormState, f: FormData): Promise<FormS
   const lang = str(f, 'lang', 4), phrase = str(f, 'phrase', 60).toLowerCase().replace(/\s+/g, ' '), meaning = str(f, 'meaning', 200);
   if (!BOT_LANGS.some((l) => l.key === lang)) return { error: 'Pick the language the phrase is in.' };
   if (phrase.length < 2 || meaning.length < 2) return { error: 'Write the phrase and what it means.' };
-  if (/₹|rs\.?\s*\d|rupee|\d{4,}|\d+\s*%/i.test(meaning)) return { error: 'A meaning never holds a price or amount: write what the phrase means.' };
+  if (MONEY.test(meaning)) return { error: 'A meaning never holds a price or amount: write what the phrase means.' };
   await savePhrase({ lang, phrase, meaning, by: who });
   revalidatePath('/admin/whatsapp/settings');
   return { ok: `Saved. The AI reads “${phrase}” that way from now on.` };

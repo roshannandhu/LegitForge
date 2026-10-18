@@ -119,7 +119,7 @@ export default function ChatPanel({ url, open, onClose }: { url: string; open: b
         <button type="button" className="chat-x" onClick={onClose} aria-label="Close the chat">×</button>
       </header>
       <div className="chat-log" role="log" aria-live={ready ? 'polite' : 'off'}>
-        {!lines.length && <p className="chat-hint">Say hi to start. Replies in English, Malayalam, Hindi or Kannada. <a href="/privacy">Privacy</a></p>}
+        {!lines.length && <p className="chat-hint">Say hi to start. Replies in English, Malayalam, Hindi, Kannada or Tamil. <a href="/privacy">Privacy</a></p>}
         {lines.map((l, i) => (
           <div key={l.id} className={`chat-line${l.mine ? ' is-mine' : ''}`}>
             <p>{l.mine ? l.body : <Linked text={l.body} />}</p>

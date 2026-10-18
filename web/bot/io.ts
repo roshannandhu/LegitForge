@@ -59,6 +59,7 @@ export interface Env {
     gone?: Set<string>;
     /** The day's AI requests (aiAllowed): read once a run, the rest added at its end (flushAi). */
     ai?: { key: string; used: number; extra: number };
+    refused?: boolean;
     phrases?: { lang: string; phrase: string; meaning: string }[];
   };
 }
@@ -126,6 +127,7 @@ async function wa(env: Env, { to, ...payload }: { to: string } & Record<string, 
       body: JSON.stringify({ messaging_product: 'whatsapp', recipient_type: 'individual', ...(/^\d+$/.test(to) ? { to } : { recipient: to }), ...payload }),
       signal: AbortSignal.timeout(TIMEOUT),
     });
+    if (env.run) env.run.refused = !r.ok;                     // refused, not merely slow: orNumbered may send the numbers
     if (!r.ok) { console.error('[wa] send refused', r.status, (await r.text()).slice(0, 300)); return null; }
     const id = ((await r.json()) as { messages?: { id: string }[] }).messages?.[0]?.id ?? null;
     if (id) env.run?.out?.push({ wamid: id, to, at: clock.now(), ...shown(payload) });
@@ -143,8 +145,10 @@ export interface Row { id: string; title: string; description?: string }
 /** A list or buttons Meta refused on WhatsApp: the same choices as numbered text, and a typed
  *  number answers it like a tap (worker.ts optionFor). */
 async function orNumbered(env: Env, to: string, id: string | null, body: string, options: { id: string; title: string }[]) {
-  if (id || /^(web|fb|ig):/.test(to)) return id;
-  const alt = await sendText(env, to, `${body}\n\n${options.map((o, i) => `${i + 1}. ${o.title}`).join('\n')}`);
+  // only when Meta refused it: a timeout may still have delivered the buttons (never both)
+  if (id || /^(web|fb|ig):/.test(to) || env.run?.refused === false) return id;
+  // one option (Skip) is in the question's own words already: typing it answers it
+  const alt = await sendText(env, to, options.length > 1 ? `${body}\n\n${options.map((o, i) => `${i + 1}. ${o.title}`).join('\n')}` : body);
   const sent = env.run?.out?.find((o) => o.wamid === alt);
   if (sent) sent.options = options;
   return alt;
@@ -214,17 +218,18 @@ function valid(out: unknown, schema: Schema): boolean {
 /** The day's AI requests in all (D1 bot_limits `ai:<day>`): past AI_DAILY_CAP (default 1500)
  *  the bot uses its fixed text and the team, as when an AI is busy, and never another provider.
  *  One D1 write a run; the rest are counted here and added when the run ends (flushAi). */
-async function aiAllowed(env: Env): Promise<boolean> {
+async function aiAllowed(env: Env, team = false): Promise<boolean> {
   const cap = Number(env.AI_DAILY_CAP || 1500), run = env.run;
-  if (run?.ai) { run.ai.extra++; return run.ai.used + run.ai.extra <= cap; }
+  if (!env.DB) return true;                                  // bot/seed.ts: no D1, no cap
+  if (run?.ai) { run.ai.extra++; return team || run.ai.used + run.ai.extra <= cap; }
   const key = `ai:${new Date(clock.now()).toISOString().slice(0, 10)}`;
   count(env);
   const row = await env.DB.prepare('INSERT INTO bot_limits (key, n, at) VALUES (?, 1, ?) ON CONFLICT(key) DO UPDATE SET n = n + 1 RETURNING n')
     .bind(key, clock.now()).first<{ n: number }>().catch(() => null);
   const used = row?.n ?? 0;                                  // D1 unreachable: no cap rather than no AI
   if (run) run.ai = { key, used, extra: 0 };
-  if (used > cap) console.error('[ai] the daily AI cap (AI_DAILY_CAP) is reached: fixed text until tomorrow');
-  return used <= cap;
+  if (used > cap && !team) console.error('[ai] the daily AI cap (AI_DAILY_CAP) is reached: fixed text until tomorrow');
+  return team || used <= cap;                                // the team's and admin's saves are counted, never blocked
 }
 /** The run's other AI requests, added to the day's count (worker.ts flushOut). */
 export async function flushAi(env: Env) {
@@ -266,8 +271,8 @@ export async function chat<T>(env: Env, o: { system: string; user: string; schem
 }
 
 /** 768 numbers for the knowledge base (Gemini embeddings), or null. */
-export async function embed(env: Env, text: string): Promise<number[] | null> {
-  if (!env.GEMINI_API_KEY || !(await aiAllowed(env))) return null;
+export async function embed(env: Env, text: string, team = false): Promise<number[] | null> {
+  if (!env.GEMINI_API_KEY || !(await aiAllowed(env, team))) return null;
   count(env);
   try {
     const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${env.EMBED_MODEL || 'gemini-embedding-001'}:embedContent`, {

@@ -26,7 +26,7 @@ import { bookCall, calendarOn, callEvent, cancelCall, freeSlots, offerable } fro
 import { CHANNEL_LABEL, channelOf, metaInbound, type Option } from './channels';
 import { inr, paymentLink, rupees } from './pay';
 import {
-  ANSWER_SCHEMA, BACK_ASK, BRIEF_PROMPT, CANCEL_ASK, DETAILS, LANG_ASK, LOCALE, MENU_ASK, PERSON_ASK, PRICE_ASK, fill, EXTRACT_SCHEMA, FACTS, FIELDS, guessLang,
+  ANSWER_SCHEMA, BACK_ASK, BRIEF_PROMPT, CANCEL_ASK, clearService, DETAILS, LANG_ASK, LOCALE, MENU_ASK, PERSON_ASK, PRICE_ASK, fill, EXTRACT_SCHEMA, FACTS, FIELDS, guessLang,
   LANG_PROMPT, LANGS, MONEY, QA_SCHEMA, SERVICES, TEXT, TEXT_SCHEMA, TIMELINES,
   TRANSLATED, TRANSLATIONS_SCHEMA, answerPrompt, extractPrompt, generalisePrompt, langFromText, langName, prefilledService,
   scriptLang, serviceByKey, serviceFromText, t, tonePrompt, translatePrompt, translationsPrompt,
@@ -425,8 +425,8 @@ const join = (a: string | undefined, b: string, n = 1500) => clip(a ? `${a}\n${b
 /** A WhatsApp number (Indian numbers get 91) and an email from what they typed. Never sent to an AI. */
 export function contactFrom(text: string): { phone?: string; email?: string } {
   const email = /[\w.+-]+@[\w-]+(\.[\w-]+)+/.exec(text)?.[0]?.toLowerCase();
-  const digits = (text.match(/\+?\d[\d\s-]{7,16}\d/)?.[0] ?? '').replace(/\D/g, '');
-  const phone = /^[6-9]\d{9}$/.test(digits) ? `91${digits}` : /^0[6-9]\d{9}$/.test(digits) ? `91${digits.slice(1)}` : /^\d{11,15}$/.test(digits) ? digits : undefined;
+  const asPhone = (d: string) => /^[6-9]\d{9}$/.test(d) ? `91${d}` : /^0[6-9]\d{9}$/.test(d) ? `91${d.slice(1)}` : /^[1-9]\d{10,14}$/.test(d) ? d : undefined;
+  const phone = [...text.matchAll(/\+?\d[\d\s-]{7,16}\d/g)].map((m) => asPhone(m[0].replace(/\D/g, ''))).find(Boolean);
   return { ...(phone ? { phone } : {}), ...(email ? { email } : {}) };
 }
 
@@ -454,9 +454,11 @@ const langTitle = (l: Lang) => LANGS.find((x) => x.key === l)?.title ?? l;
 /** A typed number ("2", "2.", "option 2") or an option's own words, as a tap on the bot's latest
  *  buttons at this step: the numbered fallback, or a client who types instead of tapping. Only
  *  for a real choice (2 or more options), so "1" answering "how many pages?" is never "Skip". */
+const STEP_TAPS: Partial<Record<Step, string[]>> = { start: ['svc'], service: ['svc'], language: ['lang'], timeline: ['tl'], returning: ['ret'], details: ['skip'], refs: ['skip'], contact: ['skip'] };
 function optionFor(c: Contact, text: string): Option | null {
   const o = c.fields.opts;
-  if (!o || o.step !== c.step || !text) return null;
+  if (!o || o.step !== c.step || !text || !o.list.length) return null;
+  if (!(STEP_TAPS[c.step] ?? []).includes(o.list[0].id.split(':')[0])) return null;
   const norm = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
   const n = /^(?:option\s*|no\.?\s*)?(\d{1,2})[.)]?$/i.exec(text.trim())?.[1];
   if (n) return o.list.length > 1 ? o.list[Number(n) - 1] ?? null : null;
@@ -506,10 +508,12 @@ class Turn {
 
   erased = false;
   private wamid = '';                                                      // the message being handled (questions key on it)
+  private spoken = false;                                                  // ...a voice note's words (never switch the language)
   private at = 0;                                                          // ...and when the client sent it
 
   async handle(msg: Msg) {
     const c = this.c, lang = c.lang ?? 'en';
+    this.spoken = false;
     const pick = msg.reply_id ? null : optionFor(c, (msg.body ?? '').trim());
     const m = pick ? { ...msg, reply_id: pick.id, body: pick.title } : msg;
     delete c.fields.opts;                                                   // any answer: the buttons are used up
@@ -524,6 +528,7 @@ class Turn {
       const { heard, got } = await this.listen(id);
       if (heard) {
         text = heard;
+        this.spoken = true;
         await sb(this.env, 'PATCH', `messages?wamid=eq.${q(m.wamid)}`, { body: clip(`🎤 ${heard}`, 4000) }, 'return=minimal');
       } else file = await this.keep('voice', id, undefined, got);
     }
@@ -600,14 +605,17 @@ class Turn {
     // Typed commands, in their language: change the language, the menu, back, cancel, a person.
     if (!m.reply_id) {
       if (LANG_ASK.test(text)) {
-        if ((FIELDS as string[]).includes(c.step) || c.step === 'done') c.fields.resume = c.step;
+        if (c.step !== 'language') c.fields.resume = c.step === 'start' ? 'service' : c.step;
         c.step = 'language';
         await this.ask();
         return;
       }
-      if (MENU_ASK.test(text)) { c.step = 'service'; await this.ask(); return; }
+      if (MENU_ASK.test(text)) { if (c.step === 'done' || c.step === 'returning') c.fields.resume = c.step; c.step = 'service'; await this.ask(); return; }
       if (BACK_ASK.test(text) && (c.step === 'language' || (FIELDS as string[]).includes(c.step))) { await this.back(); return; }
-      if (CANCEL_ASK.test(text) && c.step !== 'start') { this.restart(); await this.say(t(c.lang, 'cancelled')); return; }
+      // only while the brief is being asked, and never over a call or a quote (that "cancel" is for the team)
+      if (CANCEL_ASK.test(text) && ['service', 'language', ...FIELDS].includes(c.step) && !c.fields.call_at && !c.quote_at) {
+        this.restart(); await this.say(t(c.lang, 'cancelled')); return;
+      }
       if (PERSON_ASK.test(text)) {
         if (!c.fields.person_at || Date.parse(c.fields.person_at) < this.now - DAY) { c.fields.person_at = iso(this.now); await this.alertTeam('person', text); }
         await this.say(t(c.lang, 'person'));
@@ -690,8 +698,8 @@ class Turn {
         if (!ACK.test(text) && !site) c.fields.notes = join(c.fields.notes, text);
         if (!site && PRICE_ASK.test(text)) c.fields.price_asked = clip(text, 300);
         // "Enikku oru website venam": the service is clear, so no menu (and no language list if that is clear too)
-        const said = !site && words(text) >= 3 ? serviceFromText(text) : 'other';
-        if (said !== 'other') { c.service = said; await this.toLanguage(true); return; }
+        const said = !site && words(text) >= 3 ? clearService(text) : undefined;
+        if (said) { c.service = said; await this.toLanguage(true); return; }
         c.step = 'service';
         await this.ask(text);
         return;
@@ -700,6 +708,11 @@ class Turn {
         if (ACK.test(text)) { await this.ask(text); return; }             // a second "hello": the menu again
         const guess = guessLang(text);
         if (guess && !c.lang) c.fields.lang_guess = guess;
+        if (c.fields.resume === 'done' && serviceFromText(text) === 'other') {   // "menu" after the brief, then a question
+          c.step = 'done'; delete c.fields.resume;
+          await this.field(text);
+          return;
+        }
         c.service = serviceFromText(text);
         if (c.service === 'other' || words(text) > 3) c.fields.notes = join(c.fields.notes, text);
         await this.toLanguage();
@@ -734,7 +747,9 @@ class Turn {
     delete c.fields.lang_guess;
     if (!c.lang) { c.step = 'language'; await this.ask(); return; }
     if (noted && c.fields.notes) lines.unshift(t(c.lang, 'noted'));
+    delete c.fields.resume;
     c.step = nextStep(c);
+    if (c.step === 'done') { await this.say([...lines, t(c.lang, 'sameProject')].join('\n')); return; }   // nothing left to ask
     await this.ask('', lines.join('\n'));
   }
 
@@ -752,7 +767,7 @@ class Turn {
   /** A detected language follows how they write: two clear messages in a row in another one switch it. */
   private async follow(text: string) {
     const c = this.c;
-    if (!c.fields.lang_auto || words(text) < 3) return;
+    if (!c.fields.lang_auto || this.spoken || words(text) < 3) return;
     const guess = guessLang(text);
     if (!guess || guess === c.lang) { delete c.fields.lang_next; return; }
     if (c.fields.lang_next !== guess) { c.fields.lang_next = guess; return; }
@@ -782,7 +797,7 @@ class Turn {
     const told = !!c.alerted_at || (await sb(this.env, 'GET', `messages?wa_id=eq.${q(c.wa_id)}&team=not.is.null&select=wamid&limit=1`)).length > 0;
     count(this.env);
     await this.env.DB.prepare(`DELETE FROM leads WHERE source = 'whatsapp' AND (id IN (${ids.map(() => '?').join(',')}) OR (phone IS NOT NULL AND phone = ?))`)
-      .bind(...ids, c.phone ? `+${c.phone}` : null).run();
+      .bind(...ids, c.phone && channelOf(c.wa_id) === 'whatsapp' ? `+${c.phone}` : null).run();   // a typed number is not proof it is theirs
     const theirs = await sb<Question>(this.env, 'GET', `questions?wa_id=eq.${q(c.wa_id)}&select=id`);
     if (theirs.length) await sb(this.env, 'DELETE', `knowledge?status=eq.pending&question_id=in.(${theirs.map((x) => x.id).join(',')})`, undefined, 'return=minimal');
     await sb(this.env, 'DELETE', `questions?wa_id=eq.${q(c.wa_id)}`, undefined, 'return=minimal');
@@ -856,8 +871,12 @@ class Turn {
         if (prefix) await this.say(prefix);
         await sendList(this.env, c.wa_id, LANG_PROMPT, 'Language', LANGS.map((l) => ({ id: `lang:${l.key}`, title: l.title })), footer(this.env));
         return;
-      case 'done': case 'returning':
+      case 'done':
         if (prefix) await this.say(prefix);
+        return;
+      case 'returning':                                                     // (again after "language")
+        if (prefix) await this.say(prefix);
+        await sendButtons(this.env, c.wa_id, t(lang, 'welcomeBack'), TEXT[lang].retBtn.map((title, i) => ({ id: `ret:${i ? 'new' : 'same'}`, title })));
         return;
       case 'timeline':
         await sendButtons(this.env, c.wa_id, lead + TEXT[lang].timeline, TEXT[lang].tl.map((title, i) => ({ id: `tl:${i}`, title })));
@@ -878,7 +897,7 @@ class Turn {
     if (c.step === 'done' && was !== 'done') {
       await this.say(prefix ? `${prefix}\n\n${t(c.lang, 'done')}` : t(c.lang, 'done'));
       await this.alertTeam('complete');
-      if (c.fields.price_asked) {                                          // they asked the price first: the call offer now
+      if (c.fields.price_asked && !c.fields.call_at) {                    // they asked the price first: the call offer now
         delete c.fields.price_asked;
         await sendButtons(this.env, c.wa_id, t(c.lang, 'price'), TEXT[c.lang ?? 'en'].callBtn.map((title, i) => ({ id: `call:${i ? 'n' : 'y'}`, title })));
       }
@@ -1205,8 +1224,10 @@ class Turn {
     ].join('\n');
     if (!c.lang || c.lang === 'en') return doc;
     // Answers the AI could not read stay in the client's words: one translation makes it English.
-    const r = await this.ai<{ text: string }>({ system: BRIEF_PROMPT, user: doc, schema: TEXT_SCHEMA, name: 'translate' }, reader(c.lang, doc));
-    return r?.text.trim() || doc;
+    // The contact line (a number, an email) is left out and put back: redact() would blank it.
+    const contact = doc.split('\n').find((l) => l.startsWith('Contact: ')), rest = contact ? doc.replace(`${contact}\n`, '') : doc;
+    const r = await this.ai<{ text: string }>({ system: BRIEF_PROMPT, user: rest, schema: TEXT_SCHEMA, name: 'translate' }, reader(c.lang, rest));
+    return r?.text.trim() ? `${r.text.trim()}${contact ? `\n${contact}` : ''}` : doc;
   }
 
   private async alertTeam(why: Alert, said = '') {
@@ -1439,8 +1460,8 @@ async function handleTeam(env: Env, m: Msg, now: number, about: About = {}) {
   const tr = /^tr:([as]):(\d+)$/.exec(m.reply_id ?? '');
   if (tr) {
     if (tr[1] === 's') return reply('Skipped: the bot translates this answer itself when it is needed.');
-    const [ok] = await sb(env, 'PATCH', `knowledge?id=eq.${tr[2]}`, { translations_ok: true });
-    return reply(ok ? 'Translations saved ✅ The bot uses them word for word.' : HELP);
+    const [ok] = await sb(env, 'PATCH', `knowledge?id=eq.${tr[2]}&status=in.(approved,pending)`, { translations_ok: true });
+    return reply(ok ? 'Translations saved ✅ The bot uses them word for word.' : 'That answer has a newer version: its own translations come with it.');
   }
   // [Yes, send] on a payment card (the team approves every amount): one link, however many taps.
   const pb = /^pay:(y|n)(?::([A-Z0-9]{5}):(\d+(?:\.\d{1,2})?))?$/.exec(m.reply_id ?? '');
@@ -1578,7 +1599,7 @@ async function handleTeam(env: Env, m: Msg, now: number, about: About = {}) {
   // one; a reply to anything else (a lead alert, a forwarded message) just goes to the client.
   const [pending] = questionId ? await sb<Question>(env, 'GET', `questions?id=eq.${questionId}`)
     : code ? await sb<Question>(env, 'GET', `questions?wa_id=eq.${q(contact.wa_id)}&status=eq.pending&order=created_at.asc&limit=1`) : [];
-  if (pending && pending.status !== 'pending') return reply(`Already answered by ${pending.answered_by === member ? 'you' : `+${pending.answered_by}`}.`);
+  if (pending && pending.status !== 'pending') return reply(`Already answered by ${answeredBy(pending.answered_by, member)}.`);
   // "send" in reply to a draft's alert (e.g. the template, which carries no buttons) sends the draft.
   // Not "yes"/"ok" (those may be the answer itself), and never in reply to the "Write my own" prompt.
   if (pending?.kind === 'draft' && pending.draft && /^(send|👍)[\s.!]*$/i.test(rest) && (!o || (o.body ?? '').startsWith('#'))) {
@@ -1608,13 +1629,20 @@ async function handleTeam(env: Env, m: Msg, now: number, about: About = {}) {
 /** Learning: a general Q&A from a client question and the team's answer, reused only once this
  *  member taps Approve. Short enough that the card shows all of it (WhatsApp cuts a button
  *  message at 1024 characters). */
-async function suggest(env: Env, now: number, member: string, contact: Contact, question: string, answer: string, note: string,
-  questionId: number | null, reply: Reply) {
+/** A general Q&A from a client's question and the team's answer (no names, dates or one client's
+ *  promises), or null for small talk. The team's WhatsApp answers and Admin → Questions both use it. */
+export async function generalise(env: Env, question: string, answer: string) {
   const qa = await chat<{ question_en: string; answer_en: string }>(env, {
     system: generalisePrompt, schema: QA_SCHEMA, name: 'faq', prefer: ['groq', 'gemini'],
     user: JSON.stringify({ client_message: question, team_reply: answer }),
   });
-  if (!qa?.question_en.trim() || !qa.answer_en.trim()) return reply(note, { wa_id: contact.wa_id });
+  return qa?.question_en.trim() && qa.answer_en.trim() ? qa : null;
+}
+
+async function suggest(env: Env, now: number, member: string, contact: Contact, question: string, answer: string, note: string,
+  questionId: number | null, reply: Reply) {
+  const qa = await generalise(env, question, answer);
+  if (!qa) return reply(note, { wa_id: contact.wa_id });
   const [k] = await sb<Knowledge>(env, 'POST', 'knowledge', {
     question_en: clip(qa.question_en, 200), answer_en: clip(qa.answer_en, 700), source: 'team', status: 'pending', question_id: questionId,
   });
@@ -1640,7 +1668,9 @@ async function offerTranslations(env: Env, member: string, k: { id: number; ques
   const translations = Object.fromEntries(TRANSLATED.map((l) => [l, clip(r[l].trim(), 900)]).filter(([, v]) => v));
   if (Object.keys(translations).length !== TRANSLATED.length) return;
   await sb(env, 'PATCH', `knowledge?id=eq.${k.id}`, { translations, translations_ok: false }, 'return=minimal');
-  await sendText(env, member, [`Translations of: ${k.question_en}`, ...TRANSLATED.map((l) => `${langName(l)}:\n${translations[l]}`)].join('\n\n'));
+  for (const half of [TRANSLATED.slice(0, 4), TRANSLATED.slice(4)]) {
+    await sendText(env, member, [`Translations of: ${k.question_en}`, ...half.map((l) => `${langName(l)}:\n${translations[l]}`)].join('\n\n'));
+  }
   await sendButtons(env, member, 'Use these translations for this answer?', [{ id: `tr:a:${k.id}`, title: 'Approve all' }, { id: `tr:s:${k.id}`, title: 'Skip' }]);
 }
 const toneOf = async (env: Env) => (await sb<{ value: string }>(env, 'GET', 'settings?key=eq.tone&select=value').catch(() => []))[0]?.value ?? null;
@@ -1648,12 +1678,13 @@ const toneOf = async (env: Env) => (await sb<{ value: string }>(env, 'GET', 'set
 /** The team's words to the client, in the client's language. Translated only when nothing would
  *  be removed on the way to the AI (numbers, emails): otherwise sent exactly as written. A project
  *  update (`o.template`) still goes out after their 24-hour window, as the `project_update` template. */
-export async function relay(env: Env, now: number, c: Contact, text: string, asIs = false, o: { prefix?: string; template?: boolean } = {}): Promise<{ ok: boolean; note: string }> {
+export async function relay(env: Env, now: number, c: Contact, text: string, asIs = false, o: { prefix?: string; template?: boolean; human?: boolean } = {}): Promise<{ ok: boolean; note: string }> {
   const direct = c.phone ? ` Message them directly: wa.me/${c.phone}` : '';
   if (c.mode === 'stopped') return { ok: false, note: `#${c.code} opted out, so nothing was sent.` };
   if (c.mode === 'blocked') return { ok: false, note: `#${c.code} is blocked, so nothing was sent. "#${c.code} unblock" first.` };
   const ch = channelOf(c.wa_id);
-  const tagged = !canText(c, now) && (ch === 'fb' || ch === 'ig') && Date.parse(c.last_in_at) > now - 7 * DAY;   // Meta's human agent tag
+  // Meta's human agent tag: a person's own words only, up to 7 days (never the bot's draft)
+  const tagged = o.human !== false && !canText(c, now) && (ch === 'fb' || ch === 'ig') && Date.parse(c.last_in_at) > now - 7 * DAY;
   const closed = !canText(c, now) && !tagged;
   if (closed && (!o.template || ch !== 'whatsapp')) {
     return { ok: false, note: `#${c.code}'s ${ch === 'whatsapp' ? '24-hour WhatsApp' : `${CHANNEL_LABEL[ch]} (7 days for a person's reply)`} window has closed, so I can't send this.${direct}` };
@@ -1683,19 +1714,20 @@ export async function relay(env: Env, now: number, c: Contact, text: string, asI
 }
 
 type Reply = (body: string, link?: { wa_id?: string; knowledge_id?: number; question_id?: number }) => Promise<void>;
+const answeredBy = (by: string | null, member: string) => (by === member ? 'you' : by?.startsWith('admin:') ? `an admin (${by.slice(6)}) in Admin → WhatsApp` : `+${by}`);
 
 /** [Send] on a draft: the bot's reply goes to the client as written (it is already in their
  *  language). A draft of an approved answer teaches nothing new; any other becomes a suggested
  *  answer that the member reads in full and approves, like a typed one. */
 async function sendDraft(env: Env, now: number, member: string, question: Question, reply: Reply, about: About = {}) {
-  if (question.status !== 'pending') return reply(`Already answered by ${question.answered_by === member ? 'you' : `+${question.answered_by}`}.`);
+  if (question.status !== 'pending') return reply(`Already answered by ${answeredBy(question.answered_by, member)}.`);
   if (!question.draft) return reply('There is no draft for this one. Reply to this message with your answer.', { wa_id: question.wa_id, question_id: question.id });
   const [contact] = await sb<Contact>(env, 'GET', `contacts?wa_id=eq.${q(question.wa_id)}`);
   if (!contact) return reply('That client deleted their data, so nothing was sent.');
   const [won] = await sb<Question>(env, 'PATCH', `questions?id=eq.${question.id}&status=eq.pending`,
     { status: 'answered', answer: question.draft, answered_by: member, answered_at: iso(now) });
   if (!won) return reply('Someone answered this a moment ago.');
-  const sent = await relay(env, now, contact, question.draft, true);
+  const sent = await relay(env, now, contact, question.draft, true, { human: false });
   if (!sent.ok) {
     // Nothing reached the client: the question stays open, so Send can be tapped again later.
     await sb(env, 'PATCH', `questions?id=eq.${question.id}`, { status: 'pending', answer: null, answered_by: null, answered_at: null }, 'return=minimal');
@@ -1714,7 +1746,7 @@ async function review(env: Env, now: number, member: string, action: 'a' | 'e' |
   }
   const [k] = await sb<Knowledge>(env, 'GET', `knowledge?id=eq.${id}&status=eq.pending`);
   if (!k) return reply('This one was already decided.');
-  const v = await embed(env, k.question_en);
+  const v = await embed(env, k.question_en, true);
   if (!v) return reply('I could not save it right now. Tap Approve again in a minute.');
   const [ok] = await sb(env, 'PATCH', `knowledge?id=eq.${id}&status=eq.pending`, { status: 'approved', embedding: vec(v), decided_by: member, decided_at: iso(now) });
   const replaced = ok ? await supersedeNear(env, id, v, member, now).catch(() => [] as Knowledge[]) : [];
@@ -1726,7 +1758,7 @@ async function review(env: Env, now: number, member: string, action: 'a' | 'e' |
 
 /** An answer just approved replaces the approved ones for (nearly) the same question: they are
  *  kept as superseded (Admin → Answers can switch one back on), so two answers never compete. */
-async function supersedeNear(env: Env, id: number, v: number[], by: string, now: number) {
+export async function supersedeNear(env: Env, id: number, v: number[], by: string, now: number) {
   const near = (await sb<Knowledge>(env, 'POST', 'rpc/match_knowledge', { query_embedding: vec(v), match_threshold: SURE, match_count: 5 })).filter((k) => k.id !== id);
   if (!near.length) return near;
   await sb(env, 'PATCH', `knowledge?id=in.(${near.map((k) => k.id).join(',')})&status=eq.approved`, { status: 'superseded', decided_by: clip(by, 120), decided_at: iso(now) }, 'return=minimal');
@@ -1735,12 +1767,13 @@ async function supersedeNear(env: Env, id: number, v: number[], by: string, now:
 }
 
 async function saveEdit(env: Env, now: number, member: string, id: number, text: string, reply: Reply) {
-  const [k] = await sb<Knowledge & { source: string; version?: number }>(env, 'GET', `knowledge?id=eq.${id}`);
+  const [k] = await sb<Knowledge & { source: string; version?: number; review_at?: string | null }>(env, 'GET', `knowledge?id=eq.${id}`);
   if (!k || !text) return reply(HELP);
-  const v = await embed(env, k.question_en);
+  if (k.status === 'superseded' || k.status === 'archived') return reply('That answer has a newer version (or was archived): edit the current one in Admin → WhatsApp → Answers.');
+  const v = await embed(env, k.question_en, true);
   if (!v) return reply('I could not save it right now. Reply with the answer again in a minute.', { knowledge_id: id });
   if (k.status === 'approved') {                                            // an answer in use: a new version, the old one kept
-    const nv = await newVersion(env, k, { question_en: k.question_en, answer_en: clip(text, 700), embedding: vec(v), by: member, at: iso(now), keep: false });
+    const nv = await newVersion(env, k, { question_en: k.question_en, answer_en: clip(text, 700), embedding: vec(v), by: member, at: iso(now), review_at: k.review_at ?? null, keep: false });
     await reply('Saved your answer as a new version ✅ I will use it next time (the old one is kept in Admin → WhatsApp → Answers).');
     if (nv) await offerTranslations(env, member, { id: nv.id, question_en: k.question_en, answer_en: clip(text, 700) }, await toneOf(env)).catch((e) => console.error('[bot] translations not offered', String(e)));
     return;
@@ -2204,6 +2237,12 @@ async function learnFromWins(env: Env) {
     const asked = await sb<Question>(env, 'GET', `questions?wa_id=eq.${q(c.wa_id)}&select=id,knowledge_id&limit=50`);
     const ids = new Set(asked.map((x) => x.knowledge_id).filter((id): id is number => !!id));
     if (asked.length) for (const k of await sb<Knowledge>(env, 'GET', `knowledge?question_id=in.(${asked.map((x) => x.id).join(',')})&select=id`)) ids.add(k.id);
+    // a version replaced since: its newest version gets the win (three hops at most)
+    for (let hop = 0, from = [...ids]; hop < 3 && from.length && room(env, 3); hop++) {
+      const next = await sb<{ id: number; supersedes: number }>(env, 'GET', `knowledge?supersedes=in.(${from.slice(0, 20).join(',')})&select=id,supersedes`);
+      for (const n of next) { ids.delete(n.supersedes); ids.add(n.id); }
+      from = next.map((n) => n.id);
+    }
     if (ids.size) for (const k of await sb<Knowledge>(env, 'GET', `knowledge?id=in.(${[...ids].slice(0, 20).join(',')})&select=id,wins`)) {
       if (!room(env, 2)) return;
       await sb(env, 'PATCH', `knowledge?id=eq.${k.id}`, { wins: (k.wins ?? 0) + 1 }, 'return=minimal');

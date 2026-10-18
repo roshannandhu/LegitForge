@@ -7,7 +7,7 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
 ## Active Working Directives
 - **Working Directory**: Always work in the `web/` directory. All application code, tests, and configuration live in `web/`.
 - **Target Branch**: Always branch from and target `main-exh9xw`.
-- **Verification**: Run `npm run test:backend` (130 tests, including the WhatsApp bot's) and `npm run build` inside `web/`; review page markup directly or inspect generated static files since browser checks (`check.mjs`) require an active dev server.
+- **Verification**: Run `npm run test:backend` (139 tests, including the WhatsApp bot's) and `npm run build` inside `web/`; review page markup directly or inspect generated static files since browser checks (`check.mjs`) require an active dev server.
 
 ## Current owner decisions (7 October 2026)
 - WhatsApp enquiry bot (16 Oct 2026, owner's decisions; supersedes SETUP.md Part 2 §3–§9): a separate
@@ -198,20 +198,29 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
 - Languages (the upgrade): nine reply styles, each language in its script and romanised (en, ml +
   mg Manglish, hi + hg Hinglish, kn + kg Kanglish, ta + tg Tamil/Tanglish). text.ts guessLang reads
   the script, then romanised everyday words (ROMAN_WORDS, weighted), then English; short replies
-  never decide. A first message whose language and service are clear skips the menu and the
-  language list (fields.lang_auto; "language" changes it and resumes the question); a detected
+  never decide, nor does one romanised word in an English sentence (a name). A first message whose
+  language and service are clear (text.ts clearService: exactly one service, in words that mean
+  it) skips the menu and the language list (fields.lang_auto; "language" changes it and resumes
+  the question, the menu or the welcome-back included); a detected
   language follows two clear messages in another one, a chosen one stays. Malayalam, Kannada and
-  Tamil styles are written by Gemini first. Typed commands in every language: language, menu,
-  back, cancel, talk to a person (text.ts *_ASK). A typed number or option title answers the bot's
-  latest buttons (worker.ts optionFor, fields.opts, only for 2+ options); a list or buttons Meta
-  refuses go out as numbered text (io.ts orNumbered). tests/language.test.ts holds the real phrases.
+  Tamil styles are written by Gemini first; a voice note never switches the style. Typed commands
+  in every language: language, menu, back, cancel (only while the brief is asked, never over a call
+  or a quote), talk to a person (a request, not a sentence that mentions one) (text.ts *_ASK). A
+  typed number or option title answers the bot's latest buttons only when they are the step's own
+  (worker.ts optionFor STEP_TAPS: never a call offer or DELETE MY DATA; numbers need 2+ options);
+  a list or buttons Meta refused (not merely slow) go out as numbered text (io.ts orNumbered).
+  MONEY lives in lib/wa-services.ts (the admin checks phrases with it). tests/language.test.ts
+  holds the real phrases.
 - Learning (the upgrade): knowledge has versions (an edit of an approved answer is a new row that
   supersedes the old, kept; worker.ts newVersion), 'archived', and review_at (past it, not
-  matched). Approving an answer supersedes approved ones for the same question (≥ SURE). Regional
+  matched; the end of that day, India time). Every approval (WhatsApp Approve, Admin save or
+  "Use it") supersedes approved ones for the same question (≥ SURE); an old Edit prompt never
+  brings back a replaced answer, and wins go to the version in use. Regional
   phrases (D1 bot_phrases, 0017; "phrase mg: … = …" or Admin → Settings) are reading hints the AI
   gets when a message holds one (glossary), never facts or prices. AI requests a day in all are
   capped (AI_DAILY_CAP, D1 bot_limits `ai:<day>`); past it, fixed text and the team, never another
-  provider. Admin → WhatsApp → Questions answers open questions (BotAdmin.answerQuestion: relayed
+  provider; the team's and admin's saves are counted but never blocked. A number a website or
+  Messenger visitor typed is never used to erase WhatsApp leads (it is not verified). Admin → WhatsApp → Questions answers open questions (BotAdmin.answerQuestion: relayed
   like a member's reply, a pending draft for Answers); the dashboard shows the bot's health; the
   chat viewer takes a chat over / hands it back and sets the reply language.
 - Fixed text in bot/text.ts must stay within WhatsApp limits (tests check them): list rows ≤ 10,

@@ -25,3 +25,13 @@ export const serviceOfLabel = (label: string | null | undefined): ServiceKey | n
 export type Channel = 'whatsapp' | 'web' | 'fb' | 'ig';
 export const CHANNEL_LABEL: Record<Channel, string> = { whatsapp: 'WhatsApp', web: 'Website chat', fb: 'Messenger', ig: 'Instagram' };
 export const CHANNEL_SQL = "CASE WHEN page IN ('Website chat', 'Messenger', 'Instagram') THEN page ELSE source END";
+
+/** A generated answer that names money is never sent: prices are the team's to give. */
+export const MONEY = new RegExp([
+  '₹', '\\brs\\.?\\s*\\p{Nd}', '\\binr\\b', 'rupees?', 'roopa', 'rupa\\b', 'lakhs?', 'laksh', 'crores?', 'thousand', 'aayiram', '\\$\\s*\\p{Nd}',
+  'discount', '\\p{Nd}+\\s*%', '\\b\\p{Nd}+(\\.\\p{Nd}+)?\\s*k\\b', '\\p{Nd}{1,3}(,\\p{Nd}{2,3})+', '\\p{Nd}{4,}', '\\/-',
+  // Malayalam, Hindi, Kannada: rupees, thousand, lakh (ലക്ഷ്യം "goal", രൂപകൽപ്പന "design" are not money)
+  'രൂപയ', '\\p{Nd}\\s*രൂപ', 'ആയിര', '\\p{Nd}\\s*ലക്ഷ', 'रुपय', 'रु\\.?\\s*\\p{Nd}', 'लाख', 'हज़ार', 'हजार', 'ರೂಪಾಯಿ', 'ರೂ\\.?\\s*\\p{Nd}', 'ಸಾವಿರ', '\\p{Nd}\\s*ಲಕ್ಷ',
+  // Tamil, and romanised words for rupees, thousand and lakh
+  'ரூபாய்', 'ரூ\\.?\\s*\\p{Nd}', 'ஆயிரம்', 'லட்சம்', 'rupaye?', 'rupay', 'hazaa?r', 'saavira', 'savira', 'laksha', 'aayram', 'ayiram',
+].join('|'), 'iu');

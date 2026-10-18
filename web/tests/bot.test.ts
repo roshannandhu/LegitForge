@@ -735,7 +735,8 @@ test('WhatsApp bot (fake Meta, Supabase, Groq and Gemini; real Miniflare D1)', a
       if (task === 'extract') return /hosting|ഹോസ്റ്റിംഗ്/.test(user) ? question('Do you provide hosting?') : { ...blank, kind: 'answer', name: user };
       if (task === 'answer') { answerCalls++; return { answer: '', answer_en: '' }; }
       if (task === 'faq') return { question_en: 'Do you provide hosting?', answer_en: 'Yes, we set up hosting in your name.' };
-      if (task === 'translations') return { ml: 'അതെ, നിങ്ങളുടെ പേരിൽ ഹോസ്റ്റിംഗ്.', mg: 'Athe, ningalude peril hosting.', hi: 'हाँ, आपके नाम पर होस्टिंग।', kn: 'ಹೌದು, ನಿಮ್ಮ ಹೆಸರಿನಲ್ಲಿ ಹೋಸ್ಟಿಂಗ್.' };
+      if (task === 'translations') return { ml: 'അതെ, നിങ്ങളുടെ പേരിൽ ഹോസ്റ്റിംഗ്.', mg: 'Athe, ningalude peril hosting.', hi: 'हाँ, आपके नाम पर होस्टिंग।', kn: 'ಹೌದು, ನಿಮ್ಮ ಹೆಸರಿನಲ್ಲಿ ಹೋಸ್ಟಿಂಗ್.',
+        hg: 'Haan, aapke naam par hosting.', kg: 'Haudu, nimma hesaralli hosting.', ta: 'ஆம், உங்கள் பெயரில் ஹோஸ்டிங்.', tg: 'Aamaa, unga per-la hosting.' };
       return 500;
     };
     await toName(CLIENT, 'en');
@@ -744,7 +745,7 @@ test('WhatsApp bot (fake Meta, Supabase, Groq and Gemini; real Miniflare D1)', a
     await post([text(TEAM[0], 'Yes, we set up hosting in your name.', { context: { id: alert.id } })]);
     const k = sb.tables.knowledge.at(-1)!;
     await post([tap(TEAM[0], `kb:a:${k.id}`, 'button_reply', 'Approve')]);
-    const shown = to(TEAM[0]).find((x) => x.body.startsWith('Translations of:'))!;
+    const shown = { body: to(TEAM[0]).filter((x) => x.body.startsWith('Translations of:')).map((x) => x.body).join('\n\n') };   // two messages (8 styles)
     assert.match(shown.body, /Malayalam:\nഅതെ/);
     assert.match(shown.body, /Kannada:\nಹೌದು/);
     assert.deepEqual(last(TEAM[0]).ids, [`tr:a:${k.id}`, `tr:s:${k.id}`]);
@@ -2314,7 +2315,8 @@ ${TEXT.en.contact}`, 'asked once more, with Skip');
     await reset();
     await teamHi();
     const admin = new BotAdmin({} as never, env);
-    fx.state.ai = (task) => (task === 'extract' ? question('Do you build Shopify stores?') : task === 'answer' ? { answer: '', answer_en: '' } : 500);
+    fx.state.ai = (task) => (task === 'extract' ? question('Do you build Shopify stores?') : task === 'answer' ? { answer: '', answer_en: '' }
+      : task === 'faq' ? { question_en: 'Do you build Shopify stores?', answer_en: 'Yes, we build Shopify stores.' } : 500);
     await toName();
     await post([text(CLIENT, 'Shopify?')]);
     const open = await admin.openQuestions();
@@ -2345,5 +2347,114 @@ ${TEXT.en.contact}`, 'asked once more, with Skip');
     assert.ok('error' in (await admin.setLang(lead, 'xx')));
     const chat = (await admin.chat(lead))!;
     assert.deepEqual([chat.mode, chat.lang], ['bot', 'ta']);
+  });
+  /* ---- the upgrade review's fixes ---- */
+
+  await t.test('review fixes: a number typed into the website chat never erases another person’s WhatsApp lead', async () => {
+    await reset();
+    await teamHi();
+    await toName(CLIENT);
+    await post([text(CLIENT, 'Ravi')]);
+    const victim = (await lead())!;
+    assert.ok(victim);
+    const s = crypto.randomUUID();
+    await web(s, { text: 'Hi' });
+    await web(s, { reply: { id: 'svc:website', title: 'Website' } });
+    await web(s, { reply: { id: 'lang:en', title: 'English' } });
+    for (const a of ['X', 'Y', 'A website']) await web(s, { text: a });
+    await web(s, { reply: { id: 'skip:details', title: 'Skip' } });
+    await web(s, { reply: { id: 'skip:refs', title: 'Skip' } });
+    await web(s, { reply: { id: 'tl:1', title: 'Within a month' } });
+    now += MIN;
+    await web(s, { text: `+${CLIENT}` });                                  // the victim's number, typed
+    assert.equal(contact(`web:${s}`).phone, CLIENT);
+    now += MIN;
+    await web(s, { text: 'delete my data' });
+    await web(s, { reply: { id: 'del:y', title: 'Yes, delete' } });
+    assert.ok(await db.prepare('SELECT id FROM leads WHERE id = ?').bind(victim.id).first(), 'the WhatsApp lead is still there');
+  });
+
+  await t.test('review fixes: "cancel" after the brief goes to the team; "menu" and "language" come back to the right question', async () => {
+    await reset();
+    await teamHi();
+    await toName();
+    await toTimeline();
+    await post([tap(CLIENT, 'tl:1', 'button_reply')]);
+    assert.equal(contact().step, 'done');
+    const lead1 = contact().lead_id;
+    await post([text(CLIENT, 'cancel')]);
+    assert.equal(contact().lead_id, lead1, 'the enquiry is kept');
+    assert.notEqual(last(CLIENT).body, TEXT.en.cancelled);
+    await post([text(CLIENT, 'menu')]);
+    assert.ok(last(CLIENT).ids.includes('svc:website'));
+    await post([tap(CLIENT, 'svc:website')]);
+    assert.equal(last(CLIENT).body, TEXT.en.sameProject, 'the same service again: nothing left to ask, and a reply');
+    assert.equal(contact().step, 'done');
+    await post([text(CLIENT, 'menu')]);
+    fx.state.ai = (task) => (task === 'extract' ? question('Do you also make logos?') : 500);
+    await post([text(CLIENT, 'Do you also make logos for shops?')]);
+    assert.equal(contact().service, 'website', 'a question after "menu" does not change the service');
+    assert.equal(contact().step, 'done');
+    assert.ok(sb.tables.questions.some((x) => x.question_en === 'Do you also make logos?'), 'the question reached the team');
+
+    await reset();
+    await post([text(CLIENT, 'Hi')]);
+    await post([text(CLIENT, 'language')]);
+    await post([tap(CLIENT, 'lang:ml')]);
+    assert.equal(contact().step, 'service', 'back to the menu, now in Malayalam');
+    assert.ok(last(CLIENT).ids.includes('svc:website'));
+    assert.equal(last(CLIENT).body, TEXT.ml.welcome);
+  });
+
+  await t.test('review fixes: a typed number never answers the call offer; "1" at a details question is the answer', async () => {
+    await reset();
+    await teamHi();
+    fx.state.ai = (task, user) => (task === 'extract' ? (/cost/.test(user) ? { ...question('How much does it cost?'), price: true } : { ...blank, kind: 'answer' }) : 500);
+    await toName();
+    for (const a of ['Ravi', 'Ravi Bakery', 'A website']) await post([text(CLIENT, a)]);
+    assert.equal(contact().step, 'details');
+    await post([text(CLIENT, 'how much would it cost?')]);
+    assert.ok(last(CLIENT).ids.includes('call:y'), 'the call offer');
+    await post([text(CLIENT, '1')]);
+    assert.ok(!to(CLIENT).some((m) => m.body === TEXT.en.howAsk), 'not taken as "Yes, arrange a call"');
+  });
+
+  await t.test('review fixes: an old Edit prompt never brings back a replaced answer; switching one back on replaces the current one; review dates', async () => {
+    await reset();
+    await teamHi();
+    const admin = new BotAdmin({} as never, env);
+    const v = JSON.stringify(fakeEmbedding('Do you build Android apps?'));
+    sb.tables.knowledge.push({ id: 980, question_en: 'Do you build Android apps?', answer_en: 'Yes.', embedding: v, status: 'approved', source: 'team', wins: 0 });
+    await post([tap(TEAM[0], 'kb:e:980', 'button_reply', 'Edit')]);
+    const prompt = last(TEAM[0]);
+    await post([text(TEAM[0], 'Yes, Android apps.', { context: { id: prompt.id } })]);
+    await post([text(TEAM[0], 'Yes, Android and iPhone apps.', { context: { id: prompt.id } })]);
+    assert.match(last(TEAM[0]).body, /newer version/);
+    assert.equal(sb.tables.knowledge.filter((k) => k.status === 'approved').length, 1, 'one answer in use');
+    const v2 = sb.tables.knowledge.find((k) => k.supersedes === 980)!;
+    assert.deepEqual(await admin.setAnswer(980, true, 'owner'), { ok: true });
+    assert.equal(sb.tables.knowledge.find((k) => k.id === v2.id)!.status, 'superseded', 'switching the old one back on replaces the current one');
+    assert.equal(sb.tables.knowledge.filter((k) => k.status === 'approved').length, 1);
+
+    const past = new Date(now - 86_400_000).toISOString().slice(0, 10), later = new Date(Date.now() + 3 * 86_400_000).toISOString().slice(0, 10);
+    assert.ok('ok' in (await admin.saveAnswer({ id: 980, question_en: 'Do you build Android apps?', answer_en: 'Yes.', by: 'owner', review_at: past })));
+    assert.equal(sb.tables.knowledge.find((k) => k.id === 980)!.review_at, null, 'a past date: saved means checked');
+    assert.ok('ok' in (await admin.saveAnswer({ id: 980, question_en: 'Do you build Android apps?', answer_en: 'Yes.', by: 'owner', review_at: later })));
+    assert.equal(sb.tables.knowledge.find((k) => k.id === 980)!.review_at, new Date(`${later}T23:59:59+05:30`).toISOString(), 'the end of that day in India');
+  });
+
+  await t.test('review fixes: the seed embeds without D1; the AI cap never blocks a team save', async () => {
+    const { embed } = await import('../bot/io');
+    assert.ok(await embed({ GEMINI_API_KEY: 'k', SUPABASE_URL: env.SUPABASE_URL } as never, 'Websites: how long?'), 'bot/seed.ts env (no DB)');
+    await reset();
+    Object.assign(env, { AI_DAILY_CAP: '0' });
+    try {
+      const day = new Date(now).toISOString().slice(0, 10);
+      await db.prepare('INSERT INTO bot_limits (key, n, at) VALUES (?, 5, ?)').bind(`ai:${day}`, now).run();
+      await teamHi();
+      sb.tables.knowledge.push({ id: 990, question_en: 'Do you host?', answer_en: 'Yes.', embedding: null, status: 'pending', source: 'team', wins: 0 });
+      await post([tap(TEAM[0], 'kb:a:990', 'button_reply', 'Approve')]);
+      assert.equal(sb.tables.knowledge.find((k) => k.id === 990)!.status, 'approved', 'past the cap, the team still approves');
+    } finally { delete (env as Partial<Env>).AI_DAILY_CAP; }
   });
 });

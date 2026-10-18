@@ -34,6 +34,21 @@ const KEYWORDS: [RegExp, ServiceKey][] = [
 ];
 export const serviceFromText = (text: string): ServiceKey => KEYWORDS.find(([re]) => re.test(text))?.[1] ?? 'other';
 
+/** A first message that names exactly one service, in words that mean it ("a quote for a website"
+ *  is a website; "found you on Google" or "your WhatsApp number" is no service): the menu is
+ *  skipped only then. */
+const CLEAR: [RegExp, ServiceKey][] = [
+  [/\bweb\s?sites?\b|\blanding\s+page|\be-?commerce\b|\bonline\s+(shop|store)\b|\bsite\s+(venam|venum|beku|chahiye)\b/i, 'website'],
+  [/\bweb\s?apps?\b|\bmobile\s+apps?\b|\bbooking\s+(system|app)\b|\bdashboard\b|\bportal\b/i, 'app'],
+  [/\bwhats\s?app\s+(bot|automation|chat\s?bot|auto[- ]?reply)|\bchat\s?bot\b/i, 'whatsapp'],
+  [/\bn8n\b|\bworkflow\s+automation\b/i, 'n8n'], [/\bseo\b|\brank(ing)?\s+on\s+google\b|\bgoogle\s+maps?\s+(listing|ranking)\b/i, 'seo'],
+  [/\bnfc\b/i, 'nfc'], [/\bdigital\s+signage\b|\bsignage\b/i, 'signage'], [/\bwarranty\b|\bquotation\s+(system|software|app)\b/i, 'quote'],
+];
+export function clearService(text: string): ServiceKey | undefined {
+  const hits = [...new Set(CLEAR.filter(([re]) => re.test(text)).map(([, k]) => k))];
+  return hits.length === 1 ? hits[0] : undefined;
+}
+
 export const LANGS: { key: Lang; title: string; name: string }[] = [
   { key: 'en', title: 'English', name: 'English' },
   { key: 'ml', title: 'മലയാളം', name: 'Malayalam' },
@@ -61,21 +76,25 @@ const ROMAN_WORDS: Record<'mg' | 'hg' | 'kg' | 'tg', Record<string, number>> = {
   mg: { enikku: 2, venam: 2, venda: 2, vendathu: 2, ethra: 2, ethrayanu: 2, aakum: 2, aavum: 2, aanu: 2, aano: 2, alle: 1, undo: 1, und: 1, undu: 1, undakanam: 2,
     undaakanam: 2, cheyyan: 2, cheyyanam: 2, cheyyamo: 2, cheyyumo: 2, sheri: 1, njan: 2, njangal: 2, ningal: 2, ningalude: 2, enthanu: 2, entha: 1, enthu: 1,
     kittum: 2, kittumo: 2, pattumo: 2, onnu: 1, oru: 1, ille: 1, mathi: 1, vendi: 1, chetta: 2, chechi: 2, paranju: 2, parayamo: 2, nokkam: 2, ariyan: 2 },
-  hg: { mujhe: 2, muje: 2, chahiye: 2, chaiye: 2, kitna: 2, kitne: 2, kitni: 2, nahi: 1, nahin: 1, kya: 1, kaise: 2, karna: 2, karni: 2, karwana: 2,
-    banwana: 2, banana: 1, aap: 1, aapka: 2, aapke: 2, apna: 1, mera: 2, meri: 2, mere: 2, kharcha: 2, lagega: 2, hoga: 2, hogi: 2, hai: 1, hain: 1,
-    bhai: 1, accha: 1, achha: 1, theek: 1, kab: 1, jaldi: 1, paisa: 1, bataiye: 2, batao: 2, chahta: 2, chahti: 2 },
+  hg: { mujhe: 2, muje: 2, chahiye: 2, chaiye: 2, kitna: 2, kitne: 2, kitni: 2, nahi: 1, nahin: 1, kya: 1, kaise: 2, karna: 1, karni: 2, karwana: 2,
+    banwana: 2, banana: 1, aap: 1, aapka: 2, aapke: 2, apna: 1, mera: 1, meri: 1, mere: 1, kharcha: 2, lagega: 2, hoga: 2, hogi: 2, hai: 1, hain: 1,
+    bhai: 1, accha: 1, achha: 1, theek: 1, kab: 1, jaldi: 1, paisa: 1, bataiye: 2, batao: 2, chahta: 2, chahti: 2 },   // (mere, meri, mera, karna: English words and names, so 1)
   kg: { nanage: 2, nange: 2, nanna: 1, beku: 2, beda: 2, bekitta: 2, eshtu: 2, agutte: 2, aagutte: 2, aagatte: 2, maadi: 2, maadbeku: 2, maadtira: 2,
     hege: 2, yenu: 1, enu: 1, ide: 1, ilva: 2, swalpa: 2, guru: 1, namma: 1, nimma: 2, nimge: 2, nimage: 2, sakkath: 2, banni: 2, idya: 2, ideya: 2,
-    beka: 2, kodi: 1, helri: 2, heli: 1, gottilla: 2 },
-  tg: { enakku: 2, enaku: 2, venum: 2, vendum: 2, vendam: 2, evlo: 2, evvalavu: 2, aagum: 2, irukku: 2, irukka: 2, panna: 2, pannanum: 2, pannunga: 2,
+    beka: 1, kodi: 1, helri: 2, heli: 1, gottilla: 2 },
+  tg: { enakku: 2, enaku: 2, venum: 2, vendum: 2, vendam: 2, evlo: 2, evvalavu: 2, aagum: 2, irukku: 2, irukka: 2, panna: 1, pannanum: 2, pannunga: 2,
     panreenga: 2, enna: 1, epdi: 2, eppadi: 2, romba: 2, illai: 2, sollunga: 2, kedaikuma: 2, nalla: 1, unga: 2, ungalukku: 2, naanga: 2,
     thambi: 2, anna: 1, macha: 2, oru: 1, mudiyuma: 2, theriyum: 2 },
 };
 export function romanLang(text: string): Lang | undefined {
   const words = text.toLowerCase().match(/[a-z]+/g) ?? [];
   const score = (Object.keys(ROMAN_WORDS) as (keyof typeof ROMAN_WORDS)[])
-    .map((l) => [l, words.reduce((n, w) => n + (ROMAN_WORDS[l][w] ?? 0), 0)] as const).sort((a, b) => b[1] - a[1]);
-  return score[0][1] >= 2 && score[0][1] > score[1][1] ? score[0][0] : undefined;
+    .map((l) => [l, words.reduce((n, w) => n + (ROMAN_WORDS[l][w] ?? 0), 0), new Set(words.filter((w) => ROMAN_WORDS[l][w])).size] as const)
+    .sort((a, b) => b[1] - a[1]);
+  if (score[0][1] < 2 || score[0][1] === score[1][1]) return undefined;
+  // one romanised word in an English sentence ("…for Unga Textiles") is a name, not the language
+  if (score[0][2] === 1 && words.filter((w) => EN_WORDS.has(w)).length >= 2) return undefined;
+  return score[0][0];
 }
 const EN_WORDS = new Set(['i', 'im', 'need', 'want', 'my', 'the', 'a', 'an', 'for', 'can', 'you', 'is', 'do', 'does', 'how', 'much', 'what', 'please',
   'we', 'our', 'have', 'would', 'like', 'to', 'and', 'with', 'about', 'get', 'make', 'build', 'help', 'looking', 'me', 'it', 'of', 'in', 'your']);
@@ -111,7 +130,7 @@ export const LANG_ASK = /^(change\s+(the\s+)?)?(language|lang|bhasha|bhaasha|baa
 export const MENU_ASK = /^(main\s+)?(menu|services?)[\s?!.]*$|^(मेनू|മെനു|ಮೆನು|மெனு)$/i;
 export const BACK_ASK = /^(go\s+)?back[\s!.]*$|^(peeche|pichhe|pinnottu|hinde|pinnaal|पीछे|പിന്നോട്ട്|ಹಿಂದೆ|பின்னால்)[\s!.]*$/i;
 export const CANCEL_ASK = /^(cancel|cancel (it|this|the enquiry)|rehne do|venda,? cancel|beda,? cancel|vendam,? cancel|रद्द करो?|റദ്ദാക്കൂ|ರದ್ದು ಮಾಡಿ|ரத்து செய்)[\s!.]*$/i;
-export const PERSON_ASK = /\b(talk|speak|chat)\s+(to|with)\s+(a\s+|your\s+)?(human|person|someone|team|agent|staff)\b|^(human|agent|real person)[\s?!.]*$|\b(insaan|aadmi)\s+se\s+baat\b|\baalodu\s+samsarikkanam\b|\bmanushyarondige\b|\baal\s?kitta\s+pesanum\b/i;
+export const PERSON_ASK = /^(please\s+)?((can|could|may)\s+i\s+|i\s+(want|would like|wanna|need)\s+to\s+|let\s+me\s+|i'd\s+like\s+to\s+)?(talk|speak|chat)\s+(to|with)\s+(a\s+|your\s+|the\s+)?(human|person|someone|team|agent|staff)( please| now)?[\s?!.]*$|^(human|agent|real person)( please)?[\s?!.]*$|^(kisi\s+)?(insaan|aadmi)\s+se\s+baat\s+(karni|karna|karao|karwao)(\s+hai)?[\s?!.]*$|^aalodu\s+samsarikkanam[\s?!.]*$|^manushyarondige\s+maathaadabeku[\s?!.]*$|^aal\s?kitta\s+pesanum[\s?!.]*$/i;
 /** A price asked in any of the bot's languages (the team answers it; the client is offered a call). */
 export const PRICE_ASK = /\b(how much|price|cost|rate|charges?|budget|ethra|ethrayanu|kitna|kitne|kharcha|eshtu|evlo|evvalavu)\b|എത്ര|कितना|कितने|ಎಷ್ಟು|எவ்வளவு/i;
 
@@ -767,13 +786,8 @@ export const DETAILS: Record<Lang, Record<Asked, string>> = {
 /** The language question goes to someone whose language we don't know yet: say it in all of them. */
 export const LANG_PROMPT = [TEXT.en.lang, TEXT.ml.lang, TEXT.hi.lang, TEXT.kn.lang, TEXT.ta.lang].join('\n');
 /** Timeline buttons answer in English for the team, whatever the client's language. */
-/** A generated answer that names money is never sent: prices are the team's to give. */
-export const MONEY = new RegExp([
-  '₹', '\\brs\\.?\\s*\\p{Nd}', '\\binr\\b', 'rupees?', 'roopa', 'rupa\\b', 'lakhs?', 'laksh', 'crores?', 'thousand', 'aayiram', '\\$\\s*\\p{Nd}',
-  'discount', '\\p{Nd}+\\s*%', '\\b\\p{Nd}+(\\.\\p{Nd}+)?\\s*k\\b', '\\p{Nd}{1,3}(,\\p{Nd}{2,3})+', '\\p{Nd}{4,}', '\\/-',
-  // Malayalam, Hindi, Kannada: rupees, thousand, lakh (ലക്ഷ്യം "goal", രൂപകൽപ്പന "design" are not money)
-  'രൂപയ', '\\p{Nd}\\s*രൂപ', 'ആയിര', '\\p{Nd}\\s*ലക്ഷ', 'रुपय', 'रु\\.?\\s*\\p{Nd}', 'लाख', 'हज़ार', 'हजार', 'ರೂಪಾಯಿ', 'ರೂ\\.?\\s*\\p{Nd}', 'ಸಾವಿರ', '\\p{Nd}\\s*ಲಕ್ಷ',
-].join('|'), 'iu');
+/** Money in any of the bot's languages (lib/wa-services.ts: the admin uses it too). */
+export { MONEY } from '../lib/wa-services';
 
 export const TIMELINES = ['As soon as possible', 'Within a month', 'Just exploring'] as const;
 
@@ -825,8 +839,8 @@ If it is not a question with a general answer (greetings, scheduling a call, one
 export const BRIEF_PROMPT = 'Translate this enquiry brief into English. Keep every line, label, name, number and link exactly as it is; translate only words in other languages, and add nothing. Return JSON {"text": "..."}.';
 
 /** One approved answer, once, into every other language the bot speaks (approved by the team). */
-export const translationsPrompt = (tone?: string | null) => `Translate this approved answer from Legit Forge, faithfully, into: ml = Malayalam (Malayalam script), mg = Manglish (Malayalam written in English letters), hi = Hindi, kn = Kannada. Keep names, numbers and links exactly. Add nothing.${toneLine(tone)}`;
-export const TRANSLATED = ['ml', 'mg', 'hi', 'kn'] as const;
+export const translationsPrompt = (tone?: string | null) => `Translate this approved answer from Legit Forge, faithfully, into: ml = Malayalam (Malayalam script), mg = Manglish (Malayalam written in English letters), hi = Hindi (Devanagari), hg = Hinglish (Hindi written in English letters), kn = Kannada (Kannada script), kg = Kanglish (Kannada written in English letters), ta = Tamil (Tamil script), tg = Tanglish (Tamil written in English letters). Write the English-letter styles the casual way people type them. Keep names, numbers and links exactly. Add nothing.${toneLine(tone)}`;
+export const TRANSLATED = ['ml', 'mg', 'hi', 'hg', 'kn', 'kg', 'ta', 'tg'] as const;
 
 export const tonePrompt = `These are recent WhatsApp replies the Legit Forge team wrote to clients. Write at most 5 short style rules (tone, length, greetings, typical words) so an assistant can write like them. No names, numbers or client details. Return JSON {"text": "..."} with the rules in one paragraph.`;
 
@@ -843,4 +857,4 @@ export const EXTRACT_SCHEMA = {
 export const ANSWER_SCHEMA = { type: 'object', additionalProperties: false, required: ['answer', 'answer_en'], properties: { answer: str, answer_en: str } };
 export const TEXT_SCHEMA = { type: 'object', additionalProperties: false, required: ['text'], properties: { text: str } };
 export const QA_SCHEMA = { type: 'object', additionalProperties: false, required: ['question_en', 'answer_en'], properties: { question_en: str, answer_en: str } };
-export const TRANSLATIONS_SCHEMA = { type: 'object', additionalProperties: false, required: ['ml', 'mg', 'hi', 'kn'], properties: { ml: str, mg: str, hi: str, kn: str } };
+export const TRANSLATIONS_SCHEMA = { type: 'object', additionalProperties: false, required: [...TRANSLATED], properties: Object.fromEntries(TRANSLATED.map((l) => [l, str])) };

@@ -6,7 +6,7 @@
 import { WorkerEntrypoint } from 'cloudflare:workers';
 import { clip, clock, embed, q, sb, sbCount, vec, type Env } from './io';
 import { LANGS, type Lang } from './text';
-import { flushOut, newVersion, relay, webChat, withRun, type Contact } from './worker';
+import { flushOut, generalise, newVersion, relay, supersedeNear, webChat, withRun, type Contact } from './worker';
 import { MONEY } from './text';
 
 export type Speaker = 'client' | 'bot' | 'team' | 'alert';
@@ -97,9 +97,12 @@ export class BotAdmin extends WorkerEntrypoint<Env> {
       await flushOut(env, clock.now());
       return { error: sent.note };
     }
-    if (question.kind === 'question' && !MONEY.test(answer)) {           // reusable once someone switches it on
-      await sb(env, 'POST', 'knowledge', { question_en: clip(String(question.question_en), 200), answer_en: clip(answer, 700), status: 'pending', source: 'team',
-        question_id: Number(id), decided_by: clip(`admin:${by}`, 120) }, 'return=minimal').catch((e) => console.error('[admin] draft not saved', String(e)));
+    if (question.kind === 'question') {                                    // reusable once someone switches it on: generalised like the team's
+      const qa = await generalise(env, String(question.question_en), answer).catch(() => null);
+      if (qa && !MONEY.test(qa.answer_en)) {
+        await sb(env, 'POST', 'knowledge', { question_en: clip(qa.question_en, 200), answer_en: clip(qa.answer_en, 700), status: 'pending', source: 'team',
+          question_id: Number(id), decided_by: clip(`admin:${by}`, 120) }, 'return=minimal').catch((e) => console.error('[admin] draft not saved', String(e)));
+      }
     }
     await flushOut(env, clock.now());
     return { ok: true, note: sent.note };
@@ -135,7 +138,11 @@ export class BotAdmin extends WorkerEntrypoint<Env> {
     if (!LANGS.some((l) => l.key === lang)) return { error: 'Pick a language from the list.' };
     const c = await this.contactOf(leadId);
     if (!c) return { error: 'No WhatsApp conversation for this lead.' };
-    await sb(this.env, 'PATCH', `contacts?wa_id=eq.${q(c.wa_id)}`, { lang: lang as Lang, fields: { ...c.fields, lang_auto: false } }, 'return=minimal');
+    // under the client's own lock, like a turn: their answers in between are never written over
+    const now = clock.now(), until = new Date(now + 45_000).toISOString();
+    const [mine] = await sb<Contact>(this.env, 'PATCH', `contacts?wa_id=eq.${q(c.wa_id)}&or=(busy_until.is.null,busy_until.lt.${new Date(now).toISOString()})`, { busy_until: until });
+    if (!mine) return { error: 'The bot is answering them right now: try again in a few seconds.' };
+    await sb(this.env, 'PATCH', `contacts?wa_id=eq.${q(c.wa_id)}&busy_until=eq.${q(until)}`, { lang: lang as Lang, fields: { ...mine.fields, lang_auto: false }, busy_until: null }, 'return=minimal');
     return { ok: true };
   }
 
@@ -176,24 +183,30 @@ export class BotAdmin extends WorkerEntrypoint<Env> {
     const question = clip(v.question_en.trim(), 200), answer = clip(v.answer_en.trim(), 700);
     if (question.length < 5 || answer.length < 2) return { error: 'Write the question and the answer.' };
     if (MONEY.test(answer)) return { error: NO_MONEY };
-    const review = v.review_at && Number.isFinite(Date.parse(v.review_at)) ? new Date(Date.parse(v.review_at)).toISOString() : null;
+    // the end of that day in India; a date already past means "checked now" (cleared)
+    const end = /^\d{4}-\d{2}-\d{2}$/.test(v.review_at ?? '') ? Date.parse(`${v.review_at}T23:59:59+05:30`) : NaN;
+    const review = Number.isFinite(end) && end > clock.now() ? new Date(end).toISOString() : null;
     const [old] = v.id ? await sb<Row>(this.env, 'GET', `knowledge?id=eq.${Number(v.id)}`) : [];
     if (v.id && !old) return { error: 'That answer is gone.' };
     if (old && (old.status === 'superseded' || old.status === 'archived')) return { error: 'That is an old version: edit the current one instead.' };
-    const e = await embed(this.env, question);
+    // the same question keeps its embedding (no AI call); a new one is embedded (never blocked by the daily cap)
+    const e = old?.question_en === question && typeof old.embedding === 'string' ? JSON.parse(old.embedding) as number[] : await embed(this.env, question, true);
     if (!e) return { error: 'The AI is busy (embedding); try again in a minute.' };
     const at = new Date(clock.now()).toISOString(), same = old?.answer_en === answer;
     if (old && old.status === 'approved' && (old.question_en !== question || !same)) {   // an answer in use: a new version, the old one kept
       const k = await newVersion(this.env, old as never, { question_en: question, answer_en: answer, embedding: vec(e), by: v.by, at, review_at: review, keep: same });
+      if (k) await supersedeNear(this.env, k.id, e, v.by, clock.now()).catch(() => []);
       return k ? { ok: true, id: k.id } : { error: 'That answer could not be saved; try again.' };
     }
     const row = { question_en: question, answer_en: answer, embedding: vec(e), status: 'approved', decided_by: clip(v.by, 120), decided_at: at, review_at: review,
       ...(same ? {} : { translations: {}, translations_ok: false }) };
     if (v.id) {
       const [k] = await sb<{ id: number }>(this.env, 'PATCH', `knowledge?id=eq.${Number(v.id)}`, row);
+      if (k) await supersedeNear(this.env, k.id, e, v.by, clock.now()).catch(() => []);
       return k ? { ok: true, id: k.id } : { error: 'That answer is gone.' };
     }
     const [k] = await sb<{ id: number }>(this.env, 'POST', 'knowledge', { ...row, source: 'team' });
+    await supersedeNear(this.env, k.id, e, v.by, clock.now()).catch(() => []);
     return { ok: true, id: k.id };
   }
 
@@ -202,13 +215,14 @@ export class BotAdmin extends WorkerEntrypoint<Env> {
     const [k] = await sb<{ id: number; question_en: string; answer_en: string; embedding: string | null }>(this.env, 'GET', `knowledge?id=eq.${Number(id)}&select=id,question_en,answer_en,embedding`);
     if (!k) return { error: 'That answer is gone.' };
     if (on && MONEY.test(k.answer_en)) return { error: NO_MONEY };
-    let embedding: string | undefined;
-    if (on && !k.embedding) {
-      const e = await embed(this.env, k.question_en);
+    let embedding: string | undefined, e: number[] | null = k.embedding ? JSON.parse(k.embedding) as number[] : null;
+    if (on && !e) {
+      e = await embed(this.env, k.question_en, true);
       if (!e) return { error: 'The AI is busy (embedding); try again in a minute.' };
       embedding = vec(e);
     }
     await sb(this.env, 'PATCH', `knowledge?id=eq.${k.id}`, { status: on ? 'approved' : 'rejected', ...(embedding ? { embedding } : {}), decided_by: clip(by, 120), decided_at: new Date(clock.now()).toISOString() }, 'return=minimal');
+    if (on && e) await supersedeNear(this.env, k.id, e, by, clock.now()).catch(() => []);   // switched back on: the one in use now steps aside
     return { ok: true };
   }
 
