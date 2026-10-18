@@ -264,7 +264,7 @@ Website ⇄ bot: the `BOT` service binding to `BotAdmin` (RPC methods and `fetch
 
 ```mermaid
 flowchart TB
-  GH[GitHub main-exh9xw] -->|deploy-cloudflare.yml| CI[CI: typecheck, 130 backend tests,<br/>build, local release gate]
+  GH[GitHub main-exh9xw] -->|deploy-cloudflare.yml| CI[CI: typecheck, 139 backend tests,<br/>build, local release gate]
   CI --> MIG[D1 migrations]
   MIG --> DB[deploy legitforge-bot<br/>-c bot/wrangler.jsonc]
   DB --> DS[deploy legitforge-web]
