@@ -135,17 +135,27 @@ export const sendHumanText = (env: Env, to: string, body: string) =>
   wa(env, { to, type: 'text', text: { body: clip(body, 4096), preview_url: false }, tag: 'HUMAN_AGENT' });
 
 export interface Row { id: string; title: string; description?: string }
-export const sendList = (env: Env, to: string, body: string, button: string, rows: Row[], footer?: string) =>
-  wa(env, { to, type: 'interactive', interactive: {
+/** A list or buttons Meta refused on WhatsApp: the same choices as numbered text, and a typed
+ *  number answers it like a tap (worker.ts optionFor). */
+async function orNumbered(env: Env, to: string, id: string | null, body: string, options: { id: string; title: string }[]) {
+  if (id || /^(web|fb|ig):/.test(to)) return id;
+  const alt = await sendText(env, to, `${body}\n\n${options.map((o, i) => `${i + 1}. ${o.title}`).join('\n')}`);
+  const sent = env.run?.out?.find((o) => o.wamid === alt);
+  if (sent) sent.options = options;
+  return alt;
+}
+
+export const sendList = async (env: Env, to: string, body: string, button: string, rows: Row[], footer?: string) =>
+  orNumbered(env, to, await wa(env, { to, type: 'interactive', interactive: {
     type: 'list', body: { text: clip(body, 4096) }, ...(footer ? { footer: { text: clip(footer, 60) } } : {}),
     action: { button, sections: [{ title: clip(button, 24), rows }] },
-  } });
+  } }), body, rows.map((r) => ({ id: r.id, title: r.title })));
 
-export const sendButtons = (env: Env, to: string, body: string, buttons: { id: string; title: string }[]) =>
-  wa(env, { to, type: 'interactive', interactive: {
+export const sendButtons = async (env: Env, to: string, body: string, buttons: { id: string; title: string }[]) =>
+  orNumbered(env, to, await wa(env, { to, type: 'interactive', interactive: {
     type: 'button', body: { text: clip(body, 1024) },
     action: { buttons: buttons.map((b) => ({ type: 'reply', reply: b })) },
-  } });
+  } }), body, buttons);
 
 /** An approved template (needed outside the 24-hour window). Parameters may not hold new lines. */
 export const sendTemplate = (env: Env, to: string, name: string, params: string[]) =>

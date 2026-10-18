@@ -6,7 +6,7 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
 ## Active Working Directives
 - **Working Directory**: Always work in the `web/` directory. All application code, tests, and configuration live in `web/`.
 - **Target Branch**: Always branch from and target `main-exh9xw`.
-- **Verification**: Run `npm run test:backend` (119 tests, including the WhatsApp bot's) and `npm run build` inside `web/`; review page markup directly or inspect generated static files since browser checks (`check.mjs`) require an active dev server.
+- **Verification**: Run `npm run test:backend` (126 tests, including the WhatsApp bot's) and `npm run build` inside `web/`; review page markup directly or inspect generated static files since browser checks (`check.mjs`) require an active dev server.
 
 ## Current owner decisions (7 October 2026)
 - WhatsApp enquiry bot (16 Oct 2026, owner's decisions; supersedes SETUP.md Part 2 §3–§9): a separate
@@ -194,6 +194,16 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
   Instagram texts are cut to 1,000 bytes (channels.ts parts). A team member's reply on Messenger or
   Instagram after 24 hours goes with Meta's HUMAN_AGENT tag (7 days; the bot never uses it).
   Messenger/Instagram webhooks use the same /webhook and app secret.
+- Languages (the upgrade): nine reply styles, each language in its script and romanised (en, ml +
+  mg Manglish, hi + hg Hinglish, kn + kg Kanglish, ta + tg Tamil/Tanglish). text.ts guessLang reads
+  the script, then romanised everyday words (ROMAN_WORDS, weighted), then English; short replies
+  never decide. A first message whose language and service are clear skips the menu and the
+  language list (fields.lang_auto; "language" changes it and resumes the question); a detected
+  language follows two clear messages in another one, a chosen one stays. Malayalam, Kannada and
+  Tamil styles are written by Gemini first. Typed commands in every language: language, menu,
+  back, cancel, talk to a person (text.ts *_ASK). A typed number or option title answers the bot's
+  latest buttons (worker.ts optionFor, fields.opts, only for 2+ options); a list or buttons Meta
+  refuses go out as numbered text (io.ts orNumbered). tests/language.test.ts holds the real phrases.
 - Fixed text in bot/text.ts must stay within WhatsApp limits (tests check them): list rows ≤ 10,
   row title ≤ 24, buttons ≤ 3 with titles ≤ 20.
 

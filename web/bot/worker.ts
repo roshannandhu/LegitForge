@@ -26,7 +26,8 @@ import { bookCall, calendarOn, callEvent, cancelCall, freeSlots, offerable } fro
 import { CHANNEL_LABEL, channelOf, metaInbound, type Option } from './channels';
 import { inr, paymentLink, rupees } from './pay';
 import {
-  ANSWER_SCHEMA, BRIEF_PROMPT, DETAILS, LOCALE, fill, EXTRACT_SCHEMA, FACTS, FIELDS, LANG_PROMPT, LANGS, MONEY, QA_SCHEMA, SERVICES, TEXT, TEXT_SCHEMA, TIMELINES,
+  ANSWER_SCHEMA, BACK_ASK, BRIEF_PROMPT, CANCEL_ASK, DETAILS, LANG_ASK, LOCALE, MENU_ASK, PERSON_ASK, PRICE_ASK, fill, EXTRACT_SCHEMA, FACTS, FIELDS, guessLang,
+  LANG_PROMPT, LANGS, MONEY, QA_SCHEMA, SERVICES, TEXT, TEXT_SCHEMA, TIMELINES,
   TRANSLATED, TRANSLATIONS_SCHEMA, answerPrompt, extractPrompt, generalisePrompt, langFromText, langName, prefilledService,
   scriptLang, serviceByKey, serviceFromText, t, tonePrompt, translatePrompt, translationsPrompt,
   type Field, type Lang, type ServiceKey, type Step,
@@ -66,6 +67,12 @@ interface Fields {
   away_at?: string;          // the last away message (the bot paused): once every 12 hours
   page?: string;             // where the enquiry started (the site's WhatsApp buttons): Admin → WhatsApp
   prev_leads?: string[];     // earlier enquiries' D1 lead ids (DELETE MY DATA removes them too)
+  lang_guess?: Lang;         // the language their first typed words were clearly in (the list is skipped)
+  lang_auto?: boolean;       // the language was detected, not chosen: it follows how they write
+  lang_next?: Lang;          // ...once two messages in a row are clearly in another one
+  resume?: Step;             // "language" typed mid-brief: the question to go back to
+  opts?: { step: Step; list: Option[] };   // the bot's latest buttons: a typed number or their words is a tap
+  price_asked?: string;      // a price asked in the first message: the call offer follows the brief
   contact?: string;          // how to reach them, from the website chat, Messenger or Instagram ('-' = skipped)
   email?: string;
   contact_tries?: number;
@@ -306,9 +313,12 @@ export async function runClient(env: Env, waId: string) {
         // Always at least one message per turn; a file or voice note only as the first (it can take
         // long, and a turn cut off at 30 s would repeat everything handled before it).
         if (done.length && (!room(env, per + 4) || m.reply_id?.startsWith('media:'))) break;
-        const snapshot = structuredClone(turn.c);
+        const snapshot = structuredClone(turn.c), mark = env.run?.out?.length ?? 0;
         try {
           await turn.handle(m); done.push(m);
+          // the latest buttons this message got: a typed number or their words answer them next time
+          const offered = (env.run?.out ?? []).slice(mark).filter((o) => o.to === waId && o.options?.length).at(-1);
+          if (offered) turn.c.fields.opts = { step: turn.c.step, list: offered.options!.slice(0, 10) };
           if (turn.erased) break;                              // the rest of the batch was erased with it
         } catch (e) {
           Object.assign(turn.c, snapshot);                     // retried later from the state before it
@@ -387,9 +397,24 @@ const words = (text: string) => text.split(/\s+/).filter(Boolean).length;
 /** Groq (which keeps no prompts) goes first, except for Malayalam and Kannada: Groq's models
  *  don't support them, so Gemini reads them first and is the only one that writes them (if it is
  *  busy, the client gets fixed text and the team is asked instead). */
-const indic = (lang: string | null) => lang === 'ml' || lang === 'kn' || lang === 'mg';
+const indic = (lang: string | null) => ['ml', 'mg', 'kn', 'kg', 'ta', 'tg'].includes(lang ?? '');   // Hindi and Hinglish: Groq writes them well
 const reader = (lang: string | null, text: string): Provider[] =>
-  indic(lang) || scriptLang(text) === 'ml' || scriptLang(text) === 'kn' ? ['gemini', 'groq'] : ['groq', 'gemini'];
+  indic(lang) || ['ml', 'kn', 'ta'].includes(scriptLang(text) ?? '') ? ['gemini', 'groq'] : ['groq', 'gemini'];
+/** Whisper's language hint: a romanised style is spoken as its language. */
+const SPOKEN: Partial<Record<Lang, string>> = { mg: 'ml', hg: 'hi', kg: 'kn', tg: 'ta' };
+const langTitle = (l: Lang) => LANGS.find((x) => x.key === l)?.title ?? l;
+
+/** A typed number ("2", "2.", "option 2") or an option's own words, as a tap on the bot's latest
+ *  buttons at this step: the numbered fallback, or a client who types instead of tapping. Only
+ *  for a real choice (2 or more options), so "1" answering "how many pages?" is never "Skip". */
+function optionFor(c: Contact, text: string): Option | null {
+  const o = c.fields.opts;
+  if (!o || o.step !== c.step || !text) return null;
+  const norm = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+  const n = /^(?:option\s*|no\.?\s*)?(\d{1,2})[.)]?$/i.exec(text.trim())?.[1];
+  if (n) return o.list.length > 1 ? o.list[Number(n) - 1] ?? null : null;
+  return o.list.find((x) => norm(x.title) === norm(text)) ?? null;
+}
 const writer = (lang: string | null): Provider[] => (indic(lang) ? ['gemini'] : ['groq', 'gemini']);
 
 interface Extract {
@@ -436,8 +461,11 @@ class Turn {
   private wamid = '';                                                      // the message being handled (questions key on it)
   private at = 0;                                                          // ...and when the client sent it
 
-  async handle(m: Msg) {
+  async handle(msg: Msg) {
     const c = this.c, lang = c.lang ?? 'en';
+    const pick = msg.reply_id ? null : optionFor(c, (msg.body ?? '').trim());
+    const m = pick ? { ...msg, reply_id: pick.id, body: pick.title } : msg;
+    delete c.fields.opts;                                                   // any answer: the buttons are used up
     let text = (m.body ?? '').trim();
     const [kind, value, id, name] = (m.reply_id ?? '').split(':');
     this.wamid = m.wamid; this.at = Date.parse(m.at) || this.now;
@@ -522,6 +550,24 @@ class Turn {
     }
     if (!text) { await this.say(t(c.lang, 'pleaseType')); return; }
 
+    // Typed commands, in their language: change the language, the menu, back, cancel, a person.
+    if (!m.reply_id) {
+      if (LANG_ASK.test(text)) {
+        if ((FIELDS as string[]).includes(c.step) || c.step === 'done') c.fields.resume = c.step;
+        c.step = 'language';
+        await this.ask();
+        return;
+      }
+      if (MENU_ASK.test(text)) { c.step = 'service'; await this.ask(); return; }
+      if (BACK_ASK.test(text) && (c.step === 'language' || (FIELDS as string[]).includes(c.step))) { await this.back(); return; }
+      if (CANCEL_ASK.test(text) && c.step !== 'start') { this.restart(); await this.say(t(c.lang, 'cancelled')); return; }
+      if (PERSON_ASK.test(text)) {
+        if (!c.fields.person_at || Date.parse(c.fields.person_at) < this.now - DAY) { c.fields.person_at = iso(this.now); await this.alertTeam('person', text); }
+        await this.say(t(c.lang, 'person'));
+        return;
+      }
+    }
+
     // Taps work at any step (an old menu tapped later just updates the answer).
     if (['ret', 'call', 'how', 'slot'].includes(kind) && c.step === 'start') { c.step = 'service'; await this.ask(text); return; }   // an old button on a fresh chat
     if (kind === 'ret') {
@@ -561,7 +607,7 @@ class Turn {
     if (kind === 'svc' && serviceByKey(value)) {
       if (value !== c.service) { delete c.fields.details; delete c.fields.refs; }   // the new service's own questions
       c.service = value as ServiceKey;
-      if (c.step === 'start' || c.step === 'service') c.step = 'language';
+      if (c.step === 'start' || c.step === 'service') { await this.toLanguage(); return; }
       else if ((FIELDS as string[]).includes(c.step)) { await this.advance(''); return; }   // the questions follow the new service
       await this.ask();
       return;
@@ -580,7 +626,9 @@ class Turn {
     if (kind === 'tl' && c.step !== 'done' && (!TIMELINES[Number(value)] || c.fields.timeline)) { await this.ask(); return; }
     if (kind === 'lang' && LANGS.some((l) => l.key === value)) {
       c.lang = value as Lang;
-      if (c.step === 'start' || c.step === 'service' || c.step === 'language') c.step = nextStep(c);
+      c.fields.lang_auto = false;                                          // their choice: kept, whatever they type later
+      if (c.step === 'language' && c.fields.resume) { c.step = c.fields.resume; delete c.fields.resume; }
+      else if (c.step === 'start' || c.step === 'service' || c.step === 'language') c.step = nextStep(c);
       await this.ask();
       return;
     }
@@ -588,25 +636,34 @@ class Turn {
 
     switch (c.step) {
       case 'start': {
-        const pre = prefilledService(text);
-        if (pre) { c.service = pre; c.step = 'language'; } else {
-          if (!ACK.test(text) && !/^hi legit forge/i.test(text)) c.fields.notes = join(c.fields.notes, text);
-          c.step = 'service';
-        }
+        const pre = prefilledService(text), site = !!pre || /^hi legit forge/i.test(text);   // the site's own words say nothing of theirs
+        const guess = site ? undefined : guessLang(text);
+        if (guess) c.fields.lang_guess = guess;
+        if (pre) { c.service = pre; await this.toLanguage(); return; }
+        if (!ACK.test(text) && !site) c.fields.notes = join(c.fields.notes, text);
+        if (!site && PRICE_ASK.test(text)) c.fields.price_asked = clip(text, 300);
+        // "Enikku oru website venam": the service is clear, so no menu (and no language list if that is clear too)
+        const said = !site && words(text) >= 3 ? serviceFromText(text) : 'other';
+        if (said !== 'other') { c.service = said; await this.toLanguage(true); return; }
+        c.step = 'service';
         await this.ask(text);
         return;
       }
-      case 'service':
+      case 'service': {
         if (ACK.test(text)) { await this.ask(text); return; }             // a second "hello": the menu again
+        const guess = guessLang(text);
+        if (guess && !c.lang) c.fields.lang_guess = guess;
         c.service = serviceFromText(text);
         if (c.service === 'other' || words(text) > 3) c.fields.notes = join(c.fields.notes, text);
-        c.step = 'language';
-        await this.ask();
+        await this.toLanguage();
         return;
+      }
       case 'language':
         c.lang = langFromText(text);
+        c.fields.lang_auto = false;
         if (words(text) > 3) c.fields.notes = join(c.fields.notes, text);
-        c.step = nextStep(c);
+        c.step = c.fields.resume ?? nextStep(c);
+        delete c.fields.resume;
         await this.ask();
         return;
       case 'returning':                                                     // typed instead of tapped: the same project
@@ -616,6 +673,45 @@ class Turn {
       default:
         await this.field(text);
     }
+  }
+
+  /** After the service: their language, unless their own words already showed it (then one line
+   *  on how to change it), or they chose one before. `noted`: their first message went to the team. */
+  private async toLanguage(noted = false) {
+    const c = this.c, lines: string[] = [];
+    if (!c.lang && c.fields.lang_guess) {
+      c.lang = c.fields.lang_guess;
+      c.fields.lang_auto = true;
+      lines.push(fill(t(c.lang, 'langSet'), { lang: langTitle(c.lang) }));
+    }
+    delete c.fields.lang_guess;
+    if (!c.lang) { c.step = 'language'; await this.ask(); return; }
+    if (noted && c.fields.notes) lines.unshift(t(c.lang, 'noted'));
+    c.step = nextStep(c);
+    await this.ask('', lines.join('\n'));
+  }
+
+  /** "back": the question before this one again, its answer cleared (from the first, the language list). */
+  private async back() {
+    const c = this.c;
+    if (c.step === 'language') c.step = 'service';
+    else {
+      const prev = FIELDS.slice(0, FIELDS.indexOf(c.step as Field)).reverse().find((f) => applies(c, f));
+      if (prev) { delete c.fields[prev]; c.step = prev; } else c.step = 'language';
+    }
+    await this.ask();
+  }
+
+  /** A detected language follows how they write: two clear messages in a row in another one switch it. */
+  private async follow(text: string) {
+    const c = this.c;
+    if (!c.fields.lang_auto || words(text) < 3) return;
+    const guess = guessLang(text);
+    if (!guess || guess === c.lang) { delete c.fields.lang_next; return; }
+    if (c.fields.lang_next !== guess) { c.fields.lang_next = guess; return; }
+    c.lang = guess;
+    delete c.fields.lang_next;
+    await this.say(fill(t(guess, 'langSet'), { lang: langTitle(guess) }));
   }
 
   /** Back after 30+ days: a client with an earlier brief is asked "same project or new?";
@@ -703,7 +799,7 @@ class Turn {
     const c = this.c, lang = c.lang ?? 'en', lead = prefix ? `${prefix}\n\n` : '';
     switch (c.step) {
       case 'start': case 'service': {
-        const l = c.lang ?? scriptLang(seen);
+        const l = c.lang ?? c.fields.lang_guess ?? (seen ? guessLang(seen) : undefined);
         if (prefix) await this.say(prefix);
         await sendList(this.env, c.wa_id, t(l, 'welcome'), t(l, 'menu'),
           SERVICES.map((s) => ({ id: `svc:${s.key}`, title: s.title, description: s.description })), footer(this.env));
@@ -735,6 +831,10 @@ class Turn {
     if (c.step === 'done' && was !== 'done') {
       await this.say(prefix ? `${prefix}\n\n${t(c.lang, 'done')}` : t(c.lang, 'done'));
       await this.alertTeam('complete');
+      if (c.fields.price_asked) {                                          // they asked the price first: the call offer now
+        delete c.fields.price_asked;
+        await sendButtons(this.env, c.wa_id, t(c.lang, 'price'), TEXT[c.lang ?? 'en'].callBtn.map((title, i) => ({ id: `call:${i ? 'n' : 'y'}`, title })));
+      }
       await this.showWork().catch((e) => console.error('[bot] work list failed', String(e)));
       return;
     }
@@ -743,6 +843,7 @@ class Turn {
 
   /** A typed answer to name / business / need / timeline, or anything after the brief is done. */
   private async field(text: string) {
+    await this.follow(text);
     const c = this.c, step = c.step as Field | 'done', lang = c.lang ?? 'en';
     if (step === 'contact') {                                              // read here: a number or email never goes to an AI
       const got = contactFrom(text);
@@ -997,7 +1098,7 @@ class Turn {
     if (!this.allow()) return { heard: null, got: undefined };
     const got = await media(this.env, id, VOICE_MAX);
     if (!got || got === 'big' || got === 'retry') return { heard: null, got: undefined };
-    return { heard: await transcribe(this.env, got.bytes, got.type, this.c.lang === 'mg' ? 'ml' : this.c.lang ?? undefined), got };
+    return { heard: await transcribe(this.env, got.bytes, got.type, (this.c.lang && SPOKEN[this.c.lang]) ?? this.c.lang ?? undefined), got };
   }
 
   /** A photo, document, video, audio file or voice note, kept privately for the team under this

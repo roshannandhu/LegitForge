@@ -189,7 +189,7 @@ export function installFakes(sb: ReturnType<typeof fakeSupabase>) {
   const reads: string[] = [];
   const aiBodies: string[] = [];
   const state = {
-    ai: ((): unknown => 500) as Responder, graphDown: false, embedDown: false, onSend: undefined as undefined | ((s: Sent) => Promise<void>),
+    ai: ((): unknown => 500) as Responder, graphDown: false, interactiveDown: false, embedDown: false, onSend: undefined as undefined | ((s: Sent) => Promise<void>),
     /** Files clients "sent": media id → bytes and type (size overrides the reported file_size). */
     media: {} as Record<string, { type: string; bytes: Uint8Array; size?: number; status?: number }>,
     /** Groq Whisper: the words for a voice note (given the language hint), or a status to fail with. */
@@ -275,7 +275,7 @@ export function installFakes(sb: ReturnType<typeof fakeSupabase>) {
     if (url.host === 'graph.facebook.com') {
       const b = JSON.parse(String(init.body));
       if (b.status === 'read') { reads.push(b.message_id); return Response.json({ success: true }); }
-      if (state.graphDown) return new Response('{"error":{}}', { status: 400 });
+      if (state.graphDown || (state.interactiveDown && b.type === 'interactive')) return new Response('{"error":{}}', { status: 400 });
       const i = b.interactive;
       const s: Sent = {
         id: `wamid.out.${++n}`, to: b.to ?? b.recipient, type: b.type === 'interactive' ? i.type : b.type,

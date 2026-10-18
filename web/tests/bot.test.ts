@@ -328,7 +328,8 @@ test('WhatsApp bot (fake Meta, Supabase, Groq and Gemini; real Miniflare D1)', a
     const stored = async () => { while (!sb.tables.messages.some((m) => m.wamid === hi.id)) await new Promise((r) => setTimeout(r, 1)); };
     await Promise.all([post([hi]), stored().then(() => post([next]))]);
     assert.equal(to(CLIENT).filter((s) => s.ids.some((id) => id.startsWith('svc:'))).length, 1);
-    assert.equal(contact().step, 'language');
+    assert.equal(contact().step, 'name', 'their words were clearly English: no language list');
+    assert.equal(contact().lang, 'en');
     assert.equal(contact().service, 'website');
     assert.ok(sb.tables.messages.filter((m) => m.wa_id === CLIENT && m.dir === 'in').every((m) => m.handled_at));
     assert.equal(contact().busy_until, null, 'lock released');
@@ -701,7 +702,7 @@ test('WhatsApp bot (fake Meta, Supabase, Groq and Gemini; real Miniflare D1)', a
     assert.equal(last(CLIENT).type, 'list', 'a new enquiry starts at the menu');
     assert.notEqual(contact().lead_id, first);
     assert.deepEqual(contact().fields.prev_leads, [first], 'the earlier lead is remembered, so DELETE MY DATA reaches it');
-    assert.deepEqual(Object.keys(contact().fields).sort(), ['prev_leads', 'since'], 'nothing else of the old brief');
+    assert.deepEqual(Object.keys(contact().fields).filter((k) => k !== 'opts').sort(), ['prev_leads', 'since'], 'nothing else of the old brief (opts: the menu just sent)');
   });
   /* ---- phase 2: self-learning ---- */
 
@@ -2162,5 +2163,88 @@ ${TEXT.en.contact}`, 'asked once more, with Skip');
     const long = parts('ഞങ്ങൾ '.repeat(1000), true);
     assert.ok(long.length === 5 && long[4].endsWith('…') && long.every((p) => new TextEncoder().encode(p).length <= 1000), 'five at most, the last clipped');
     assert.ok(parts('a'.repeat(4500), false).every((p) => p.length <= 2000));
+  });
+  /* ---- the upgrade: languages, menus, commands ---- */
+
+  await t.test('upgrade: a first message in Manglish skips the menu and the language list; the brief is in Manglish; the price question gets the call offer', async () => {
+    await reset();
+    await teamHi();
+    await post([text(CLIENT, 'Enikku oru website venam, ethra aakum?')]);
+    assert.equal(contact().service, 'website');
+    assert.equal(contact().lang, 'mg');
+    assert.equal(contact().step, 'name');
+    assert.ok(!to(CLIENT).some((m) => m.ids.some((id) => id.startsWith('svc:') || id.startsWith('lang:'))), 'no menu, no language list');
+    assert.equal(last(CLIENT).body, `${TEXT.mg.noted}\n${fill(TEXT.mg.langSet, { lang: 'Manglish' })}\n\n${TEXT.mg.name}`);
+    await post([text(CLIENT, 'Ravi')]);
+    assert.equal(last(CLIENT).body, TEXT.mg.business);
+    await post([text(CLIENT, 'Ravi Bakery, cakes')]);
+    await post([text(CLIENT, 'Orders edukkan oru website')]);
+    await post([tap(CLIENT, 'skip:details', 'button_reply')]);
+    await post([tap(CLIENT, 'skip:refs', 'button_reply')]);
+    await post([tap(CLIENT, 'tl:1', 'button_reply')]);
+    assert.ok(to(CLIENT).some((m) => m.body === TEXT.mg.done));
+    assert.equal(last(CLIENT).body === TEXT.mg.price || to(CLIENT).some((m) => m.body === TEXT.mg.price && m.ids.includes('call:y')), true, 'the call offer');
+    assert.match(teamGot(TEAM[0], 'new lead')!.body, /ethra aakum/, 'the team has their question');
+  });
+
+  await t.test('upgrade: a detected language follows how they write (two clear messages), never on "ok"; a chosen one stays', async () => {
+    await reset();
+    await post([text(CLIENT, 'I need a website for my shop')]);
+    assert.equal(contact().lang, 'en');
+    await post([text(CLIENT, 'ok')]);
+    assert.equal(contact().lang, 'en', '"ok" is not a language');
+    await post([text(CLIENT, 'Mujhe jaldi chahiye bhai')]);
+    assert.equal(contact().lang, 'en', 'one message is not enough');
+    await post([text(CLIENT, 'Mera business Ravi Bakery hai')]);
+    assert.equal(contact().lang, 'hg');
+    assert.ok(to(CLIENT).some((m) => m.body === fill(TEXT.hg.langSet, { lang: 'Hinglish' })));
+    await reset();
+    await toName(CLIENT, 'ml');
+    await post([text(CLIENT, 'Mera naam Ravi hai')]);
+    await post([text(CLIENT, 'Mera business Ravi Bakery hai')]);
+    assert.equal(contact().lang, 'ml', 'chosen from the list: kept');
+  });
+
+  await t.test('upgrade: "language" mid-brief, numbers for the menu and the list, "back", "cancel", "talk to a person", Tamil', async () => {
+    await reset();
+    await teamHi();
+    await post([text(CLIENT, 'Hi')]);
+    await post([text(CLIENT, '2')]);
+    assert.equal(contact().service, 'app', 'a number picks from the menu');
+    await post([text(CLIENT, '8')]);
+    assert.equal(contact().lang, 'ta', '…and from the language list');
+    assert.equal(last(CLIENT).body, TEXT.ta.name);
+    await post([text(CLIENT, 'Ravi')]);
+    await post([text(CLIENT, 'back')]);
+    assert.equal(contact().step, 'name');
+    assert.equal(contact().fields.name, undefined, 'the answer is asked again');
+    await post([text(CLIENT, 'Ravi')]);
+    await post([text(CLIENT, 'change language')]);
+    assert.ok(last(CLIENT).ids.includes('lang:en'));
+    await post([tap(CLIENT, 'lang:en')]);
+    assert.equal(contact().step, 'business', 'back to the question it was on');
+    assert.equal(last(CLIENT).body, TEXT.en.business);
+    await post([text(CLIENT, 'can I talk to a person?')]);
+    assert.ok(teamGot(TEAM[0], `#${contact().code}`), 'the team is told');
+    assert.equal(last(CLIENT).body, TEXT.en.person);
+    await post([text(CLIENT, 'cancel')]);
+    assert.equal(last(CLIENT).body, TEXT.en.cancelled);
+    assert.equal(contact().step, 'start');
+    assert.equal(contact().lang, 'en', 'their language stays');
+  });
+
+  await t.test('upgrade: WhatsApp refuses a list: the choices come as numbered text, and a number answers it', async () => {
+    await reset();
+    fx.state.interactiveDown = true;
+    try {
+      await post([text(CLIENT, 'Hi')]);
+      assert.equal(last(CLIENT).type, 'text');
+      assert.match(last(CLIENT).body, /\n1\. Website\n2\. Web app\n/);
+      await post([text(CLIENT, '1')]);
+      assert.equal(contact().service, 'website');
+      assert.match(last(CLIENT).body, /\n1\. English\n2\. മലയാളം/);
+      await post([text(CLIENT, 'Malayalam')]);
+      assert.equal(contact().lang, 'ml');
+    } finally { fx.state.interactiveDown = false; }
   });
 });
