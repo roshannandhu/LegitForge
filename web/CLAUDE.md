@@ -7,7 +7,7 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
 ## Active Working Directives
 - **Working Directory**: Always work in the `web/` directory. All application code, tests, and configuration live in `web/`.
 - **Target Branch**: Always branch from and target `main-exh9xw`.
-- **Verification**: Run `npm run test:backend` (139 tests, including the WhatsApp bot's) and `npm run build` inside `web/`; review page markup directly or inspect generated static files since browser checks (`check.mjs`) require an active dev server.
+- **Verification**: Run `npm run test:backend` (147 tests, including the WhatsApp bot's) and `npm run build` inside `web/`; review page markup directly or inspect generated static files since browser checks (`check.mjs`) require an active dev server.
 
 ## Current owner decisions (7 October 2026)
 - WhatsApp enquiry bot (16 Oct 2026, owner's decisions; supersedes SETUP.md Part 2 §3–§9): a separate
@@ -223,6 +223,17 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
   Messenger visitor typed is never used to erase WhatsApp leads (it is not verified). Admin → WhatsApp → Questions answers open questions (BotAdmin.answerQuestion: relayed
   like a member's reply, a pending draft for Answers); the dashboard shows the bot's health; the
   chat viewer takes a chat over / hands it back and sets the reply language.
+- WhatsApp Web (Baileys) instead of the Cloud API (WA_TRANSPORT=baileys, BAILEYS_URL; SETUP.md
+  step 13): web/gateway (its own package and tsconfig, excluded from the site's tsc and bundles;
+  Node 24 runs index.ts directly) holds the WhatsApp Web login and passes each message to the
+  bot's /webhook as a Meta-shaped, WA_APP_SECRET-signed webhook; the bot's sends, read receipts,
+  file downloads and Admin → WhatsApp → Connection (QR, pairing code, log out; owners only) go to
+  the gateway signed the same way (io.ts waPost/gatewayCall/media). Lists and buttons become polls
+  with numbered options (gateway/convert.ts toBaileys; a vote comes back as a list tap); no
+  templates and no 24-hour window (canText, openWindows). tests/gateway.test.ts tests the
+  conversions; bot tests run whole chats through a fake gateway (gw.test).
+- When the AI cannot tell what a message means (extract kind "unclear"), the bot asks once, in
+  their style (TEXT.unclear); a second time the team gets it as a question, and learning follows.
 - Fixed text in bot/text.ts must stay within WhatsApp limits (tests check them): list rows ≤ 10,
   row title ≤ 24, buttons ≤ 3 with titles ≤ 20.
 

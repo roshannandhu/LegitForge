@@ -39,6 +39,8 @@
     "GOOGLE_REVIEW_URL": "",                     // the Google review link: set it to ask Won clients for a review
     "FB_PAGE_ID": "",                            // Messenger: the Facebook Page id (FB_PAGE_TOKEN secret)
     "IG_ACCOUNT_ID": "",                         // Instagram: the professional account id
+    "WA_TRANSPORT": "",                          // "baileys": WhatsApp Web through web/gateway (SETUP.md step 13); empty: Meta's Cloud API
+    "BAILEYS_URL": "",                           // the gateway's address, e.g. https://wa-gateway.<your domain> (Cloudflare Tunnel)
     "AI_DAILY_CAP": "1500",                      // AI requests a day in all; past it, fixed text and the team (never a paid fallback)
     "REVIVE_TEMPLATE": "",                       // an approved MARKETING template for leads quiet 30 days (costs per message; empty = off)
     "TRAINING_DAYS": "14"                        // every AI answer is a draft for the team for 14 days after the first client

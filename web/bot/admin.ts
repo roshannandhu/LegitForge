@@ -4,7 +4,7 @@
  *  (requireAdmin); every call here is bounded. */
 
 import { WorkerEntrypoint } from 'cloudflare:workers';
-import { clip, clock, embed, q, sb, sbCount, vec, type Env } from './io';
+import { clip, clock, embed, gatewayCall, q, sb, sbCount, vec, viaGateway, type Env } from './io';
 import { LANGS, type Lang } from './text';
 import { flushOut, generalise, newVersion, relay, supersedeNear, webChat, withRun, type Contact } from './worker';
 import { MONEY } from './text';
@@ -16,6 +16,8 @@ export interface Answer {
   wins: number; translations_ok: boolean; created_at: string; version: number; supersedes: number | null; review_at: string | null;
   decided_by: string | null; decided_at: string | null;
 }
+export type WhatsAppLink = { mode: 'cloud' } | { mode: 'baileys'; reachable: false; error: string }
+  | { mode: 'baileys'; reachable: true; connected: boolean; me: string | null; since: string | null; qr: string | null };
 export interface OpenQuestion { id: number; code: string; name: string | null; lang: string | null; lead_id: string | null; question: string; question_en: string; kind: string; created_at: string }
 export interface Health {
   unhandled: number; oldestUnhandled: string | null; lastIn: string | null; openQuestions: number; pendingAnswers: number;
@@ -60,6 +62,26 @@ export class BotAdmin extends WorkerEntrypoint<Env> {
       lines.push(line);
     }
     return { code: String(c.code), name: ((c.fields as Row)?.name as string) || (c.profile_name as string) || null, mode: String(c.mode ?? 'bot'), lang: (c.lang as string) ?? null, lines };
+  }
+
+  /** How WhatsApp is connected: Meta's Cloud API, or WhatsApp Web through the gateway (linked or
+   *  not, and the QR to scan while not). Admin → WhatsApp → Connection. */
+  async whatsapp(): Promise<WhatsAppLink> {
+    if (!viaGateway(this.env)) return { mode: 'cloud' };
+    try {
+      const { status, data } = await gatewayCall(this.env, 'GET', '/status');
+      if (status !== 200) return { mode: 'baileys', reachable: false, error: status === 401 ? 'The gateway refused the signature: WA_APP_SECRET must be the same on both.' : `The gateway answered ${status}.` };
+      return { mode: 'baileys', reachable: true, connected: !!data.connected, me: (data.me as string) ?? null, since: (data.since as string) ?? null, qr: (data.qr as string) ?? null };
+    } catch { return { mode: 'baileys', reachable: false, error: 'The gateway is not reachable (is it running, and is BAILEYS_URL right?).' }; }
+  }
+
+  /** Link the bot's number with an 8-character code (WhatsApp → Linked devices → Link with phone
+   *  number), or unlink it (a new QR follows). Owners only (the website checks). */
+  async whatsappAdmin(action: 'pair' | 'logout', phone?: string): Promise<{ ok: true; code?: string } | { error: string }> {
+    if (!viaGateway(this.env)) return { error: 'WhatsApp uses the Cloud API here: nothing to link.' };
+    const { status, data } = await gatewayCall(this.env, 'POST', '/admin', { action, phone }).catch(() => ({ status: 0, data: {} as Record<string, unknown> }));
+    if (status === 200) return { ok: true, ...(data.code ? { code: String(data.code) } : {}) };
+    return { error: status === 409 ? 'Already linked: log out first to link another number.' : status === 400 ? 'Check the phone number (with the country code).' : status === 0 ? 'The gateway is not reachable.' : `The gateway answered ${status}.` };
   }
 
   /** The team's open questions (oldest first), with the client's code: Admin → WhatsApp → Questions. */

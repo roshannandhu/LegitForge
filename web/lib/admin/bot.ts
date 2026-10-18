@@ -20,6 +20,8 @@ export interface Health {
   pastReview: number; withPerson: number; aiToday: number; aiCap: number;
 }
 type Done = { ok: true } | { error: string };
+export type WhatsAppLink = { mode: 'cloud' } | { mode: 'baileys'; reachable: false; error: string }
+  | { mode: 'baileys'; reachable: true; connected: boolean; me: string | null; since: string | null; qr: string | null };
 export interface Insights {
   days: number; questions: number; byBot: number; byTeam: number; open: number;
   top: { question: string; count: number; byBot: number }[];
@@ -38,6 +40,8 @@ interface BotRpc {
   health(): Promise<Health>;
   setMode(leadId: string, mode: 'human' | 'bot'): Promise<Done>;
   setLang(leadId: string, lang: string): Promise<Done>;
+  whatsapp(): Promise<WhatsAppLink>;
+  whatsappAdmin(action: 'pair' | 'logout', phone?: string): Promise<{ ok: true; code?: string } | { error: string }>;
 }
 
 /** The bot's reply languages (bot/text.ts LANGS, restated: lib/ never imports bot/). */

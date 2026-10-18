@@ -139,7 +139,7 @@ export type TextKey = 'welcome' | 'menu' | 'lang' | 'name' | 'business' | 'need'
   | 'price' | 'callSoon' | 'keepGoing' | 'deleteAsk' | 'deleted' | 'kept' | 'welcomeBack' | 'sameProject'
   | 'refs' | 'skip' | 'fileSaved' | 'fileBig' | 'nudge' | 'work' | 'update'
   | 'howAsk' | 'slotAsk' | 'slotBtn' | 'otherTime' | 'booked' | 'howWa' | 'howPhone' | 'howMeet' | 'meetLater' | 'slotTaken' | 'reminder'
-  | 'quote' | 'pay' | 'payUpi' | 'review' | 'referral' | 'contact' | 'contactBad' | 'deletedInbox' | 'langSet' | 'cancelled';
+  | 'quote' | 'pay' | 'payUpi' | 'review' | 'referral' | 'contact' | 'contactBad' | 'deletedInbox' | 'langSet' | 'cancelled' | 'unclear';
 type Pair = [string, string];
 
 export const TEXT: Record<Lang, Record<TextKey, string> & { tl: [string, string, string]; callBtn: Pair; delBtn: Pair; retBtn: Pair; howBtn: [string, string, string] }> = {
@@ -201,6 +201,7 @@ export const TEXT: Record<Lang, Record<TextKey, string> & { tl: [string, string,
     deletedInbox: 'Our team will also delete this conversation from our Messenger/Instagram inbox; your own copy stays until you delete it.',
     langSet: "I'll reply in {lang}. To change it, type *language*.",
     cancelled: "Okay, I have stopped this enquiry. Send hi whenever you want to start again.",
+    unclear: "Sorry, I didn't quite understand that. Could you say it another way?",
   },
   ml: {
     welcome: 'നമസ്കാരം! 👋 ഇത് Legit Forge-ന്റെ ഓട്ടോമേറ്റഡ് അസിസ്റ്റന്റ് ആണ്. എന്ത് സഹായമാണ് വേണ്ടത്? താഴെ നിന്ന് തിരഞ്ഞെടുക്കൂ.',
@@ -260,6 +261,7 @@ export const TEXT: Record<Lang, Record<TextKey, string> & { tl: [string, string,
     deletedInbox: 'ഞങ്ങളുടെ Messenger/Instagram ഇൻബോക്സിൽ നിന്നും ഞങ്ങളുടെ ടീം ഈ സംഭാഷണം ഡിലീറ്റ് ചെയ്യും; നിങ്ങളുടെ കോപ്പി നിങ്ങൾ ഡിലീറ്റ് ചെയ്യുന്നതുവരെ ഉണ്ടാകും.',
     langSet: "ഞാൻ {lang}-ൽ മറുപടി നൽകാം. മാറ്റാൻ *language* എന്ന് ടൈപ്പ് ചെയ്യൂ.",
     cancelled: "ശരി, ഈ അന്വേഷണം നിർത്തി. വീണ്ടും തുടങ്ങാൻ എപ്പോൾ വേണമെങ്കിലും hi അയയ്ക്കൂ.",
+    unclear: "ക്ഷമിക്കണം, എനിക്ക് അത് ശരിക്ക് മനസ്സിലായില്ല. മറ്റൊരു രീതിയിൽ പറയാമോ?",
   },
   mg: {
     welcome: 'Namaskaram! 👋 Ith Legit Forge-inte automated assistant aanu. Enthu sahayamaanu vendath? Thazhe ninnu choose cheyyoo.',
@@ -319,6 +321,7 @@ export const TEXT: Record<Lang, Record<TextKey, string> & { tl: [string, string,
     deletedInbox: 'Njangalude Messenger/Instagram inbox-il ninnum njangalude team ee conversation delete cheyyum; ningalude copy ningal delete cheyyunnathu vare undaakum.',
     langSet: "Njan {lang}-il reply cheyyaam. Maattaan *language* ennu type cheyyoo.",
     cancelled: "Sheri, ee enquiry nirthi. Veendum thudangaan eppo venelum hi ayakkoo.",
+    unclear: "Sorry, enikku athu sheriyaayi manassilaayilla. Vere reethiyil parayaamo?",
   },
   hi: {
     welcome: 'नमस्ते! 👋 यह Legit Forge का ऑटोमेटेड असिस्टेंट है। आपको किस चीज़ में मदद चाहिए? नीचे से चुनें।',
@@ -378,6 +381,7 @@ export const TEXT: Record<Lang, Record<TextKey, string> & { tl: [string, string,
     deletedInbox: 'हमारी टीम यह बातचीत हमारे Messenger/Instagram इनबॉक्स से भी डिलीट करेगी; आपकी अपनी कॉपी तब तक रहेगी जब तक आप उसे डिलीट नहीं करते।',
     langSet: "मैं {lang} में जवाब दूँगा। बदलने के लिए *language* लिखें।",
     cancelled: "ठीक है, मैंने यह पूछताछ रोक दी है। फिर से शुरू करने के लिए कभी भी hi भेजें।",
+    unclear: "माफ़ कीजिए, मैं ठीक से समझ नहीं पाया। क्या आप इसे किसी और तरह से बता सकते हैं?",
   },
   kn: {
     welcome: 'ನಮಸ್ಕಾರ! 👋 ಇದು Legit Forge ನ ಸ್ವಯಂಚಾಲಿತ ಸಹಾಯಕ. ನಿಮಗೆ ಯಾವುದರಲ್ಲಿ ಸಹಾಯ ಬೇಕು? ಕೆಳಗಿನಿಂದ ಆಯ್ಕೆಮಾಡಿ.',
@@ -437,6 +441,7 @@ export const TEXT: Record<Lang, Record<TextKey, string> & { tl: [string, string,
     deletedInbox: 'ನಮ್ಮ ತಂಡ ಈ ಸಂಭಾಷಣೆಯನ್ನು ನಮ್ಮ Messenger/Instagram ಇನ್\u200cಬಾಕ್ಸ್\u200cನಿಂದಲೂ ಅಳಿಸುತ್ತದೆ; ನಿಮ್ಮ ಪ್ರತಿ ನೀವು ಅಳಿಸುವವರೆಗೆ ಉಳಿಯುತ್ತದೆ.',
     langSet: "ನಾನು {lang} ನಲ್ಲಿ ಉತ್ತರಿಸುತ್ತೇನೆ. ಬದಲಾಯಿಸಲು *language* ಎಂದು ಟೈಪ್ ಮಾಡಿ.",
     cancelled: "ಸರಿ, ಈ ವಿಚಾರಣೆಯನ್ನು ನಿಲ್ಲಿಸಿದ್ದೇನೆ. ಮತ್ತೆ ಶುರು ಮಾಡಲು ಯಾವಾಗ ಬೇಕಾದರೂ hi ಕಳುಹಿಸಿ.",
+    unclear: "ಕ್ಷಮಿಸಿ, ನನಗೆ ಅದು ಸರಿಯಾಗಿ ಅರ್ಥವಾಗಲಿಲ್ಲ. ಬೇರೆ ರೀತಿಯಲ್ಲಿ ಹೇಳಬಹುದೇ?",
   },
   hg: {
     welcome: "Hi! 👋 Yeh Legit Forge ka assistant hai (automated). Aapko kis cheez mein help chahiye? Neeche se choose karein.",
@@ -496,6 +501,7 @@ export const TEXT: Record<Lang, Record<TextKey, string> & { tl: [string, string,
     deletedInbox: "Hamari team yeh conversation hamare Messenger/Instagram inbox se bhi delete karegi; aapki apni copy tab tak rahegi jab tak aap use delete nahi karte.",
     langSet: "Main {lang} mein reply karunga. Badalne ke liye *language* type karein.",
     cancelled: "Theek hai, maine yeh enquiry rok di hai. Dobara shuru karne ke liye kabhi bhi hi bhejein.",
+    unclear: "Sorry, main theek se samajh nahi paaya. Kya aap ise kisi aur tarah se bata sakte hain?",
   },
   kg: {
     welcome: "Hi! 👋 Idu Legit Forge assistant (automated). Nimage yaava vishayadalli help beku? Kelage choose maadi.",
@@ -555,6 +561,7 @@ export const TEXT: Record<Lang, Record<TextKey, string> & { tl: [string, string,
     deletedInbox: "Namma team ee conversation annu namma Messenger/Instagram inbox ninda kooda delete maadtaare; nimma copy neevu delete maado tanaka irutte.",
     langSet: "Naanu {lang} nalli reply maadtini. Badalisoke *language* anta type maadi.",
     cancelled: "Sari, ee enquiry nilsiddini. Matte shuru maadoke yavaga bekadru hi kalisi.",
+    unclear: "Sorry, nanage adu sariyaagi artha aaglilla. Bere reethiyalli helbahuda?",
   },
   ta: {
     welcome: "வணக்கம்! 👋 இது Legit Forge உதவியாளர் (தானியங்கி). உங்களுக்கு எதில் உதவி வேண்டும்? கீழே தேர்ந்தெடுக்கவும்.",
@@ -614,6 +621,7 @@ export const TEXT: Record<Lang, Record<TextKey, string> & { tl: [string, string,
     deletedInbox: "எங்கள் Messenger/Instagram இன்பாக்ஸிலிருந்தும் இந்த உரையாடலை எங்கள் குழு நீக்கும்; உங்கள் சொந்த நகல் நீங்கள் நீக்கும் வரை இருக்கும்.",
     langSet: "நான் {lang}-இல் பதில் அளிப்பேன். மாற்ற *language* என்று தட்டச்சு செய்யுங்கள்.",
     cancelled: "சரி, இந்த விசாரணையை நிறுத்திவிட்டேன். மீண்டும் தொடங்க எப்போது வேண்டுமானாலும் hi அனுப்புங்கள்.",
+    unclear: "மன்னிக்கவும், எனக்கு அது சரியாகப் புரியவில்லை. வேறு விதமாகச் சொல்ல முடியுமா?",
   },
   tg: {
     welcome: "Hi! 👋 Idhu Legit Forge assistant (automated). Ungalukku edhula help venum? Keezha choose pannunga.",
@@ -673,6 +681,7 @@ export const TEXT: Record<Lang, Record<TextKey, string> & { tl: [string, string,
     deletedInbox: "Enga team indha conversation-a enga Messenger/Instagram inbox-la irundhum delete pannuvaanga; unga copy neenga delete panra varaikkum irukkum.",
     langSet: "Naan {lang}-la reply panren. Maatha *language*-nu type pannunga.",
     cancelled: "Sari, indha enquiry-a niruthitten. Thirumba start panna eppo venaalum hi anuppunga.",
+    unclear: "Sorry, enakku adhu sariya puriyala. Vera maadhiri solla mudiyumaa?",
   },
 };
 export const t = (lang: string | null | undefined, key: TextKey) => (TEXT[(lang as Lang)] ?? TEXT.en)[key];
@@ -811,7 +820,7 @@ export const extractPrompt = (step: Step, asked?: string) => `You read one Whats
 ${FACTS}
 We just asked the client: ${asked ?? FIELD_QUESTION[step]}.
 Return JSON:
-- kind: "answer" if the message gives details or answers us; "question" if the client asks us something about our services, process or work; "person" if they ask to talk to a human; "off_topic" only if it has nothing to do with Legit Forge (greetings and thanks are "answer").
+- kind: "answer" if the message gives details or answers us; "question" if the client asks us something about our services, process or work; "person" if they ask to talk to a human; "off_topic" only if it has nothing to do with Legit Forge (greetings and thanks are "answer"); "unclear" only if you truly cannot tell what they mean (garbled words, a regional phrase you do not know, too short to act on): never guess a meaning.
 - name, business, need_en, timeline: only what the message itself says, else "". need_en and timeline in English.
 - detail_en: only when we asked for project details or websites they like: their answer in English (keep website addresses exactly), else "".
 - question_en: the client's question in English, else "".
@@ -849,7 +858,7 @@ export const EXTRACT_SCHEMA = {
   type: 'object', additionalProperties: false,
   required: ['kind', 'name', 'business', 'need_en', 'detail_en', 'timeline', 'question_en', 'commitment', 'price', 'mood', 'abusive'],
   properties: {
-    kind: { type: 'string', enum: ['answer', 'question', 'person', 'off_topic'] },
+    kind: { type: 'string', enum: ['answer', 'question', 'person', 'off_topic', 'unclear'] },
     name: str, business: str, need_en: str, detail_en: str, timeline: str, question_en: str, commitment: { type: 'boolean' },
     price: { type: 'boolean' }, mood: { type: 'string', enum: ['calm', 'upset', 'urgent'] }, abusive: { type: 'boolean' },
   },

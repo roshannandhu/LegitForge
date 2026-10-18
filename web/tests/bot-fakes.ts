@@ -1,3 +1,5 @@
+import { toBaileys } from '../gateway/convert';
+
 /** Fakes for tests/bot.test.ts: the outside services the WhatsApp bot calls, behind one
  *  globalThis.fetch. Not a *.test.ts file, so the test runner only loads it through the test.
  *  - Supabase: a small PostgREST (the filters, upserts and RPC the bot uses), in memory.
@@ -189,7 +191,8 @@ export function installFakes(sb: ReturnType<typeof fakeSupabase>) {
   const reads: string[] = [];
   const aiBodies: string[] = [];
   const state = {
-    ai: ((): unknown => 500) as Responder, graphDown: false, interactiveDown: false, embedDown: false, onSend: undefined as undefined | ((s: Sent) => Promise<void>),
+    ai: ((): unknown => 500) as Responder, graphDown: false, interactiveDown: false,
+    gateway: { connected: false, me: null as string | null, qr: 'data:image/png;base64,QR' as string | null, admin: [] as unknown[] }, embedDown: false, onSend: undefined as undefined | ((s: Sent) => Promise<void>),
     /** Files clients "sent": media id → bytes and type (size overrides the reported file_size). */
     media: {} as Record<string, { type: string; bytes: Uint8Array; size?: number; status?: number }>,
     /** Groq Whisper: the words for a voice note (given the language hint), or a status to fail with. */
@@ -243,6 +246,33 @@ export function installFakes(sb: ReturnType<typeof fakeSupabase>) {
       const b = JSON.parse(String(init.body));
       state.razorpay.push(b);
       return Response.json({ id: `plink_${state.razorpay.length}`, short_url: `https://rzp.io/i/lf${state.razorpay.length}` });
+    }
+    if (url.host === 'gw.test') {                                                     // the WhatsApp Web (Baileys) gateway
+      if (url.pathname.startsWith('/media/')) {
+        if (!String((init.headers as Record<string, string>)?.['x-signature']).startsWith('sha256=')) return new Response('{}', { status: 401 });
+        downloads.push(decodeURIComponent(url.pathname.slice(7)));
+        const f = state.media[decodeURIComponent(url.pathname.slice(7))];
+        return f ? new Response(f.bytes as unknown as BodyInit, { headers: { 'content-type': f.type, 'content-length': String(f.size ?? f.bytes.byteLength) } }) : new Response('{}', { status: 404 });
+      }
+      if (url.pathname === '/status') {
+        if (!String((init.headers as Record<string, string>)?.['x-signature']).startsWith('sha256=')) return new Response('{}', { status: 401 });
+        const g = state.gateway;
+        return Response.json({ connected: g.connected, me: g.connected ? g.me : null, since: g.connected ? '2026-10-18T06:00:00.000Z' : null, qr: g.connected ? null : g.qr });
+      }
+      if (!String((init.headers as Record<string, string>)?.['x-hub-signature-256']).startsWith('sha256=')) return new Response('{}', { status: 401 });
+      const b = JSON.parse(String(init.body));
+      if (url.pathname === '/admin') {
+        state.gateway.admin.push(b);
+        if (b.action === 'logout') { state.gateway.connected = false; return Response.json({ ok: true }); }
+        return state.gateway.connected ? new Response('{}', { status: 409 }) : Response.json({ code: 'ABCD-EFGH' });
+      }
+      if (b.status === 'read') { reads.push(b.message_id); return Response.json({ success: true }); }
+      const outs = toBaileys(b);                                                      // what the gateway sends on WhatsApp Web
+      const s: Sent = { id: `gw.out.${++n}`, to: b.to ?? b.recipient, type: outs.map((o) => o.kind).join('+'),
+        body: outs.map((o) => (o.kind === 'text' ? o.text : o.name)).join('\n---\n'), ids: outs.flatMap((o) => (o.kind === 'poll' ? o.options.map((x) => x.id) : [])) };
+      sent.push(s);
+      Object.assign(s, { outs, raw: b });
+      return Response.json({ messages: [{ id: s.id }] });
     }
     if (url.host === 'graph.facebook.com' && (init.method ?? 'GET') === 'GET') {        // a media id's address
       const id = decodeURIComponent(url.pathname.split('/').pop()!), f = state.media[id];

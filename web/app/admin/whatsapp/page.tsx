@@ -26,7 +26,7 @@ export default async function AdminWhatsApp() {
       <h1 className="type-h2">WhatsApp bot</h1>
       <p className="admin-lead">
         Enquiries of the last 90 days (website form and WhatsApp), and what clients asked the bot in the last 30.{' '}
-        <a className="text-link" href="/admin/whatsapp/questions">Open questions</a> · <a className="text-link" href="/admin/whatsapp/answers">What the bot knows</a> ·{' '}
+        <a className="text-link" href="/admin/whatsapp/connection">Connection</a> · <a className="text-link" href="/admin/whatsapp/questions">Open questions</a> · <a className="text-link" href="/admin/whatsapp/answers">What the bot knows</a> ·{' '}
         <a className="text-link" href="/admin/whatsapp/settings">Pause, away message, saved replies, phrases</a>
       </p>
       {health && (

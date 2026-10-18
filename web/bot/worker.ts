@@ -34,7 +34,7 @@ import {
 } from './text';
 import {
   chat, clip, clock, count, embed, flushAi, markRead, media, q, redact, room, sb, sbCount, sendButtons, sendHumanText, sendList, sendTemplate, sendText, transcribe,
-  validSignature, vec,
+  validSignature, vec, viaGateway,
   type Env, type Provider,
 } from './io';
 
@@ -68,6 +68,7 @@ interface Fields {
   away_at?: string;          // the last away message (the bot paused): once every 12 hours
   page?: string;             // where the enquiry started (the site's WhatsApp buttons): Admin → WhatsApp
   prev_leads?: string[];     // earlier enquiries' D1 lead ids (DELETE MY DATA removes them too)
+  unclear?: number;          // the AI could not tell what their last message meant: asked once to say it again
   lang_guess?: Lang;         // the language their first typed words were clearly in (the list is skipped)
   lang_auto?: boolean;       // the language was detected, not chosen: it follows how they write
   lang_next?: Lang;          // ...once two messages in a row are clearly in another one
@@ -467,7 +468,7 @@ function optionFor(c: Contact, text: string): Option | null {
 const writer = (lang: string | null): Provider[] => (indic(lang) ? ['gemini'] : ['groq', 'gemini']);
 
 interface Extract {
-  kind: 'answer' | 'question' | 'person' | 'off_topic'; name: string; business: string; need_en: string; detail_en: string; timeline: string;
+  kind: 'answer' | 'question' | 'person' | 'off_topic' | 'unclear'; name: string; business: string; need_en: string; detail_en: string; timeline: string;
   question_en: string; commitment: boolean; price: boolean; mood: 'calm' | 'upset' | 'urgent'; abusive: boolean;
 }
 type Alert = 'complete' | 'person' | 'call' | 'upset' | 'urgent';
@@ -947,6 +948,14 @@ class Turn {
         }
         return;
       }
+      if (x.kind === 'unclear') {
+        // Not understood: ask them once, in their own style; a second time, the team reads it (and
+        // can teach the bot the words: "phrase mg: … = …"), and their answer is learned as usual.
+        if (!c.fields.unclear) { c.fields.unclear = 1; await this.say(t(lang, 'unclear')); return; }
+        delete c.fields.unclear;
+        await this.escalate(text, `Not understood (twice): "${clip(text, 300)}". What do they mean, and what should we reply?`, { kind: 'question' });
+        prefix = t(lang, 'checking');
+      } else delete c.fields.unclear;
       if (x.kind === 'question' && x.question_en) prefix = await this.answerOrAsk(text, x.question_en, x.commitment);
       else if (x.kind === 'person') { c.fields.person_at = iso(this.now); await this.alertTeam('person'); prefix = t(lang, 'person'); }
       else if (x.kind === 'off_topic') prefix = t(lang, 'offTopic');
@@ -1316,6 +1325,7 @@ async function toTeam(env: Env, now: number, text: string, link: { wa_id?: strin
 async function openWindows(env: Env, now: number) {
   if (env.run?.open) return env.run.open;
   const team = [...teamIds(env)];
+  if (viaGateway(env)) return new Set(team);                // WhatsApp Web has no 24-hour window: always a plain message
   const rows = team.length ? await sb<{ team: string }>(env, 'GET', `messages?team=in.${q(`(${team.map((m) => `"${m}"`).join(',')})`)}`
     + `&dir=eq.in&at=gt.${iso(now - 23 * HOUR)}&select=team&order=at.desc&limit=500`) : [];
   const open = new Set(rows.map((r) => r.team));
@@ -1528,7 +1538,7 @@ async function handleTeam(env: Env, m: Msg, now: number, about: About = {}) {
   }
   if (/^delete$/i.test(rest)) {
     // A client asked the team to delete their data: they confirm it themselves with the buttons.
-    if (!canText(contact, now)) return reply(`#${contact.code}'s 24-hour ${CHANNEL_LABEL[channelOf(contact.wa_id)]} window has closed; ask them to send "delete my data".`);
+    if (!canText(contact, now, env)) return reply(`#${contact.code}'s 24-hour ${CHANNEL_LABEL[channelOf(contact.wa_id)]} window has closed; ask them to send "delete my data".`);
     const lang = contact.lang ?? 'en';
     await sendButtons(env, contact.wa_id, t(lang, 'deleteAsk'), TEXT[lang].delBtn.map((title, i) => ({ id: `del:${i ? 'n' : 'y'}`, title })));
     return reply(`Sent #${contact.code} the delete question; they confirm it themselves.`);
@@ -1684,8 +1694,8 @@ export async function relay(env: Env, now: number, c: Contact, text: string, asI
   if (c.mode === 'blocked') return { ok: false, note: `#${c.code} is blocked, so nothing was sent. "#${c.code} unblock" first.` };
   const ch = channelOf(c.wa_id);
   // Meta's human agent tag: a person's own words only, up to 7 days (never the bot's draft)
-  const tagged = o.human !== false && !canText(c, now) && (ch === 'fb' || ch === 'ig') && Date.parse(c.last_in_at) > now - 7 * DAY;
-  const closed = !canText(c, now) && !tagged;
+  const tagged = o.human !== false && !canText(c, now, env) && (ch === 'fb' || ch === 'ig') && Date.parse(c.last_in_at) > now - 7 * DAY;
+  const closed = !canText(c, now, env) && !tagged;
   if (closed && (!o.template || ch !== 'whatsapp')) {
     return { ok: false, note: `#${c.code}'s ${ch === 'whatsapp' ? '24-hour WhatsApp' : `${CHANNEL_LABEL[ch]} (7 days for a person's reply)`} window has closed, so I can't send this.${direct}` };
   }
@@ -1821,7 +1831,7 @@ async function cron(env: Env, now: number) {
     if (!won || told.has(question.wa_id)) continue;
     told.add(question.wa_id);
     const [c] = await sb<Contact>(env, 'GET', `contacts?wa_id=eq.${q(question.wa_id)}`);
-    if (!c || c.mode === 'stopped' || c.mode === 'blocked' || !canText(c, now)) continue;
+    if (!c || c.mode === 'stopped' || c.mode === 'blocked' || !canText(c, now, env)) continue;
     const s = await settingsOf(env);
     if (s.paused === '1') continue;                                            // they had the away message
     const own = !isOpenNow(new Date(now)) && s.after_hours;
@@ -1864,7 +1874,8 @@ async function weeklyOnce(env: Env, now: number, monday: string) {
 
 /** Can a client get a plain message now: the website chat always; WhatsApp, Messenger and
  *  Instagram within 24 hours of their last message. */
-const canText = (c: Pick<Contact, 'wa_id' | 'last_in_at'>, now: number) => channelOf(c.wa_id) === 'web' || Date.parse(c.last_in_at) > now - 24 * HOUR;
+const canText = (c: Pick<Contact, 'wa_id' | 'last_in_at'>, now: number, env?: Env) =>
+  channelOf(c.wa_id) === 'web' || (!!env && viaGateway(env) && channelOf(c.wa_id) === 'whatsapp') || Date.parse(c.last_in_at) > now - 24 * HOUR;
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const TAP = /^(?!media:)[a-z]{2,6}:[\w.-]{1,40}(:[\w.-]{1,60})?$/;
@@ -2016,7 +2027,7 @@ async function remind(env: Env, now: number) {
     const lang = c.lang ?? 'en';
     const join = call.how === 'meet' ? (call.meet ? fill(t(lang, 'howMeet'), { link: call.meet }) : '') : t(lang, call.how === 'wa' ? 'howWa' : 'howPhone');
     const text = `${fill(t(lang, 'reminder'), { time: slotFormat(lang).format(new Date(start)) })}\n${join}`.trim();
-    const reminded = canText(c, now) ? await sendText(env, c.wa_id, text)
+    const reminded = canText(c, now, env) ? await sendText(env, c.wa_id, text)
       : await sendTemplate(env, c.wa_id, 'call_reminder', [c.fields.name || c.profile_name || 'there', text]);
     await toTeam(env, now, `#${c.code} 📅 call in 30 minutes: ${istTime(start)} · ${HOW_LABEL[call.how]}${c.phone ? ` · wa.me/${c.phone}` : ''}${call.meet ? `\nMeet: ${call.meet}` : ''}`
       + (reminded ? '' : `\n(They were not reminded: ${channelOf(c.wa_id) === 'whatsapp' ? 'the call_reminder template did not go out' : `their ${CHANNEL_LABEL[channelOf(c.wa_id)]} window has closed`}.)`),
@@ -2053,7 +2064,7 @@ async function reviews(env: Env, now: number) {
     let [c] = await sb<Contact>(env, 'GET', `contacts?lead_id=eq.${q(l.id)}`);
     if (!c) [c] = await sb<Contact>(env, 'GET', `contacts?fields->prev_leads=cs.${q(JSON.stringify([l.id]))}`);   // an earlier enquiry
     if (!c || c.review_at || c.mode === 'stopped' || c.mode === 'blocked' || Date.parse(c.last_in_at) < now - 60 * DAY) continue;
-    const sent = canText(c, now)
+    const sent = canText(c, now, env)
       ? await sendText(env, c.wa_id, fill(t(c.lang, 'review'), { link: env.GOOGLE_REVIEW_URL }))
       : await sendTemplate(env, c.wa_id, 'review_request', [c.fields.name || c.profile_name || 'there', env.GOOGLE_REVIEW_URL]);
     if (sent) await sb(env, 'PATCH', `contacts?wa_id=eq.${q(c.wa_id)}`, { review_at: iso(now) }, 'return=minimal');

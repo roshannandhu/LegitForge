@@ -38,6 +38,10 @@ export interface Env {
   UPI_ID?: string;
   GOOGLE_REVIEW_URL?: string;
   REVIVE_TEMPLATE?: string;
+  /** "baileys": WhatsApp through the WhatsApp Web gateway (web/gateway) at BAILEYS_URL, signed
+   *  with WA_APP_SECRET; anything else (the default): Meta's Cloud API. */
+  WA_TRANSPORT?: string;
+  BAILEYS_URL?: string;
   /** AI requests a day in all (chat, embeddings, voice notes); past it, the fixed text and the team. Default 1500. */
   AI_DAILY_CAP?: string;
   /** More channels (phase 7, bot/channels.ts): the Facebook Page's access token (Messenger and
@@ -74,6 +78,32 @@ export const clock = { now: () => Date.now() };
 
 const TIMEOUT = 8000;
 const graph = (env: Env) => `https://graph.facebook.com/${env.GRAPH_VERSION || 'v25.0'}`;
+
+/** WhatsApp through the WhatsApp Web (Baileys) gateway instead of Meta's Cloud API (web/gateway). */
+export const viaGateway = (env: Env) => env.WA_TRANSPORT === 'baileys' && !!env.BAILEYS_URL;
+const gatewayUrl = (env: Env, path: string) => `${(env.BAILEYS_URL ?? '').replace(/\/+$/, '')}${path}`;
+/** `sha256=<hex>`, the gateway checks it as the bot checks Meta's (same secret both ways). */
+async function hmac(secret: string, data: string) {
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const sig = new Uint8Array(await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(data)));
+  return `sha256=${[...sig].map((b) => b.toString(16).padStart(2, '0')).join('')}`;
+}
+/** The gateway's own pages for Admin → WhatsApp → Connection (status and QR, link by phone number,
+ *  log out), signed like everything else between the bot and the gateway. */
+export async function gatewayCall(env: Env, method: 'GET' | 'POST', path: string, body?: unknown): Promise<{ status: number; data: Record<string, unknown> }> {
+  const raw = body === undefined ? undefined : JSON.stringify(body);
+  const sig = await hmac(env.WA_APP_SECRET, raw ?? path);
+  const r = await fetch(gatewayUrl(env, path), { method, body: raw, signal: AbortSignal.timeout(TIMEOUT),
+    headers: raw ? { 'content-type': 'application/json', 'x-hub-signature-256': sig } : { 'x-signature': sig } });
+  return { status: r.status, data: await r.json().catch(() => ({})) as Record<string, unknown> };
+}
+
+/** A WhatsApp send (or read receipt): the Cloud API, or the gateway with the same body, signed. */
+async function waPost(env: Env, body: string) {
+  return viaGateway(env)
+    ? fetch(gatewayUrl(env, '/send'), { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub-signature-256': await hmac(env.WA_APP_SECRET, body) }, body, signal: AbortSignal.timeout(TIMEOUT) })
+    : fetch(`${graph(env)}/${env.WA_PHONE_NUMBER_ID}/messages`, { method: 'POST', headers: { authorization: `Bearer ${env.WA_ACCESS_TOKEN}`, 'content-type': 'application/json' }, body, signal: AbortSignal.timeout(TIMEOUT) });
+}
 export const clip = (s: string, n: number) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
 
 /* ---------------------------------------------------------------------------- Supabase */
@@ -120,13 +150,8 @@ async function wa(env: Env, { to, ...payload }: { to: string } & Record<string, 
   }
   count(env);
   try {
-    const r = await fetch(`${graph(env)}/${env.WA_PHONE_NUMBER_ID}/messages`, {
-      method: 'POST',
-      headers: { authorization: `Bearer ${env.WA_ACCESS_TOKEN}`, 'content-type': 'application/json' },
-      // a phone number goes in `to`; a business-scoped user id (clients with a username) in `recipient`
-      body: JSON.stringify({ messaging_product: 'whatsapp', recipient_type: 'individual', ...(/^\d+$/.test(to) ? { to } : { recipient: to }), ...payload }),
-      signal: AbortSignal.timeout(TIMEOUT),
-    });
+    // a phone number goes in `to`; a business-scoped user id (clients with a username) or a WhatsApp Web LID in `recipient`
+    const r = await waPost(env, JSON.stringify({ messaging_product: 'whatsapp', recipient_type: 'individual', ...(/^\d+$/.test(to) ? { to } : { recipient: to }), ...payload }));
     if (env.run) env.run.refused = !r.ok;                     // refused, not merely slow: orNumbered may send the numbers
     if (!r.ok) { console.error('[wa] send refused', r.status, (await r.text()).slice(0, 300)); return null; }
     const id = ((await r.json()) as { messages?: { id: string }[] }).messages?.[0]?.id ?? null;
@@ -176,12 +201,8 @@ export const sendTemplate = (env: Env, to: string, name: string, params: string[
 /** Blue ticks plus "typing…" while the reply is worked out (Meta clears it when we reply). */
 export function markRead(env: Env, messageId: string) {
   count(env);
-  return fetch(`${graph(env)}/${env.WA_PHONE_NUMBER_ID}/messages`, {
-    method: 'POST',
-    headers: { authorization: `Bearer ${env.WA_ACCESS_TOKEN}`, 'content-type': 'application/json' },
-    body: JSON.stringify({ messaging_product: 'whatsapp', status: 'read', message_id: messageId, typing_indicator: { type: 'text' } }),
-    signal: AbortSignal.timeout(TIMEOUT),
-  }).then(() => undefined, () => undefined);
+  return waPost(env, JSON.stringify({ messaging_product: 'whatsapp', status: 'read', message_id: messageId, typing_indicator: { type: 'text' } }))
+    .then(() => undefined, () => undefined);
 }
 
 /** Meta signs every webhook POST: X-Hub-Signature-256 = "sha256=" + HMAC-SHA256(raw body, app secret). */
@@ -296,6 +317,17 @@ export async function embed(env: Env, text: string, team = false): Promise<numbe
 export async function media(env: Env, id: string, max: number): Promise<{ bytes: ArrayBuffer; type: string } | 'big' | 'retry' | null> {
   const auth = { authorization: `Bearer ${env.WA_ACCESS_TOKEN}` };
   const passing = (status: number) => status === 429 || status >= 500;
+  if (viaGateway(env)) {                                    // the gateway still holds the message: it downloads the file
+    try {
+      count(env);
+      const path = `/media/${encodeURIComponent(id)}`;
+      const r = await fetch(gatewayUrl(env, path), { headers: { 'x-signature': await hmac(env.WA_APP_SECRET, path) }, signal: AbortSignal.timeout(20_000) });
+      if (!r.ok) return passing(r.status) ? 'retry' : null;
+      if (Number(r.headers.get('content-length') ?? 0) > max) return 'big';
+      const bytes = await r.arrayBuffer();
+      return bytes.byteLength > max ? 'big' : { bytes, type: r.headers.get('content-type') || 'application/octet-stream' };
+    } catch (e) { console.error('[wa] gateway media failed', String(e).slice(0, 200)); return 'retry'; }
+  }
   try {
     count(env);
     const meta = await fetch(`${graph(env)}/${encodeURIComponent(id)}`, { headers: auth, signal: AbortSignal.timeout(TIMEOUT) });

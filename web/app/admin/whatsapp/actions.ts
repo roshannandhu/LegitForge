@@ -5,7 +5,7 @@
  *  saved replies are D1. */
 
 import { revalidatePath } from 'next/cache';
-import { requireAdmin } from '@/lib/admin/auth';
+import { isOwner, requireAdmin } from '@/lib/admin/auth';
 import { BOT_LANGS, bot, deletePhrase, deleteReply, savePhrase, saveBotSettings, saveReply } from '@/lib/admin/bot';
 import { MONEY } from '@/lib/wa-services';
 import type { FormState } from '../actions';
@@ -107,4 +107,22 @@ export async function deletePhraseAction(id: number) {
   await requireAdmin();
   await deletePhrase(id);
   revalidatePath('/admin/whatsapp/settings');
+}
+
+/** Link the bot's WhatsApp number with a code, or unlink it: owners only (it decides which number answers clients). */
+export async function pairWhatsAppAction(_: FormState, f: FormData): Promise<FormState> {
+  const who = await requireAdmin();
+  if (!(await isOwner(who))) return { error: 'Only the owners can link the bot’s number.' };
+  const r = await (await bot())?.whatsappAdmin('pair', str(f, 'phone', 20)).catch(() => null);
+  if (!r || 'error' in r) return { error: r && 'error' in r ? r.error : NO_BOT };
+  return { ok: `Your code: ${r.code}. On the bot’s phone: WhatsApp → Linked devices → Link a device → Link with phone number instead, and type it.` };
+}
+
+export async function logoutWhatsAppAction(_: FormState): Promise<FormState> {
+  const who = await requireAdmin();
+  if (!(await isOwner(who))) return { error: 'Only the owners can unlink the bot’s number.' };
+  const r = await (await bot())?.whatsappAdmin('logout').catch(() => null);
+  if (!r || 'error' in r) return { error: r && 'error' in r ? r.error : NO_BOT };
+  revalidatePath('/admin/whatsapp/connection');
+  return { ok: 'Unlinked. A new QR appears here in a few seconds.' };
 }

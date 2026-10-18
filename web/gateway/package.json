@@ -1,0 +1,19 @@
+{
+  "name": "legitforge-whatsapp-gateway",
+  "private": true,
+  "type": "module",
+  "description": "WhatsApp Web (Baileys) for the Legit Forge bot: passes messages to the bot Worker and its replies back.",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "start": "node index.ts",
+    "check": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "7.0.0-rc14",
+    "qrcode-terminal": "0.12.0",
+    "pino": "9.14.0",
+    "qrcode": "1.5.4"
+  }
+}

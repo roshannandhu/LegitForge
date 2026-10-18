@@ -2457,4 +2457,76 @@ ${TEXT.en.contact}`, 'asked once more, with Skip');
       assert.equal(sb.tables.knowledge.find((k) => k.id === 990)!.status, 'approved', 'past the cap, the team still approves');
     } finally { delete (env as Partial<Env>).AI_DAILY_CAP; }
   });
+  /* ---- WhatsApp Web (Baileys) through the gateway ---- */
+
+  await t.test('baileys: the whole chat through the WhatsApp Web gateway: polls to tap, numbers to type, no templates, files, read receipts', async () => {
+    await reset();
+    Object.assign(env, { WA_TRANSPORT: 'baileys', BAILEYS_URL: 'https://gw.test' });
+    try {
+      const gw = (who: string) => fx.sent.filter((m) => m.to === who && m.id.startsWith('gw.out.')) as (Sent & { outs: { kind: string; name?: string; options?: Row[] }[] })[];
+      await post([text(CLIENT, 'Hi')]);
+      const menu = gw(CLIENT).at(-1)!;
+      assert.deepEqual(menu.outs.map((o) => o.kind), ['text', 'poll'], 'the welcome (with the privacy link), then the service poll');
+      assert.equal(menu.outs[1].options!.length, 9);
+      assert.ok(fx.reads.length > 0, 'read receipts go through the gateway');
+      // a tap on the poll (as the gateway passes it on: a list tap)
+      await post([{ from: CLIENT, id: 'poll.P1.V1', timestamp: ts(), type: 'interactive', context: { id: menu.id }, interactive: { type: 'list_reply', list_reply: { id: 'svc:website', title: 'Website' } } }]);
+      assert.equal(contact().service, 'website');
+      const langs = gw(CLIENT).at(-1)!;
+      assert.ok(langs.outs.some((o) => o.kind === 'poll' && o.options!.length === LANGS.length), 'the language list as a poll: all nine styles');
+      await post([text(CLIENT, '3')]);                                // typing the number works too
+      assert.equal(contact().lang, 'mg');
+      assert.equal(last(CLIENT).body, TEXT.mg.name);
+      // a team member who never wrote to the bot still gets a plain message (no 24-hour window, no template)
+      for (const a of ['Ravi', 'Ravi Bakery', 'Orders edukkan oru website']) await post([text(CLIENT, a)]);
+      await post([tap(CLIENT, 'skip:details', 'button_reply')]);
+      await post([tap(CLIENT, 'skip:refs', 'button_reply')]);
+      await post([tap(CLIENT, 'tl:1', 'button_reply')]);
+      const alert = gw(TEAM[0]).find((m) => m.body.includes('new lead'))!;
+      assert.ok(alert, 'the team is told');
+      assert.ok(!fx.sent.some((m) => m.template), 'no templates at all');
+      // a photo: the bot fetches it from the gateway (which still holds the WhatsApp Web message)
+      fx.state.media['IMG1'] = { type: 'image/jpeg', bytes: new Uint8Array([1, 2, 3]) };
+      await post([{ from: CLIENT, id: 'IMG1', timestamp: ts(), type: 'image', image: { id: 'IMG1', mime_type: 'image/jpeg' } }]);
+      assert.ok(fx.downloads.includes('IMG1'), 'downloaded through the gateway');
+      assert.ok(contact().fields.files?.length, 'kept for the team');
+    } finally { delete (env as Partial<Env>).WA_TRANSPORT; delete (env as Partial<Env>).BAILEYS_URL; }
+  });
+
+  await t.test('not understood: the bot asks once, in their style; the second time the team is asked (and the answer is learned)', async () => {
+    await reset();
+    await teamHi();
+    fx.state.ai = (task) => (task === 'extract' ? { ...blank, kind: 'unclear' } : 500);
+    await toName(CLIENT, 'mg');
+    await post([text(CLIENT, 'athu ivide cheyyunna paripadi undo')]);
+    assert.equal(last(CLIENT).body, TEXT.mg.unclear, 'asked to say it another way, in Manglish');
+    assert.equal(contact().step, 'name', 'nothing was taken as their name');
+    await post([text(CLIENT, 'athu thanne')]);
+    assert.ok(teamGot(TEAM[0], 'Not understood (twice)'), 'the team reads it');
+    assert.ok(to(CLIENT).at(-1)!.body.startsWith(TEXT.mg.checking), 'the client is told the team is checking');
+    fx.state.ai = (task) => (task === 'extract' ? { ...blank, kind: 'answer', name: 'Ravi' } : 500);
+    await post([text(CLIENT, 'Ravi')]);
+    assert.equal(contact().fields.unclear, undefined, 'a clear message resets it');
+  });
+  await t.test('baileys: Admin → WhatsApp → Connection: the QR while not linked, a pairing code, the linked number, log out', async () => {
+    await reset();
+    const admin = new BotAdmin({} as never, env);
+    assert.deepEqual(await admin.whatsapp(), { mode: 'cloud' }, 'the Cloud API: nothing to link here');
+    Object.assign(env, { WA_TRANSPORT: 'baileys', BAILEYS_URL: 'https://gw.test' });
+    try {
+      fx.state.gateway.connected = false;
+      const waiting = await admin.whatsapp();
+      assert.deepEqual(waiting, { mode: 'baileys', reachable: true, connected: false, me: null, since: null, qr: 'data:image/png;base64,QR' });
+      assert.deepEqual(await admin.whatsappAdmin('pair', '919847012345'), { ok: true, code: 'ABCD-EFGH' });
+      fx.state.gateway.connected = true; fx.state.gateway.me = '919847012345:3@s.whatsapp.net';
+      const linked = await admin.whatsapp();
+      assert.ok(linked.mode === 'baileys' && linked.reachable && linked.connected && linked.me === '919847012345:3@s.whatsapp.net' && !linked.qr);
+      assert.ok('error' in (await admin.whatsappAdmin('pair', '919847012345')), 'already linked');
+      assert.deepEqual(await admin.whatsappAdmin('logout'), { ok: true });
+      assert.equal(fx.state.gateway.connected, false);
+      Object.assign(env, { BAILEYS_URL: 'https://gw-down.test' });
+      const down = await admin.whatsapp();
+      assert.ok(down.mode === 'baileys' && !down.reachable, 'an unreachable gateway is said so');
+    } finally { delete (env as Partial<Env>).WA_TRANSPORT; delete (env as Partial<Env>).BAILEYS_URL; }
+  });
 });

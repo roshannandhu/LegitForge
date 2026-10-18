@@ -232,6 +232,33 @@ change, and is recommended before real client traffic.
       Instagram user id). Set both in bot/wrangler.jsonc and deploy the bot.
    d. Only then subscribe the Page and Instagram webhooks (messages) to the same callback URL
       and verify token. The bot logs a missing token or a message for another id.
+13. WhatsApp Web instead of Meta's Cloud API (Baileys; the owner's choice for now). The bot stays
+   on Cloudflare; a small gateway (web/gateway) holds the WhatsApp Web login on a computer that is
+   always on. Unofficial: WhatsApp may ban a number that sends a lot of automated messages, so use
+   the bot's own SIM, never a personal number, and no bulk messages. Menus show as WhatsApp polls
+   (tap an option, or type its number): WhatsApp does not show buttons or lists from WhatsApp Web.
+   a. A computer that stays on (an old laptop, a mini PC, or a free cloud VM such as Oracle Cloud
+      Always Free) with Node.js 24 (nodejs.org). Copy the `web/gateway` folder there, then in it:
+      `npm install`
+   b. Pick a long random secret (32+ characters, e.g. from a password manager) and use the SAME
+      one in both places: the gateway's `WA_APP_SECRET`, and the bot's
+      `npx wrangler secret put WA_APP_SECRET -c bot/wrangler.jsonc`.
+   c. Give the gateway a public HTTPS address without opening ports: Cloudflare Zero Trust →
+      Networks → Tunnels → Create a tunnel (free) → install `cloudflared` on that computer with the
+      command it shows → Public hostname e.g. `wa-gateway.<your domain>` → Service
+      `http://localhost:8790`. (No domain yet: `cloudflared tunnel --url http://localhost:8790`
+      prints a temporary trycloudflare.com address for a first test.)
+   d. Start it (keep it running, e.g. with `pm2 start "node index.ts" --name wa-gateway` or a
+      Windows scheduled task):
+      `BOT_WEBHOOK_URL=https://legitforge-bot.<subdomain>.workers.dev/webhook WA_APP_SECRET=<secret> WA_PHONE_NUMBER_ID=baileys npm start`
+      (PowerShell: set each with `$env:NAME = 'value'` first.) It keeps the login in `data/`:
+      back that folder up and never share it.
+   e. In bot/wrangler.jsonc set `WA_TRANSPORT` to `baileys`, `BAILEYS_URL` to the tunnel address
+      and `WA_PHONE_NUMBER_ID` to `baileys`; deploy the bot.
+   f. Link the number: Admin → WhatsApp → Connection shows the QR (owners only). On the bot's
+      phone: WhatsApp → Settings → Linked devices → Link a device → scan it. On that same phone
+      instead: "Or link with a code". The page says "Linked ✅" with the number.
+   g. Test from the spare phone: "Hi" → the welcome and a service poll; tap or type 1–9.
 8. Test from the spare phone (team phones always count as team). Then add the new SIM
    (Production setup), get the display name approved, switch the app to Live, change
    `WA_PHONE_NUMBER_ID` in `web/bot/wrangler.jsonc`, and put the new number in Admin → Company.

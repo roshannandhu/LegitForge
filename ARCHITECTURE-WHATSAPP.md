@@ -4,11 +4,32 @@ The enquiry bot as built through phase 7 and the October 2026 upgrade. The websi
 document: [ARCHITECTURE-WEBSITE.md](ARCHITECTURE-WEBSITE.md). Everything below describes running
 code unless it is marked **Proposed**.
 
-> **Runtime note.** The bot uses Meta's official **WhatsApp Cloud API** with webhooks, on a
-> **Cloudflare Worker** (`web/bot/`, Worker `legitforge-bot`). It does not use Baileys or an
-> unofficial WhatsApp Web socket. No process stays connected, so there is no QR session to keep,
-> no reconnect loop and no risk of a banned unofficial client. Every message arrives as a signed
-> HTTPS webhook, and every reply is an HTTPS call.
+> **Runtime note: two ways to reach WhatsApp, one bot.** The bot is a **Cloudflare Worker**
+> (`web/bot/`, Worker `legitforge-bot`). It reaches WhatsApp either through Meta's official
+> **Cloud API** (the default) or, with `WA_TRANSPORT=baileys`, through **WhatsApp Web (Baileys)**.
+> The owner chose WhatsApp Web for now.
+>
+> - **WhatsApp Web** runs through `web/gateway/`, a small Node 24 program on an always-on
+>   computer. It holds the WhatsApp Web login (QR or pairing code, shown in Admin → WhatsApp →
+>   Connection) and reconnects by itself.
+> - **Inbound:** the gateway passes each message to the bot's `/webhook` in Meta's shape, signed
+>   with `WA_APP_SECRET`, so everything below runs unchanged.
+> - **Outbound:** the bot's replies go back to the gateway, signed the same way.
+> - **Choices:** lists and buttons become **WhatsApp polls** with numbered options. WhatsApp Web
+>   can't show buttons; a tap or a typed number answers the poll.
+> - **No 24-hour window, so no templates.**
+> - **Risk:** it is unofficial, so a number that sends a lot of automated messages may be banned.
+>   Use the bot's own SIM and no bulk messages.
+
+```mermaid
+flowchart LR
+  C[Client's WhatsApp] <--> WAW[WhatsApp Web servers]
+  WAW <-->|Baileys socket| GW[web/gateway<br/>Node 24, always on<br/>login in data/]
+  GW -->|POST /webhook, Meta-shaped,<br/>X-Hub-Signature-256| BOT[Bot Worker]
+  BOT -->|POST /send, /admin; GET /media, /status<br/>signed| GW
+  T[Cloudflare Tunnel<br/>public HTTPS] --- GW
+  ADM[Admin → WhatsApp → Connection<br/>QR / code / log out] -->|BOT binding| BOT
+```
 
 ## 1. The current system
 
