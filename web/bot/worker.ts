@@ -33,7 +33,8 @@ import {
   type Field, type Lang, type ServiceKey, type Step,
 } from './text';
 import {
-  chat, clip, clock, count, embed, markRead, media, q, redact, room, sb, sbCount, sendButtons, sendHumanText, sendList, sendTemplate, sendText, transcribe, validSignature, vec,
+  chat, clip, clock, count, embed, flushAi, markRead, media, q, redact, room, sb, sbCount, sendButtons, sendHumanText, sendList, sendTemplate, sendText, transcribe,
+  validSignature, vec,
   type Env, type Provider,
 } from './io';
 
@@ -112,11 +113,12 @@ const host = (env: Env) => (env.SITE_URL || 'https://legitforge.pages.dev').repl
 const footer = (env: Env) => `Automated assistant · ${host(env)}/privacy`;
 const ACK = /^(hi+|hello|hey|hai|ok(ay)?|k|thanks?( you)?|thank you|namaskaram|namaste|👍|🙏)[\s!.]*$/i;
 /** Each invocation gets its own call budget (io.ts room()). */
-const withRun = (env: Env): Env => ({ ...env, run: { calls: 0, t0: Date.now(), out: [], gone: new Set() } });
+export const withRun = (env: Env): Env => ({ ...env, run: { calls: 0, t0: Date.now(), out: [], gone: new Set() } });
 
 /** The bot's own messages to clients this run, in one write (Admin → Leads → Chat shows them; the
  *  team's copies are stored as they go). Never for a client who was erased in the meantime. */
-async function flushOut(env: Env, now: number) {
+export async function flushOut(env: Env, now: number) {
+  await flushAi(env);
   const team = teamIds(env), out = (env.run?.out ?? []).filter((o) => !team.has(o.to) && !env.run?.gone?.has(o.to));
   if (env.run) env.run.out = [];
   if (!out.length) return;
@@ -134,6 +136,51 @@ async function flushOut(env: Env, now: number) {
     if (!rows.some((r) => r.options)) for (const r of rows) delete r.options;   // (one batch: every row has the same columns)
     if (rows.length) await sb(env, 'POST', 'messages?on_conflict=wamid', rows, 'resolution=ignore-duplicates,return=minimal');
   } catch (e) { console.error('[bot] sent messages not stored', String(e)); }
+}
+
+interface Phrase { lang: string; phrase: string; meaning: string }
+/** Regional phrases the team confirmed (D1 bot_phrases, 0017), once a run: the AI is told the
+ *  meaning of those a message holds (glossary). Reading hints only, never company facts. */
+async function phrasesOf(env: Env): Promise<Phrase[]> {
+  if (env.run?.phrases) return env.run.phrases;
+  count(env);
+  const rows = (await env.DB.prepare('SELECT lang, phrase, meaning FROM bot_phrases ORDER BY id DESC LIMIT 300').all<Phrase>()
+    .catch(() => ({ results: [] as Phrase[] }))).results;
+  if (env.run) env.run.phrases = rows;
+  return rows;
+}
+const words_ = (s: string) => ` ${s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim()} `;
+export function glossary(text: string, phrases: Phrase[]) {
+  const t = words_(text), hits = phrases.filter((p) => t.includes(words_(p.phrase))).slice(0, 8);
+  return hits.length ? `\nPhrases our team has confirmed (use these meanings):\n${hits.map((p) => `- "${p.phrase}" (${langName(p.lang)}): ${p.meaning}`).join('\n')}` : '';
+}
+async function addPhrase(env: Env, member: string, lang: string, phrase: string, meaning: string) {
+  const p = phrase.trim().toLowerCase().replace(/\s+/g, ' '), m = meaning.trim();
+  if (p.length < 2 || p.length > 60 || m.length < 2 || m.length > 200) return 'Write it as: phrase mg: ethra aakum = how much will it cost';
+  if (MONEY.test(m)) return 'A meaning never holds a price or amount: write what the phrase means, e.g. "how much will it cost".';
+  count(env);
+  await env.DB.prepare(`INSERT INTO bot_phrases (lang, phrase, meaning, created_by) VALUES (?, ?, ?, ?)
+    ON CONFLICT(lang, phrase) DO UPDATE SET meaning = excluded.meaning, created_by = excluded.created_by`).bind(lang, p, m, member).run();
+  return `Saved ✅ "${p}" (${langName(lang)}) = ${m}. The AI reads it that way from now on; "phrases" lists them.`;
+}
+async function listPhrases(env: Env) {
+  count(env);
+  const rows = (await env.DB.prepare('SELECT lang, phrase, meaning FROM bot_phrases ORDER BY lang, phrase LIMIT 40').all<Phrase>()).results;
+  return rows.length ? `Phrases the bot knows:\n${rows.map((p) => `• ${p.lang}: ${p.phrase} = ${p.meaning}`).join('\n')}`
+    : 'No phrases yet. Teach one: phrase mg: ethra aakum = how much will it cost';
+}
+
+/** A new version of an approved answer (an edit): the old one is kept as superseded, with its wins.
+ *  `keep` keeps the approved translations (the answer itself did not change). */
+export async function newVersion(env: Env, old: Knowledge & { source: string; question_id?: number | null; version?: number },
+  v: { question_en: string; answer_en: string; embedding: string; by: string; at: string; review_at?: string | null; keep: boolean }) {
+  const [k] = await sb<{ id: number }>(env, 'POST', 'knowledge', {
+    question_en: v.question_en, answer_en: v.answer_en, embedding: v.embedding, status: 'approved', source: old.source, question_id: old.question_id ?? null,
+    wins: old.wins ?? 0, translations: v.keep ? old.translations ?? {} : {}, translations_ok: v.keep ? !!old.translations_ok : false,
+    version: (old.version ?? 1) + 1, supersedes: old.id, decided_by: clip(v.by, 120), decided_at: v.at, review_at: v.review_at ?? null,
+  });
+  await sb(env, 'PATCH', `knowledge?id=eq.${old.id}&status=eq.approved`, { status: 'superseded' }, 'return=minimal');
+  return k;
 }
 
 /** Admin → WhatsApp → Settings (D1 bot_settings, migration 0015), read once a run. */
@@ -1090,7 +1137,8 @@ class Turn {
 
   /** AI with a daily cap per client; null means "use the fixed path". */
   private async ai<T>(o: { system: string; user: string; schema: Parameters<typeof chat>[1]['schema']; name: string }, prefer: Provider[]) {
-    return this.allow() ? chat<T>(this.env, { ...o, prefer }) : null;
+    if (!this.allow()) return null;
+    return chat<T>(this.env, { ...o, system: o.system + glossary(o.user, await phrasesOf(this.env)), prefer });
   }
 
   /** A voice note's words (Groq Whisper, hinted with their language), and the recording itself. */
@@ -1377,7 +1425,7 @@ async function storeOut(env: Env, now: number, wamid: string, member: string, bo
   }, 'return=minimal');
 }
 
-const HELP = 'Reply (swipe right) to a question or lead message to answer it, or start with #CODE then your message.\n"#CODE take" = chat with the client yourself, "#CODE bot" = hand back to the bot, "#CODE unblock" = undo a block, "#CODE update: …" = a project update in their language.\n"#CODE quote <link>", "#CODE pay 5000" = send a quote or an advance payment link.\n"busy", "busy 1h", "off", "free" = who gets alerts first; "who" = everyone\'s status.';
+const HELP = 'Reply (swipe right) to a question or lead message to answer it, or start with #CODE then your message.\n"#CODE take" = chat with the client yourself, "#CODE bot" = hand back to the bot, "#CODE unblock" = undo a block, "#CODE update: …" = a project update in their language.\n"#CODE quote <link>", "#CODE pay 5000" = send a quote or an advance payment link.\n"busy", "busy 1h", "off", "free" = who gets alerts first; "who" = everyone\'s status.\n"phrase mg: ethra aakum = how much will it cost" = teach the bot a regional phrase; "phrases" = the list.';
 
 async function handleTeam(env: Env, m: Msg, now: number, about: About = {}) {
   const member = m.team!, text = (m.body ?? '').trim();
@@ -1427,6 +1475,9 @@ async function handleTeam(env: Env, m: Msg, now: number, about: About = {}) {
   const st = /^(busy|off|free|back|available)(?:\s+(\d{1,3})\s*(m|mins?|minutes?|h|hrs?|hours?|d|days?))?[\s.!]*$/i.exec(text);
   if (st && !m.ctx_id) return setStatus(env, now, member, st, reply);
   if (/^(who|status)[\s?!.]*$/i.test(text) && !m.ctx_id) return reply(await whoIsOn(env, now));
+  const ph = /^phrase\s+(en|ml|mg|hi|hg|kn|kg|ta|tg)\s*:\s*([\s\S]+?)\s*=\s*([\s\S]+)$/i.exec(text);
+  if (ph && !m.ctx_id) return reply(await addPhrase(env, member, ph[1].toLowerCase(), ph[2], ph[3]));
+  if (/^phrases[\s?!.]*$/i.test(text) && !m.ctx_id) return reply(await listPhrases(env));
 
   let contact: Contact | undefined, questionId: number | null = null, rest = text, o: Msg | undefined;
   const code = /^#([A-Z0-9]{5})\b\s*/i.exec(text);
@@ -1597,7 +1648,7 @@ const toneOf = async (env: Env) => (await sb<{ value: string }>(env, 'GET', 'set
 /** The team's words to the client, in the client's language. Translated only when nothing would
  *  be removed on the way to the AI (numbers, emails): otherwise sent exactly as written. A project
  *  update (`o.template`) still goes out after their 24-hour window, as the `project_update` template. */
-async function relay(env: Env, now: number, c: Contact, text: string, asIs = false, o: { prefix?: string; template?: boolean } = {}): Promise<{ ok: boolean; note: string }> {
+export async function relay(env: Env, now: number, c: Contact, text: string, asIs = false, o: { prefix?: string; template?: boolean } = {}): Promise<{ ok: boolean; note: string }> {
   const direct = c.phone ? ` Message them directly: wa.me/${c.phone}` : '';
   if (c.mode === 'stopped') return { ok: false, note: `#${c.code} opted out, so nothing was sent.` };
   if (c.mode === 'blocked') return { ok: false, note: `#${c.code} is blocked, so nothing was sent. "#${c.code} unblock" first.` };
@@ -1666,16 +1717,34 @@ async function review(env: Env, now: number, member: string, action: 'a' | 'e' |
   const v = await embed(env, k.question_en);
   if (!v) return reply('I could not save it right now. Tap Approve again in a minute.');
   const [ok] = await sb(env, 'PATCH', `knowledge?id=eq.${id}&status=eq.pending`, { status: 'approved', embedding: vec(v), decided_by: member, decided_at: iso(now) });
-  await reply(ok ? 'Saved ✅ I will answer this myself next time.' : 'This one was already decided.');
+  const replaced = ok ? await supersedeNear(env, id, v, member, now).catch(() => [] as Knowledge[]) : [];
+  await reply(!ok ? 'This one was already decided.' : `Saved ✅ I will answer this myself next time.${replaced.length
+    ? ` It replaces the earlier answer "${clip(replaced[0].answer_en, 120)}" (kept in Admin → WhatsApp → Answers).` : ''}`);
   // the answer is saved: a failure from here on never asks the member to tap again
   if (ok) await offerTranslations(env, member, k, await toneOf(env)).catch((e) => console.error('[bot] translations not offered', String(e)));
 }
 
+/** An answer just approved replaces the approved ones for (nearly) the same question: they are
+ *  kept as superseded (Admin → Answers can switch one back on), so two answers never compete. */
+async function supersedeNear(env: Env, id: number, v: number[], by: string, now: number) {
+  const near = (await sb<Knowledge>(env, 'POST', 'rpc/match_knowledge', { query_embedding: vec(v), match_threshold: SURE, match_count: 5 })).filter((k) => k.id !== id);
+  if (!near.length) return near;
+  await sb(env, 'PATCH', `knowledge?id=in.(${near.map((k) => k.id).join(',')})&status=eq.approved`, { status: 'superseded', decided_by: clip(by, 120), decided_at: iso(now) }, 'return=minimal');
+  await sb(env, 'PATCH', `knowledge?id=eq.${id}`, { supersedes: near[0].id }, 'return=minimal');
+  return near;
+}
+
 async function saveEdit(env: Env, now: number, member: string, id: number, text: string, reply: Reply) {
-  const [k] = await sb<Knowledge>(env, 'GET', `knowledge?id=eq.${id}`);
+  const [k] = await sb<Knowledge & { source: string; version?: number }>(env, 'GET', `knowledge?id=eq.${id}`);
   if (!k || !text) return reply(HELP);
   const v = await embed(env, k.question_en);
   if (!v) return reply('I could not save it right now. Reply with the answer again in a minute.', { knowledge_id: id });
+  if (k.status === 'approved') {                                            // an answer in use: a new version, the old one kept
+    const nv = await newVersion(env, k, { question_en: k.question_en, answer_en: clip(text, 700), embedding: vec(v), by: member, at: iso(now), keep: false });
+    await reply('Saved your answer as a new version ✅ I will use it next time (the old one is kept in Admin → WhatsApp → Answers).');
+    if (nv) await offerTranslations(env, member, { id: nv.id, question_en: k.question_en, answer_en: clip(text, 700) }, await toneOf(env)).catch((e) => console.error('[bot] translations not offered', String(e)));
+    return;
+  }
   // the old translations go too: an earlier "Approve all" must not bring back the old answer
   await sb(env, 'PATCH', `knowledge?id=eq.${id}`, { answer_en: clip(text, 700), status: 'approved', embedding: vec(v), decided_by: member, decided_at: iso(now), translations: {}, translations_ok: false }, 'return=minimal');
   await reply('Saved your answer ✅ I will use it next time.');

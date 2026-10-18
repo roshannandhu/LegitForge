@@ -85,8 +85,11 @@ create table if not exists public.knowledge (
   translations jsonb not null default '{}',     -- ml, mg, hi, kn: the same answer, once
   translations_ok boolean not null default false, -- the team approved those translations
   wins int not null default 0,                  -- chats that used it became won deals
-  status text not null default 'pending' check (status in ('pending','approved','rejected')),
+  status text not null default 'pending' check (status in ('pending','approved','rejected','superseded','archived')),
   source text not null check (source in ('site','team')),
+  version int not null default 1,               -- an edit of an approved answer is a new version
+  supersedes bigint references public.knowledge(id) on delete set null,   -- the version (or answer) it replaced
+  review_at timestamptz,                        -- not used after this date until someone checks it again
   question_id bigint references public.questions(id) on delete set null,
   decided_by text,
   decided_at timestamptz,
@@ -137,7 +140,7 @@ language sql stable set search_path = '' as $$
   select k.id, k.question_en, k.answer_en, k.translations, k.translations_ok, k.wins,
     1 - (k.embedding operator(extensions.<=>) query_embedding) as similarity
   from public.knowledge k
-  where k.status = 'approved' and k.embedding is not null
+  where k.status = 'approved' and k.embedding is not null and (k.review_at is null or k.review_at > now())
     and 1 - (k.embedding operator(extensions.<=>) query_embedding) > match_threshold
   order by k.embedding operator(extensions.<=>) query_embedding
   limit match_count

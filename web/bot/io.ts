@@ -38,6 +38,8 @@ export interface Env {
   UPI_ID?: string;
   GOOGLE_REVIEW_URL?: string;
   REVIVE_TEMPLATE?: string;
+  /** AI requests a day in all (chat, embeddings, voice notes); past it, the fixed text and the team. Default 1500. */
+  AI_DAILY_CAP?: string;
   /** More channels (phase 7, bot/channels.ts): the Facebook Page's access token (Messenger and
    *  Instagram replies), the Page id and the Instagram account id (only their messages are read). */
   FB_PAGE_TOKEN?: string;
@@ -55,6 +57,9 @@ export interface Env {
     out?: { wamid: string; to: string; body: string; at: number; options?: { id: string; title: string }[]; team?: boolean }[];
     /** Clients erased this run: nothing of theirs is stored afterwards. */
     gone?: Set<string>;
+    /** The day's AI requests (aiAllowed): read once a run, the rest added at its end (flushAi). */
+    ai?: { key: string; used: number; extra: number };
+    phrases?: { lang: string; phrase: string; meaning: string }[];
   };
 }
 
@@ -206,7 +211,32 @@ function valid(out: unknown, schema: Schema): boolean {
 
 /** One JSON answer from the first provider that gives a valid one, else null. Both speak the
  *  OpenAI chat format; model names are Worker vars, so a model change needs no code change. */
+/** The day's AI requests in all (D1 bot_limits `ai:<day>`): past AI_DAILY_CAP (default 1500)
+ *  the bot uses its fixed text and the team, as when an AI is busy, and never another provider.
+ *  One D1 write a run; the rest are counted here and added when the run ends (flushAi). */
+async function aiAllowed(env: Env): Promise<boolean> {
+  const cap = Number(env.AI_DAILY_CAP || 1500), run = env.run;
+  if (run?.ai) { run.ai.extra++; return run.ai.used + run.ai.extra <= cap; }
+  const key = `ai:${new Date(clock.now()).toISOString().slice(0, 10)}`;
+  count(env);
+  const row = await env.DB.prepare('INSERT INTO bot_limits (key, n, at) VALUES (?, 1, ?) ON CONFLICT(key) DO UPDATE SET n = n + 1 RETURNING n')
+    .bind(key, clock.now()).first<{ n: number }>().catch(() => null);
+  const used = row?.n ?? 0;                                  // D1 unreachable: no cap rather than no AI
+  if (run) run.ai = { key, used, extra: 0 };
+  if (used > cap) console.error('[ai] the daily AI cap (AI_DAILY_CAP) is reached: fixed text until tomorrow');
+  return used <= cap;
+}
+/** The run's other AI requests, added to the day's count (worker.ts flushOut). */
+export async function flushAi(env: Env) {
+  const a = env.run?.ai;
+  if (!a?.extra) return;
+  const extra = a.extra;
+  a.extra = 0;
+  await env.DB.prepare('UPDATE bot_limits SET n = n + ? WHERE key = ?').bind(extra, a.key).run().catch(() => {});
+}
+
 export async function chat<T>(env: Env, o: { system: string; user: string; schema: Schema & object; name: string; prefer: Provider[] }): Promise<T | null> {
+  if ((!env.GROQ_API_KEY && !env.GEMINI_API_KEY) || !(await aiAllowed(env))) return null;
   for (const p of o.prefer) {
     const key = p === 'groq' ? env.GROQ_API_KEY : env.GEMINI_API_KEY;
     if (!key) continue;
@@ -237,7 +267,7 @@ export async function chat<T>(env: Env, o: { system: string; user: string; schem
 
 /** 768 numbers for the knowledge base (Gemini embeddings), or null. */
 export async function embed(env: Env, text: string): Promise<number[] | null> {
-  if (!env.GEMINI_API_KEY) return null;
+  if (!env.GEMINI_API_KEY || !(await aiAllowed(env))) return null;
   count(env);
   try {
     const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${env.EMBED_MODEL || 'gemini-embedding-001'}:embedContent`, {
@@ -280,7 +310,7 @@ export async function media(env: Env, id: string, max: number): Promise<{ bytes:
 
 /** A voice note as text (Groq Whisper; Groq keeps no audio). `lang` is a hint (ISO 639-1). */
 export async function transcribe(env: Env, audio: ArrayBuffer, type: string, lang?: string): Promise<string | null> {
-  if (!env.GROQ_API_KEY) return null;
+  if (!env.GROQ_API_KEY || !(await aiAllowed(env))) return null;
   const form = new FormData();
   form.append('file', new Blob([audio], { type }), type.includes('mpeg') ? 'voice.mp3' : 'voice.ogg');
   form.append('model', env.WHISPER_MODEL || 'whisper-large-v3-turbo');

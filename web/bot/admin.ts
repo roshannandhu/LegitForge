@@ -5,14 +5,21 @@
 
 import { WorkerEntrypoint } from 'cloudflare:workers';
 import { clip, clock, embed, q, sb, sbCount, vec, type Env } from './io';
-import { webChat } from './worker';
+import { LANGS, type Lang } from './text';
+import { flushOut, newVersion, relay, webChat, withRun, type Contact } from './worker';
 import { MONEY } from './text';
 
 export type Speaker = 'client' | 'bot' | 'team' | 'alert';
 export interface ChatLine { at: string; who: Speaker; body: string }
 export interface Answer {
-  id: number; question_en: string; answer_en: string; status: 'pending' | 'approved' | 'rejected'; source: 'site' | 'team';
-  wins: number; translations_ok: boolean; created_at: string;
+  id: number; question_en: string; answer_en: string; status: 'pending' | 'approved' | 'rejected' | 'superseded' | 'archived'; source: 'site' | 'team';
+  wins: number; translations_ok: boolean; created_at: string; version: number; supersedes: number | null; review_at: string | null;
+  decided_by: string | null; decided_at: string | null;
+}
+export interface OpenQuestion { id: number; code: string; name: string | null; lang: string | null; lead_id: string | null; question: string; question_en: string; kind: string; created_at: string }
+export interface Health {
+  unhandled: number; oldestUnhandled: string | null; lastIn: string | null; openQuestions: number; pendingAnswers: number;
+  pastReview: number; withPerson: number; aiToday: number; aiCap: number;
 }
 export interface Insights {
   days: number; questions: number; byBot: number; byTeam: number; open: number;
@@ -21,6 +28,7 @@ export interface Insights {
 }
 
 type Row = Record<string, unknown>;
+const ANSWER_COLS = 'id,question_en,answer_en,status,source,wins,translations_ok,created_at,version,supersedes,review_at,decided_by,decided_at';
 const NO_MONEY = 'The bot never sends an answer with prices, amounts, percentages or long numbers (those are the team’s to give): leave this one to the team, or write it without them.';
 const KEY = (s: string) => s.trim().toLowerCase().replace(/[?.!\s]+$/, '');
 
@@ -32,9 +40,9 @@ export class BotAdmin extends WorkerEntrypoint<Env> {
 
   /** The WhatsApp conversation behind a lead (this enquiry or an earlier one), oldest first:
    *  the client, the bot's replies, the team's messages and the bot's alerts to the team. */
-  async chat(leadId: string): Promise<{ code: string; name: string | null; lines: ChatLine[] } | null> {
+  async chat(leadId: string): Promise<{ code: string; name: string | null; mode: string; lang: string | null; lines: ChatLine[] } | null> {
     const env = this.env;
-    const fields = 'wa_id,code,profile_name,fields';
+    const fields = 'wa_id,code,profile_name,fields,mode,lang';
     let [c] = await sb<Row>(env, 'GET', `contacts?lead_id=eq.${q(leadId)}&select=${fields}`);
     if (!c) [c] = await sb<Row>(env, 'GET', `contacts?fields->prev_leads=cs.${q(JSON.stringify([leadId]))}&select=${fields}`);
     if (!c) return null;
@@ -51,27 +59,136 @@ export class BotAdmin extends WorkerEntrypoint<Env> {
       if (line.who === 'alert' && before?.body === line.body && Date.parse(line.at) - Date.parse(before.at) < 60_000) continue;
       lines.push(line);
     }
-    return { code: String(c.code), name: ((c.fields as Row)?.name as string) || (c.profile_name as string) || null, lines };
+    return { code: String(c.code), name: ((c.fields as Row)?.name as string) || (c.profile_name as string) || null, mode: String(c.mode ?? 'bot'), lang: (c.lang as string) ?? null, lines };
+  }
+
+  /** The team's open questions (oldest first), with the client's code: Admin → WhatsApp → Questions. */
+  async openQuestions(): Promise<OpenQuestion[]> {
+    const qs = await sb<Row>(this.env, 'GET', 'questions?status=eq.pending&kind=neq.auto&order=created_at.asc&limit=50&select=id,wa_id,question,question_en,kind,created_at');
+    if (!qs.length) return [];
+    const ids = [...new Set(qs.map((x) => String(x.wa_id)))];
+    const cs = await sb<Row>(this.env, 'GET', `contacts?wa_id=in.${q(`(${ids.map((w) => `"${w}"`).join(',')})`)}&select=wa_id,code,lang,lead_id,profile_name,fields`);
+    const by = new Map(cs.map((c) => [String(c.wa_id), c]));
+    return qs.filter((x) => by.has(String(x.wa_id))).map((x) => {
+      const c = by.get(String(x.wa_id))!;
+      return { id: Number(x.id), code: String(c.code), name: ((c.fields as Row)?.name as string) || (c.profile_name as string) || null, lang: (c.lang as string) ?? null,
+        lead_id: (c.lead_id as string) ?? null, question: String(x.question ?? ''), question_en: String(x.question_en ?? ''), kind: String(x.kind), created_at: String(x.created_at) };
+    });
+  }
+
+  /** An admin answers an open question: it goes to the client in their language (as a team
+   *  member's reply would), the question is closed, and the answer waits in Answers as a draft
+   *  for someone to switch on (never used by the bot until then). */
+  async answerQuestion(id: number, text: string, by: string): Promise<{ ok: true; note: string } | { error: string }> {
+    const answer = text.trim();
+    if (answer.length < 2) return { error: 'Write the answer.' };
+    const env = withRun(this.env), now = clock.now();
+    const [question] = await sb<Row>(env, 'GET', `questions?id=eq.${Number(id)}&select=id,wa_id,question_en,kind,status`);
+    if (!question) return { error: 'That question is gone (the client may have deleted their data).' };
+    if (question.status !== 'pending') return { error: 'Someone answered this already.' };
+    const [contact] = await sb<Contact>(env, 'GET', `contacts?wa_id=eq.${q(String(question.wa_id))}`);
+    if (!contact) return { error: 'That client is gone (they deleted their data).' };
+    const [won] = await sb(env, 'PATCH', `questions?id=eq.${Number(id)}&status=eq.pending`,
+      { status: 'answered', answer: clip(answer, 2000), answered_by: clip(`admin:${by}`, 120), answered_at: new Date(now).toISOString() });
+    if (!won) return { error: 'Someone answered this a moment ago.' };
+    const sent = await relay(env, now, contact, answer);
+    if (!sent.ok) {
+      await sb(env, 'PATCH', `questions?id=eq.${Number(id)}`, { status: 'pending', answer: null, answered_by: null, answered_at: null }, 'return=minimal');
+      await flushOut(env, clock.now());
+      return { error: sent.note };
+    }
+    if (question.kind === 'question' && !MONEY.test(answer)) {           // reusable once someone switches it on
+      await sb(env, 'POST', 'knowledge', { question_en: clip(String(question.question_en), 200), answer_en: clip(answer, 700), status: 'pending', source: 'team',
+        question_id: Number(id), decided_by: clip(`admin:${by}`, 120) }, 'return=minimal').catch((e) => console.error('[admin] draft not saved', String(e)));
+    }
+    await flushOut(env, clock.now());
+    return { ok: true, note: sent.note };
+  }
+
+  /** How the bot is doing right now: stuck messages, open questions, answers waiting, AI used today. */
+  async health(): Promise<Health> {
+    const env = this.env, now = clock.now(), iso = (ms: number) => new Date(ms).toISOString();
+    const stuck = `messages?dir=eq.in&handled_at=is.null&at=lt.${q(iso(now - 5 * 60_000))}`;
+    const [unhandled, openQuestions, pendingAnswers, pastReview, withPerson] = await Promise.all([
+      sbCount(env, stuck), sbCount(env, 'questions?status=eq.pending&kind=neq.auto'), sbCount(env, 'knowledge?status=eq.pending'),
+      sbCount(env, `knowledge?status=eq.approved&review_at=lt.${q(iso(now))}`), sbCount(env, 'contacts?mode=eq.human'),
+    ]);
+    const [[oldest], [last]] = await Promise.all([
+      sb<{ at: string }>(env, 'GET', `${stuck}&order=at.asc&limit=1&select=at`), sb<{ at: string }>(env, 'GET', 'messages?dir=eq.in&team=is.null&order=at.desc&limit=1&select=at'),
+    ]);
+    const ai = await env.DB.prepare('SELECT n FROM bot_limits WHERE key = ?').bind(`ai:${iso(now).slice(0, 10)}`).first<{ n: number }>().catch(() => null);
+    return { unhandled, oldestUnhandled: oldest?.at ?? null, lastIn: last?.at ?? null, openQuestions, pendingAnswers, pastReview, withPerson,
+      aiToday: ai?.n ?? 0, aiCap: Number(env.AI_DAILY_CAP || 1500) };
+  }
+
+  /** Take a lead's chat over (the bot stays quiet; messages go to the team) or hand it back. */
+  async setMode(leadId: string, mode: 'human' | 'bot'): Promise<{ ok: true } | { error: string }> {
+    const c = await this.contactOf(leadId);
+    if (!c) return { error: 'No WhatsApp conversation for this lead.' };
+    if (c.mode === 'stopped' || c.mode === 'blocked') return { error: `This client is ${c.mode === 'stopped' ? 'opted out' : 'blocked'}: nothing changed.` };
+    await sb(this.env, 'PATCH', `contacts?wa_id=eq.${q(c.wa_id)}`, { mode, taken_by: null }, 'return=minimal');
+    return { ok: true };
+  }
+
+  /** The client's language, as if they chose it (kept, whatever they type). */
+  async setLang(leadId: string, lang: string): Promise<{ ok: true } | { error: string }> {
+    if (!LANGS.some((l) => l.key === lang)) return { error: 'Pick a language from the list.' };
+    const c = await this.contactOf(leadId);
+    if (!c) return { error: 'No WhatsApp conversation for this lead.' };
+    await sb(this.env, 'PATCH', `contacts?wa_id=eq.${q(c.wa_id)}`, { lang: lang as Lang, fields: { ...c.fields, lang_auto: false } }, 'return=minimal');
+    return { ok: true };
+  }
+
+  private async contactOf(leadId: string): Promise<Contact | undefined> {
+    let [c] = await sb<Contact>(this.env, 'GET', `contacts?lead_id=eq.${q(leadId)}`);
+    if (!c) [c] = await sb<Contact>(this.env, 'GET', `contacts?fields->prev_leads=cs.${q(JSON.stringify([leadId]))}`);
+    return c;
   }
 
   /** What the bot knows (newest first), optionally one status. */
   async answers(status?: Answer['status']): Promise<Answer[]> {
-    const only = status && ['pending', 'approved', 'rejected'].includes(status) ? `&status=eq.${status}` : '';
-    return sb<Answer>(this.env, 'GET', `knowledge?select=id,question_en,answer_en,status,source,wins,translations_ok,created_at&order=created_at.desc&limit=300${only}`);
+    // all = the ones that count now; replaced and archived ones on their own filters
+    const only = status && ['pending', 'approved', 'rejected', 'superseded', 'archived'].includes(status) ? `&status=eq.${status}` : '&status=in.(pending,approved,rejected)';
+    return sb<Answer>(this.env, 'GET', `knowledge?select=${ANSWER_COLS}&order=created_at.desc&limit=300${only}`);
+  }
+
+  /** An answer's versions, newest first (each edit of an approved answer is one). */
+  async history(id: number): Promise<Answer[]> {
+    const out: Answer[] = [];
+    for (let next: number | null = Number(id); next && out.length < 10;) {
+      const [k]: Answer[] = await sb<Answer>(this.env, 'GET', `knowledge?id=eq.${next}&select=${ANSWER_COLS}`);
+      if (!k) break;
+      out.push(k);
+      next = k.supersedes;
+    }
+    return out;
+  }
+
+  /** Archived: kept for the record, never used, not offered again. */
+  async archive(id: number, by: string): Promise<{ ok: true } | { error: string }> {
+    const [k] = await sb(this.env, 'PATCH', `knowledge?id=eq.${Number(id)}&status=neq.archived`, { status: 'archived', decided_by: clip(by, 120), decided_at: new Date(clock.now()).toISOString() });
+    return k ? { ok: true } : { error: 'That answer is gone or already archived.' };
   }
 
   /** A new or corrected answer, approved at once (the admin wrote it). A changed answer drops its
    *  approved translations: the bot then translates it for each client as it goes. */
-  async saveAnswer(v: { id?: number; question_en: string; answer_en: string; by: string }): Promise<{ ok: true; id: number } | { error: string }> {
+  async saveAnswer(v: { id?: number; question_en: string; answer_en: string; by: string; review_at?: string | null }): Promise<{ ok: true; id: number } | { error: string }> {
     const question = clip(v.question_en.trim(), 200), answer = clip(v.answer_en.trim(), 700);
     if (question.length < 5 || answer.length < 2) return { error: 'Write the question and the answer.' };
     if (MONEY.test(answer)) return { error: NO_MONEY };
-    const [old] = v.id ? await sb<{ answer_en: string }>(this.env, 'GET', `knowledge?id=eq.${Number(v.id)}&select=answer_en`) : [];
+    const review = v.review_at && Number.isFinite(Date.parse(v.review_at)) ? new Date(Date.parse(v.review_at)).toISOString() : null;
+    const [old] = v.id ? await sb<Row>(this.env, 'GET', `knowledge?id=eq.${Number(v.id)}`) : [];
     if (v.id && !old) return { error: 'That answer is gone.' };
+    if (old && (old.status === 'superseded' || old.status === 'archived')) return { error: 'That is an old version: edit the current one instead.' };
     const e = await embed(this.env, question);
     if (!e) return { error: 'The AI is busy (embedding); try again in a minute.' };
-    const row = { question_en: question, answer_en: answer, embedding: vec(e), status: 'approved', decided_by: clip(v.by, 120), decided_at: new Date(clock.now()).toISOString(),
-      ...(old?.answer_en === answer ? {} : { translations: {}, translations_ok: false }) };
+    const at = new Date(clock.now()).toISOString(), same = old?.answer_en === answer;
+    if (old && old.status === 'approved' && (old.question_en !== question || !same)) {   // an answer in use: a new version, the old one kept
+      const k = await newVersion(this.env, old as never, { question_en: question, answer_en: answer, embedding: vec(e), by: v.by, at, review_at: review, keep: same });
+      return k ? { ok: true, id: k.id } : { error: 'That answer could not be saved; try again.' };
+    }
+    const row = { question_en: question, answer_en: answer, embedding: vec(e), status: 'approved', decided_by: clip(v.by, 120), decided_at: at, review_at: review,
+      ...(same ? {} : { translations: {}, translations_ok: false }) };
     if (v.id) {
       const [k] = await sb<{ id: number }>(this.env, 'PATCH', `knowledge?id=eq.${Number(v.id)}`, row);
       return k ? { ok: true, id: k.id } : { error: 'That answer is gone.' };

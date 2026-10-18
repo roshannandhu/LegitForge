@@ -1,6 +1,8 @@
 import { notFound } from 'next/navigation';
 import { requireAdmin } from '@/lib/admin/auth';
-import { bot, type ChatLine } from '@/lib/admin/bot';
+import { BOT_LANGS, bot, type ChatLine } from '@/lib/admin/bot';
+import { ActionForm, Submit } from '../../../ui';
+import { setLangAction, setModeAction } from '../../../whatsapp/actions';
 
 const WHO: Record<ChatLine['who'], string> = { client: 'Client', bot: 'Bot', team: 'Team', alert: 'Bot → team' };
 
@@ -16,6 +18,18 @@ export default async function LeadChat({ params }: { params: Promise<{ id: strin
     <>
       <p><a className="text-link" href="/admin/leads">← Leads</a></p>
       <h1 className="type-h2">{chat ? `#${chat.code} ${chat.name ?? ''}` : 'Conversation'}</h1>
+      {chat && (chat.mode === 'bot' || chat.mode === 'human') && (
+        <div className="admin-actions" style={{ alignItems: 'end', flexWrap: 'wrap', gap: 16, marginBottom: 16 }}>
+          <ActionForm action={setModeAction.bind(null, id, chat.mode === 'human' ? 'bot' : 'human')}>
+            <Submit className="btn btn-ghost btn-sm" pending="…">{chat.mode === 'human' ? 'Hand back to the bot' : 'Take over (the bot stays quiet)'}</Submit>
+          </ActionForm>
+          <ActionForm action={setLangAction.bind(null, id)} className="admin-form">
+            <label className="field"><span>Reply language</span>
+              <select name="lang" defaultValue={chat.lang ?? 'en'}>{BOT_LANGS.map((l) => <option key={l.key} value={l.key}>{l.name}</option>)}</select></label>
+            <div><Submit className="btn btn-ghost btn-sm">Save</Submit></div>
+          </ActionForm>
+        </div>
+      )}
       {chat === undefined ? <p className="admin-empty">The bot is not reachable from here yet (it needs the bot deployed and the BOT binding).</p>
         : !chat ? <p className="admin-empty">No WhatsApp conversation for this lead (it may have been deleted, or is older than 90 days).</p>
         : (

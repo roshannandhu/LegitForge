@@ -10,21 +10,41 @@ import { adminDb } from './db';
 
 export interface ChatLine { at: string; who: 'client' | 'bot' | 'team' | 'alert'; body: string }
 export interface Answer {
-  id: number; question_en: string; answer_en: string; status: 'pending' | 'approved' | 'rejected'; source: 'site' | 'team';
-  wins: number; translations_ok: boolean; created_at: string;
+  id: number; question_en: string; answer_en: string; status: 'pending' | 'approved' | 'rejected' | 'superseded' | 'archived'; source: 'site' | 'team';
+  wins: number; translations_ok: boolean; created_at: string; version: number | null; supersedes: number | null; review_at: string | null;
+  decided_by: string | null; decided_at: string | null;
 }
+export interface OpenQuestion { id: number; code: string; name: string | null; lang: string | null; lead_id: string | null; question: string; question_en: string; kind: string; created_at: string }
+export interface Health {
+  unhandled: number; oldestUnhandled: string | null; lastIn: string | null; openQuestions: number; pendingAnswers: number;
+  pastReview: number; withPerson: number; aiToday: number; aiCap: number;
+}
+type Done = { ok: true } | { error: string };
 export interface Insights {
   days: number; questions: number; byBot: number; byTeam: number; open: number;
   top: { question: string; count: number; byBot: number }[];
   answers: { approved: number; pending: number; rejected: number };
 }
 interface BotRpc {
-  chat(leadId: string): Promise<{ code: string; name: string | null; lines: ChatLine[] } | null>;
+  chat(leadId: string): Promise<{ code: string; name: string | null; mode: string; lang: string | null; lines: ChatLine[] } | null>;
   answers(status?: Answer['status']): Promise<Answer[]>;
-  saveAnswer(v: { id?: number; question_en: string; answer_en: string; by: string }): Promise<{ ok: true; id: number } | { error: string }>;
-  setAnswer(id: number, on: boolean, by: string): Promise<{ ok: true } | { error: string }>;
+  history(id: number): Promise<Answer[]>;
+  saveAnswer(v: { id?: number; question_en: string; answer_en: string; by: string; review_at?: string | null }): Promise<{ ok: true; id: number } | { error: string }>;
+  setAnswer(id: number, on: boolean, by: string): Promise<Done>;
+  archive(id: number, by: string): Promise<Done>;
   insights(days?: number): Promise<Insights>;
+  openQuestions(): Promise<OpenQuestion[]>;
+  answerQuestion(id: number, text: string, by: string): Promise<{ ok: true; note: string } | { error: string }>;
+  health(): Promise<Health>;
+  setMode(leadId: string, mode: 'human' | 'bot'): Promise<Done>;
+  setLang(leadId: string, lang: string): Promise<Done>;
 }
+
+/** The bot's reply languages (bot/text.ts LANGS, restated: lib/ never imports bot/). */
+export const BOT_LANGS = [
+  { key: 'en', name: 'English' }, { key: 'ml', name: 'Malayalam' }, { key: 'mg', name: 'Manglish' }, { key: 'hi', name: 'Hindi' }, { key: 'hg', name: 'Hinglish' },
+  { key: 'kn', name: 'Kannada' }, { key: 'kg', name: 'Kanglish' }, { key: 'ta', name: 'Tamil' }, { key: 'tg', name: 'Tanglish' },
+] as const;
 
 /** The bot, or null where the binding is missing (`next dev`, or the bot not deployed yet). */
 export async function bot(): Promise<BotRpc | null> {
@@ -57,6 +77,19 @@ export async function saveReply(r: SavedReply) {
 }
 export async function deleteReply(key: string) {
   await (await adminDb()).prepare('DELETE FROM bot_replies WHERE key = ?').bind(key).run();
+}
+
+/* ------------------------------------------------------------------ regional phrases (D1 0017) */
+
+export interface Phrase { id: number; lang: string; phrase: string; meaning: string; created_by: string | null }
+export const listPhrases = async () =>
+  (await (await adminDb()).prepare('SELECT id, lang, phrase, meaning, created_by FROM bot_phrases ORDER BY lang, phrase').all<Phrase>().catch(() => ({ results: [] as Phrase[] }))).results;
+export async function savePhrase(p: { lang: string; phrase: string; meaning: string; by: string }) {
+  await (await adminDb()).prepare(`INSERT INTO bot_phrases (lang, phrase, meaning, created_by) VALUES (?, ?, ?, ?)
+    ON CONFLICT(lang, phrase) DO UPDATE SET meaning = excluded.meaning, created_by = excluded.created_by`).bind(p.lang, p.phrase, p.meaning, p.by).run();
+}
+export async function deletePhrase(id: number) {
+  await (await adminDb()).prepare('DELETE FROM bot_phrases WHERE id = ?').bind(id).run();
 }
 
 /* ------------------------------------------------------------------ the dashboard */

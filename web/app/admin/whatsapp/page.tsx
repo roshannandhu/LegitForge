@@ -20,14 +20,28 @@ function Breakdown({ title, rows }: { title: string; rows: Count[] }) {
 export default async function AdminWhatsApp() {
   await requireAdmin();                            // each page checks too: a layout can be skipped
   const [d, stats, b] = await Promise.all([dashboard(90), replyStats(), bot()]);
-  const ins = b ? await b.insights(30).catch(() => null) : null;
+  const [ins, health] = b ? await Promise.all([b.insights(30).catch(() => null), b.health().catch(() => null)]) : [null, null];
   return (
     <>
       <h1 className="type-h2">WhatsApp bot</h1>
       <p className="admin-lead">
         Enquiries of the last 90 days (website form and WhatsApp), and what clients asked the bot in the last 30.{' '}
-        <a className="text-link" href="/admin/whatsapp/answers">What the bot knows</a> · <a className="text-link" href="/admin/whatsapp/settings">Pause, away message, saved replies</a>
+        <a className="text-link" href="/admin/whatsapp/questions">Open questions</a> · <a className="text-link" href="/admin/whatsapp/answers">What the bot knows</a> ·{' '}
+        <a className="text-link" href="/admin/whatsapp/settings">Pause, away message, saved replies, phrases</a>
       </p>
+      {health && (
+        <section className="admin-section" aria-labelledby="health-h">
+          <h2 id="health-h" className="type-h3">Right now</h2>
+          <ul className="admin-cards">
+            <li><div className="admin-card"><span className="num">{health.unhandled}</span><span>messages waiting over 5 minutes{health.oldestUnhandled ? ` (oldest ${health.oldestUnhandled.slice(0, 16).replace('T', ' ')} UTC)` : ''}</span></div></li>
+            <li><div className="admin-card"><span className="num">{health.openQuestions}</span><span><a className="text-link" href="/admin/whatsapp/questions">open questions</a></span></div></li>
+            <li><div className="admin-card"><span className="num">{health.pendingAnswers}</span><span>answers waiting to be switched on{health.pastReview ? ` · ${health.pastReview} past their review date` : ''}</span></div></li>
+            <li><div className="admin-card"><span className="num">{health.withPerson}</span><span>chats with a person</span></div></li>
+            <li><div className="admin-card"><span className="num">{health.aiToday}/{health.aiCap}</span><span>AI requests today (cap)</span></div></li>
+            <li><div className="admin-card"><span className="num" style={{ fontSize: 18 }}>{health.lastIn ? health.lastIn.slice(0, 16).replace('T', ' ') : '—'}</span><span>last client message (UTC)</span></div></li>
+          </ul>
+        </section>
+      )}
       <ul className="admin-cards">
         <li><div className="admin-card"><span className="num">{d.total}</span><span>enquiries (90 days)</span></div></li>
         <li><div className="admin-card"><span className="num">{d.won}</span><span>won · {d.lost} lost</span></div></li>

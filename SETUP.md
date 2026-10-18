@@ -212,7 +212,10 @@ change, and is recommended before real client traffic.
    Google review link in `GOOGLE_REVIEW_URL`. Every payment amount is confirmed by the team member
    in WhatsApp before it is sent.
 12. More channels (optional, after WhatsApp is settled). First run bot/supabase/007_phase7.sql and
-   008_upgrade.sql in Supabase (D1 migration 0016, the chat's limits, comes with the site deploy).
+   008_upgrade.sql in Supabase (008 is needed for WhatsApp too: the contact step, the nine
+   languages and answer versions; D1 migrations 0016 and 0017, the chat's limits and the regional
+   phrases, come with the site deploy). `AI_DAILY_CAP` in bot/wrangler.jsonc caps AI requests a
+   day (1500; past it the bot uses fixed text and the team).
    Website chat bubble: set the GitHub repository variable `WEB_CHAT` to `1` (a laptop deploy:
    `$env:NEXT_PUBLIC_WEB_CHAT = '1'`, README) and redeploy: the bubble appears on every public page,
    talks to the site's /api/chat (the bot over the BOT binding, so the bot's address stays private)

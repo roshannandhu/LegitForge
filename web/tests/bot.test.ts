@@ -860,9 +860,11 @@ test('WhatsApp bot (fake Meta, Supabase, Groq and Gemini; real Miniflare D1)', a
     sb.tables.knowledge.find((k) => k.id === 980)!.translations = { ml: 'old' };
     await post([tap(TEAM[0], 'kb:e:980', 'button_reply', 'Edit')]);
     await post([text(TEAM[0], 'Yes, Android and iPhone apps.', { context: { id: last(TEAM[0]).id } })]);
-    const k = sb.tables.knowledge.find((x) => x.id === 980)!;
+    const k = sb.tables.knowledge.find((x) => x.supersedes === 980)!;               // an edit of an answer in use: a new version
     assert.equal(k.answer_en, 'Yes, Android and iPhone apps.');
     assert.deepEqual(k.translations, {});
+    assert.equal(k.version, 2);
+    assert.equal(sb.tables.knowledge.find((x) => x.id === 980)!.status, 'superseded', 'the old one kept, never used');
     await post([tap(TEAM[0], 'tr:a:980', 'button_reply', 'Approve all')]);           // an old card
     await toName(CLIENT2, 'hi');
     fx.state.ai = (task) => (task === 'extract' ? question('Do you build Android apps?') : task === 'answer' ? { answer: 'हाँ, लगभग 15 हज़ार में।', answer_en: 'Yes, for about 15 thousand.' } : 500);
@@ -1899,7 +1901,9 @@ test('WhatsApp bot (fake Meta, Supabase, Groq and Gemini; real Miniflare D1)', a
     sb.tables.knowledge.push({ id: 700, question_en: 'Do you do logos?', answer_en: 'Yes.', status: 'approved', source: 'team', embedding: JSON.stringify(fakeEmbedding('x')),
       translations: { ml: 'old' }, translations_ok: true });
     assert.ok('ok' in (await admin.saveAnswer({ id: 700, question_en: 'Do you design logos?', answer_en: 'Yes, simple logos.', by: 'owner' })));
-    const k = sb.tables.knowledge.find((x) => x.id === 700)!;
+    const k = sb.tables.knowledge.find((x) => x.supersedes === 700)!;               // a new version; 700 is kept as superseded
+    assert.equal(sb.tables.knowledge.find((x) => x.id === 700)!.status, 'superseded');
+    assert.deepEqual((await admin.history(k.id as number)).map((x) => x.version ?? 1), [2, 1], 'the history, newest first (the column defaults to 1)');
     assert.deepEqual(k.translations, {});
     assert.equal(k.translations_ok, false);
     assert.equal(k.embedding, JSON.stringify(fakeEmbedding('Do you design logos?')), 'embedded again for the new question');
@@ -2246,5 +2250,100 @@ ${TEXT.en.contact}`, 'asked once more, with Skip');
       await post([text(CLIENT, 'Malayalam')]);
       assert.equal(contact().lang, 'ml');
     } finally { fx.state.interactiveDown = false; }
+  });
+  await t.test('upgrade: the team teaches a regional phrase; the AI is told its meaning when a message holds it (and never a price)', async () => {
+    await reset();
+    await teamHi();
+    await post([text(TEAM[0], 'phrase mg: Ethra aakum = how much will it cost')]);
+    assert.match(last(TEAM[0]).body, /Saved ✅ "ethra aakum"/);
+    await post([text(TEAM[0], 'phrase mg: kurachu = 500 rupees')]);
+    assert.match(last(TEAM[0]).body, /never holds a price/);
+    await post([text(TEAM[0], 'phrases')]);
+    assert.match(last(TEAM[0]).body, /mg: ethra aakum = how much will it cost/);
+    fx.state.ai = (task) => (task === 'extract' ? question('How much does a website cost?') : 500);
+    await toName(CLIENT, 'mg');
+    fx.aiBodies.length = 0;
+    await post([text(CLIENT, 'Website-nu ethra aakum?')]);
+    const sentToAi = fx.aiBodies.filter((b) => b.includes('"messages"')).join('\n');
+    assert.match(sentToAi, /ethra aakum\\" \(Malayalam \(Manglish\)\): how much will it cost/);
+    fx.aiBodies.length = 0;
+    await post([text(CLIENT, 'Ravi')]);
+    assert.ok(!fx.aiBodies.some((b) => b.includes('Phrases our team has confirmed')), 'only when the message holds one');
+  });
+
+  await t.test('upgrade: a daily AI cap: past it, fixed text and the team (never another provider)', async () => {
+    await reset();
+    Object.assign(env, { AI_DAILY_CAP: '2' });
+    try {
+      fx.state.ai = (task) => (task === 'extract' ? { ...blank, kind: 'answer', name: 'Ravi' } : 500);
+      await toName();
+      for (const a of ['Ravi', 'Ravi Bakery', 'A website for my bakery', 'Five pages']) await post([text(CLIENT, a)]);
+      const day = new Date(now).toISOString().slice(0, 10);
+      const used = (await db.prepare('SELECT n FROM bot_limits WHERE key = ?').bind(`ai:${day}`).first<{ n: number }>())!.n;
+      assert.ok(used >= 3, `counted (${used})`);
+      const asked = fx.aiBodies.filter((b) => b.includes('"messages"')).length;
+      assert.ok(asked <= 2, `at most the cap went to an AI (${asked})`);
+      assert.equal(contact().step, 'refs', 'the brief carries on without AI');
+    } finally { delete (env as Partial<Env>).AI_DAILY_CAP; }
+  });
+
+  await t.test('upgrade: Approve supersedes an answer for the same question; an answer past its review date is not used; archive', async () => {
+    await reset();
+    await teamHi();
+    const admin = new BotAdmin({} as never, env);
+    const v = JSON.stringify(fakeEmbedding('Do you make logos?'));
+    sb.tables.knowledge.push({ id: 900, question_en: 'Do you make logos?', answer_en: 'No.', embedding: v, status: 'approved', source: 'team', wins: 0 });
+    sb.tables.knowledge.push({ id: 901, question_en: 'Do you make logos?', answer_en: 'Yes, simple logos.', embedding: null, status: 'pending', source: 'team', wins: 0 });
+    await post([tap(TEAM[0], 'kb:a:901', 'button_reply', 'Approve')]);
+    assert.match(last(TEAM[0]).body, /It replaces the earlier answer "No\."/);
+    assert.equal(sb.tables.knowledge.find((k) => k.id === 900)!.status, 'superseded');
+    assert.equal(sb.tables.knowledge.find((k) => k.id === 901)!.supersedes, 900);
+    fx.state.ai = (task) => (task === 'extract' ? question('Do you make logos?') : 500);
+    await toName();
+    await post([text(CLIENT, 'Logos?')]);
+    assert.ok(last(CLIENT).body.startsWith('Yes, simple logos.'), 'the new answer, never the old');
+    sb.tables.knowledge.find((k) => k.id === 901)!.review_at = new Date(Date.now() - 86_400_000).toISOString();
+    await post([text(CLIENT, 'Logos again?')]);
+    assert.ok(!to(CLIENT).at(-1)!.body.startsWith('Yes, simple logos.'), 'past its review date: the team is asked instead');
+    assert.deepEqual(await admin.archive(901, 'owner'), { ok: true });
+    assert.equal(sb.tables.knowledge.find((k) => k.id === 901)!.status, 'archived');
+    assert.ok(!(await admin.answers()).some((a) => a.id === 900 || a.id === 901), 'the list shows the answers that count now');
+    assert.equal((await admin.answers('superseded')).length, 1);
+  });
+  await t.test('upgrade: Admin answers an open question (to the client, a draft for later), sees the health, takes over and sets the language', async () => {
+    await reset();
+    await teamHi();
+    const admin = new BotAdmin({} as never, env);
+    fx.state.ai = (task) => (task === 'extract' ? question('Do you build Shopify stores?') : task === 'answer' ? { answer: '', answer_en: '' } : 500);
+    await toName();
+    await post([text(CLIENT, 'Shopify?')]);
+    const open = await admin.openQuestions();
+    assert.equal(open.length, 1);
+    assert.equal(open[0].code, contact().code);
+    assert.equal((await admin.health()).openQuestions, 1);
+    const r = await admin.answerQuestion(open[0].id, 'Yes, we build Shopify stores.', 'owner@legitforge.in');
+    assert.ok('ok' in r, JSON.stringify(r));
+    assert.equal(last(CLIENT).body, 'Yes, we build Shopify stores.');
+    assert.equal(sb.tables.questions.at(-1)!.status, 'answered');
+    assert.equal(sb.tables.questions.at(-1)!.answered_by, 'admin:owner@legitforge.in');
+    const draft = sb.tables.knowledge.at(-1)!;
+    assert.deepEqual([draft.status, draft.answer_en], ['pending', 'Yes, we build Shopify stores.'], 'a draft: the bot uses it only once switched on');
+    assert.ok('error' in (await admin.answerQuestion(open[0].id, 'Again', 'owner')), 'answered once');
+    assert.ok(sb.tables.messages.some((m) => m.wa_id === CLIENT && m.dir === 'out' && m.body === 'Yes, we build Shopify stores.' && m.reply_id === 'team'),
+      'in the chat viewer as the team');
+
+    const lead = contact().lead_id as string;
+    assert.deepEqual(await admin.setMode(lead, 'human'), { ok: true });
+    assert.equal(contact().mode, 'human');
+    assert.equal((await admin.health()).withPerson, 1);
+    await post([text(CLIENT, 'Hello?')]);
+    assert.ok(teamGot(TEAM[0], 'Hello?'), 'with a person: forwarded, the bot quiet');
+    assert.deepEqual(await admin.setMode(lead, 'bot'), { ok: true });
+    assert.deepEqual(await admin.setLang(lead, 'ta'), { ok: true });
+    assert.equal(contact().lang, 'ta');
+    assert.equal(contact().fields.lang_auto, false);
+    assert.ok('error' in (await admin.setLang(lead, 'xx')));
+    const chat = (await admin.chat(lead))!;
+    assert.deepEqual([chat.mode, chat.lang], ['bot', 'ta']);
   });
 });

@@ -15,7 +15,7 @@ const CHECK: Record<string, Record<string, string[]>> = {
   contacts: { step: ['start', 'returning', 'service', 'language', 'name', 'business', 'need', 'details', 'refs', 'timeline', 'contact', 'done'], mode: ['bot', 'human', 'stopped', 'blocked'], lang: ['en', 'ml', 'mg', 'hi', 'hg', 'kn', 'kg', 'ta', 'tg'] },
   messages: { dir: ['in', 'out'] },
   questions: { status: ['pending', 'answered'], kind: ['question', 'draft', 'decision', 'price', 'auto'] },
-  knowledge: { status: ['pending', 'approved', 'rejected'], source: ['site', 'team'] },
+  knowledge: { status: ['pending', 'approved', 'rejected', 'superseded', 'archived'], source: ['site', 'team'] },
 };
 const broken = (table: string, row: Row) =>
   Object.entries(CHECK[table] ?? {}).find(([col, ok]) => row[col] != null && !ok.includes(row[col]))?.[0];
@@ -93,7 +93,7 @@ export function fakeSupabase(now: () => number) {
     if (path === 'rpc/match_knowledge') {
       const qv = JSON.parse(body.query_embedding) as number[];
       return json(200, tables.knowledge
-        .filter((k) => k.status === 'approved' && k.embedding)
+        .filter((k) => k.status === 'approved' && k.embedding && (!k.review_at || Date.parse(k.review_at) > Date.now()))
         .map((k) => ({ id: k.id, question_en: k.question_en, answer_en: k.answer_en, translations: k.translations ?? {}, translations_ok: !!k.translations_ok, wins: k.wins ?? 0, similarity: cosine(qv, JSON.parse(k.embedding)) }))
         .filter((k) => k.similarity > body.match_threshold)
         .sort((a, b) => b.similarity - a.similarity).slice(0, body.match_count));
