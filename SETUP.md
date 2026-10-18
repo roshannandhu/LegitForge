@@ -248,13 +248,15 @@ change, and is recommended before real client traffic.
       command it shows → Public hostname e.g. `wa-gateway.<your domain>` → Service
       `http://localhost:8790`. (No domain yet: `cloudflared tunnel --url http://localhost:8790`
       prints a temporary trycloudflare.com address for a first test.)
-   d. Start it (keep it running, e.g. with `pm2 start "node index.ts" --name wa-gateway` or a
-      Windows scheduled task):
-      `BOT_WEBHOOK_URL=https://legitforge-bot.<subdomain>.workers.dev/webhook WA_APP_SECRET=<secret> WA_PHONE_NUMBER_ID=baileys npm start`
-      (PowerShell: set each with `$env:NAME = 'value'` first.) It keeps the login in `data/`:
-      back that folder up and never share it.
-   e. In bot/wrangler.jsonc set `WA_TRANSPORT` to `baileys`, `BAILEYS_URL` to the tunnel address
-      and `WA_PHONE_NUMBER_ID` to `baileys`; deploy the bot.
+   d. Copy `.env.example` to `.env` in the gateway folder and put the secret from b in it (never
+      commit `.env`; `.gitignore` keeps it and `data/` out). Start it and keep it running (e.g.
+      `pm2 start npm --name wa-gateway -- start`, or a Windows scheduled task): `npm start`.
+      It keeps the login in `data/`: back that folder up and never share it.
+   e. bot/wrangler.jsonc already has `WA_TRANSPORT` and `WA_PHONE_NUMBER_ID` set to `baileys`. Put
+      the tunnel address in the bot's secret `BAILEYS_URL` (Cloudflare → Workers & Pages →
+      legitforge-bot → Settings → Variables and Secrets → Add → Secret). A secret survives
+      deploys, so a new tunnel address needs no deploy. Back to the Cloud API: empty `WA_TRANSPORT`
+      and Meta's phone number id in `WA_PHONE_NUMBER_ID`.
    f. Link the number: Admin → WhatsApp → Connection shows the QR (owners only). On the bot's
       phone: WhatsApp → Settings → Linked devices → Link a device → scan it. On that same phone
       instead: "Or link with a code". The page says "Linked ✅" with the number.

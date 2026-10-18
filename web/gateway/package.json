@@ -7,7 +7,7 @@
     "node": ">=24"
   },
   "scripts": {
-    "start": "node index.ts",
+    "start": "node --env-file-if-exists=.env index.ts",
     "check": "tsc -p tsconfig.json"
   },
   "dependencies": {

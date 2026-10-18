@@ -1,0 +1,4 @@
+# the WhatsApp Web login and the shared secret: never commit them
+data/
+.env
+node_modules/

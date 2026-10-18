@@ -67,7 +67,8 @@ export class BotAdmin extends WorkerEntrypoint<Env> {
   /** How WhatsApp is connected: Meta's Cloud API, or WhatsApp Web through the gateway (linked or
    *  not, and the QR to scan while not). Admin → WhatsApp → Connection. */
   async whatsapp(): Promise<WhatsAppLink> {
-    if (!viaGateway(this.env)) return { mode: 'cloud' };
+    if (this.env.WA_TRANSPORT !== 'baileys') return { mode: 'cloud' };
+    if (!viaGateway(this.env)) return { mode: 'baileys', reachable: false, error: 'The gateway’s address is not set yet: add BAILEYS_URL as a secret of the bot Worker (SETUP.md step 13).' };
     try {
       const { status, data } = await gatewayCall(this.env, 'GET', '/status');
       if (status !== 200) return { mode: 'baileys', reachable: false, error: status === 401 ? 'The gateway refused the signature: WA_APP_SECRET must be the same on both.' : `The gateway answered ${status}.` };
@@ -78,7 +79,8 @@ export class BotAdmin extends WorkerEntrypoint<Env> {
   /** Link the bot's number with an 8-character code (WhatsApp → Linked devices → Link with phone
    *  number), or unlink it (a new QR follows). Owners only (the website checks). */
   async whatsappAdmin(action: 'pair' | 'logout', phone?: string): Promise<{ ok: true; code?: string } | { error: string }> {
-    if (!viaGateway(this.env)) return { error: 'WhatsApp uses the Cloud API here: nothing to link.' };
+    if (this.env.WA_TRANSPORT !== 'baileys') return { error: 'WhatsApp uses the Cloud API here: nothing to link.' };
+    if (!viaGateway(this.env)) return { error: 'The gateway’s address (BAILEYS_URL) is not set yet.' };
     const { status, data } = await gatewayCall(this.env, 'POST', '/admin', { action, phone }).catch(() => ({ status: 0, data: {} as Record<string, unknown> }));
     if (status === 200) return { ok: true, ...(data.code ? { code: String(data.code) } : {}) };
     return { error: status === 409 ? 'Already linked: log out first to link another number.' : status === 400 ? 'Check the phone number (with the country code).' : status === 0 ? 'The gateway is not reachable.' : `The gateway answered ${status}.` };

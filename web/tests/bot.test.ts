@@ -2512,8 +2512,12 @@ ${TEXT.en.contact}`, 'asked once more, with Skip');
     await reset();
     const admin = new BotAdmin({} as never, env);
     assert.deepEqual(await admin.whatsapp(), { mode: 'cloud' }, 'the Cloud API: nothing to link here');
-    Object.assign(env, { WA_TRANSPORT: 'baileys', BAILEYS_URL: 'https://gw.test' });
+    Object.assign(env, { WA_TRANSPORT: 'baileys' });
     try {
+      const unset = await admin.whatsapp();
+      assert.ok(unset.mode === 'baileys' && !unset.reachable && /BAILEYS_URL/.test(unset.error), 'WhatsApp Web without the address says so (not "Cloud API")');
+      assert.ok('error' in (await admin.whatsappAdmin('pair', '919847012345')));
+      Object.assign(env, { BAILEYS_URL: 'https://gw.test' });
       fx.state.gateway.connected = false;
       const waiting = await admin.whatsapp();
       assert.deepEqual(waiting, { mode: 'baileys', reachable: true, connected: false, me: null, since: null, qr: 'data:image/png;base64,QR' });
