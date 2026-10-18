@@ -1,15 +1,18 @@
 # WhatsApp automation: audit, upgrade and verification report
 
-18 October 2026 · branch `main-exh9xw` · commits `5ba5d93` → `d89f992` (on top of phases 1–7, `8ebc58b`…`ec2f754`).
+18 October 2026 · branch `main-exh9xw` · commits `5ba5d93` → `d89f992` (on top of phases 1–7, `8ebc58b`…`ec2f754`),
+then `0d119ae` (WhatsApp Web through Baileys, at the owner's request).
 Architecture: [ARCHITECTURE-WHATSAPP.md](ARCHITECTURE-WHATSAPP.md) and [ARCHITECTURE-WEBSITE.md](ARCHITECTURE-WEBSITE.md).
 
-**Read first.** The brief assumed Baileys, a Node.js socket runtime, an email-signature service and
-a "ten-workflow" WhatsApp offering. None of these exist in this project. The bot uses Meta's
-official **WhatsApp Cloud API** on a **Cloudflare Worker** (`web/bot/`): webhooks, with no
-persistent socket or QR session. The website (`web/lib/pages.ts`) sells six services: websites and
-web apps, WhatsApp automation, n8n workflows, SEO, NFC cards and tags, and MR Signage. I did not
-add Baileys, an email-signature service or invented workflows. Everything below is measured on the
-real system. Nothing was deployed, no secret was set, and no live message was sent.
+**Read first.** The bot (`web/bot/`, a **Cloudflare Worker**) talks to WhatsApp in one of two ways,
+chosen by `WA_TRANSPORT`: Meta's official **WhatsApp Cloud API** (webhooks), or, since `0d119ae`,
+**WhatsApp Web through Baileys**: a small Node.js gateway (`web/gateway/`) that holds the login
+(QR or pairing code in Admin → WhatsApp → Connection) and passes messages to the same Worker as
+signed, Meta-shaped webhooks. Menus become WhatsApp polls with numbered options there. The
+website (`web/lib/pages.ts`) sells six services: websites and web apps, WhatsApp automation, n8n
+workflows, SEO, NFC cards and tags, and MR Signage; no email-signature service or invented
+workflows were added. Everything below is measured on the real system. Nothing was deployed, no
+secret was set, and no live message was sent.
 
 ---
 
@@ -35,7 +38,7 @@ real system. Nothing was deployed, no secret was set, and no live message was se
 
 | Capability | Before this work | After | Evidence |
 |---|---|---|---|
-| Baileys connection, QR, reconnect | Not applicable (Cloud API webhooks) | Not applicable | `ARCHITECTURE-WHATSAPP.md` runtime note |
+| Baileys connection, QR, reconnect | Not applicable (Cloud API only) | Gateway (`web/gateway`): QR and pairing code in Admin, reconnect, new QR after a log-out (`0d119ae`) | `tests/gateway.test.ts`, bot tests through a fake gateway; the gateway was started for real and showed a QR (not linked to a phone) |
 | Nine reply styles (en, ml, mg, hi, hg, kn, kg, ta, tg) | 5 (no Hinglish, Kanglish, Tamil, Tanglish) | 9 | `tests/language.test.ts` |
 | Language detection without an LLM; short replies never switch | Script only | Script + romanised words + English, with false-positive guards | 35 detection cases |
 | Skip the language list for a clear first message | Missing (always asked) | Implemented | conversation tests |
@@ -200,6 +203,8 @@ request (each client's question goes to the team).
 
 - Lists and reply buttons are the Cloud API's official interactive messages. Their payloads,
   limits and tap parsing are tested.
+- Through Baileys they become WhatsApp polls (one answer, numbered options, so typing the number
+  works too); a vote comes back to the bot as a list tap (`gateway/convert.ts`, tested).
 - **No real Android or iOS device was tested** (blocked). This is not verified.
 - **Numbered fallback, tested:** when Meta refuses a list or buttons (and only then, not on a
   timeout), the same choices go out as numbered text. "1", "2.", "option 2" or the option's words
@@ -246,8 +251,9 @@ Other checks:
 
 | Category | Command / procedure | Cases | Passed | Failed | Skipped | Blocked |
 |---|---|---|---|---|---|---|
-| Backend: bot, languages, calendar, leads, analytics, cache, front door, GitHub brief | `npm run test:backend` (node:test, Miniflare D1, fakes) | 139 | 139 | 0 | 0 | 0 |
-| — of which the bot | `tests/bot.test.ts` | 100 | 100 | 0 | 0 | 0 |
+| Backend: bot, gateway, languages, calendar, leads, analytics, cache, front door, GitHub brief | `npm run test:backend` (node:test, Miniflare D1, fakes) | 147 | 147 | 0 | 0 | 0 |
+| — of which the bot | `tests/bot.test.ts` | 103 | 103 | 0 | 0 | 0 |
+| — of which the gateway conversions | `tests/gateway.test.ts` | 5 | 5 | 0 | 0 | 0 |
 | — of which languages | `tests/language.test.ts` | 7 (35+ cases inside) | 7 | 0 | 0 | 0 |
 | Type check | `npx tsc --noEmit` | 1 | 1 | 0 | 0 | 0 |
 | Production build | `npm run build` | 1 | 1 | 0 | 0 | 0 |
@@ -309,7 +315,8 @@ owner, in this order:
    Page token).
 3. Deploy through the GitHub workflow, which applies D1 migrations, deploys the bot and then the
    site.
-4. Point Meta's webhook at the bot.
+4. Point Meta's webhook at the bot, or, for WhatsApp Web, run the gateway (SETUP.md step 13) and
+   link the number in Admin → WhatsApp → Connection.
 5. Test from the spare phone.
 6. Proofread the new languages.
 7. Optionally set `WEB_CHAT=1` and the Messenger/Instagram steps (SETUP.md step 12).
