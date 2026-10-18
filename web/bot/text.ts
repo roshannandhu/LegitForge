@@ -3,11 +3,12 @@
  *  WhatsApp limits: list rows ≤ 10 (title ≤ 24, description ≤ 72), reply buttons ≤ 3 (title ≤ 20). */
 
 export type Lang = 'en' | 'ml' | 'mg' | 'hi' | 'kn';
-export type Step = 'start' | 'returning' | 'service' | 'language' | 'name' | 'business' | 'need' | 'details' | 'refs' | 'timeline' | 'done';
-export type Field = 'name' | 'business' | 'need' | 'details' | 'refs' | 'timeline';
-/** The brief, in the order it is asked. `details` (the service's own question) and `refs`
- *  (websites they like) are asked only where they apply (worker.ts applies()). */
-export const FIELDS: Field[] = ['name', 'business', 'need', 'details', 'refs', 'timeline'];
+export type Step = 'start' | 'returning' | 'service' | 'language' | 'name' | 'business' | 'need' | 'details' | 'refs' | 'timeline' | 'contact' | 'done';
+export type Field = 'name' | 'business' | 'need' | 'details' | 'refs' | 'timeline' | 'contact';
+/** The brief, in the order it is asked. `details` (the service's own question), `refs` (websites
+ *  they like) and `contact` (a number or email: the website chat, Messenger and Instagram give
+ *  none) are asked only where they apply (worker.ts applies()). */
+export const FIELDS: Field[] = ['name', 'business', 'need', 'details', 'refs', 'timeline', 'contact'];
 
 /** The first menu (lib/wa-services.ts: the admin routes alerts by the same keys). */
 import { SERVICES, serviceByKey, type ServiceKey } from '../lib/wa-services';
@@ -60,7 +61,7 @@ export type TextKey = 'welcome' | 'menu' | 'lang' | 'name' | 'business' | 'need'
   | 'price' | 'callSoon' | 'keepGoing' | 'deleteAsk' | 'deleted' | 'kept' | 'welcomeBack' | 'sameProject'
   | 'refs' | 'skip' | 'fileSaved' | 'fileBig' | 'nudge' | 'work' | 'update'
   | 'howAsk' | 'slotAsk' | 'slotBtn' | 'otherTime' | 'booked' | 'howWa' | 'howPhone' | 'howMeet' | 'meetLater' | 'slotTaken' | 'reminder'
-  | 'quote' | 'pay' | 'payUpi' | 'review' | 'referral';
+  | 'quote' | 'pay' | 'payUpi' | 'review' | 'referral' | 'contact' | 'contactBad' | 'deletedInbox';
 type Pair = [string, string];
 
 export const TEXT: Record<Lang, Record<TextKey, string> & { tl: [string, string, string]; callBtn: Pair; delBtn: Pair; retBtn: Pair; howBtn: [string, string, string] }> = {
@@ -117,6 +118,9 @@ export const TEXT: Record<Lang, Record<TextKey, string> & { tl: [string, string,
     payUpi: 'Please pay the advance of {amount} by UPI to {upi} (Legit Forge), with {code} in the note. Thank you!',
     review: 'Thank you for choosing Legit Forge! 🙏 If you are happy with our work, a short Google review would help us a lot: {link}',
     referral: 'One more thing: if you know someone who needs a website, an app or a WhatsApp bot, please share our number: {link} 🙂',
+    contact: 'Last one: how can our team reach you? Send your WhatsApp number or email (or tap Skip).',
+    contactBad: "That doesn't look like a phone number or email.",
+    deletedInbox: 'Our team will also delete this conversation from our Messenger/Instagram inbox; your own copy stays until you delete it.',
   },
   ml: {
     welcome: 'നമസ്കാരം! 👋 ഇത് Legit Forge-ന്റെ ഓട്ടോമേറ്റഡ് അസിസ്റ്റന്റ് ആണ്. എന്ത് സഹായമാണ് വേണ്ടത്? താഴെ നിന്ന് തിരഞ്ഞെടുക്കൂ.',
@@ -171,6 +175,9 @@ export const TEXT: Record<Lang, Record<TextKey, string> & { tl: [string, string,
     payUpi: '{amount} അഡ്വാൻസ് UPI വഴി {upi} (Legit Forge) എന്നതിലേക്ക് അടയ്ക്കൂ, നോട്ടിൽ {code} ചേർക്കൂ. നന്ദി!',
     review: 'Legit Forge തിരഞ്ഞെടുത്തതിന് നന്ദി! 🙏 ഞങ്ങളുടെ വർക്ക് ഇഷ്ടപ്പെട്ടെങ്കിൽ, ഒരു ചെറിയ Google റിവ്യൂ വലിയ സഹായമാകും: {link}',
     referral: 'ഒരു കാര്യം കൂടി: വെബ്സൈറ്റോ ആപ്പോ WhatsApp ബോട്ടോ വേണ്ട ആരെയെങ്കിലും അറിയാമെങ്കിൽ, ഞങ്ങളുടെ നമ്പർ ഷെയർ ചെയ്യൂ: {link} 🙂',
+    contact: 'അവസാനമായി: ഞങ്ങളുടെ ടീം നിങ്ങളെ എങ്ങനെ ബന്ധപ്പെടണം? നിങ്ങളുടെ WhatsApp നമ്പറോ ഇമെയിലോ അയയ്ക്കൂ (അല്ലെങ്കിൽ Skip അമർത്തൂ).',
+    contactBad: 'അതൊരു ഫോൺ നമ്പറോ ഇമെയിലോ ആയി തോന്നുന്നില്ല.',
+    deletedInbox: 'ഞങ്ങളുടെ Messenger/Instagram ഇൻബോക്സിൽ നിന്നും ഞങ്ങളുടെ ടീം ഈ സംഭാഷണം ഡിലീറ്റ് ചെയ്യും; നിങ്ങളുടെ കോപ്പി നിങ്ങൾ ഡിലീറ്റ് ചെയ്യുന്നതുവരെ ഉണ്ടാകും.',
   },
   mg: {
     welcome: 'Namaskaram! 👋 Ith Legit Forge-inte automated assistant aanu. Enthu sahayamaanu vendath? Thazhe ninnu choose cheyyoo.',
@@ -225,6 +232,9 @@ export const TEXT: Record<Lang, Record<TextKey, string> & { tl: [string, string,
     payUpi: '{amount} advance UPI vazhi {upi} (Legit Forge)-lekku adakkoo, note-il {code} cherkkoo. Nanni!',
     review: 'Legit Forge thiranjeduthathinu nanni! 🙏 Njangalude work ishtappettenkil, oru cheriya Google review valiya sahaayamaakum: {link}',
     referral: 'Oru karyam koodi: website-o app-o WhatsApp bot-o venda aareyenkilum ariyaamenkil, njangalude number share cheyyoo: {link} 🙂',
+    contact: 'Last aayi: njangalude team ningale engane contact cheyyanam? Ningalude WhatsApp number allenkil email ayakkoo (allenkil Skip press cheyyoo).',
+    contactBad: 'Athu oru phone number-o email-o aayi thonnunnilla.',
+    deletedInbox: 'Njangalude Messenger/Instagram inbox-il ninnum njangalude team ee conversation delete cheyyum; ningalude copy ningal delete cheyyunnathu vare undaakum.',
   },
   hi: {
     welcome: 'नमस्ते! 👋 यह Legit Forge का ऑटोमेटेड असिस्टेंट है। आपको किस चीज़ में मदद चाहिए? नीचे से चुनें।',
@@ -279,6 +289,9 @@ export const TEXT: Record<Lang, Record<TextKey, string> & { tl: [string, string,
     payUpi: 'कृपया {amount} का एडवांस UPI से {upi} (Legit Forge) पर भेजें, नोट में {code} लिखें। धन्यवाद!',
     review: 'Legit Forge चुनने के लिए धन्यवाद! 🙏 अगर आप हमारे काम से खुश हैं, तो एक छोटा Google रिव्यू हमारी बहुत मदद करेगा: {link}',
     referral: 'एक बात और: अगर आप किसी ऐसे व्यक्ति को जानते हैं जिसे वेबसाइट, ऐप या WhatsApp बॉट चाहिए, तो हमारा नंबर शेयर करें: {link} 🙂',
+    contact: 'आख़िरी सवाल: हमारी टीम आपसे कैसे संपर्क करे? अपना WhatsApp नंबर या ईमेल भेजें (या Skip दबाएँ)।',
+    contactBad: 'यह फ़ोन नंबर या ईमेल नहीं लगता।',
+    deletedInbox: 'हमारी टीम यह बातचीत हमारे Messenger/Instagram इनबॉक्स से भी डिलीट करेगी; आपकी अपनी कॉपी तब तक रहेगी जब तक आप उसे डिलीट नहीं करते।',
   },
   kn: {
     welcome: 'ನಮಸ್ಕಾರ! 👋 ಇದು Legit Forge ನ ಸ್ವಯಂಚಾಲಿತ ಸಹಾಯಕ. ನಿಮಗೆ ಯಾವುದರಲ್ಲಿ ಸಹಾಯ ಬೇಕು? ಕೆಳಗಿನಿಂದ ಆಯ್ಕೆಮಾಡಿ.',
@@ -333,6 +346,9 @@ export const TEXT: Record<Lang, Record<TextKey, string> & { tl: [string, string,
     payUpi: 'ದಯವಿಟ್ಟು {amount} ಮುಂಗಡವನ್ನು UPI ಮೂಲಕ {upi} (Legit Forge) ಗೆ ಪಾವತಿಸಿ, ಟಿಪ್ಪಣಿಯಲ್ಲಿ {code} ಬರೆಯಿರಿ. ಧನ್ಯವಾದಗಳು!',
     review: 'Legit Forge ಆಯ್ಕೆ ಮಾಡಿದ್ದಕ್ಕೆ ಧನ್ಯವಾದಗಳು! 🙏 ನಮ್ಮ ಕೆಲಸ ಇಷ್ಟವಾಗಿದ್ದರೆ, ಒಂದು ಚಿಕ್ಕ Google ವಿಮರ್ಶೆ ನಮಗೆ ತುಂಬಾ ಸಹಾಯ ಮಾಡುತ್ತದೆ: {link}',
     referral: 'ಇನ್ನೊಂದು ವಿಷಯ: ವೆಬ್‌ಸೈಟ್, ಆಪ್ ಅಥವಾ WhatsApp ಬಾಟ್ ಬೇಕಾದವರು ಯಾರಾದರೂ ಗೊತ್ತಿದ್ದರೆ, ನಮ್ಮ ಸಂಖ್ಯೆಯನ್ನು ಹಂಚಿಕೊಳ್ಳಿ: {link} 🙂',
+    contact: 'ಕೊನೆಯದಾಗಿ: ನಮ್ಮ ತಂಡ ನಿಮ್ಮನ್ನು ಹೇಗೆ ಸಂಪರ್ಕಿಸಲಿ? ನಿಮ್ಮ WhatsApp ಸಂಖ್ಯೆ ಅಥವಾ ಇಮೇಲ್ ಕಳುಹಿಸಿ (ಅಥವಾ Skip ಒತ್ತಿ).',
+    contactBad: 'ಇದು ಫೋನ್ ಸಂಖ್ಯೆ ಅಥವಾ ಇಮೇಲ್‌ನಂತೆ ಕಾಣುತ್ತಿಲ್ಲ.',
+    deletedInbox: 'ನಮ್ಮ ತಂಡ ಈ ಸಂಭಾಷಣೆಯನ್ನು ನಮ್ಮ Messenger/Instagram ಇನ್\u200cಬಾಕ್ಸ್\u200cನಿಂದಲೂ ಅಳಿಸುತ್ತದೆ; ನಿಮ್ಮ ಪ್ರತಿ ನೀವು ಅಳಿಸುವವರೆಗೆ ಉಳಿಯುತ್ತದೆ.',
   },
 };
 export const t = (lang: string | null | undefined, key: TextKey) => (TEXT[(lang as Lang)] ?? TEXT.en)[key];
@@ -420,7 +436,7 @@ const FIELD_QUESTION: Record<Step, string> = {
   start: 'nothing yet', returning: 'whether this is about their earlier enquiry or something new', service: 'which service they need', language: 'which language to use',
   name: 'their name', business: 'their business name and what it does', need: 'what they want built or fixed',
   details: 'details of their project', refs: '1-2 websites they like and what they like about them',
-  timeline: 'when they want it ready', done: 'nothing (their brief is complete)',
+  timeline: 'when they want it ready', contact: 'their phone number or email (never read here)', done: 'nothing (their brief is complete)',
 };
 
 /** `asked` is the exact (English) question when the step's wording depends on the service. */

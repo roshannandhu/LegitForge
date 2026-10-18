@@ -182,13 +182,17 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
 - Channels (phase 7, bot/channels.ts): a client's id carries its channel ("web:<uuid>", "fb:<psid>",
   "ig:<igsid>"); io.ts wa() sends web replies into Supabase (messages.options holds the buttons)
   and Messenger/Instagram through Meta's Send API (FB_PAGE_TOKEN; quick replies, no templates).
-  The website's bubble (components/chat, shown only when NEXT_PUBLIC_BOT_CHAT_URL is set at build;
-  the panel loads on the first tap; next.config.ts adds that origin to connect-src) talks to the
-  bot's /chat. /chat is public: it takes only a button of the bot's latest message there (never a
-  made-up id), at most 4 KB, and D1 bot_limits (0016, atomic counters) allows 10 messages a minute
-  per chat and new chats 20 an hour per address (a salted hash) and 100 in all. Their leads are
-  source 'whatsapp' with the channel as the page and no WhatsApp consent (CHANNEL_SQL in
-  lib/wa-services.ts counts them apart). Instagram texts are cut to 1,000 bytes (channels.ts parts).
+  The website's bubble (components/chat, shown only when NEXT_PUBLIC_WEB_CHAT=1 at build; the
+  panel loads on the first tap) talks to the site's own /api/chat, which forwards to the bot over
+  the BOT binding (BotAdmin.fetch → worker.ts webChat): one origin, the bot's address never on the
+  site, and the bot has no public /chat. It takes only a button of the bot's latest message with
+  buttons (never a made-up id), at most 4 KB, and D1 bot_limits (0016, atomic counters) allows 10
+  messages a minute per chat and new chats 20 an hour per address (a salted hash) and 100 in all.
+  These channels give no number, so the brief ends with the contact step (a WhatsApp number or
+  email, read by contactFrom, never by an AI). Their leads are source 'whatsapp' with the channel
+  as the page and no WhatsApp consent (CHANNEL_SQL in lib/wa-services.ts counts them apart).
+  Instagram texts are cut to 1,000 bytes (channels.ts parts). A team member's reply on Messenger or
+  Instagram after 24 hours goes with Meta's HUMAN_AGENT tag (7 days; the bot never uses it).
   Messenger/Instagram webhooks use the same /webhook and app secret.
 - Fixed text in bot/text.ts must stay within WhatsApp limits (tests check them): list rows ≤ 10,
   row title ≤ 24, buttons ≤ 3 with titles ≤ 20.

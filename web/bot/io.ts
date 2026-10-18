@@ -130,6 +130,9 @@ async function wa(env: Env, { to, ...payload }: { to: string } & Record<string, 
 
 export const sendText = (env: Env, to: string, body: string) =>
   wa(env, { to, type: 'text', text: { body: clip(body, 4096), preview_url: false } });
+/** A team member's reply on Messenger or Instagram after their 24 hours (Meta allows a person 7 days). */
+export const sendHumanText = (env: Env, to: string, body: string) =>
+  wa(env, { to, type: 'text', text: { body: clip(body, 4096), preview_url: false }, tag: 'HUMAN_AGENT' });
 
 export interface Row { id: string; title: string; description?: string }
 export const sendList = (env: Env, to: string, body: string, button: string, rows: Row[], footer?: string) =>

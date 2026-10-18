@@ -34,8 +34,8 @@ jobs:
       NEXT_PUBLIC_TURNSTILE_SITE_KEY: ${{ vars.NEXT_PUBLIC_TURNSTILE_SITE_KEY }}
       TURNSTILE_PAIR_VERIFIED: ${{ vars.TURNSTILE_PAIR_VERIFIED }}
       NEXT_PUBLIC_SITE_URL: ${{ vars.SITE_URL || 'https://legitforge.pages.dev' }}
-      # the website chat bubble: the bot Worker's address (empty = no bubble), e.g. https://legitforge-bot.<subdomain>.workers.dev
-      NEXT_PUBLIC_BOT_CHAT_URL: ${{ vars.BOT_CHAT_URL }}
+      # the website chat bubble ("1" = on; it talks to /api/chat, the bot through the BOT binding)
+      NEXT_PUBLIC_WEB_CHAT: ${{ vars.WEB_CHAT }}
       NEXT_PUBLIC_NOINDEX: ${{ endsWith(vars.SITE_URL, '.workers.dev') && '1' || '' }}
       BUILD_REVISION: ${{ github.sha }}
     steps:

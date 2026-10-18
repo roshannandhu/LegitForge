@@ -1,5 +1,5 @@
-import { CHANNEL_SQL } from '@/lib/wa-services';
 import 'server-only';
+import { CHANNEL_SQL } from '@/lib/wa-services';
 import { getEnv } from '../cf';
 import { adminDb } from './db';
 

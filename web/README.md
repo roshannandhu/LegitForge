@@ -82,6 +82,7 @@ npx wrangler login
 npx wrangler whoami                   # confirm the intended account/membership
 $env:NEXT_PUBLIC_SITE_URL = 'https://legitforge.pages.dev'
 $env:BUILD_REVISION = (git rev-parse HEAD).Trim() # append a local suffix for uncommitted releases
+$env:NEXT_PUBLIC_WEB_CHAT = '1'                     # the website chat bubble (SETUP.md step 12); leave out to build without it
 npx tsc --noEmit
 npm run test:backend
 npx opennextjs-cloudflare build

@@ -5,6 +5,7 @@
 
 import { WorkerEntrypoint } from 'cloudflare:workers';
 import { clip, clock, embed, q, sb, sbCount, vec, type Env } from './io';
+import { webChat } from './worker';
 import { MONEY } from './text';
 
 export type Speaker = 'client' | 'bot' | 'team' | 'alert';
@@ -24,6 +25,11 @@ const NO_MONEY = 'The bot never sends an answer with prices, amounts, percentage
 const KEY = (s: string) => s.trim().toLowerCase().replace(/[?.!\s]+$/, '');
 
 export class BotAdmin extends WorkerEntrypoint<Env> {
+  /** The website chat bubble, forwarded by the site's /api/chat (app/api/chat/route.ts). */
+  async fetch(req: Request): Promise<Response> {
+    return new URL(req.url).pathname === '/chat' ? webChat(req, this.env, this.ctx) : new Response('Not found', { status: 404 });
+  }
+
   /** The WhatsApp conversation behind a lead (this enquiry or an earlier one), oldest first:
    *  the client, the bot's replies, the team's messages and the bot's alerts to the team. */
   async chat(leadId: string): Promise<{ code: string; name: string | null; lines: ChatLine[] } | null> {

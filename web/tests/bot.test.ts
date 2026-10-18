@@ -2020,20 +2020,27 @@ test('WhatsApp bot (fake Meta, Supabase, Groq and Gemini; real Miniflare D1)', a
   });
   /* ---- phase 7: more channels ---- */
 
-  const web = (session: string, message: Row, origin = 'https://legitforge.pages.dev') => {
+  // the website's /api/chat forwards to BotAdmin.fetch over the BOT binding (no public /chat)
+  const viaSite = async (req: Request) => {
+    const waits: Promise<unknown>[] = [];
+    const res = await new BotAdmin({ waitUntil: (p: Promise<unknown>) => { waits.push(p); } } as never, env).fetch(req);
+    await Promise.all(waits);
+    return res;
+  };
+  const web = (session: string, message: Row) => {
     now += 1000;                                                    // a second between messages, as in a real chat
-    return run(new Request('https://bot.test/chat', { method: 'POST', headers: { origin, 'content-type': 'application/json' }, body: JSON.stringify({ session, ...message }) }));
+    return viaSite(new Request('https://bot/chat', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ session, ...message }) }));
   };
   const webRead = async (session: string, after = '') =>
-    (await (await run(new Request(`https://bot.test/chat?session=${session}&after=${encodeURIComponent(after)}`))).json()) as { messages: Row[] };
+    (await (await viaSite(new Request(`https://bot/chat?session=${session}&after=${encodeURIComponent(after)}`))).json()) as { messages: Row[] };
 
   await t.test('phase 7: the website chat bubble talks to the same bot (menu, taps, the brief, the team)', async () => {
     await reset();
     await teamHi();
     const s = crypto.randomUUID();
+    assert.equal((await run(new Request('https://bot.test/chat', { method: 'POST', body: '{}' }))).status, 404, 'the bot has no public /chat');
     const res = await web(s, { text: 'Hi' });
     assert.equal(res.status, 202);
-    assert.equal(res.headers.get('access-control-allow-origin'), 'https://legitforge.pages.dev');
     let { messages } = await webRead(s);
     assert.equal(messages.at(-1)!.body, TEXT.en.welcome);
     assert.ok((messages.at(-1)!.options as Row[]).some((o) => o.id === 'svc:website'), 'the menu as options');
@@ -2045,8 +2052,20 @@ test('WhatsApp bot (fake Meta, Supabase, Groq and Gemini; real Miniflare D1)', a
     await web(s, { reply: { id: 'skip:details', title: 'Skip' } });
     await web(s, { reply: { id: 'skip:refs', title: 'Skip' } });
     await web(s, { reply: { id: 'tl:1', title: 'Within a month' } });
+    ({ messages } = await webRead(s));
+    assert.equal(messages.at(-1)!.body, TEXT.en.contact, 'the website chat asks how to reach them');
+    await web(s, { text: 'call me' });
+    ({ messages } = await webRead(s));
+    assert.equal(messages.at(-1)!.body, `${TEXT.en.contactBad}
+
+${TEXT.en.contact}`, 'asked once more, with Skip');
+    now += MIN;                                                    // (10 messages a minute per chat)
+    await web(s, { text: 'My number is 98470 12345, mail ravi@bakery.in' });
     const code = contact(`web:${s}`).code;
-    assert.match(teamGot(TEAM[0], `#${code} new lead`)!.body, /Website chat: no phone number \(reply to this message/);
+    assert.equal(contact(`web:${s}`).phone, '919847012345', 'an Indian number gets 91');
+    const alert = teamGot(TEAM[0], `#${code} new lead`)!.body;
+    assert.match(alert, /Website chat · WhatsApp: wa\.me\/919847012345/);
+    assert.match(alert, /Email: ravi@bakery\.in/);
     const row = await db.prepare('SELECT page, whatsapp_consent, source FROM leads WHERE id = ?').bind(contact(`web:${s}`).lead_id).first<Row>();
     assert.deepEqual(row, { page: 'Website chat', whatsapp_consent: 0, source: 'whatsapp' }, 'the channel, and no WhatsApp consent');
     now += 1000;
@@ -2056,13 +2075,10 @@ test('WhatsApp bot (fake Meta, Supabase, Groq and Gemini; real Miniflare D1)', a
     assert.equal(fx.sent.filter((m) => m.to === `web:${s}`).length, 0, 'nothing went to WhatsApp');
   });
 
-  await t.test('phase 7: the bubble is limited (bad sessions, floods, too many new chats) and answers CORS', async () => {
+  await t.test('phase 7: the bubble is limited (bad sessions, floods, too many new chats, big bodies)', async () => {
     await reset();
     assert.equal((await web('not-a-uuid', { text: 'Hi' })).status, 400);
     assert.equal((await web(crypto.randomUUID(), { reply: { id: 'media:image:1', title: 'x' } })).status, 400, 'no forged file ids');
-    const pre = await run(new Request('https://bot.test/chat', { method: 'OPTIONS', headers: { origin: 'https://legitforge.pages.dev' } }));
-    assert.equal(pre.status, 204);
-    assert.match(pre.headers.get('access-control-allow-methods') ?? '', /POST/);
     const s = crypto.randomUUID();
     for (let i = 0; i < 10; i++) assert.equal((await web(s, { text: `message ${i}` })).status, 202);
     assert.equal((await web(s, { text: 'one more' })).status, 429);
@@ -2071,7 +2087,7 @@ test('WhatsApp bot (fake Meta, Supabase, Groq and Gemini; real Miniflare D1)', a
     assert.equal((await web(s, { text: 'still me' })).status, 429, 'still 10 a minute for a chat it knows');
     now += 2 * MIN;
     assert.equal((await web(s, { text: 'a minute later' })).status, 202, 'a known chat is not a new one');
-    const big = await run(new Request('https://bot.test/chat', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ session: s, text: 'x'.repeat(5000) }) }));
+    const big = await viaSite(new Request('https://bot/chat', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ session: s, text: 'x'.repeat(5000) }) }));
     assert.equal(big.status, 413);
   });
 
@@ -2090,12 +2106,30 @@ test('WhatsApp bot (fake Meta, Supabase, Groq and Gemini; real Miniflare D1)', a
       assert.ok(first.ids.includes('svc:website'), 'the menu as quick replies');
       await meta('page', 'PAGE1', 'PSID9', { mid: 'm.2', text: 'Website', quick_reply: { payload: 'svc:website' } });
       assert.equal(contact('fb:PSID9').service, 'website');
-      await meta('page', 'PAGE1', 'PSID9', { mid: 'm.3', text: 'echo', is_echo: true });
+      const before = sb.tables.messages.filter((m) => m.wa_id === 'fb:PSID9').length;
+      await meta('page', 'PAGE1', 'PSID9', { mid: 'm.3', text: 'echo', is_echo: true });            // caught by is_echo alone
+      const echo = JSON.stringify({ object: 'page', entry: [{ id: 'PAGE1', messaging: [{ sender: { id: 'PAGE1' }, recipient: { id: 'PSID9' }, timestamp: now, message: { mid: 'm.3b', text: 'Our reply', is_echo: true } }] }] });
+      await run(new Request('https://bot.test/webhook', { method: 'POST', headers: { 'x-hub-signature-256': `sha256=${await hex(echo)}` }, body: echo }));
+      await meta('page', 'PAGE1', 'PSID9', { mid: 'm.3c', attachments: [{ type: 'image', payload: {} }], sticker_id: 369239263222822 });   // the like button
+      await meta('page', 'PAGE1', 'PSID9', { mid: 'm.3d', is_deleted: true });
+      assert.equal(sb.tables.messages.filter((m) => m.wa_id === 'fb:PSID9').length, before, 'echoes, likes and unsends are not client messages');
       await meta('page', 'OTHER', 'PSID8', { mid: 'm.4', text: 'Hi' });
       assert.ok(!sb.tables.contacts.some((c) => c.wa_id === 'fb:PSID8'), 'only our own Page');
       await meta('instagram', 'IG1', 'IGSID7', { mid: 'm.5', text: 'Hello' });
       assert.ok(contact('ig:IGSID7'), 'Instagram too');
       assert.ok(fx.sent.filter((m) => m.to === 'meta:IGSID7').at(-1)!.body.startsWith(TEXT.en.welcome));
+
+      // a person may answer for 7 days (Meta's human agent tag); the bot itself never uses it
+      await teamHi();
+      const code = contact('fb:PSID9').code;
+      now += 30 * 60 * MIN;
+      await post([text(TEAM[0], `#${code} Sorry for the wait, we can build it.`)]);
+      const late = fx.sent.filter((m) => m.to === 'meta:PSID9').at(-1)! as Sent & { raw: Row };
+      assert.equal(late.body, 'Sorry for the wait, we can build it.');
+      assert.deepEqual([late.raw.messaging_type, late.raw.tag], ['MESSAGE_TAG', 'HUMAN_AGENT']);
+      now += 7 * 24 * 60 * MIN;
+      await post([text(TEAM[0], `#${code} Still there?`)]);
+      assert.match(last(TEAM[0]).body, /Messenger \(7 days for a person's reply\) window has closed/);
     } finally { delete env.FB_PAGE_TOKEN; delete env.FB_PAGE_ID; delete env.IG_ACCOUNT_ID; }
   });
   await t.test('phase 7 fixes: the bubble takes only buttons the bot offered; DELETE MY DATA answers in the response', async () => {

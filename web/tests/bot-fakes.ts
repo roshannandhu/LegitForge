@@ -12,7 +12,7 @@ const KEY: Record<string, string> = { contacts: 'wa_id', messages: 'wamid', ques
 const UNIQUE: Record<string, string[]> = { contacts: ['code'], questions: ['wamid'], calls: ['start_at'] };
 /** The schema's CHECK constraints (bot/supabase/schema.sql), so a value Postgres would refuse fails here too. */
 const CHECK: Record<string, Record<string, string[]>> = {
-  contacts: { step: ['start', 'returning', 'service', 'language', 'name', 'business', 'need', 'details', 'refs', 'timeline', 'done'], mode: ['bot', 'human', 'stopped', 'blocked'], lang: ['en', 'ml', 'mg', 'hi', 'kn'] },
+  contacts: { step: ['start', 'returning', 'service', 'language', 'name', 'business', 'need', 'details', 'refs', 'timeline', 'contact', 'done'], mode: ['bot', 'human', 'stopped', 'blocked'], lang: ['en', 'ml', 'mg', 'hi', 'hg', 'kn', 'kg', 'ta', 'tg'] },
   messages: { dir: ['in', 'out'] },
   questions: { status: ['pending', 'answered'], kind: ['question', 'draft', 'decision', 'price', 'auto'] },
   knowledge: { status: ['pending', 'approved', 'rejected'], source: ['site', 'team'] },
@@ -269,6 +269,7 @@ export function installFakes(sb: ReturnType<typeof fakeSupabase>) {
       const s: Sent = { id: `meta.out.${++n}`, to: `meta:${b.recipient.id}`, type: 'meta', body: b.message.text,
         ids: (b.message.quick_replies ?? []).map((x: { payload: string }) => x.payload) };
       sent.push(s);
+      Object.assign(s, { raw: b });
       return Response.json({ recipient_id: b.recipient.id, message_id: s.id });
     }
     if (url.host === 'graph.facebook.com') {

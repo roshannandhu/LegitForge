@@ -49,7 +49,8 @@ export function parts(text: string, ig: boolean): string[] {
  *  titles 20 characters). Templates have no equivalent there: null, so the caller says it could
  *  not be sent. The id is the last part's; null if any part was refused. */
 export async function metaSend(env: Env, to: string, payload: Record<string, unknown>): Promise<string | null> {
-  if (!env.FB_PAGE_TOKEN || payload.type === 'template') return null;
+  if (payload.type === 'template') return null;
+  if (!env.FB_PAGE_TOKEN) { console.error('[meta] FB_PAGE_TOKEN is not set: nothing goes to Messenger or Instagram'); return null; }
   const { body, options, footer } = shown(payload);
   const texts = parts(footer ? `${body}\n\n${footer}` : body, to.startsWith('ig:'));
   let id: string | null = null;
@@ -61,7 +62,8 @@ export async function metaSend(env: Env, to: string, payload: Record<string, unk
         method: 'POST',
         headers: { authorization: `Bearer ${env.FB_PAGE_TOKEN}`, 'content-type': 'application/json' },
         body: JSON.stringify({
-          recipient: { id: to.slice(3) }, messaging_type: 'RESPONSE',
+          // a person's reply after 24 hours (within 7 days) goes with Meta's human agent tag
+          recipient: { id: to.slice(3) }, ...(payload.tag ? { messaging_type: 'MESSAGE_TAG', tag: payload.tag } : { messaging_type: 'RESPONSE' }),
           message: { text, ...(last && options.length ? { quick_replies: options.slice(0, 13).map((o) => ({ content_type: 'text', title: clip(o.title, 20), payload: o.id })) } : {}) },
         }),
         signal: AbortSignal.timeout(8000),
@@ -81,10 +83,13 @@ export function metaInbound(body: any, env: Env, now: number) {
   const prefix = body?.object === 'page' ? 'fb' : body?.object === 'instagram' ? 'ig' : null;
   const ours = prefix === 'fb' ? env.FB_PAGE_ID : env.IG_ACCOUNT_ID;
   const rows: { wamid: string; wa_id: string; body: string | null; reply_id: string | null; at: string }[] = [];
-  if (!prefix || !ours) return rows;
+  if (!prefix) return rows;
+  if (!ours) { console.error(`[meta] a ${prefix === 'fb' ? 'Messenger' : 'Instagram'} webhook, but ${prefix === 'fb' ? 'FB_PAGE_ID' : 'IG_ACCOUNT_ID'} is not set`); return rows; }
   for (const entry of body.entry ?? []) for (const ev of entry?.messaging ?? []) {
     const m = ev?.message, from = ev?.sender?.id;
-    if (!m?.mid || !from || m.is_echo || String(ev?.recipient?.id) !== String(ours)) continue;
+    // our own echoes, an unsent message, a like (a sticker): nothing to answer
+    if (!m?.mid || !from || m.is_echo || m.is_deleted || m.sticker_id) continue;
+    if (String(ev?.recipient?.id) !== String(ours)) { console.error(`[meta] a message for ${ev?.recipient?.id}, not ${prefix === 'fb' ? 'FB_PAGE_ID' : 'IG_ACCOUNT_ID'}: check it`); continue; }
     rows.push({
       wamid: String(m.mid), wa_id: `${prefix}:${from}`,
       body: m.text ? clip(String(m.text), 4000) : null,

@@ -211,14 +211,24 @@ change, and is recommended before real client traffic.
    `RAZORPAY_KEY_SECRET` (payment links), or your UPI ID in `UPI_ID` (bot/wrangler.jsonc); your
    Google review link in `GOOGLE_REVIEW_URL`. Every payment amount is confirmed by the team member
    in WhatsApp before it is sent.
-12. More channels (optional, after WhatsApp is settled). Website chat bubble: run
-   bot/supabase/007_phase7.sql in Supabase (D1 migration 0016, the chat's limits, comes with the site deploy), set the GitHub repository variable `BOT_CHAT_URL` to the
-   bot's address (https://legitforge-bot.<subdomain>.workers.dev) and redeploy: the bubble appears on
-   every public page and answers like WhatsApp. Messenger and Instagram: link the Facebook Page and
-   the Instagram professional account to the Meta app, subscribe the Page and Instagram webhooks
-   (messages) to the same callback URL and verify token, get pages_messaging and
-   instagram_manage_messages approved, then `npx wrangler secret put FB_PAGE_TOKEN -c bot/wrangler.jsonc`
-   and set `FB_PAGE_ID` and `IG_ACCOUNT_ID` in bot/wrangler.jsonc.
+12. More channels (optional, after WhatsApp is settled). First run bot/supabase/007_phase7.sql and
+   008_upgrade.sql in Supabase (D1 migration 0016, the chat's limits, comes with the site deploy).
+   Website chat bubble: set the GitHub repository variable `WEB_CHAT` to `1` (a laptop deploy:
+   `$env:NEXT_PUBLIC_WEB_CHAT = '1'`, README) and redeploy: the bubble appears on every public page,
+   talks to the site's /api/chat (the bot over the BOT binding, so the bot's address stays private)
+   and answers like WhatsApp, ending with an optional WhatsApp number or email.
+   Messenger and Instagram, in this order (messages that arrive before the last step are dropped):
+   a. Link the Facebook Page and the Instagram professional account to the Meta app; get
+      pages_messaging, instagram_manage_messages and the Human Agent permission approved (a
+      person's reply after 24 hours, up to 7 days).
+   b. Business settings → System users: assign the Page to the system user with those
+      permissions and generate a token that does not expire (a Graph API Explorer token stops
+      working after an hour). `npx wrangler secret put FB_PAGE_TOKEN -c bot/wrangler.jsonc`.
+   c. `FB_PAGE_ID` = the Page's id; `IG_ACCOUNT_ID` = the id from
+      `GET /{page-id}?fields=instagram_business_account` (it starts 1784…, not the public
+      Instagram user id). Set both in bot/wrangler.jsonc and deploy the bot.
+   d. Only then subscribe the Page and Instagram webhooks (messages) to the same callback URL
+      and verify token. The bot logs a missing token or a message for another id.
 8. Test from the spare phone (team phones always count as team). Then add the new SIM
    (Production setup), get the display name approved, switch the app to Live, change
    `WA_PHONE_NUMBER_ID` in `web/bot/wrangler.jsonc`, and put the new number in Admin → Company.

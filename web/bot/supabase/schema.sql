@@ -20,10 +20,10 @@ create table if not exists public.contacts (
   referred_at timestamptz,                      -- ...and the referral ask after it
   revived_at timestamptz,                       -- the one revival template after 30 quiet days
   pay_at timestamptz,                           -- the last payment link (a double tap sends one)
-  step text not null default 'start' check (step in ('start','returning','service','language','name','business','need','details','refs','timeline','done')),
+  step text not null default 'start' check (step in ('start','returning','service','language','name','business','need','details','refs','timeline','contact','done')),
   mode text not null default 'bot' check (mode in ('bot','human','stopped','blocked')),
   taken_by text,                                -- team number chatting in person ("take")
-  lang text check (lang in ('en','ml','mg','hi','kn')),
+  lang text check (lang in ('en','ml','mg','hi','hg','kn','kg','ta','tg')),
   service text,
   fields jsonb not null default '{}',           -- name, business, need, timeline, notes
   alerted_at timestamptz,

@@ -8,8 +8,6 @@ import createMDX from '@next/mdx';
  *  'wasm-unsafe-eval' and connect-src blob: are for the 3D team cards (Rapier's WebAssembly
  *  physics, and three.js loading the card model and textures from blob URLs).
  *  accounts.google.com/gsi: Google's sign-in button on /admin/sign-in (lib/admin/auth.ts). */
-/** The website chat bubble talks to the bot Worker (components/chat; empty = no bubble). */
-const BOT_CHAT = process.env.NEXT_PUBLIC_BOT_CHAT_URL ? ` ${new URL(process.env.NEXT_PUBLIC_BOT_CHAT_URL).origin}` : '';
 const securityHeaders = [
   { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains' },
   { key: 'X-Content-Type-Options', value: 'nosniff' },
@@ -22,7 +20,7 @@ const securityHeaders = [
       "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://challenges.cloudflare.com https://static.cloudflareinsights.com https://accounts.google.com/gsi/client",
       'frame-src https://challenges.cloudflare.com https://accounts.google.com/gsi/',
       "img-src 'self' data: blob:",
-      `connect-src 'self' blob: https://cloudflareinsights.com https://accounts.google.com/gsi/${BOT_CHAT}`,
+      "connect-src 'self' blob: https://cloudflareinsights.com https://accounts.google.com/gsi/",
       "style-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/style",
       "font-src 'self'",
     ].join('; '),

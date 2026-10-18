@@ -25,6 +25,11 @@ function sessionId(fresh = false) {
   } catch { return crypto.randomUUID(); }                  // private mode: this visit only
 }
 
+/** Text with its https links tappable (the bot's quote, payment, Meet and work links). */
+function Linked({ text }: { text: string }) {
+  return <>{text.split(/(https:\/\/[^\s<>"]+[^\s<>".,;:!?)])/).map((part, i) => (i % 2 ? <a key={i} href={part} target="_blank" rel="noopener noreferrer">{part}</a> : part))}</>;
+}
+
 const every = (idle: number) => (idle < 60_000 ? 2500 : idle < 5 * 60_000 ? 15_000 : idle < 30 * 60_000 ? 60_000 : 0);
 
 export default function ChatPanel({ url, open, onClose }: { url: string; open: boolean; onClose: () => void }) {
@@ -42,7 +47,7 @@ export default function ChatPanel({ url, open, onClose }: { url: string; open: b
 
   const poll = useCallback(async () => {
     try {
-      const r = await fetch(`${url}/chat?session=${session.current}${after.current ? `&after=${encodeURIComponent(after.current)}` : ''}`);
+      const r = await fetch(`${url}?session=${session.current}${after.current ? `&after=${encodeURIComponent(after.current)}` : ''}`);
       if (!r.ok) return;
       const { messages } = (await r.json()) as { messages: { wamid: string; at: string; dir: 'in' | 'out'; body: string; options: Option[] | null }[] };
       if (!messages.length) return;
@@ -80,7 +85,7 @@ export default function ChatPanel({ url, open, onClose }: { url: string; open: b
     const temp = `me-${Date.now()}`;
     setLines((old) => [...old, { id: temp, at: new Date().toISOString(), mine: true, body: 'text' in message ? message.text : message.reply.title, options: [] }]);
     try {
-      const r = await fetch(`${url}/chat`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ session: session.current, ...message }) });
+      const r = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ session: session.current, ...message }) });
       const b = (await r.json().catch(() => ({}))) as { id?: string; error?: string; erased?: boolean; notice?: string };
       if (r.ok && b.erased) {                                // DELETE MY DATA: nothing of this chat is kept, here either
         session.current = sessionId(true);
@@ -102,6 +107,9 @@ export default function ChatPanel({ url, open, onClose }: { url: string; open: b
     setLines((old) => old.filter((l) => l.id !== temp));
   }
 
+  // the buttons of the bot's latest message that had any, until the client answers (as on WhatsApp)
+  const lastMine = lines.findLastIndex((l) => l.mine);
+  const offered = lines.findLastIndex((l, i) => !l.mine && l.options.length > 0 && i > lastMine);
   return (
     <section id="chat-panel" className="chat-panel" role="dialog" aria-label="Chat with Legit Forge" hidden={!open} data-lenis-prevent
       onKeyDown={(e) => { if (e.key === 'Escape' && !e.defaultPrevented && !e.nativeEvent.isComposing) { e.preventDefault(); onClose(); } }}
@@ -114,8 +122,8 @@ export default function ChatPanel({ url, open, onClose }: { url: string; open: b
         {!lines.length && <p className="chat-hint">Say hi to start. Replies in English, Malayalam, Hindi or Kannada. <a href="/privacy">Privacy</a></p>}
         {lines.map((l, i) => (
           <div key={l.id} className={`chat-line${l.mine ? ' is-mine' : ''}`}>
-            <p>{l.body}</p>
-            {!l.mine && i === lines.length - 1 && l.options.length > 0 && (
+            <p>{l.mine ? l.body : <Linked text={l.body} />}</p>
+            {i === offered && (
               <div className="chat-options">
                 {l.options.map((o) => <button key={o.id} type="button" onClick={() => void send({ reply: o })}>{o.title}</button>)}
               </div>

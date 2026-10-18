@@ -32,7 +32,7 @@ import {
   type Field, type Lang, type ServiceKey, type Step,
 } from './text';
 import {
-  chat, clip, clock, count, embed, markRead, media, q, redact, room, sb, sbCount, sendButtons, sendList, sendTemplate, sendText, transcribe, validSignature, vec,
+  chat, clip, clock, count, embed, markRead, media, q, redact, room, sb, sbCount, sendButtons, sendHumanText, sendList, sendTemplate, sendText, transcribe, validSignature, vec,
   type Env, type Provider,
 } from './io';
 
@@ -66,6 +66,9 @@ interface Fields {
   away_at?: string;          // the last away message (the bot paused): once every 12 hours
   page?: string;             // where the enquiry started (the site's WhatsApp buttons): Admin → WhatsApp
   prev_leads?: string[];     // earlier enquiries' D1 lead ids (DELETE MY DATA removes them too)
+  contact?: string;          // how to reach them, from the website chat, Messenger or Instagram ('-' = skipped)
+  email?: string;
+  contact_tries?: number;
 }
 export interface Contact {
   wa_id: string; phone: string | null; profile_name: string | null; code: string; lead_id: string; lead_saved: boolean;
@@ -178,7 +181,6 @@ type Ctx = Pick<ExecutionContext, 'waitUntil'>;
 export default {
   async fetch(req: Request, env: Env, ctx: Ctx): Promise<Response> {
     const url = new URL(req.url);
-    if (url.pathname === '/chat') return webChat(req, env, ctx);
     if (url.pathname !== '/webhook') return new Response('Not found', { status: 404 });
     if (req.method === 'GET') {
       const p = url.searchParams;
@@ -363,7 +365,15 @@ const who = (c: Contact) => `${c.fields.name || c.profile_name || 'New client'}$
 const serviceLabel = (c: Contact) => serviceByKey(c.service ?? '')?.lead ?? 'Not chosen yet';
 const join = (a: string | undefined, b: string, n = 1500) => clip(a ? `${a}\n${b}` : b, n);
 /** The service's own question for any service but "Something else"; websites they like for sites and apps. */
-const applies = (c: Contact, f: Field) =>
+/** A WhatsApp number (Indian numbers get 91) and an email from what they typed. Never sent to an AI. */
+export function contactFrom(text: string): { phone?: string; email?: string } {
+  const email = /[\w.+-]+@[\w-]+(\.[\w-]+)+/.exec(text)?.[0]?.toLowerCase();
+  const digits = (text.match(/\+?\d[\d\s-]{7,16}\d/)?.[0] ?? '').replace(/\D/g, '');
+  const phone = /^[6-9]\d{9}$/.test(digits) ? `91${digits}` : /^0[6-9]\d{9}$/.test(digits) ? `91${digits.slice(1)}` : /^\d{11,15}$/.test(digits) ? digits : undefined;
+  return { ...(phone ? { phone } : {}), ...(email ? { email } : {}) };
+}
+
+const applies = (c: Contact, f: Field) => f === 'contact' ? channelOf(c.wa_id) !== 'whatsapp' && !c.phone :
   f === 'details' ? !!c.service && c.service !== 'other' : f === 'refs' ? c.service === 'website' || c.service === 'app' : true;
 const nextStep = (c: Contact): Step => FIELDS.find((f) => applies(c, f) && !c.fields[f]) ?? 'done';
 /** A brief field as shown to the team ('-' = the client tapped Skip). */
@@ -562,7 +572,7 @@ class Turn {
         await this.ask(text);
         return;
       }
-      if ((value === 'details' || value === 'refs') && !c.fields[value]) c.fields[value] = '-';
+      if ((value === 'details' || value === 'refs' || value === 'contact') && !c.fields[value]) c.fields[value] = '-';
       await this.advance('');
       return;
     }
@@ -651,10 +661,11 @@ class Turn {
     this.env.run?.gone?.add(c.wa_id);
     c.lead_saved = true;                                                    // nothing re-creates the lead this turn
     if (told || stuck.length) {
-      await toTeam(this.env, this.now, `#${c.code} asked to delete their data. Their chat, details and WhatsApp leads are erased; please also delete #${c.code}'s messages in your own WhatsApp.`
+      await toTeam(this.env, this.now, `#${c.code} asked to delete their data. Their chat, details and WhatsApp leads are erased; please also delete #${c.code}'s messages in your own WhatsApp`
+        + (channelOf(c.wa_id) === 'fb' || channelOf(c.wa_id) === 'ig' ? ` and the conversation in the Page's ${CHANNEL_LABEL[channelOf(c.wa_id)]} inbox.` : '.')
         + (stuck.length ? ` Also delete the call on the calendar at ${stuck.map(istTime).join(', ')} (Google did not let me).` : ''), {});
     }
-    await this.say(t(c.lang, 'deleted'));
+    await this.say(channelOf(c.wa_id) === 'fb' || channelOf(c.wa_id) === 'ig' ? `${t(c.lang, 'deleted')} ${t(c.lang, 'deletedInbox')}` : t(c.lang, 'deleted'));
   }
 
   /** Abuse or a flood: stop replying, tell the team once. */
@@ -680,7 +691,8 @@ class Turn {
     // ponytail: wins follow the current enquiry only; an earlier one marked Won later is not credited
     Object.assign(this.c, {
       lead_id: crypto.randomUUID(), lead_saved: false, won_counted: false, step: 'start', mode: 'bot', taken_by: null, service: null,
-      fields: { ...(prev.length ? { prev_leads: prev } : {}), since: iso(this.now) }, alerted_at: null, nudged_at: null,
+      fields: { ...(prev.length ? { prev_leads: prev } : {}), since: iso(this.now),
+        ...(channelOf(this.c.wa_id) !== 'whatsapp' ? { page: CHANNEL_LABEL[channelOf(this.c.wa_id)] } : {}) }, alerted_at: null, nudged_at: null,
       quote_at: null, revived_at: null,                                     // a review request is once per client
     });
   }
@@ -707,8 +719,8 @@ class Turn {
       case 'timeline':
         await sendButtons(this.env, c.wa_id, lead + TEXT[lang].timeline, TEXT[lang].tl.map((title, i) => ({ id: `tl:${i}`, title })));
         return;
-      case 'details': case 'refs': {
-        const asked = c.step === 'refs' ? t(lang, 'refs') : DETAILS[lang][c.service as Exclude<ServiceKey, 'other'>];
+      case 'details': case 'refs': case 'contact': {
+        const asked = c.step === 'contact' ? t(lang, 'contact') : c.step === 'refs' ? t(lang, 'refs') : DETAILS[lang][c.service as Exclude<ServiceKey, 'other'>];
         await sendButtons(this.env, c.wa_id, lead + asked, [{ id: `skip:${c.step}`, title: t(lang, 'skip') }]);
         return;
       }
@@ -732,6 +744,15 @@ class Turn {
   /** A typed answer to name / business / need / timeline, or anything after the brief is done. */
   private async field(text: string) {
     const c = this.c, step = c.step as Field | 'done', lang = c.lang ?? 'en';
+    if (step === 'contact') {                                              // read here: a number or email never goes to an AI
+      const got = contactFrom(text);
+      if (got.phone) c.phone = got.phone;
+      if (got.email) c.fields.email = got.email;
+      if (!got.phone && !got.email && !c.fields.contact_tries) { c.fields.contact_tries = 1; await this.ask('', t(lang, 'contactBad')); return; }
+      c.fields.contact = got.phone || got.email ? [got.phone && `+${got.phone}`, got.email].filter(Boolean).join(' · ') : clip(text, 120);
+      await this.advance('');
+      return;
+    }
     const before = JSON.stringify(FIELDS.map((f) => c.fields[f]));
     const asked = step === 'details' && c.service && c.service !== 'other' ? DETAILS.en[c.service] : undefined;
     const x = await this.ai<Extract>({ system: extractPrompt(step, asked), user: text, schema: EXTRACT_SCHEMA, name: 'extract' }, reader(c.lang, text));
@@ -1028,6 +1049,7 @@ class Turn {
       ...(applies(c, 'details') ? [line('Details', f.details)] : []),
       ...(applies(c, 'refs') ? [line('Websites they like', f.refs)] : []),
       line('Timeline', f.timeline),
+      ...(applies(c, 'contact') || f.contact ? [line('Contact', f.contact)] : []),
       ...(f.files?.length ? [`Files: ${f.files.length} (listed below)`] : []),
       ...(asked.length ? ['', 'Questions they asked:', ...asked.map((x) => `- ${clip(x.question_en, 200)} (${x.status})`)] : []),
       ...(f.notes ? ['', line('Notes', clip(f.notes, 600))] : []),
@@ -1047,8 +1069,10 @@ class Turn {
     const sent = await alertTurns(this.env, this.now, { wa_id: c.wa_id, service: c.service }, [
       `#${c.code} ${hot ? '🔥 ' : ''}${ALERT_HEAD[why]}`,
       `Name: ${f.name || c.profile_name || '-'}`, `Business: ${f.business || '-'}`, `Service: ${serviceLabel(c)}`,
-      c.phone ? `WhatsApp: wa.me/${c.phone}` : channelOf(c.wa_id) === 'whatsapp' ? 'WhatsApp: no phone number shared (username)'
+      c.phone ? `${channelOf(c.wa_id) === 'whatsapp' ? '' : `${CHANNEL_LABEL[channelOf(c.wa_id)]} · `}WhatsApp: wa.me/${c.phone}`
+        : channelOf(c.wa_id) === 'whatsapp' ? 'WhatsApp: no phone number shared (username)'
         : `${CHANNEL_LABEL[channelOf(c.wa_id)]}: no phone number (reply to this message: the bot passes it on)`,
+      ...(f.email ? [`Email: ${f.email}`] : []),
       ...(said ? [`Message: "${clip(said, 300)}"`] : []),
       `Timeline: ${f.timeline || '-'}`, `Language: ${langName(c.lang)}`,
       ...(f.files?.length ? [`Files: ${f.files.length} (Admin → Leads)`] : []),
@@ -1078,7 +1102,7 @@ class Turn {
   async saveLead(doc?: string) {
     const c = this.c, f = c.fields;
     const message = [f.business && `Business: ${f.business}`, f.need && `Need: ${f.need}`, shown(f.details) && `Details: ${f.details}`,
-      shown(f.refs) && `Websites they like: ${f.refs}`, f.timeline && `Timeline: ${f.timeline}`, f.notes && `Notes: ${f.notes}`]
+      shown(f.refs) && `Websites they like: ${f.refs}`, f.timeline && `Timeline: ${f.timeline}`, f.email && `Email: ${f.email}`, f.notes && `Notes: ${f.notes}`]
       .filter(Boolean).join('\n') || null;
     const values = [f.name || c.profile_name || null, c.phone ? `+${c.phone}` : null, serviceByKey(c.service ?? '')?.lead ?? null, message,
       c.lang ? langName(c.lang) : null, f.files?.length ? JSON.stringify(f.files) : null, leadScore(c), f.page ?? null, doc ?? null];
@@ -1477,8 +1501,11 @@ async function relay(env: Env, now: number, c: Contact, text: string, asIs = fal
   if (c.mode === 'stopped') return { ok: false, note: `#${c.code} opted out, so nothing was sent.` };
   if (c.mode === 'blocked') return { ok: false, note: `#${c.code} is blocked, so nothing was sent. "#${c.code} unblock" first.` };
   const ch = channelOf(c.wa_id);
-  const closed = !canText(c, now);
-  if (closed && (!o.template || ch !== 'whatsapp')) return { ok: false, note: `#${c.code}'s 24-hour ${CHANNEL_LABEL[ch]} window has closed, so I can't send this.${direct}` };
+  const tagged = !canText(c, now) && (ch === 'fb' || ch === 'ig') && Date.parse(c.last_in_at) > now - 7 * DAY;   // Meta's human agent tag
+  const closed = !canText(c, now) && !tagged;
+  if (closed && (!o.template || ch !== 'whatsapp')) {
+    return { ok: false, note: `#${c.code}'s ${ch === 'whatsapp' ? '24-hour WhatsApp' : `${CHANNEL_LABEL[ch]} (7 days for a person's reply)`} window has closed, so I can't send this.${direct}` };
+  }
   let out = text, asWritten = false;
   if (c.lang && c.lang !== 'en' && !asIs) {
     if (redact(text) !== text) asWritten = true;
@@ -1489,7 +1516,7 @@ async function relay(env: Env, now: number, c: Contact, text: string, asIs = fal
   }
   if (closed && out.length > 800) return { ok: false, note: `#${c.code}'s 24-hour window has closed: the project_update template takes 800 characters at most, so please shorten it.` };
   const id = closed ? await sendTemplate(env, c.wa_id, 'project_update', [c.fields.name || c.profile_name || 'there', out])
-    : await sendText(env, c.wa_id, o.prefix ? `${o.prefix}\n${out}` : out);
+    : await (tagged ? sendHumanText : sendText)(env, c.wa_id, o.prefix ? `${o.prefix}\n${out}` : out);
   const sentOut = env.run?.out?.find((x) => x.wamid === id);
   if (sentOut) sentOut.team = true;                                          // the chat viewer shows it as the team's
   if (!id) {
@@ -1681,19 +1708,15 @@ async function capped(req: Request, max: number): Promise<string | null> {
   return new TextDecoder().decode(all);
 }
 
-/** The website's chat bubble (components/chat): POST a message (or a tap on a button the bot
- *  sent there, never one made up), GET the chat (the newest 50 first, then whatever came after
+/** The website's chat bubble (components/chat → the site's /api/chat → the BOT service binding →
+ *  BotAdmin.fetch: the bot's own address is never on the site): POST a message (or a tap on a
+ *  button the bot sent there, never one made up), GET the chat (the newest 50 first, then whatever came after
  *  a time, with two minutes of overlap: a run stores its replies when it ends, and the bubble
  *  drops what it already has). The session id (a random UUID kept in that browser) is the
  *  chat's only key. Limits: limited() above; the flood rule, AI cap and DELETE MY DATA apply as
  *  on WhatsApp. */
-async function webChat(req: Request, env: Env, ctx: Ctx): Promise<Response> {
-  const site = `https://${host(env)}`;
-  const origin = req.headers.get('origin');
-  const cors = { 'access-control-allow-origin': origin === site || origin === 'https://legitforge.pages.dev' ? origin : site,
-    'access-control-allow-methods': 'GET, POST', 'access-control-allow-headers': 'content-type', 'access-control-max-age': '86400', vary: 'origin' };
-  const reply = (body: unknown, status = 200) => Response.json(body, { status, headers: cors });
-  if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
+export async function webChat(req: Request, env: Env, ctx: Ctx): Promise<Response> {
+  const reply = (body: unknown, status = 200) => Response.json(body, { status, headers: { 'cache-control': 'no-store' } });
   const now = clock.now(), e = withRun(env);
   if (req.method === 'GET') {
     const u = new URL(req.url), session = u.searchParams.get('session') ?? '', after = Date.parse(u.searchParams.get('after') ?? '');
@@ -1718,7 +1741,7 @@ async function webChat(req: Request, env: Env, ctx: Ctx): Promise<Response> {
     let notice: string | undefined;
     if (tap) {
       // only a button of the bot's latest message here (WhatsApp sends only ids the bot made)
-      const [latest] = await sb<{ options: Option[] | null }>(e, 'GET', `messages?wa_id=eq.${q(waId)}&team=is.null&dir=eq.out&order=at.desc,wamid.desc&limit=1&select=options`);
+      const [latest] = await sb<{ options: Option[] | null }>(e, 'GET', `messages?wa_id=eq.${q(waId)}&team=is.null&dir=eq.out&options=not.is.null&order=at.desc,wamid.desc&limit=1&select=options`);
       if (!latest?.options?.some((o) => o.id === tap.id)) return reply({ error: 'old-button' }, 409);
       if (tap.id === 'del:y') {                                    // the confirmation: nothing of theirs is kept to show it later
         const [c] = await sb<{ lang: string | null }>(e, 'GET', `contacts?wa_id=eq.${q(waId)}&select=lang`);
