@@ -67,6 +67,7 @@ try {
   // Only synthetic work/team fixtures; no customer/contact data or production secrets.
   await run('scripts/smoke.mjs', [], { env: { ...env, BASE: base, ALLOW_EMPTY_COMPANY: '1' } });
   await run('scripts/check-enquiries.mjs', [], { env: { ...env, BASE: base } });
+  await run('scripts/check-chat.mjs', [], { env: { ...env, BASE: base } });   // the chat bubble, when the build has it
   await run('scripts/check-access.mjs', [], { env: { ...env, BASE: base } });
   await run('scripts/check-trust-opening.mjs', [], { env: { ...env, BASE: base } });
   await run('scripts/check-service-pages.mjs', [], { env: { ...env, BASE: base, ALLOW_EMPTY_COMPANY: '1' } });

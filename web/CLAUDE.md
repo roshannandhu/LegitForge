@@ -1,6 +1,7 @@
 # Legit Forge website: agent guide
 
 The full plan is ../PLAN.md. Read the relevant section before building anything.
+Architecture, kept current: ../ARCHITECTURE-WEBSITE.md (the site) and ../ARCHITECTURE-WHATSAPP.md (the bot).
 PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory review gates.
 
 ## Active Working Directives
