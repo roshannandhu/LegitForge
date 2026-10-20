@@ -132,7 +132,7 @@ export async function sb<T = any>(env: Env, method: string, path: string, body?:
   count(env);
   const r = await fetch(`${env.SUPABASE_URL.replace(/\/+$/, '')}/rest/v1/${path}`, {
     method,
-    headers: { apikey: env.SUPABASE_SECRET_KEY, accept: 'application/json', 'content-type': 'application/json', prefer },
+    headers: { apikey: env.SUPABASE_SECRET_KEY, authorization: `Bearer ${env.SUPABASE_SECRET_KEY}`, accept: 'application/json', 'content-type': 'application/json', prefer },
     body: body === undefined ? undefined : JSON.stringify(body),
     signal: AbortSignal.timeout(TIMEOUT),
   });
@@ -146,7 +146,7 @@ export const q = encodeURIComponent;
 export async function sbCount(env: Env, path: string): Promise<number> {
   count(env);
   const r = await fetch(`${env.SUPABASE_URL.replace(/\/+$/, '')}/rest/v1/${path}${path.includes('?') ? '&' : '?'}select=*&limit=1`, {
-    headers: { apikey: env.SUPABASE_SECRET_KEY, prefer: 'count=exact' }, signal: AbortSignal.timeout(TIMEOUT),
+    headers: { apikey: env.SUPABASE_SECRET_KEY, authorization: `Bearer ${env.SUPABASE_SECRET_KEY}`, prefer: 'count=exact' }, signal: AbortSignal.timeout(TIMEOUT),
   });
   if (!r.ok) throw Object.assign(new Error(`supabase count ${path.split('?')[0]}: ${r.status}`), { status: r.status });
   return Number(r.headers.get('content-range')?.split('/')[1]) || 0;

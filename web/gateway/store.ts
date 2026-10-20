@@ -11,7 +11,7 @@ export function rest(url: string, key: string, f: typeof fetch = fetch): Rest {
   return async (method, path, body, prefer = 'return=representation') => {
     const r = await f(`${url.replace(/\/+$/, '')}/rest/v1/${path}`, {
       method, body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(15_000),
-      headers: { apikey: key, accept: 'application/json', 'content-type': 'application/json', prefer },
+      headers: { apikey: key, authorization: `Bearer ${key}`, accept: 'application/json', 'content-type': 'application/json', prefer },
     });
     if (!r.ok) throw new Error(`supabase ${method} ${path.split('?')[0]}: ${r.status}`);
     const text = await r.text();

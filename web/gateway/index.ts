@@ -142,7 +142,11 @@ async function connect() {
   s.ev.on('creds.update', saveCreds);
   s.ev.on('connection.update', async ({ connection, lastDisconnect, qr }) => {
     if (qr) qrNow = qr;
-    if (qr && !PAIR) { console.log('Scan this with WhatsApp on the bot\'s phone (Linked devices → Link a device), or open Admin → WhatsApp → Connection:'); qrcode.generate(qr, { small: true }); }
+    if (qr && !PAIR) {
+      QRCode.toFile('qr.png', qr).catch(() => {});
+      console.log('Scan this with WhatsApp on the bot\'s phone (Linked devices → Link a device), or open Admin → WhatsApp → Connection (also saved as web/gateway/qr.png):');
+      qrcode.generate(qr, { small: true });
+    }
     if (qr && PAIR && !state.creds.registered) console.log(`Pairing code for +${PAIR}: ${await s.requestPairingCode(PAIR)} (WhatsApp → Linked devices → Link with phone number)`);
     if (connection === 'open') { open = true; qrNow = null; since = Date.now(); backoff = 2000; console.log(`WhatsApp connected as ${s.user?.id ?? '?'}.`); }
     if (connection === 'close') {
