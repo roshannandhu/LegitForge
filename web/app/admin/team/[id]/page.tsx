@@ -41,10 +41,18 @@ export default async function EditMember({ params }: { params: Promise<{ id: str
 
       <section className="admin-section" aria-labelledby="details-h">
         <h2 id="details-h" className="type-h3">Details</h2>
+        {!m.whatsapp && (
+          <div className="admin-note" role="alert">
+            <strong>WhatsApp phone number required:</strong> {m.name} does not have a WhatsApp number assigned. Team enquiry alerts and lead notifications cannot be routed to them until a valid international number is saved.
+          </div>
+        )}
         <ActionForm action={saveMemberAction.bind(null, id)} className="admin-form">
           <div className="admin-grid">
             <label className="field"><span>Name</span><input name="name" defaultValue={m.name} required maxLength={80} /></label>
             <label className="field"><span>Role</span><input name="role" defaultValue={m.role} required maxLength={80} placeholder="Design and front end" /></label>
+            <label className="field"><span>WhatsApp Phone Number — Required <small>(digits with country code, e.g. +919876543210)</small></span>
+              <input name="whatsapp" defaultValue={m.whatsapp ? `+${m.whatsapp}` : ''} required type="tel" placeholder="+919876543210" pattern="[\+]?[0-9]{10,15}" />
+            </label>
             <label className="field"><span>Slug <small>(/team/…)</small></span><input name="slug" defaultValue={m.slug} required pattern="[a-z0-9]+(-[a-z0-9]+)*" /></label>
             <label className="field"><span>ID code</span><input name="id_code" defaultValue={m.id_code} required pattern="LF-\d{3}" /></label>
             <label className="field"><span>Monogram <small>(until there is a photo)</small></span><input name="initials" defaultValue={m.initials ?? ''} maxLength={3} /></label>

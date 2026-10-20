@@ -4,6 +4,9 @@
  *  failure: the bot always has a fixed reply to fall back on. */
 
 import { metaSend, shown } from './channels';
+import { decryptApiKey } from '../lib/ai/crypto';
+import type { AiKeyRecord } from '../lib/ai/types';
+import { executeAiCompletion } from '../lib/ai/adapters';
 
 export interface Env {
   DB: D1Database;
@@ -279,7 +282,81 @@ export async function flushAi(env: Env) {
 }
 
 export async function chat<T>(env: Env, o: { system: string; user: string; schema: Schema & object; name: string; prefer: Provider[] }): Promise<T | null> {
-  if ((!env.GROQ_API_KEY && !env.GEMINI_API_KEY) || !(await aiAllowed(env))) return null;
+  if (!(await aiAllowed(env))) return null;
+
+  // 1. Try active keys from D1 ai_keys vault with automatic failover
+  if (env.DB) {
+    try {
+      const records = (await env.DB.prepare(
+        `SELECT * FROM ai_keys 
+         WHERE is_active = 1 
+           AND (cooldown_until IS NULL OR datetime(cooldown_until) <= datetime('now'))
+         ORDER BY sort_order ASC, created_at ASC`
+      ).all<AiKeyRecord>().catch(() => ({ results: [] }))).results || [];
+
+      if (records.length > 0) {
+        // Order keys by preference: preferred providers first, then others
+        const sortedKeys = [...records].sort((a, b) => {
+          const aPref = o.prefer.indexOf(a.provider as Provider);
+          const bPref = o.prefer.indexOf(b.provider as Provider);
+          const aRank = aPref === -1 ? 99 : aPref;
+          const bRank = bPref === -1 ? 99 : bPref;
+          if (aRank !== bRank) return aRank - bRank;
+          return a.sort_order - b.sort_order;
+        });
+
+        for (const keyRecord of sortedKeys) {
+          let secretKey: string;
+          try {
+            secretKey = decryptApiKey(keyRecord.api_key_encrypted, keyRecord.key_nonce, env.WA_APP_SECRET);
+          } catch (e) {
+            console.warn(`[ai] failed to decrypt key ${keyRecord.name}`, e);
+            continue;
+          }
+
+          count(env);
+          const res = await executeAiCompletion(keyRecord, secretKey, {
+            system: o.system,
+            user: redact(o.user),
+            schema: o.schema,
+            name: o.name,
+            timeoutMs: TIMEOUT,
+          });
+
+          if (res.ok && res.content) {
+            try {
+              const out = JSON.parse(res.content.replace(/^\s*```(?:json)?\s*|\s*```\s*$/g, ''));
+              if (valid(out, o.schema)) {
+                await env.DB.prepare("UPDATE ai_keys SET last_used_at = datetime('now'), status = 'healthy' WHERE id = ?").bind(keyRecord.id).run().catch(() => {});
+                return out as T;
+              }
+            } catch {
+              console.warn(`[ai] ${keyRecord.provider} (${keyRecord.name}) returned invalid JSON shape`);
+            }
+          }
+
+          // Mark rate limit or error in background and failover immediately
+          if (res.status === 'rate_limited') {
+            const cooldown = new Date(Date.now() + (res.retryAfterSec || 60) * 1000).toISOString();
+            await env.DB.prepare("UPDATE ai_keys SET status = 'rate_limited', cooldown_until = ?, last_error = ?, updated_at = datetime('now') WHERE id = ?")
+              .bind(cooldown, res.error || 'Rate limit', keyRecord.id).run().catch(() => {});
+            console.warn(`[ai] ${keyRecord.provider} (${keyRecord.name}) rate limited; failing over to next key...`);
+          } else if (res.status === 'invalid') {
+            await env.DB.prepare("UPDATE ai_keys SET status = 'invalid', last_error = ?, updated_at = datetime('now') WHERE id = ?")
+              .bind(res.error || 'Invalid key', keyRecord.id).run().catch(() => {});
+            console.warn(`[ai] ${keyRecord.provider} (${keyRecord.name}) credentials invalid; failing over...`);
+          } else {
+            console.warn(`[ai] ${keyRecord.provider} (${keyRecord.name}) failed: ${res.error}; failing over...`);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[ai] error reading ai_keys from D1', e);
+    }
+  }
+
+  // 2. Fall back to Worker environment variables if no D1 keys or all failed
+  if (!env.GROQ_API_KEY && !env.GEMINI_API_KEY) return null;
   for (const p of o.prefer) {
     const key = p === 'groq' ? env.GROQ_API_KEY : env.GEMINI_API_KEY;
     if (!key) continue;
@@ -310,12 +387,19 @@ export async function chat<T>(env: Env, o: { system: string; user: string; schem
 
 /** 768 numbers for the knowledge base (Gemini embeddings), or null. */
 export async function embed(env: Env, text: string, team = false): Promise<number[] | null> {
-  if (!env.GEMINI_API_KEY || !(await aiAllowed(env, team))) return null;
+  let geminiKey = env.GEMINI_API_KEY;
+  if (!geminiKey && env.DB) {
+    const k = await env.DB.prepare("SELECT api_key_encrypted, key_nonce FROM ai_keys WHERE provider = 'gemini' AND is_active = 1 AND (cooldown_until IS NULL OR datetime(cooldown_until) <= datetime('now')) ORDER BY sort_order ASC LIMIT 1").first<{ api_key_encrypted: string; key_nonce: string }>().catch(() => null);
+    if (k) {
+      try { geminiKey = decryptApiKey(k.api_key_encrypted, k.key_nonce, env.WA_APP_SECRET); } catch {}
+    }
+  }
+  if (!geminiKey || !(await aiAllowed(env, team))) return null;
   count(env);
   try {
     const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${env.EMBED_MODEL || 'gemini-embedding-001'}:embedContent`, {
       method: 'POST',
-      headers: { 'x-goog-api-key': env.GEMINI_API_KEY, 'content-type': 'application/json' },
+      headers: { 'x-goog-api-key': geminiKey, 'content-type': 'application/json' },
       body: JSON.stringify({ content: { parts: [{ text: redact(text) }] }, outputDimensionality: 768 }),
       signal: AbortSignal.timeout(TIMEOUT),
     });
@@ -364,7 +448,14 @@ export async function media(env: Env, id: string, max: number): Promise<{ bytes:
 
 /** A voice note as text (Groq Whisper; Groq keeps no audio). `lang` is a hint (ISO 639-1). */
 export async function transcribe(env: Env, audio: ArrayBuffer, type: string, lang?: string): Promise<string | null> {
-  if (!env.GROQ_API_KEY || !(await aiAllowed(env))) return null;
+  let groqKey = env.GROQ_API_KEY;
+  if (!groqKey && env.DB) {
+    const k = await env.DB.prepare("SELECT api_key_encrypted, key_nonce FROM ai_keys WHERE provider = 'groq' AND is_active = 1 AND (cooldown_until IS NULL OR datetime(cooldown_until) <= datetime('now')) ORDER BY sort_order ASC LIMIT 1").first<{ api_key_encrypted: string; key_nonce: string }>().catch(() => null);
+    if (k) {
+      try { groqKey = decryptApiKey(k.api_key_encrypted, k.key_nonce, env.WA_APP_SECRET); } catch {}
+    }
+  }
+  if (!groqKey || !(await aiAllowed(env))) return null;
   const form = new FormData();
   form.append('file', new Blob([audio], { type }), type.includes('mpeg') ? 'voice.mp3' : 'voice.ogg');
   form.append('model', env.WHISPER_MODEL || 'whisper-large-v3-turbo');

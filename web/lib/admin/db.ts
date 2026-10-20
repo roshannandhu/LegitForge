@@ -241,7 +241,7 @@ export interface MemberRow {
   id: string; slug: string; name: string; role: string; id_code: string; bio: string; skills: string; tools: string;
   photo_key: string | null; card_version: number; linkedin_url: string | null; github_url: string | null;
   website_url: string | null; favorite_project_id: string | null; is_published: number; sort_order: number; initials: string | null;
-  building: string | null;
+  building: string | null; whatsapp: string | null;
 }
 
 export async function listMembers() {
@@ -265,17 +265,23 @@ export async function importMembers(people: { slug: string; idCode: string; name
 }
 
 export async function updateMember(id: string, v: Pick<MemberRow, 'slug' | 'name' | 'role' | 'id_code' | 'bio' | 'skills' | 'tools' |
-  'linkedin_url' | 'github_url' | 'website_url' | 'favorite_project_id' | 'initials' | 'building'>) {
+  'linkedin_url' | 'github_url' | 'website_url' | 'favorite_project_id' | 'initials' | 'building'> & { whatsapp?: string | null }) {
   await (await adminDb()).prepare(
     `UPDATE team_members SET slug = ?, name = ?, role = ?, id_code = ?, bio = ?, skills = ?, tools = ?, linkedin_url = ?,
-       github_url = ?, website_url = ?, favorite_project_id = ?, initials = ?, building = ? WHERE id = ?`,
+       github_url = ?, website_url = ?, favorite_project_id = ?, initials = ?, building = ?, whatsapp = ? WHERE id = ?`,
   ).bind(v.slug, v.name, v.role, v.id_code, v.bio, v.skills, v.tools, v.linkedin_url, v.github_url, v.website_url,
-    v.favorite_project_id, v.initials, v.building, id).run();
+    v.favorite_project_id, v.initials, v.building, v.whatsapp ?? null, id).run();
 }
 
 export async function memberConflict(id: string, slug: string, idCode: string) {
   return (await adminDb()).prepare('SELECT slug, id_code FROM team_members WHERE id != ? AND (slug = ? OR id_code = ?)')
     .bind(id, slug, idCode).first<{ slug: string; id_code: string }>();
+}
+
+export async function memberPhoneTaken(whatsapp: string, exceptId?: string) {
+  const row = await (await adminDb()).prepare('SELECT id, name FROM team_members WHERE whatsapp = ? AND id != ?')
+    .bind(whatsapp, exceptId ?? '').first<{ id: string; name: string }>();
+  return row ?? null;
 }
 
 export async function setMemberPublished(id: string, published: boolean) {
@@ -296,7 +302,7 @@ export async function setMemberPhoto(id: string, key: string | null) {
 }
 
 /** "Add person": hidden until their profile is filled in; gets the next free LF-00N code. */
-export async function createMember(name: string, role: string, slug: string) {
+export async function createMember(name: string, role: string, slug: string, whatsapp: string) {
   const db = await adminDb();
   const codes = (await db.prepare('SELECT id_code FROM team_members').all<{ id_code: string }>()).results
     .map((r) => Number(r.id_code.replace(/\D/g, '')) || 0);
@@ -305,8 +311,8 @@ export async function createMember(name: string, role: string, slug: string) {
   const id = crypto.randomUUID();
   const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]!.toUpperCase()).join('');
   await db.prepare(
-    `INSERT INTO team_members (id, slug, name, role, id_code, bio, initials, is_published, sort_order) VALUES (?, ?, ?, ?, ?, '', ?, 0, ?)`,
-  ).bind(id, slug, name, role, `LF-${String(next).padStart(3, '0')}`, initials, (last?.m ?? -1) + 1).run();
+    `INSERT INTO team_members (id, slug, name, role, id_code, bio, initials, whatsapp, is_published, sort_order) VALUES (?, ?, ?, ?, ?, '', ?, ?, 0, ?)`,
+  ).bind(id, slug, name, role, `LF-${String(next).padStart(3, '0')}`, initials, whatsapp, (last?.m ?? -1) + 1).run();
   return id;
 }
 

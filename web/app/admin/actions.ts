@@ -15,6 +15,7 @@ import type { WorkCategory } from '@/lib/pages';
 import { BriefError, briefFrom, nameOnly, parseRepo, repoBrief, repoDataFrom, type Brief } from '@/lib/admin/github';
 import { ConnectError, checkState, connectApp, privateRepoAccess } from '@/lib/admin/github-app';
 import { companyFromForm } from '@/lib/company';
+import { deleteBotMember, saveBotMember } from '@/lib/admin/bot-team';
 
 const str = (f: FormData, k: string, max = 2000) => String(f.get(k) ?? '').trim().slice(0, max);
 const opt = (f: FormData, k: string, max = 2000) => str(f, k, max) || null;
@@ -281,11 +282,18 @@ const httpsOrNull = (v: string | null) => (v && /^https:\/\/\S+$/.test(v) ? v : 
 export async function saveMemberAction(id: string, _: FormState, f: FormData): Promise<FormState> {
   await requireAdmin();
   const slug = str(f, 'slug', 60), idCode = str(f, 'id_code', 12).toUpperCase();
+  const rawPhone = str(f, 'whatsapp', 30);
+  const whatsapp = rawPhone.replace(/\D/g, '');
   if (!str(f, 'name') || !str(f, 'role')) return { error: 'Name and role are required.' };
+  if (!whatsapp || !/^\d{10,15}$/.test(whatsapp)) {
+    return { error: 'WhatsApp phone number is compulsory (10–15 digits with country code, e.g. 919876543210).' };
+  }
   if (!SLUG.test(slug)) return { error: 'The slug can only use lowercase letters, numbers and single hyphens.' };
   if (!/^LF-\d{3}$/.test(idCode)) return { error: 'The ID code looks like LF-001.' };
   const clash = await db.memberConflict(id, slug, idCode);
   if (clash) return { error: clash.slug === slug ? `“${slug}” is taken.` : `${idCode} is taken.` };
+  const clashPhone = await db.memberPhoneTaken(whatsapp, id);
+  if (clashPhone) return { error: `WhatsApp number +${whatsapp} is already assigned to ${clashPhone.name}.` };
   for (const k of ['linkedin_url', 'github_url', 'website_url']) {
     const v = opt(f, k, 300);
     if (v && !httpsOrNull(v)) return { error: 'Links must start with https://' };
@@ -304,7 +312,16 @@ export async function saveMemberAction(id: string, _: FormState, f: FormData): P
     website_url: httpsOrNull(opt(f, 'website_url', 300)), favorite_project_id: favOk ? fav : null,
     initials: str(f, 'initials', 3).toUpperCase() || null,
     building: opt(f, 'building', 60),
+    whatsapp,
   });
+
+  // Automatically sync with bot alert routing
+  const oldPhone = before.whatsapp;
+  if (oldPhone && oldPhone !== whatsapp) {
+    await deleteBotMember(oldPhone).catch(() => {});
+  }
+  await saveBotMember({ whatsapp, name: str(f, 'name', 80), services: [], status: 'free' }).catch(() => {});
+
   if (before.slug !== slug) { await db.renameCredits(before.slug, slug); updateTag('projects'); }
   updateTag('team');
   revalidatePath('/admin/team');
@@ -323,11 +340,22 @@ export async function publishMemberAction(id: string, published: boolean) {
 export async function createMemberAction(_: FormState, f: FormData): Promise<FormState> {
   await requireAdmin();
   const name = str(f, 'name', 80), role = str(f, 'role', 80);
-  const slug = str(f, 'slug', 60) || name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  const rawPhone = str(f, 'whatsapp', 30);
+  const whatsapp = rawPhone.replace(/\D/g, '');
   if (!name || !role) return { error: 'Name and role are required.' };
+  if (!whatsapp || !/^\d{10,15}$/.test(whatsapp)) {
+    return { error: 'WhatsApp phone number is compulsory (10–15 digits with country code, e.g. 919876543210).' };
+  }
+  const slug = str(f, 'slug', 60) || name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   if (!SLUG.test(slug)) return { error: 'The slug can only use lowercase letters, numbers and single hyphens.' };
   if (await db.memberSlugTaken(slug)) return { error: `“${slug}” is taken.` };
-  const id = await db.createMember(name, role, slug);
+  const clashPhone = await db.memberPhoneTaken(whatsapp);
+  if (clashPhone) return { error: `WhatsApp number +${whatsapp} is already assigned to ${clashPhone.name}.` };
+
+  const id = await db.createMember(name, role, slug, whatsapp);
+  // Automatically sync to bot_team routing table for WhatsApp client alerts
+  await saveBotMember({ whatsapp, name, services: [], status: 'free' }).catch(() => {});
+
   revalidatePath('/admin/team');
   redirect(`/admin/team/${id}`);
 }

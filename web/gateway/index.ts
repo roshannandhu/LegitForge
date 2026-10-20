@@ -10,17 +10,18 @@
  *  ponytail: one process, one WhatsApp number: never run Render and the laptop at the same time. */
 
 import makeWASocket, {
-  Browsers, BufferJSON, DisconnectReason, downloadMediaMessage, getAggregateVotesInPollMessage, initAuthCreds, isLidUser, proto,
+  Browsers, BufferJSON, DisconnectReason, downloadMediaMessage, decryptPollVote,
+  getAggregateVotesInPollMessage, getKeyAuthor, initAuthCreds, isLidUser, jidNormalizedUser, proto,
   useMultiFileAuthState, type AuthenticationState, type WAMessage, type WASocket,
 } from '@whiskeysockets/baileys';
 import { spawn } from 'node:child_process';
-import { createHmac, timingSafeEqual } from 'node:crypto';
+import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import pino from 'pino';
 import QRCode from 'qrcode';
 import qrcode from 'qrcode-terminal';
-import { addressOf, chosen, isPersonChat, jidOf, labels, pollVote, toBaileys, toCloudMessage, tunnelUrl, webhookBody, type Option } from './convert.ts';
+import { addressOf, chosen, isPersonChat, jidOf, labels, pollVote, toBaileys, toCloudMessage, tunnelUrl, unwrap, webhookBody, type Option } from './convert.ts';
 import { rest, supabaseAuth, supabasePolls, type Kit } from './store.ts';
 
 const env = process.env;
@@ -45,11 +46,24 @@ const signed = (body: string, header: string | undefined) => {
 };
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+function toSecretBuffer(v: unknown): Buffer | null {
+  if (!v) return null;
+  if (Buffer.isBuffer(v)) return v;
+  if (v instanceof Uint8Array) return Buffer.from(v);
+  if (typeof v === 'string') return Buffer.from(v, 'base64');
+  if (typeof v === 'object' && 'data' in v) {
+    const d = (v as { data?: unknown }).data;
+    return typeof d === 'string' ? Buffer.from(d, 'base64') : Buffer.from(d as Uint8Array);
+  }
+  return null;
+}
+
 /* ------------------------------------------------------------------ what the gateway remembers */
 
 // Sent messages (WhatsApp asks for them again to retry or to decrypt a poll vote), received files
 // (the bot fetches them once) and read receipts: in memory, the last few hundred.
 const sent = new Map<string, WAMessage>(), received = new Map<string, WAMessage>();
+const seenVotes = new Set<string>();
 const keep = (map: Map<string, WAMessage>, m: WAMessage, max = 500) => {
   if (!m.key.id) return;
   map.set(m.key.id, m);
@@ -109,7 +123,7 @@ async function send(sock: WASocket, payload: Record<string, any>): Promise<strin
   for (const out of toBaileys(payload)) {
     last = await inLane(jid, async () => {
       await sock.sendPresenceUpdate('composing', jid).catch(() => undefined);
-      await wait(400 + Math.min(1500, (out.kind === 'text' ? out.text.length : 60) * 8));
+      await wait(180 + Math.min(500, (out.kind === 'text' ? out.text.length : 40) * 4));
       const m = out.kind === 'text'
         ? await sock.sendMessage(jid, { text: out.text })
         : await sock.sendMessage(jid, { poll: { name: out.name, values: labels(out.options), selectableCount: 1 } });
@@ -143,7 +157,7 @@ async function connect() {
   s.ev.on('connection.update', async ({ connection, lastDisconnect, qr }) => {
     if (qr) qrNow = qr;
     if (qr && !PAIR) {
-      QRCode.toFile('qr.png', qr).catch(() => {});
+      (QRCode as any).toFile('qr.png', qr).catch(() => {});
       console.log('Scan this with WhatsApp on the bot\'s phone (Linked devices → Link a device), or open Admin → WhatsApp → Connection (also saved as web/gateway/qr.png):');
       qrcode.generate(qr, { small: true });
     }
@@ -168,13 +182,95 @@ async function connect() {
     for (const m of messages) {
       const from = await senderOf(s, m);
       if (!from) continue;
+
+      // 1. WhatsApp poll update (user tapped a poll choice)
+      const unwrapped = unwrap(m.message);
+      const pollUpdate = unwrapped?.pollUpdateMessage;
+      if (pollUpdate?.pollCreationMessageKey && pollUpdate?.vote) {
+        const creationKey = pollUpdate.pollCreationMessageKey;
+        const pollId = creationKey.id;
+        let poll = pollId ? polls[pollId] : undefined;
+        if (!poll && pollId && pollStore) {
+          const loaded = await pollStore.load().catch(() => ({})) as Record<string, Poll>;
+          if (loaded[pollId]) { poll = loaded[pollId]; polls[pollId] = poll; }
+        }
+        if (poll && pollId) {
+          const me = jidNormalizedUser(s.user?.id ?? '');
+          const creator = getKeyAuthor(creationKey, me) || me;
+          const rawSecret = poll.message?.message?.messageContextInfo?.messageSecret
+            ?? (poll.message?.message as Record<string, any>)?.pollCreationMessageV3?.messageContextInfo?.messageSecret
+            ?? (poll.message?.message as Record<string, any>)?.pollCreationMessage?.messageContextInfo?.messageSecret
+            ?? (poll.message as Record<string, any>)?.messageContextInfo?.messageSecret;
+          const pollEncKey = toSecretBuffer(rawSecret);
+
+          if (pollEncKey) {
+            const t0 = Date.now();
+            const voterJid = getKeyAuthor(m.key, me);
+            const candidates = [
+              voterJid,
+              m.key.remoteJid,
+              m.key.participant,
+              (m.key as Record<string, any>).remoteJidAlt,
+              (m.key as Record<string, any>).participantAlt,
+            ].filter(Boolean) as string[];
+            if (m.key.remoteJid && isLidUser(m.key.remoteJid)) {
+              const pn = await s.signalRepository.lidMapping.getPNForLID(m.key.remoteJid).catch(() => null);
+              if (pn) candidates.push(pn);
+            }
+            for (const c of [...candidates]) candidates.push(jidNormalizedUser(c));
+            const uniqueCandidates = [...new Set(candidates)];
+
+            let decrypted: proto.Message.PollVoteMessage | null = null;
+            for (const cand of uniqueCandidates) {
+              try {
+                decrypted = decryptPollVote(pollUpdate.vote, {
+                  pollEncKey,
+                  pollCreatorJid: creator,
+                  pollMsgId: pollId,
+                  voterJid: cand,
+                });
+                if (decrypted) break;
+              } catch {}
+            }
+
+            if (decrypted?.selectedOptions?.length) {
+              const optionLabels = labels(poll.options);
+              const selectedHexes = new Set(decrypted.selectedOptions.map((opt) => Buffer.from(opt).toString('hex')));
+              let chosenOption: Option | null = null;
+              for (let i = 0; i < poll.options.length; i++) {
+                const hashHex = createHash('sha256').update(optionLabels[i]).digest('hex');
+                const rawHashHex = createHash('sha256').update(poll.options[i].title).digest('hex');
+                if (selectedHexes.has(hashHex) || selectedHexes.has(rawHashHex)) {
+                  chosenOption = poll.options[i];
+                  break;
+                }
+              }
+
+              if (chosenOption) {
+                const voteId = `poll.${pollId}.${m.key.id ?? Date.now()}`;
+                if (!seenVotes.has(voteId)) {
+                  seenVotes.add(voteId);
+                  while (seenVotes.size > 500) seenVotes.delete(seenVotes.keys().next().value!);
+                  const timestamp = String(Math.floor(Number(pollUpdate.senderTimestampMs ?? Date.now()) / 1000));
+                  console.log(`[poll] decoded selection for ${pollId} from ${from} in ${Date.now() - t0}ms: ${chosenOption.id} ("${chosenOption.title}")`);
+                  await toBot(from, m.pushName ?? null, [pollVote(from, voteId, pollId, chosenOption, timestamp)]);
+                }
+                continue;
+              }
+            }
+          }
+        }
+      }
+
+      // 2. Regular message
       const msg = toCloudMessage(m, from);
       if (!msg) continue;
       if (msg.type === 'image' || msg.type === 'video' || msg.type === 'document' || msg.type === 'audio' || msg.type === 'text') keep(received, m, 300);
       await toBot(from, m.pushName, [msg]);
     }
   });
-  // A tap on a poll option arrives as an (encrypted) poll update to the poll message.
+
+  // A tap on a poll option if emitted as a messages.update
   s.ev.on('messages.update', async (updates) => {
     for (const { key, update } of updates) {
       const poll = key.id ? polls[key.id] : undefined;
@@ -182,7 +278,13 @@ async function connect() {
       const votes = getAggregateVotesInPollMessage({ message: poll.message.message, pollUpdates: update.pollUpdates });
       const option = chosen(poll.options, votes);
       const vote = update.pollUpdates.at(-1)!;
-      const from = await senderOf(s, { ...poll.message, key: { ...poll.message.key, fromMe: false } } as WAMessage);
+      let from: string | null = null;
+      if (key.remoteJid && isPersonChat(key.remoteJid)) {
+        let phone: string | null = null;
+        if (isLidUser(key.remoteJid)) phone = await s.signalRepository.lidMapping.getPNForLID(key.remoteJid).catch(() => null);
+        from = addressOf(key.remoteJid, phone && phone.endsWith('@s.whatsapp.net') ? phone : null);
+      }
+      if (!from) from = await senderOf(s, { ...poll.message, key: { ...poll.message.key, fromMe: false } } as WAMessage);
       if (!option || !from) continue;
       const voteId = `poll.${key.id}.${vote.pollUpdateMessageKey?.id ?? vote.senderTimestampMs ?? Date.now()}`;
       await toBot(from, null, [pollVote(from, voteId, key.id!, option, String(Math.floor(Number(vote.senderTimestampMs ?? Date.now()) / 1000)))]);

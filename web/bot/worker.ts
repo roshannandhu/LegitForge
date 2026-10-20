@@ -1372,7 +1372,8 @@ async function roster(env: Env, now: number): Promise<Seat[]> {
     .all<{ whatsapp: string; name: string; services: string; status: Seat['status']; status_until: string | null }>()
     .catch(() => ({ results: [] as never[] }))).results;                   // before migration 0013: everyone free
   const by = new Map(rows.map((r) => [r.whatsapp, r]));
-  const team: Seat[] = [...teamIds(env)].map((id) => {
+  const allIds = new Set([...teamIds(env), ...rows.map((r) => r.whatsapp)]);
+  const team: Seat[] = [...allIds].map((id) => {
     const r = by.get(id), over = !!r?.status_until && Date.parse(r.status_until) <= now;
     let services: string[] = [];
     try { const v: unknown = JSON.parse(r?.services ?? '[]'); if (Array.isArray(v)) services = v.map(String); } catch { /* none */ }

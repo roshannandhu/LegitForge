@@ -17,7 +17,7 @@
   "compatibility_flags": ["nodejs_compat"],     // lib/site.ts (via lib/business-hours.ts) reads process.env
   "d1_databases": [
     // filled per deploy by scripts/cf-setup.mjs, like the website's
-    { "binding": "DB", "database_name": "legitforge", "database_id": "00000000-0000-0000-0000-000000000000" }
+    { "binding": "DB", "database_name": "legitforge", "database_id": "24ac4e48-1dec-4e8f-a86b-f71a330c2b71" }
   ],
   "r2_buckets": [
     // the website's bucket: files clients send are kept under leads/<lead id>/ (private, 90 days)
