@@ -134,12 +134,28 @@ export const PERSON_ASK = /^(please\s+)?((can|could|may)\s+i\s+|i\s+(want|would 
 /** A price asked in any of the bot's languages (the team answers it; the client is offered a call). */
 export const PRICE_ASK = /\b(how much|price|cost|rate|charges?|budget|ethra|ethrayanu|kitna|kitne|kharcha|eshtu|evlo|evvalavu)\b|എത്ര|कितना|कितने|ಎಷ್ಟು|எவ்வளவு/i;
 
+/** Hold or wait requests in English, Manglish, Hinglish, Kanglish, Tanglish */
+export const WAIT_ASK = /^(wait( cheyy| aakku| karo| maadi| pannu)?|hold on|one (minute|min|sec)|oru (minit|minute|sec)|thoda time|ruk(o| jao)?|ondu nimisha|oru nimisham|shari nokkatte|nokkatte)[\s!.]*$/i;
+
+/** Status checks on existing project / website in any dialect */
+export const STATUS_ASK = /^(what is (the )?)?(project )?status[\s?!.]*$|\b(project status|ente (website|project) status|status entha|progress entha|evide vare aayi|eppol theerum|ready aayo|complete aayo|kahan tak pahuncha)\b/i;
+
+/** Desires to start a distinct new project or service */
+export const NEW_ENQUIRY_ASK = /\b(vere (oru )?(project|work|service|enquiry|aavashyam)|another (project|service|app|website|enquiry)|new (project|service|enquiry)|dusra project|innondhu project|vera project|different project)\b/i;
+
+/** Complaints about team not calling or contacting */
+export const COMPLAINT_NO_CONTACT_ASK = /\b(contact cheythilla|call cheythilla|nobody (called|contacted)|no one (called|contacted)|call vannilla|haven'?t (contacted|called)|didn'?t (contact|call)|call nahi aaya|samparkisilla|yaarume pesala|pesavillai)\b/i;
+
+/** Standalone greetings in all dialects */
+export const GREETING_ASK = /^(hi+|hello+|hey+|hai+|namaskaram|namaste|vanakkam|namaskara|good (morning|afternoon|evening)|kya haal|enthokkeyundu|sugamano|hegidira|eppadi irukkinga)[\s!.]*$/i;
+
 export type TextKey = 'welcome' | 'menu' | 'lang' | 'name' | 'business' | 'need' | 'timeline' | 'done' | 'noted'
   | 'checking' | 'teamSoon' | 'teamLater' | 'person' | 'offTopic' | 'pleaseType' | 'stopped'
   | 'price' | 'callSoon' | 'keepGoing' | 'deleteAsk' | 'deleted' | 'kept' | 'welcomeBack' | 'sameProject'
   | 'refs' | 'skip' | 'fileSaved' | 'fileBig' | 'nudge' | 'work' | 'update'
   | 'howAsk' | 'slotAsk' | 'slotBtn' | 'otherTime' | 'booked' | 'howWa' | 'howPhone' | 'howMeet' | 'meetLater' | 'slotTaken' | 'reminder'
-  | 'quote' | 'pay' | 'payUpi' | 'review' | 'referral' | 'contact' | 'contactBad' | 'deletedInbox' | 'langSet' | 'cancelled' | 'unclear';
+  | 'quote' | 'pay' | 'payUpi' | 'review' | 'referral' | 'contact' | 'contactBad' | 'deletedInbox' | 'langSet' | 'cancelled' | 'unclear'
+  | 'wait' | 'statusDone' | 'newEnquiry' | 'complaint' | 'greetBack';
 type Pair = [string, string];
 
 export const TEXT: Record<Lang, Record<TextKey, string> & { tl: [string, string, string]; callBtn: Pair; delBtn: Pair; retBtn: Pair; howBtn: [string, string, string] }> = {
@@ -202,6 +218,11 @@ export const TEXT: Record<Lang, Record<TextKey, string> & { tl: [string, string,
     langSet: "I'll reply in {lang}. To change it, type *language*.",
     cancelled: "Okay, I have stopped this enquiry. Send hi whenever you want to start again.",
     unclear: "Sorry, I didn't quite understand that. Could you say it another way?",
+    wait: "Sure, take your time! Just reply whenever you are ready.",
+    statusDone: "Your project brief is with our development team and is currently under active review. We will contact you shortly. If this is urgent, I can flag this for priority attention.",
+    newEnquiry: "Great! Tell me about the new project — is it a website, WhatsApp bot, mobile app, or something else?",
+    complaint: "I sincerely apologize for the delay! I have alerted our team with high priority right now so someone reaches out to you immediately.",
+    greetBack: "Hello! 👋 How can I help you today? Are you checking in on your project, or do you have a new question?",
   },
   ml: {
     welcome: 'നമസ്കാരം! 👋 ഇത് Legit Forge-ന്റെ ഓട്ടോമേറ്റഡ് അസിസ്റ്റന്റ് ആണ്. എന്ത് സഹായമാണ് വേണ്ടത്? താഴെ നിന്ന് തിരഞ്ഞെടുക്കൂ.',
@@ -262,6 +283,11 @@ export const TEXT: Record<Lang, Record<TextKey, string> & { tl: [string, string,
     langSet: "ഞാൻ {lang}-ൽ മറുപടി നൽകാം. മാറ്റാൻ *language* എന്ന് ടൈപ്പ് ചെയ്യൂ.",
     cancelled: "ശരി, ഈ അന്വേഷണം നിർത്തി. വീണ്ടും തുടങ്ങാൻ എപ്പോൾ വേണമെങ്കിലും hi അയയ്ക്കൂ.",
     unclear: "ക്ഷമിക്കണം, എനിക്ക് അത് ശരിക്ക് മനസ്സിലായില്ല. മറ്റൊരു രീതിയിൽ പറയാമോ?",
+    wait: "തീർച്ചയായും, സമയമെടുക്കൂ! തയ്യാറാകുമ്പോൾ ഇവിടെ മെസേജ് അയച്ചാൽ മതി.",
+    statusDone: "നിങ്ങളുടെ പ്രോജക്റ്റ് വിവരങ്ങൾ ഞങ്ങളുടെ ഡെവലപ്‌മെന്റ് ടീമിന്റെ കൈവശമുണ്ട്, അവർ അത് പരിശോധിക്കുകയാണ്. ഉടൻ തന്നെ ബന്ധപ്പെടും. അടിയന്തരമാണെങ്കിൽ ഞാൻ ടീമിനെ ഓർമ്മിപ്പിക്കാം.",
+    newEnquiry: "വളരെ സന്തോഷം! പുതിയ പ്രോജക്റ്റിനെക്കുറിച്ച് പറയൂ — ഇത് വെബ്‌സൈറ്റ്, വാട്ട്‌സ്ആപ്പ് ബോട്ട്, മൊബൈൽ ആപ്പ്, അതോ മറ്റെന്തെങ്കിലുമാണോ?",
+    complaint: "വൈകിയതിൽ ആത്മാർത്ഥമായി ക്ഷമ ചോദിക്കുന്നു! നിങ്ങളെ ഉടൻ തന്നെ ബന്ധപ്പെടാൻ ഞാൻ ടീമിന് ഇപ്പോൾ തന്നെ അടിയന്തര അറിയിപ്പ് നൽകിയിട്ടുണ്ട്.",
+    greetBack: "നമസ്കാരം! 👋 ഇന്ന് എന്ത് സഹായമാണ് വേണ്ടത്? നിങ്ങളുടെ പ്രോജക്റ്റിനെക്കുറിച്ചാണോ അതോ പുതിയ സംശയങ്ങളുണ്ടോ?",
   },
   mg: {
     welcome: 'Namaskaram! 👋 Ith Legit Forge-inte automated assistant aanu. Enthu sahayamaanu vendath? Thazhe ninnu choose cheyyoo.',
@@ -322,6 +348,11 @@ export const TEXT: Record<Lang, Record<TextKey, string> & { tl: [string, string,
     langSet: "Njan {lang}-il reply cheyyaam. Maattaan *language* ennu type cheyyoo.",
     cancelled: "Sheri, ee enquiry nirthi. Veendum thudangaan eppo venelum hi ayakkoo.",
     unclear: "Sorry, enikku athu sheriyaayi manassilaayilla. Vere reethiyil parayaamo?",
+    wait: "Sheri, take your time! Ningal ready aakumpol message ayacha mathi.",
+    statusDone: "Ningalude project brief development team-inte kayyil undu, team athu review cheythu varikayanu. Pettannu thanne ningale contact cheyyum. Urgent aanenkil njan team-ine alert cheyyaam.",
+    newEnquiry: "Kollam! Puthiya project-ine kurichu parayu — ithu website, WhatsApp bot, mobile app, atho vere enthenkilum aano?",
+    complaint: "Athil valare kshamikkanam! Ningale udane thanne contact cheyyan njan team-inu urgent high-priority alert ayachittundu.",
+    greetBack: "Namaskaram! 👋 Enthu sahayamaanu vendath? Ningalude project-inte update aano, atho puthiya chodyangal aano?",
   },
   hi: {
     welcome: 'नमस्ते! 👋 यह Legit Forge का ऑटोमेटेड असिस्टेंट है। आपको किस चीज़ में मदद चाहिए? नीचे से चुनें।',
@@ -382,6 +413,11 @@ export const TEXT: Record<Lang, Record<TextKey, string> & { tl: [string, string,
     langSet: "मैं {lang} में जवाब दूँगा। बदलने के लिए *language* लिखें।",
     cancelled: "ठीक है, मैंने यह पूछताछ रोक दी है। फिर से शुरू करने के लिए कभी भी hi भेजें।",
     unclear: "माफ़ कीजिए, मैं ठीक से समझ नहीं पाया। क्या आप इसे किसी और तरह से बता सकते हैं?",
+    wait: "ज़रूर, आप आराम से समय लें! जब तैयार हों तो यहाँ मैसेज करें।",
+    statusDone: "आपके प्रोजेक्ट का विवरण हमारी डेवलपमेंट टीम के पास है और वे इसकी समीक्षा कर रहे हैं। वे जल्द ही आपसे संपर्क करेंगे।",
+    newEnquiry: "बहुत बढ़िया! नए प्रोजेक्ट के बारे में बताइए — क्या यह वेबसाइट, व्हाट्सएप बॉट, मोबाइल ऐप या कुछ और है?",
+    complaint: "देरी के लिए हम क्षमा चाहते हैं! मैंने तुरंत हमारी टीम को उच्च प्राथमिकता वाला अलर्ट भेज दिया है ताकि वे आपसे तुरंत संपर्क करें।",
+    greetBack: "नमस्ते! 👋 आज मैं आपकी क्या मदद कर सकता हूँ? क्या आप अपने प्रोजेक्ट का स्टेटस जानना चाहते हैं या कोई नया सवाल है?",
   },
   kn: {
     welcome: 'ನಮಸ್ಕಾರ! 👋 ಇದು Legit Forge ನ ಸ್ವಯಂಚಾಲಿತ ಸಹಾಯಕ. ನಿಮಗೆ ಯಾವುದರಲ್ಲಿ ಸಹಾಯ ಬೇಕು? ಕೆಳಗಿನಿಂದ ಆಯ್ಕೆಮಾಡಿ.',
@@ -442,6 +478,11 @@ export const TEXT: Record<Lang, Record<TextKey, string> & { tl: [string, string,
     langSet: "ನಾನು {lang} ನಲ್ಲಿ ಉತ್ತರಿಸುತ್ತೇನೆ. ಬದಲಾಯಿಸಲು *language* ಎಂದು ಟೈಪ್ ಮಾಡಿ.",
     cancelled: "ಸರಿ, ಈ ವಿಚಾರಣೆಯನ್ನು ನಿಲ್ಲಿಸಿದ್ದೇನೆ. ಮತ್ತೆ ಶುರು ಮಾಡಲು ಯಾವಾಗ ಬೇಕಾದರೂ hi ಕಳುಹಿಸಿ.",
     unclear: "ಕ್ಷಮಿಸಿ, ನನಗೆ ಅದು ಸರಿಯಾಗಿ ಅರ್ಥವಾಗಲಿಲ್ಲ. ಬೇರೆ ರೀತಿಯಲ್ಲಿ ಹೇಳಬಹುದೇ?",
+    wait: "ಖಂಡಿತ, ನಿಮ್ಮ ಸಮಯ ತೆಗೆದುಕೊಳ್ಳಿ! ಸಿದ್ಧವಾದಾಗ ಇಲ್ಲಿ ಸಂದೇಶ ಕಳುಹಿಸಿ.",
+    statusDone: "ನಿಮ್ಮ ಪ್ರಾಜೆಕ್ಟ್ ವಿವರಗಳನ್ನು ನಮ್ಮ ತಂಡವು ಪರಿಶೀಲಿಸುತ್ತಿದೆ, ಶೀಘ್ರದಲ್ಲೇ ನಿಮ್ಮನ್ನು ಸಂಪರ್ಕಿಸಲಿದ್ದಾರೆ.",
+    newEnquiry: "ತುಂಬಾ ಒಳ್ಳೆಯದು! ಹೊಸ ಪ್ರಾಜೆಕ್ಟ್ ಬಗ್ಗೆ ತಿಳಿಸಿ — ಇದು ವೆಬ್‌ಸೈಟ್, ವಾಟ್ಸಾಪ್ ಬಾಟ್, ಮೊಬೈಲ್ ಆಪ್ ಅಥವಾ ಇನ್ನೇನಾದರೂ ಆಗಿದೆಯೇ?",
+    complaint: "ತಡವಾಗಿದ್ದಕ್ಕೆ ಕ್ಷಮೆಯಿರಲಿ! ತಕ್ಷಣ ನಿಮ್ಮನ್ನು ಸಂಪರ್ಕಿಸಲು ನಾನು ತಂಡಕ್ಕೆ ತುರ್ತು ಸಂದೇಶ ಕಳುಹಿಸಿದ್ದೇನೆ.",
+    greetBack: "ನಮಸ್ಕಾರ! 👋 ಇಂದು ನಾನು ನಿಮಗೆ ಹೇಗೆ ಸಹಾಯ ಮಾಡಲಿ? ನಿಮ್ಮ ಪ್ರಾಜೆಕ್ಟ್ ಬಗ್ಗೆಯಾ ಅಥವಾ ಹೊಸ ಪ್ರಶ್ನೆಯಿದೆಯೇ?",
   },
   hg: {
     welcome: "Hi! 👋 Yeh Legit Forge ka assistant hai (automated). Aapko kis cheez mein help chahiye? Neeche se choose karein.",
@@ -502,6 +543,11 @@ export const TEXT: Record<Lang, Record<TextKey, string> & { tl: [string, string,
     langSet: "Main {lang} mein reply karunga. Badalne ke liye *language* type karein.",
     cancelled: "Theek hai, maine yeh enquiry rok di hai. Dobara shuru karne ke liye kabhi bhi hi bhejein.",
     unclear: "Sorry, main theek se samajh nahi paaya. Kya aap ise kisi aur tarah se bata sakte hain?",
+    wait: "Zaroor, aap aaraam se time lijiye! Jab ready ho tab message karein.",
+    statusDone: "Aapke project ki details hamari development team review kar rahi hai, wo jaldi hi aapse contact karenge.",
+    newEnquiry: "Badiya! Naye project ke baare mein batayein — kya ye website, WhatsApp bot, mobile app ya kuch aur hai?",
+    complaint: "Hui deri ke liye sorry! Maine team ko urgent high-priority alert bhej diya hai taaki wo turant aapse contact karein.",
+    greetBack: "Namaste! 👋 Aaj main aapki kya help kar sakta hoon? Project status jaan na hai ya koi naya sawaal hai?",
   },
   kg: {
     welcome: "Hi! 👋 Idu Legit Forge assistant (automated). Nimage yaava vishayadalli help beku? Kelage choose maadi.",
@@ -562,6 +608,11 @@ export const TEXT: Record<Lang, Record<TextKey, string> & { tl: [string, string,
     langSet: "Naanu {lang} nalli reply maadtini. Badalisoke *language* anta type maadi.",
     cancelled: "Sari, ee enquiry nilsiddini. Matte shuru maadoke yavaga bekadru hi kalisi.",
     unclear: "Sorry, nanage adu sariyaagi artha aaglilla. Bere reethiyalli helbahuda?",
+    wait: "Kanditha, aaramagi time thegedhukolli! Ready aadavaga message maadi.",
+    statusDone: "Nimma project details team review maadtha iddare, bega contact maadthare.",
+    newEnquiry: "BahaLa olledhu! Hosa project bagge thilisi — idhu website, WhatsApp bot, mobile app athva bere enadhruna?",
+    complaint: "Delay aagiddakke sorry! Thanna thakshana contact maado thara team ge urgent alert kalsiddini.",
+    greetBack: "Namaskara! 👋 Ivattu hege help maadli? Project bagge check maadbeka athva hosa question idhya?",
   },
   ta: {
     welcome: "வணக்கம்! 👋 இது Legit Forge உதவியாளர் (தானியங்கி). உங்களுக்கு எதில் உதவி வேண்டும்? கீழே தேர்ந்தெடுக்கவும்.",
@@ -622,6 +673,11 @@ export const TEXT: Record<Lang, Record<TextKey, string> & { tl: [string, string,
     langSet: "நான் {lang}-இல் பதில் அளிப்பேன். மாற்ற *language* என்று தட்டச்சு செய்யுங்கள்.",
     cancelled: "சரி, இந்த விசாரணையை நிறுத்திவிட்டேன். மீண்டும் தொடங்க எப்போது வேண்டுமானாலும் hi அனுப்புங்கள்.",
     unclear: "மன்னிக்கவும், எனக்கு அது சரியாகப் புரியவில்லை. வேறு விதமாகச் சொல்ல முடியுமா?",
+    wait: "கண்டிப்பாக, நேரம் எடுத்துக்கொள்ளுங்கள்! தயாரானதும் இங்கே செய்தி அனுப்புங்கள்.",
+    statusDone: "உங்கள் திட்ட விவரங்களை எங்கள் குழு மதிப்பாய்வு செய்து வருகிறது, விரைவில் உங்களைத் தொடர்புகொள்வார்கள்.",
+    newEnquiry: "மிக்க மகிழ்ச்சி! புதிய திட்டத்தைப் பற்றிச் சொல்லுங்கள் — இது வலைத்தளமா, வாட்ஸ்அப் பாட்டா, மொபைல் செயலியா அல்லது வேறொன்றா?",
+    complaint: "தாமதத்திற்கு மன்னிக்கவும்! உடனடியாக உங்களைத் தொடர்புகொள்ள எங்கள் குழுவிற்கு அவசர எச்சரிக்கை அனுப்பியுள்ளேன்.",
+    greetBack: "வணக்கம்! 👋 இன்று நான் உங்களுக்கு எவ்வாறு உதவ முடியும்? உங்கள் திட்டம் பற்றிய தகவலா அல்லது ஏதேனும் கேள்விகள் உள்ளதா?",
   },
   tg: {
     welcome: "Hi! 👋 Idhu Legit Forge assistant (automated). Ungalukku edhula help venum? Keezha choose pannunga.",
@@ -682,6 +738,11 @@ export const TEXT: Record<Lang, Record<TextKey, string> & { tl: [string, string,
     langSet: "Naan {lang}-la reply panren. Maatha *language*-nu type pannunga.",
     cancelled: "Sari, indha enquiry-a niruthitten. Thirumba start panna eppo venaalum hi anuppunga.",
     unclear: "Sorry, enakku adhu sariya puriyala. Vera maadhiri solla mudiyumaa?",
+    wait: "Kandippa, take your time! Neenga ready aagumbodhu message pannunga.",
+    statusDone: "Unga project details-ah team review pannittu irukkanga, seekiram contact pannuvanga.",
+    newEnquiry: "Super! Pudhiya project pathi sollunga — idhu website, WhatsApp bot, mobile app illa vera edhavadha?",
+    complaint: "Delay aagradhukku romba sorry! Immediate-ah ungalai contact panna team-kku urgent alert anupirukken.",
+    greetBack: "Vanakkam! 👋 Enna help venum? Project update check panreengala illa pudhu kelvi irukka?",
   },
 };
 export const t = (lang: string | null | undefined, key: TextKey) => (TEXT[(lang as Lang)] ?? TEXT.en)[key];
@@ -820,7 +881,18 @@ export const extractPrompt = (step: Step, asked?: string) => `You read one Whats
 ${FACTS}
 We just asked the client: ${asked ?? FIELD_QUESTION[step]}.
 Return JSON:
-- kind: "answer" if the message gives details or answers us; "question" if the client asks us something about our services, process or work; "person" if they ask to talk to a human; "off_topic" only if it has nothing to do with Legit Forge (greetings and thanks are "answer"); "unclear" only if you truly cannot tell what they mean (garbled words, a regional phrase you do not know, too short to act on): never guess a meaning.
+- kind:
+  * "greeting" if the client says hi, hello, namaskaram, namaste, casual pleasantry;
+  * "wait" if the client asks to wait, hold on, one minute, wait cheyy, ruk, thoda time;
+  * "status" if the client asks for an update or progress on their website, app or existing project;
+  * "new_enquiry" if the client wants to start or discuss another separate project or service;
+  * "complaint" if the client complains that nobody called, contacted or reached out;
+  * "add_requirement" if the client provides additional project requirements or features after their brief was complete;
+  * "answer" if the message gives details or answers the question we asked;
+  * "question" if the client asks us something about our services, process or work;
+  * "person" if they ask to talk to a human;
+  * "off_topic" only if it has nothing to do with Legit Forge;
+  * "unclear" only if you truly cannot tell what they mean (garbled words, a regional phrase you do not know, too short to act on): never guess a meaning.
 - name, business, need_en, timeline: only what the message itself says, else "". need_en and timeline in English.
 - detail_en: only when we asked for project details or websites they like: their answer in English (keep website addresses exactly), else "".
 - question_en: the client's question in English, else "".
@@ -858,7 +930,7 @@ export const EXTRACT_SCHEMA = {
   type: 'object', additionalProperties: false,
   required: ['kind', 'name', 'business', 'need_en', 'detail_en', 'timeline', 'question_en', 'commitment', 'price', 'mood', 'abusive'],
   properties: {
-    kind: { type: 'string', enum: ['answer', 'question', 'person', 'off_topic', 'unclear'] },
+    kind: { type: 'string', enum: ['answer', 'question', 'person', 'off_topic', 'unclear', 'greeting', 'wait', 'status', 'new_enquiry', 'complaint', 'add_requirement'] },
     name: str, business: str, need_en: str, detail_en: str, timeline: str, question_en: str, commitment: { type: 'boolean' },
     price: { type: 'boolean' }, mood: { type: 'string', enum: ['calm', 'upset', 'urgent'] }, abusive: { type: 'boolean' },
   },

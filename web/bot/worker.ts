@@ -26,9 +26,9 @@ import { bookCall, calendarOn, callEvent, cancelCall, freeSlots, offerable } fro
 import { CHANNEL_LABEL, channelOf, metaInbound, type Option } from './channels';
 import { inr, paymentLink, rupees } from './pay';
 import {
-  ANSWER_SCHEMA, BACK_ASK, BRIEF_PROMPT, CANCEL_ASK, clearService, DETAILS, LANG_ASK, LOCALE, MENU_ASK, PERSON_ASK, PRICE_ASK, fill, EXTRACT_SCHEMA, FACTS, FIELDS, guessLang,
-  LANG_PROMPT, LANGS, MONEY, QA_SCHEMA, SERVICES, TEXT, TEXT_SCHEMA, TIMELINES,
-  TRANSLATED, TRANSLATIONS_SCHEMA, answerPrompt, extractPrompt, generalisePrompt, langFromText, langName, prefilledService,
+  ANSWER_SCHEMA, BACK_ASK, BRIEF_PROMPT, CANCEL_ASK, clearService, COMPLAINT_NO_CONTACT_ASK, DETAILS, LANG_ASK, LOCALE, MENU_ASK, PERSON_ASK, PRICE_ASK, fill, EXTRACT_SCHEMA, FACTS, FIELDS, GREETING_ASK, guessLang,
+  LANG_PROMPT, LANGS, MONEY, NEW_ENQUIRY_ASK, QA_SCHEMA, SERVICES, STATUS_ASK, TEXT, TEXT_SCHEMA, TIMELINES,
+  TRANSLATED, TRANSLATIONS_SCHEMA, WAIT_ASK, answerPrompt, extractPrompt, generalisePrompt, langFromText, langName, prefilledService,
   scriptLang, serviceByKey, serviceFromText, t, tonePrompt, translatePrompt, translationsPrompt,
   type Field, type Lang, type ServiceKey, type Step,
 } from './text';
@@ -78,6 +78,7 @@ interface Fields {
   contact?: string;          // how to reach them, from the website chat, Messenger or Instagram ('-' = skipped)
   email?: string;
   contact_tries?: number;
+  complaint_alert_at?: string; // last urgent complaint alert sent to the team (deduplicated to 15 min)
 }
 export interface Contact {
   wa_id: string; phone: string | null; profile_name: string | null; code: string; lead_id: string; lead_saved: boolean;
@@ -493,7 +494,8 @@ function optionFor(c: Contact, text: string): Option | null {
 const writer = (lang: string | null): Provider[] => (indic(lang) ? ['gemini'] : ['groq', 'gemini']);
 
 interface Extract {
-  kind: 'answer' | 'question' | 'person' | 'off_topic' | 'unclear'; name: string; business: string; need_en: string; detail_en: string; timeline: string;
+  kind: 'answer' | 'question' | 'person' | 'off_topic' | 'unclear' | 'greeting' | 'wait' | 'status' | 'new_enquiry' | 'complaint' | 'add_requirement';
+  name: string; business: string; need_en: string; detail_en: string; timeline: string;
   question_en: string; commitment: boolean; price: boolean; mood: 'calm' | 'upset' | 'urgent'; abusive: boolean;
 }
 type Alert = 'complete' | 'person' | 'call' | 'upset' | 'urgent';
@@ -721,7 +723,7 @@ class Turn {
         const guess = site ? undefined : guessLang(text);
         if (guess) c.fields.lang_guess = guess;
         if (pre) { c.service = pre; await this.toLanguage(); return; }
-        if (!ACK.test(text) && !site) c.fields.notes = join(c.fields.notes, text);
+        if (!ACK.test(text) && !GREETING_ASK.test(text) && !site) c.fields.notes = join(c.fields.notes, text);
         if (!site && PRICE_ASK.test(text)) c.fields.price_asked = clip(text, 300);
         // "Enikku oru website venam": the service is clear, so no menu (and no language list if that is clear too)
         const said = !site && words(text) >= 3 ? clearService(text) : undefined;
@@ -731,7 +733,7 @@ class Turn {
         return;
       }
       case 'service': {
-        if (ACK.test(text)) { await this.ask(text); return; }             // a second "hello": the menu again
+        if (ACK.test(text) || GREETING_ASK.test(text)) { await this.ask(text); return; }             // a second "hello": the menu again
         const guess = guessLang(text);
         if (guess && !c.lang) c.fields.lang_guess = guess;
         if (c.fields.resume === 'done' && serviceFromText(text) === 'other') {   // "menu" after the brief, then a question
@@ -881,6 +883,34 @@ class Turn {
     });
   }
 
+  private async startNewEnquiry(prefix = '') {
+    const c = this.c, name = c.fields.name, email = c.fields.email, contact = c.fields.contact;
+    const prev = [...(c.fields.prev_leads ?? []), ...(c.lead_saved ? [c.lead_id] : [])].slice(-10);
+    Object.assign(c, {
+      lead_id: crypto.randomUUID(),
+      code: Math.random().toString(36).slice(2, 7).toUpperCase(),
+      lead_saved: false,
+      won_counted: false,
+      step: 'service' as Step,
+      mode: 'bot',
+      taken_by: null,
+      service: null,
+      fields: {
+        ...(prev.length ? { prev_leads: prev } : {}),
+        ...(name ? { name } : {}),
+        ...(email ? { email } : {}),
+        ...(contact ? { contact } : {}),
+        since: iso(this.now),
+        ...(channelOf(c.wa_id) !== 'whatsapp' ? { page: CHANNEL_LABEL[channelOf(c.wa_id)] } : {}),
+      },
+      alerted_at: null,
+      nudged_at: null,
+      quote_at: null,
+      revived_at: null,
+    });
+    await this.ask('', prefix || t(c.lang, 'newEnquiry'));
+  }
+
   /** Whatever the current step asks (with anything said first). `seen` picks the menu's language
    *  before the client has chosen one. */
   private async ask(seen = '', prefix = '') {
@@ -946,11 +976,69 @@ class Turn {
       await this.advance('');
       return;
     }
+
+    // Fast-path intent checks for conversational commands / dialect utterances
+    if (WAIT_ASK.test(text)) {
+      await this.say(t(lang, 'wait'));
+      return;
+    }
+    if (NEW_ENQUIRY_ASK.test(text)) {
+      await this.startNewEnquiry();
+      return;
+    }
+    if (COMPLAINT_NO_CONTACT_ASK.test(text)) {
+      const lastAlert = c.fields.complaint_alert_at ? Date.parse(c.fields.complaint_alert_at) : 0;
+      if (!lastAlert || this.now - lastAlert > 15 * MIN) {
+        c.fields.complaint_alert_at = iso(this.now);
+        await this.alertTeam('urgent', `🚨 URGENT: Client waiting for contact! Message: "${clip(text, 300)}"`);
+      }
+      await this.say(t(lang, 'complaint'));
+      return;
+    }
+    if (STATUS_ASK.test(text)) {
+      if (step === 'done' || c.alerted_at) {
+        await this.say(t(lang, 'statusDone'));
+        return;
+      }
+      await this.ask('', t(lang, 'statusDone'));
+      return;
+    }
+    if (GREETING_ASK.test(text)) {
+      if (step === 'done') {
+        await this.say(t(lang, 'greetBack'));
+        return;
+      }
+      await this.ask('', t(lang, 'greetBack'));
+      return;
+    }
+
     const before = JSON.stringify(FIELDS.map((f) => c.fields[f]));
     const asked = step === 'details' && c.service && c.service !== 'other' ? DETAILS.en[c.service] : undefined;
     const x = await this.ai<Extract>({ system: extractPrompt(step, asked), user: text, schema: EXTRACT_SCHEMA, name: 'extract' }, reader(c.lang, text));
     let prefix = '';
     if (x) {
+      if (x.kind === 'wait') { await this.say(t(lang, 'wait')); return; }
+      if (x.kind === 'new_enquiry') { await this.startNewEnquiry(); return; }
+      if (x.kind === 'complaint') {
+        const lastAlert = c.fields.complaint_alert_at ? Date.parse(c.fields.complaint_alert_at) : 0;
+        if (!lastAlert || this.now - lastAlert > 15 * MIN) {
+          c.fields.complaint_alert_at = iso(this.now);
+          await this.alertTeam('urgent', `🚨 URGENT: Client waiting for contact! Message: "${clip(text, 300)}"`);
+        }
+        await this.say(t(lang, 'complaint'));
+        return;
+      }
+      if (x.kind === 'status') {
+        if (step === 'done' || c.alerted_at) { await this.say(t(lang, 'statusDone')); return; }
+        await this.ask('', t(lang, 'statusDone'));
+        return;
+      }
+      if (x.kind === 'greeting') {
+        if (step === 'done') { await this.say(t(lang, 'greetBack')); return; }
+        await this.ask('', t(lang, 'greetBack'));
+        return;
+      }
+
       if (x.name && !c.fields.name) c.fields.name = clip(x.name, 80);
       if (x.business && !c.fields.business) c.fields.business = clip(x.business, 200);
       if (x.need_en && step !== 'details' && step !== 'refs') c.fields.need = join(c.fields.need, x.need_en, 1000);
@@ -985,14 +1073,23 @@ class Turn {
       else if (x.kind === 'person') { c.fields.person_at = iso(this.now); await this.alertTeam('person'); prefix = t(lang, 'person'); }
       else if (x.kind === 'off_topic') prefix = t(lang, 'offTopic');
     }
-    const plain = (!x || x.kind === 'answer') && !ACK.test(text);
+    const plain = (!x || x.kind === 'answer' || x.kind === 'add_requirement') && !ACK.test(text) && !GREETING_ASK.test(text);
     const filled = JSON.stringify(FIELDS.map((f) => c.fields[f])) !== before;
     // With no AI (or when it found nothing), the message answers the question we asked.
     // ...also at the service question and websites, even when it filled something else too
     const own = step === 'details' || step === 'refs';
     if (plain && (!filled || own) && step !== 'done' && !c.fields[step]) c.fields[step] = clip(text, step === 'need' ? 1000 : own ? 600 : 200);
     if (step === 'done') {
-      if (plain) { c.fields.notes = join(c.fields.notes, text); prefix ||= t(lang, 'noted'); }
+      if (PRICE_ASK.test(text) || (x && x.price && !x.commitment)) {
+        await this.escalate(text, x?.question_en || text, { kind: 'price' });
+        await sendButtons(this.env, c.wa_id, t(lang, 'price'), TEXT[lang].callBtn.map((title, i) => ({ id: `call:${i ? 'n' : 'y'}`, title })));
+        return;
+      }
+      if (plain) {
+        c.fields.notes = join(c.fields.notes, text);
+        await this.saveLead();
+        prefix ||= t(lang, 'noted');
+      }
       if (!c.alerted_at) await this.alertTeam('complete');                  // an earlier alert that didn't go out
       if (prefix) await this.say(prefix);
       await this.refer().catch((e) => console.error('[bot] referral not sent', String(e)));
