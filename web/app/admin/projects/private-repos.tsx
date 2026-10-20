@@ -7,12 +7,13 @@ import { CopyLink } from './github-add';
 export async function PrivateRepos({ who }: { who: string }) {
   const [owner, access] = await Promise.all([isOwner(who), githubAccess().catch(() => null)]);
   const form = !access && owner ? await connectForm(who).catch(() => null) : null;
+  if (!access && !owner) return null;              // nothing a team member can do here
   return (
     <section className="admin-section" aria-labelledby="gh-private-h">
       <h2 id="gh-private-h" className="type-h3">Private repos</h2>
       {access ? (
         <>
-          <p className="muted" style={{ marginTop: 0 }}>
+          <p className="admin-intro">
             Send this link to each team member. They sign in to GitHub, choose the repos Legit Forge may read
             (read-only), and press Install. Then add those repos above like public ones. They can remove the
             access any time in GitHub → Settings → Applications.
@@ -26,7 +27,7 @@ export async function PrivateRepos({ who }: { who: string }) {
         </>
       ) : form ? (
         <>
-          <p className="muted" style={{ marginTop: 0 }}>
+          <p className="admin-intro">
             To add private repos, connect GitHub once. GitHub asks you to create a small Legit Forge app on
             your account (it can only read the repos people choose); press <strong>Create GitHub App</strong> there.
             You then get a link for each team member to approve their repos.
@@ -37,7 +38,7 @@ export async function PrivateRepos({ who }: { who: string }) {
           </form>
         </>
       ) : (
-        <p className="muted" style={{ marginTop: 0 }}>Private repos aren’t connected yet. An owner can connect GitHub here.</p>
+        <p className="admin-intro">Private repos aren’t connected yet. An owner can connect GitHub here.</p>
       )}
     </section>
   );

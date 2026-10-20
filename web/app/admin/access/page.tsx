@@ -14,17 +14,17 @@ export default async function AdminAccess() {
       <h1 className="type-h2">Access</h1>
       <p className="admin-lead">The Google accounts that can sign in to this admin. Anyone else is turned away at the sign-in page. Removing an account ends its access on its next click.</p>
       {owner ? (
-        <ActionForm action={addAdminEmailAction} className="admin-form" resetOnOk>
+        <ActionForm action={addAdminEmailAction} className="admin-form is-row" resetOnOk>
           <label className="field"><span>Google account email <small>(exactly as the account signs in)</small></span>
             <input name="email" type="email" required maxLength={254} autoComplete="off" spellCheck={false} placeholder="name@gmail.com" />
           </label>
-          <div><Submit pending="Adding…">Add account</Submit></div>
+          <Submit pending="Adding…">Add account</Submit>
         </ActionForm>
       ) : <p className="admin-empty">Only the owners can add or remove accounts.</p>}
 
       <section className="admin-section" aria-labelledby="a-h">
         <h2 id="a-h" className="type-h3">Who can sign in</h2>
-        <ul className="admin-cards" style={{ gridTemplateColumns: '1fr' }}>
+        <ul className="admin-cards admin-list">
           {owners.map((e) => (
             <li key={e} className="admin-card admin-access">
               <strong>{e}</strong>
@@ -54,7 +54,7 @@ export default async function AdminAccess() {
           </ul>
         )}
         {owner && (
-          <form action={signOutEverywhereAction} className="admin-subhead">
+          <form action={signOutEverywhereAction} className="admin-actions admin-after">
             <ConfirmSubmit message="Sign out every admin on every device, you included? Everyone signs in with Google again.">Sign out everywhere</ConfirmSubmit>
           </form>
         )}

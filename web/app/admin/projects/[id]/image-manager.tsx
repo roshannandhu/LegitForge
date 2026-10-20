@@ -81,7 +81,7 @@ export function ImageManager({ projectId, memberId, altHint = '' }: { projectId?
 
   return (
     <div className="drop" data-active={picked ? '' : undefined}>
-      <p style={{ margin: 0 }}><strong>Paste a screenshot anywhere on this page</strong> (Ctrl or Cmd + V), or choose a file. JPEG, PNG or WebP, up to 5 MB.</p>
+      <p><strong>Paste a screenshot anywhere on this page</strong> (Ctrl or Cmd + V), or choose a file. JPEG, PNG or WebP, up to 5 MB.</p>
       <label className="field">
         <span className="sr-only">Choose an image</span>
         <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => { take(e.target.files?.[0]); e.target.value = ''; }} />
@@ -91,7 +91,7 @@ export function ImageManager({ projectId, memberId, altHint = '' }: { projectId?
           {/* eslint-disable-next-line @next/next/no-img-element -- local preview */}
           <img src={picked.url} alt="" width={picked.width} height={picked.height} />
           <div className="admin-form">
-            <p className="muted" style={{ margin: 0 }}>{picked.width}×{picked.height} · <span className="swatch" style={{ background: picked.color }} />{picked.color}</p>
+            <p className="muted">{picked.width}×{picked.height} · <span className="swatch" style={{ background: picked.color }} />{picked.color}</p>
             <label className="field">
               <span>Describe the image <small>(required: read out to people who can’t see it)</small></span>
               <textarea ref={altRef} value={alt} onChange={(e) => setAlt(e.target.value)} maxLength={250} required

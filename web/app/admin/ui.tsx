@@ -5,7 +5,7 @@
 
 import { createContext, startTransition, useActionState, useContext, useEffect, useRef } from 'react';
 import { useFormStatus } from 'react-dom';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import type { FormState } from './actions';
 
 const Busy = createContext<boolean | null>(null);
@@ -55,17 +55,33 @@ export function ConfirmSubmit({ children, message, className = 'btn btn-ghost bt
   );
 }
 
-/** The admin's section links, with the current one marked. */
-export function AdminNav({ items }: { items: { href: string; label: string }[] }) {
+/** Section links (the admin's, or a section's own tabs), with the current one marked. `exact`:
+ *  only that address, not the pages under it. */
+export function AdminNav({ items, label = 'Admin', className = 'admin-nav' }: {
+  items: { href: string; label: string; exact?: boolean }[]; label?: string; className?: string;
+}) {
   const path = usePathname();
-  const current = (href: string) => (href === '/admin' ? path === '/admin' : path === href || path.startsWith(href + '/'));
+  const list = useRef<HTMLUListElement>(null);
+  const current = (n: { href: string; exact?: boolean }) => path === n.href || (!n.exact && path.startsWith(n.href + '/'));
+  // a phone shows a few at a time: bring the current one into view
+  useEffect(() => { list.current?.querySelector('[aria-current]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }, [path]);
   return (
-    <nav aria-label="Admin">
-      <ul className="admin-nav">{items.map((n) => (
-        <li key={n.href}><a href={n.href} aria-current={current(n.href) ? 'page' : undefined}>{n.label}</a></li>
+    <nav aria-label={label}>
+      <ul ref={list} className={className}>{items.map((n) => (
+        <li key={n.href}><a href={n.href} aria-current={current(n) ? 'page' : undefined}>{n.label}</a></li>
       ))}</ul>
     </nav>
   );
+}
+
+/** A fresh page every `seconds` while the tab is visible (the live view, the QR WhatsApp changes). */
+export function Refresh({ seconds = 15 }: { seconds?: number }) {
+  const router = useRouter();
+  useEffect(() => {
+    const timer = setInterval(() => { if (document.visibilityState === 'visible') router.refresh(); }, seconds * 1000);
+    return () => clearInterval(timer);
+  }, [router, seconds]);
+  return null;
 }
 
 /** A one-button form for an action that may refuse (publishing a testimonial). */

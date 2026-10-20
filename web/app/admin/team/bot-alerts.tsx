@@ -20,12 +20,12 @@ function MemberForm({ m }: { m?: BotMember }) {
             <option value="free">Free</option><option value="busy">Busy: alerted after the others</option><option value="off">Off: not alerted</option>
           </select></label>
       </div>
-      <fieldset className="admin-fieldset"><legend>Gets these enquiries first</legend>
+      <fieldset className="admin-fieldset admin-checks"><legend>Gets these enquiries first</legend>
         {SERVICES.map((s) => (
           <label key={s.key} className="check"><input type="checkbox" name="services" value={s.key} defaultChecked={mine.has(s.key)} /> {s.title}</label>
         ))}
       </fieldset>
-      <div className="admin-actions"><Submit>{m ? 'Save' : 'Add'}</Submit></div>
+      <div className="admin-actions"><Submit>{m ? 'Save' : 'Add number'}</Submit></div>
     </ActionForm>
   );
 }
@@ -34,21 +34,32 @@ function MemberForm({ m }: { m?: BotMember }) {
 export async function BotAlerts() {
   const team = await listBotTeam().catch(() => [] as BotMember[]);      // before migration 0013: just the add form
   return (
-    <section aria-labelledby="bot-alerts">
+    <section className="admin-section bot-alerts" aria-labelledby="bot-alerts">
       <h2 className="type-h3" id="bot-alerts">WhatsApp alerts</h2>
       <p className="admin-lead">
-        Who the WhatsApp bot tells first. A new enquiry goes to whoever has its service ticked; if nobody replies in 10
-        minutes, the others get it too. Upset or urgent clients reach everyone at once. Each person can also message the
-        bot “busy”, “busy 2h”, “off” or “free”. Only numbers set in the bot’s TEAM_WHATSAPP are used.
+        Who the WhatsApp bot tells first about each kind of enquiry. If nobody replies in 10 minutes, the others get it
+        too; upset or urgent clients reach everyone at once.
       </p>
-      {team.map((m) => (
-        <div key={m.whatsapp} className="admin-fieldset">
-          <MemberForm m={m} />
-          <form action={deleteBotMemberAction.bind(null, m.whatsapp)}>
-            <ConfirmSubmit message={`Remove ${m.name || m.whatsapp} from the alert routing? They still get alerts as a team member.`}>Remove</ConfirmSubmit>
-          </form>
-        </div>
-      ))}
+      <details>
+        <summary>Commands and limits</summary>
+        <p className="muted">Each person can also message the bot “busy”, “busy 2h”, “off” or “free”. Only numbers set in the bot’s TEAM_WHATSAPP are used.</p>
+      </details>
+      {team.length === 0 ? <p className="admin-empty">No numbers added yet.</p> : (
+        <ul className="admin-cards admin-list">
+          {team.map((m) => (
+            <li key={m.whatsapp} className="admin-card">
+              <div className="admin-card-head">
+                <strong>{m.name || m.whatsapp}</strong>
+                <form action={deleteBotMemberAction.bind(null, m.whatsapp)} className="admin-actions">
+                  <ConfirmSubmit message={`Remove ${m.name || m.whatsapp} from the alert routing? They still get alerts as a team member.`}>Remove</ConfirmSubmit>
+                </form>
+              </div>
+              <MemberForm m={m} />
+            </li>
+          ))}
+        </ul>
+      )}
+      <h3>Add a number</h3>
       <MemberForm />
     </section>
   );

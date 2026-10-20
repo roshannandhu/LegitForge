@@ -14,22 +14,19 @@ export default async function AdminCompany() {
     <>
       <h1 className="type-h2">Company</h1>
       <p className="admin-lead">What the site prints about the company: in the footer, on the contact and legal pages and for search engines. Switch anything off to hide it. Saving updates every page on its next visit.</p>
-      {!owner && <p className="admin-empty">Only the owners can change these details.</p>}
+      {!owner && <p className="admin-note">Only the owners can change these details.</p>}
 
-      <ActionForm action={saveCompanyAction} className="admin-form">
+      <ActionForm action={saveCompanyAction} className="admin-form admin-co">
         <fieldset className="admin-fieldset" disabled={!owner}>
           <legend>Contact</legend>
-          <div className="admin-grid">
+          <div className="social-row">
             <label className="field"><span>Email</span>
               <input name="email" type="email" defaultValue={c.email} maxLength={254} autoComplete="off" spellCheck={false} /></label>
-            <label className="check"><input type="checkbox" name="showEmail" defaultChecked={c.showEmail} /> Show the email on the site</label>
+            <label className="check"><input type="checkbox" name="showEmail" defaultChecked={c.showEmail} /> Show on the site</label>
           </div>
           <label className="field"><span>WhatsApp number <small>(country code first, digits only, like 919876543210)</small></span>
-            <input name="whatsapp" inputMode="tel" defaultValue={c.whatsapp} maxLength={24} placeholder="919876543210" autoComplete="off" /></label>
-          <p className="muted">
-            Every “Chat on WhatsApp” button on the site opens this number; empty, they go to the contact section instead.
-            If a WhatsApp bot answers for you (WhatsApp Cloud API or n8n), connect the same number there.
-          </p>
+            <input name="whatsapp" inputMode="tel" defaultValue={c.whatsapp} maxLength={24} autoComplete="off" aria-describedby="wa-hint" /></label>
+          <p id="wa-hint" className="muted admin-co-hint">Every “Chat on WhatsApp” button on the site opens this number; empty, they go to the contact section instead.</p>
           <label className="field"><span>WhatsApp greeting <small>(the message a chat starts with)</small></span>
             <input name="whatsappText" defaultValue={c.whatsappText} maxLength={200} /></label>
         </fieldset>
@@ -46,7 +43,8 @@ export default async function AdminCompany() {
         </fieldset>
 
         <fieldset className="admin-fieldset" disabled={!owner}>
-          <legend>Business details (optional; empty ones are hidden)</legend>
+          <legend>Business details</legend>
+          <p className="muted">Optional: empty ones are hidden on the site.</p>
           <div className="admin-grid">
             <label className="field"><span>Legal name</span><input name="legalName" defaultValue={c.legalName} maxLength={120} /></label>
             <label className="field"><span>GSTIN or tax ID</span><input name="taxId" defaultValue={c.taxId} maxLength={30} spellCheck={false} /></label>

@@ -103,7 +103,7 @@ export function GithubAdd() {
   return (
     <section className="admin-section gh-add" aria-labelledby="gh-add-h">
       <h2 id="gh-add-h" className="type-h3">Add from GitHub</h2>
-      <p className="muted" style={{ marginTop: 0 }}>
+      <p className="admin-intro">
         An image and the repo link: the title, summary, what was built, tech stack, tags and live link are written
         from GitHub. It is saved as a draft for you to check and publish. Results and numbers stay yours to add.
       </p>
@@ -112,11 +112,11 @@ export function GithubAdd() {
           <div className="drop-preview">
             {/* eslint-disable-next-line @next/next/no-img-element -- local preview */}
             <img src={picked.url} alt="" width={picked.width} height={picked.height} />
-            <p className="muted" style={{ margin: 0 }}>{picked.width}×{picked.height} · this becomes the cover.
+            <p className="muted">{picked.width}×{picked.height} · this becomes the cover.
               {' '}<button type="button" className="btn btn-ghost btn-sm" onClick={() => { URL.revokeObjectURL(picked.url); setPicked(null); }} disabled={busy}>Change</button></p>
           </div>
         ) : (
-          <p style={{ margin: 0 }}><strong>Paste a screenshot</strong> (Ctrl or Cmd + V) or choose a file. JPEG, PNG or WebP, up to 5 MB.</p>
+          <p><strong>Paste a screenshot</strong> (Ctrl or Cmd + V) or choose a file. JPEG, PNG or WebP, up to 5 MB.</p>
         )}
         {!picked && (
           <label className="field">

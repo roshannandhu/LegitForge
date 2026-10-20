@@ -6,12 +6,12 @@ import { GithubConnect } from './github-connect';
 export default async function AdminGithub({ searchParams }: { searchParams: Promise<{ code?: string; state?: string }> }) {
   const who = await requireAdmin();                // each page checks too: a layout can be skipped
   const { code = '', state = '' } = await searchParams;
-  return (
-    <>
-      <h1 className="type-h2">Connecting GitHub</h1>
-      {(await isOwner(who))
-        ? <GithubConnect code={code} state={state} />
-        : <p className="admin-empty">Only the owners can connect GitHub.</p>}
-    </>
-  );
+  return (await isOwner(who))
+    ? <GithubConnect code={code} state={state} />          // its own h1: it says when the link failed
+    : (
+      <>
+        <h1 className="type-h2">Connecting GitHub</h1>
+        <p className="admin-empty">Only the owners can connect GitHub.</p>
+      </>
+    );
 }

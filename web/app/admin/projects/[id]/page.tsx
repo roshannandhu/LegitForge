@@ -2,11 +2,13 @@ import { requireAdmin } from '@/lib/admin/auth';
 import { notFound } from 'next/navigation';
 import { CATEGORIES, getProjectRow, listImages, STAMPS } from '@/lib/admin/db';
 import { getTeam, teamFromDb } from '@/lib/team';
+import { WORK_FILTERS } from '@/lib/pages';
 import { captureCoverAction, deleteImageAction, deleteProjectAction, publishProjectAction, saveProjectAction, setCoverAction } from '../../actions';
 import { ActionButton, ActionForm, ConfirmSubmit, Submit } from '../../ui';
 import { ImageManager } from './image-manager';
 
 const parse = <T,>(s: string): T[] => { try { return JSON.parse(s); } catch { return []; } };
+const STAMP_LABEL = { live: 'Live', 'in-use': 'In use', none: 'None' } as const;
 
 export default async function EditProject({ params }: { params: Promise<{ id: string }> }) {
   await requireAdmin();                            // each page checks too: a layout can be skipped
@@ -23,18 +25,18 @@ export default async function EditProject({ params }: { params: Promise<{ id: st
 
   return (
     <>
-      <p><a className="text-link" href="/admin/projects">All projects</a></p>
+      <p><a className="text-link" href="/admin/projects"><span aria-hidden="true">← </span>All projects</a></p>
       <h1 className="type-h2">{p.title}</h1>
       <div className="admin-actions admin-lead">
         <span className={`pill${p.is_published ? ' is-on' : ''}`}>{p.is_published ? 'Published' : 'Draft'}</span>
-        <ActionButton action={publishProjectAction.bind(null, id, !p.is_published)} className="btn btn-primary btn-sm">{p.is_published ? 'Unpublish' : 'Publish'}</ActionButton>
+        <ActionButton action={publishProjectAction.bind(null, id, !p.is_published)}>{p.is_published ? 'Unpublish' : 'Publish'}</ActionButton>
         <a className="btn btn-ghost btn-sm" href={`/admin/preview/${p.slug}`} target="_blank" rel="noopener">Preview</a>
       </div>
 
       <section className="admin-section" aria-labelledby="img-h">
         <h2 id="img-h" className="type-h3">Images</h2>
         <ImageManager projectId={id} />
-        <div className="admin-actions" style={{ margin: '16px 0' }}>
+        <div className="admin-actions admin-projects-capture">
           <ActionButton action={captureCoverAction.bind(null, id)}>Capture cover from the live site</ActionButton>
           <span className="muted">Laptop and phone screenshots of {p.live_url ?? 'the live URL (add it below first)'}.</span>
         </div>
@@ -44,8 +46,8 @@ export default async function EditProject({ params }: { params: Promise<{ id: st
               <li key={im.id} className="thumb">
                 {/* eslint-disable-next-line @next/next/no-img-element -- admin thumbnail */}
                 <img src={`/media/${im.r2_key}`} alt={im.alt} width={im.width ?? undefined} height={im.height ?? undefined} style={{ backgroundColor: im.dominant_color ?? undefined }} />
-                <p><span className={`pill${im.kind === 'cover' ? ' is-on' : ''}`}>{im.kind}</span> {im.width}×{im.height}{' '}
-                  {im.dominant_color && <><span className="swatch" style={{ background: im.dominant_color }} />{im.dominant_color}</>}</p>
+                <p><span className="pill">{im.kind.charAt(0).toUpperCase() + im.kind.slice(1)}</span> {im.width}×{im.height}{' '}
+                  {im.dominant_color && <span className="swatch" style={{ background: im.dominant_color }} title={im.dominant_color} />}</p>
                 <p>{im.alt}</p>
                 <div className="admin-actions">
                   {im.kind !== 'cover' && <form action={setCoverAction.bind(null, id, im.id)}><button className="btn btn-ghost btn-sm">Make cover</button></form>}
@@ -65,7 +67,7 @@ export default async function EditProject({ params }: { params: Promise<{ id: st
             <label className="field"><span>Slug</span><input name="slug" defaultValue={p.slug} required maxLength={80} pattern="[a-z0-9]+(-[a-z0-9]+)*" /></label>
             <label className="field"><span>Client <small>(e.g. Bakery in Kochi)</small></span><input name="client_type" defaultValue={p.client_type} required maxLength={120} /></label>
             <label className="field"><span>Category <small>(the /work filter)</small></span>
-              <select name="category" defaultValue={p.category}>{CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}</select></label>
+              <select name="category" defaultValue={p.category}>{CATEGORIES.map((c) => <option key={c} value={c}>{WORK_FILTERS.find((f) => f.id === c)?.label ?? c}</option>)}</select></label>
             <label className="field"><span>Result number</span><input name="result_value" defaultValue={p.result_value ?? ''} maxLength={40} placeholder="+38%" /></label>
             <label className="field"><span>Result label</span><input name="result_label" defaultValue={p.result_label ?? ''} maxLength={120} placeholder="more enquiries in 60 days" /></label>
             <label className="field"><span>Before <small>(the proof on the card, e.g. 6.1 s load)</small></span><input name="proof_before" defaultValue={p.proof_before ?? ''} maxLength={40} /></label>
@@ -74,11 +76,11 @@ export default async function EditProject({ params }: { params: Promise<{ id: st
             <label className="field"><span>Stack <small>(comma separated)</small></span><input name="stack" defaultValue={parse<string>(p.stack).join(', ')} placeholder="Next.js, Cloudflare" /></label>
             <label className="field"><span>Live URL</span><input name="live_url" type="url" defaultValue={p.live_url ?? ''} placeholder="https://" /></label>
             <label className="field"><span>Status stamp <small>(on the cover; set it yourself, Live = the site works today)</small></span>
-              <select name="status_stamp" defaultValue={p.status_stamp}>{STAMPS.map((s) => <option key={s} value={s}>{s}</option>)}</select></label>
+              <select name="status_stamp" defaultValue={p.status_stamp}>{STAMPS.map((s) => <option key={s} value={s}>{STAMP_LABEL[s]}</option>)}</select></label>
             <label className="field"><span>Launched on</span><input name="launched_on" type="date" defaultValue={p.launched_on ?? ''} /></label>
             <label className="check"><input type="checkbox" name="is_featured" defaultChecked={!!p.is_featured} /> Show on the home page ★</label>
           </div>
-          <label className="field"><span>One-line summary</span><input name="summary" defaultValue={p.summary} required maxLength={300} /></label>
+          <label className="field"><span>One-line summary</span><textarea name="summary" rows={2} defaultValue={p.summary} required maxLength={300} /></label>
           <label className="field"><span>The challenge <small>(in the client’s words)</small></span><textarea name="challenge" defaultValue={p.challenge ?? ''} /></label>
           <label className="field"><span>What we built <small>(one per line)</small></span><textarea name="built" defaultValue={parse<string>(p.built).join('\n')} /></label>
           <label className="field"><span>Results <small>(one per line: number | label | source)</small></span>

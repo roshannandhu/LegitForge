@@ -27,7 +27,20 @@ export interface Insights {
   top: { question: string; count: number; byBot: number }[];
   answers: { approved: number; pending: number; rejected: number };
 }
+export interface FeedLine { at: string; who: ChatLine['who']; code: string | null; name: string | null; leadId: string | null; body: string }
+export interface Monitor {
+  transport: 'cloud' | 'baileys';
+  link: WhatsAppLink;
+  keys: { supabase: boolean; secret: boolean; groq: boolean; gemini: boolean; metaToken: boolean };
+  team: number;
+  beats: Partial<Record<'cron' | 'hook' | 'badsig' | 'sbfail' | 'gw' | 'gwdown', { at: string; n: number }>>;
+  gateway: { where: 'render' | 'laptop' | 'other' | null; seen: string | null };
+  leads: { today: number; month: number };
+  store: { ok: true; steps: Record<string, number>; modes: Record<string, number>; inToday: number; outToday: number; health: Health; recent: FeedLine[] }
+    | { ok: false; error: string };
+}
 interface BotRpc {
+  monitor(): Promise<Monitor>;
   chat(leadId: string): Promise<{ code: string; name: string | null; mode: string; lang: string | null; lines: ChatLine[] } | null>;
   answers(status?: Answer['status']): Promise<Answer[]>;
   history(id: number): Promise<Answer[]>;

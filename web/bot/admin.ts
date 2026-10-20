@@ -4,7 +4,7 @@
  *  (requireAdmin); every call here is bounded. */
 
 import { WorkerEntrypoint } from 'cloudflare:workers';
-import { clip, clock, embed, gatewayCall, q, sb, sbCount, vec, viaGateway, type Env } from './io';
+import { clip, clock, embed, gatewayBase, gatewayCall, q, sb, sbCount, vec, viaGateway, type Env } from './io';
 import { LANGS, type Lang } from './text';
 import { flushOut, generalise, newVersion, relay, supersedeNear, webChat, withRun, type Contact } from './worker';
 import { MONEY } from './text';
@@ -29,7 +29,22 @@ export interface Insights {
   answers: { approved: number; pending: number; rejected: number };
 }
 
+export interface FeedLine { at: string; who: Speaker; code: string | null; name: string | null; leadId: string | null; body: string }
+export interface Monitor {
+  transport: 'cloud' | 'baileys';
+  link: WhatsAppLink;
+  keys: { supabase: boolean; secret: boolean; groq: boolean; gemini: boolean; metaToken: boolean };
+  team: number;
+  beats: Partial<Record<'cron' | 'hook' | 'badsig' | 'sbfail' | 'gw' | 'gwdown', { at: string; n: number }>>;
+  /** Where the gateway runs (from its address) and when it last told the bot (POST /gateway). */
+  gateway: { where: 'render' | 'laptop' | 'other' | null; seen: string | null };
+  leads: { today: number; month: number };
+  store: { ok: true; steps: Record<string, number>; modes: Record<string, number>; inToday: number; outToday: number; health: Health; recent: FeedLine[] }
+    | { ok: false; error: string };
+}
+
 type Row = Record<string, unknown>;
+const DAY = 86_400_000, IST = 5.5 * 3_600_000;
 const ANSWER_COLS = 'id,question_en,answer_en,status,source,wins,translations_ok,created_at,version,supersedes,review_at,decided_by,decided_at';
 const NO_MONEY = 'The bot never sends an answer with prices, amounts, percentages or long numbers (those are the team’s to give): leave this one to the team, or write it without them.';
 const KEY = (s: string) => s.trim().toLowerCase().replace(/[?.!\s]+$/, '');
@@ -67,8 +82,8 @@ export class BotAdmin extends WorkerEntrypoint<Env> {
   /** How WhatsApp is connected: Meta's Cloud API, or WhatsApp Web through the gateway (linked or
    *  not, and the QR to scan while not). Admin → WhatsApp → Connection. */
   async whatsapp(): Promise<WhatsAppLink> {
-    if (this.env.WA_TRANSPORT !== 'baileys') return { mode: 'cloud' };
-    if (!viaGateway(this.env)) return { mode: 'baileys', reachable: false, error: 'The gateway’s address is not set yet: add BAILEYS_URL as a secret of the bot Worker (SETUP.md step 13).' };
+    if (!viaGateway(this.env)) return { mode: 'cloud' };
+    if (!(await gatewayBase(this.env))) return { mode: 'baileys', reachable: false, error: 'The gateway has not connected yet: start it (Render, or start.cmd on the laptop); it tells the bot its address by itself (SETUP.md step 13).' };
     try {
       const { status, data } = await gatewayCall(this.env, 'GET', '/status');
       if (status !== 200) return { mode: 'baileys', reachable: false, error: status === 401 ? 'The gateway refused the signature: WA_APP_SECRET must be the same on both.' : `The gateway answered ${status}.` };
@@ -79,8 +94,8 @@ export class BotAdmin extends WorkerEntrypoint<Env> {
   /** Link the bot's number with an 8-character code (WhatsApp → Linked devices → Link with phone
    *  number), or unlink it (a new QR follows). Owners only (the website checks). */
   async whatsappAdmin(action: 'pair' | 'logout', phone?: string): Promise<{ ok: true; code?: string } | { error: string }> {
-    if (this.env.WA_TRANSPORT !== 'baileys') return { error: 'WhatsApp uses the Cloud API here: nothing to link.' };
-    if (!viaGateway(this.env)) return { error: 'The gateway’s address (BAILEYS_URL) is not set yet.' };
+    if (!viaGateway(this.env)) return { error: 'WhatsApp uses the Cloud API here: nothing to link.' };
+    if (!(await gatewayBase(this.env))) return { error: 'The gateway has not connected yet: start it first.' };
     const { status, data } = await gatewayCall(this.env, 'POST', '/admin', { action, phone }).catch(() => ({ status: 0, data: {} as Record<string, unknown> }));
     if (status === 200) return { ok: true, ...(data.code ? { code: String(data.code) } : {}) };
     return { error: status === 409 ? 'Already linked: log out first to link another number.' : status === 400 ? 'Check the phone number (with the country code).' : status === 0 ? 'The gateway is not reachable.' : `The gateway answered ${status}.` };
@@ -146,6 +161,64 @@ export class BotAdmin extends WorkerEntrypoint<Env> {
     const ai = await env.DB.prepare('SELECT n FROM bot_limits WHERE key = ?').bind(`ai:${iso(now).slice(0, 10)}`).first<{ n: number }>().catch(() => null);
     return { unhandled, oldestUnhandled: oldest?.at ?? null, lastIn: last?.at ?? null, openQuestions, pendingAnswers, pastReview, withPerson,
       aiToday: ai?.n ?? 0, aiCap: Number(env.AI_DAILY_CAP || 1500) };
+  }
+
+  /** Admin → WhatsApp's live view: every stage a client's message passes and whether it works now
+   *  (keys present, the gateway linked, Supabase answering, the cron and webhooks seen), where the
+   *  last 30 days' clients are in the brief, and the latest messages. Keys are reported as set or
+   *  not, never their values. ponytail: the steps count reads up to Supabase's 1,000-row page. */
+  async monitor(): Promise<Monitor> {
+    const env = this.env, now = clock.now(), iso = (ms: number) => new Date(ms).toISOString();
+    const [link, beats, leads, base, seen0] = await Promise.all([
+      this.whatsapp().catch((): WhatsAppLink => ({ mode: 'baileys', reachable: false, error: 'The gateway check failed.' })),
+      env.DB.prepare("SELECT key, n, at FROM bot_limits WHERE key LIKE 'beat:%'").all<{ key: string; n: number; at: number }>().then((r) => r.results).catch(() => []),
+      env.DB.prepare("SELECT COALESCE(SUM(created_at >= date('now')), 0) AS today, COUNT(*) AS month FROM leads WHERE source = 'whatsapp' AND created_at > datetime('now', '-30 days')")
+        .first<{ today: number; month: number }>().catch(() => null),
+      viaGateway(env) ? gatewayBase(env).catch(() => null) : Promise.resolve(null),
+      env.DB.prepare("SELECT value FROM bot_settings WHERE key = 'gateway_seen'").first<{ value: string }>().catch(() => null),
+    ]);
+    const host = base ? new URL(base).hostname : '';
+    const gateway: Monitor['gateway'] = { where: !base ? null : host.endsWith('.onrender.com') ? 'render' : host.endsWith('.trycloudflare.com') ? 'laptop' : 'other', seen: seen0?.value ?? null };
+    const seen: Monitor['beats'] = {};
+    for (const b of beats) seen[b.key.slice(5) as keyof Monitor['beats']] = { at: iso(b.at), n: b.n };
+    let store: Monitor['store'];
+    if (!env.SUPABASE_SECRET_KEY) store = { ok: false, error: 'SUPABASE_SECRET_KEY is not set on the bot Worker.' };
+    else try {
+      const today = iso(Math.floor((now + IST) / DAY) * DAY - IST);   // midnight, India time
+      const [contacts, rows, inToday, outToday, health] = await Promise.all([
+        sb<Row>(env, 'GET', `contacts?last_in_at=gte.${q(iso(now - 30 * DAY))}&select=step,mode&limit=1000`),
+        sb<Row>(env, 'GET', 'messages?order=at.desc,wamid.desc&limit=20&select=at,dir,team,wa_id,body,reply_id'),
+        sbCount(env, `messages?dir=eq.in&team=is.null&at=gte.${q(today)}`),
+        sbCount(env, `messages?dir=eq.out&team=is.null&at=gte.${q(today)}`),
+        this.health(),
+      ]);
+      const ids = [...new Set(rows.map((r) => r.wa_id as string | null).filter((x): x is string => !!x))];
+      const who = new Map((ids.length ? await sb<Row>(env, 'GET', `contacts?wa_id=in.(${ids.map((i) => q(`"${i}"`)).join(',')})&select=wa_id,code,lead_id,profile_name,fields`) : [])
+        .map((c) => [String(c.wa_id), c]));
+      const steps: Record<string, number> = {}, modes: Record<string, number> = {};
+      for (const c of contacts) {
+        steps[String(c.step)] = (steps[String(c.step)] ?? 0) + 1;
+        if (c.mode !== 'bot') modes[String(c.mode)] = (modes[String(c.mode)] ?? 0) + 1;
+      }
+      const recent = rows.map((r): FeedLine => {
+        const c = r.wa_id ? who.get(String(r.wa_id)) : undefined, reply = String(r.reply_id ?? '');
+        return {
+          at: String(r.at),
+          who: r.team ? (r.dir === 'in' ? 'team' : 'alert') : r.dir === 'in' ? 'client' : reply === 'team' ? 'team' : 'bot',
+          code: c ? String(c.code) : null,
+          name: c ? ((c.fields as Row)?.name as string) || (c.profile_name as string) || null : r.team ? `team ·${String(r.team).slice(-4)}` : null,
+          leadId: c ? String(c.lead_id) : null,
+          body: clip(String(r.body ?? (reply.startsWith('media:') ? '📎 a file or voice note' : reply)), 160),
+        };
+      });
+      store = { ok: true, steps, modes, inToday, outToday, health, recent };
+    } catch (e) { store = { ok: false, error: `Supabase did not answer: ${clip(String(e), 160)}` }; }
+    return {
+      transport: viaGateway(env) ? 'baileys' : 'cloud', link, beats: seen, gateway,
+      keys: { supabase: !!env.SUPABASE_SECRET_KEY, secret: !!env.WA_APP_SECRET, groq: !!env.GROQ_API_KEY, gemini: !!env.GEMINI_API_KEY, metaToken: !!env.WA_ACCESS_TOKEN },
+      team: (env.TEAM_WHATSAPP || '').split(',').map((s) => s.replace(/[\s+]/g, '')).filter(Boolean).length,
+      leads: { today: leads?.today ?? 0, month: leads?.month ?? 0 }, store,
+    };
   }
 
   /** Take a lead's chat over (the bot stays quiet; messages go to the team) or hand it back. */

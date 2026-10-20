@@ -16,26 +16,29 @@ export default async function LeadChat({ params }: { params: Promise<{ id: strin
   const chat = b ? await b.chat(id).catch(() => undefined) : undefined;   // undefined: the bot could not be asked
   return (
     <>
-      <p><a className="text-link" href="/admin/leads">← Leads</a></p>
-      <h1 className="type-h2">{chat ? `#${chat.code} ${chat.name ?? ''}` : 'Conversation'}</h1>
+      <a className="text-link admin-back" href="/admin/leads">← Leads</a>
+      <div className="admin-head">
+        <h1 className="type-h2">{chat ? `#${chat.code} ${chat.name ?? ''}` : 'Conversation'}</h1>
+        {chat && (chat.mode === 'bot' || chat.mode === 'human') && <span className={`pill${chat.mode === 'human' ? ' is-on' : ''}`}>{chat.mode === 'human' ? 'Team is replying' : 'Bot is replying'}</span>}
+      </div>
       {chat && (chat.mode === 'bot' || chat.mode === 'human') && (
-        <div className="admin-actions" style={{ alignItems: 'end', flexWrap: 'wrap', gap: 16, marginBottom: 16 }}>
+        <div className="admin-chat-bar">
           <ActionForm action={setModeAction.bind(null, id, chat.mode === 'human' ? 'bot' : 'human')}>
             <Submit className="btn btn-ghost btn-sm" pending="…">{chat.mode === 'human' ? 'Hand back to the bot' : 'Take over (the bot stays quiet)'}</Submit>
           </ActionForm>
           <ActionForm action={setLangAction.bind(null, id)} className="admin-form">
             <label className="field"><span>Reply language</span>
               <select name="lang" defaultValue={chat.lang ?? 'en'}>{BOT_LANGS.map((l) => <option key={l.key} value={l.key}>{l.name}</option>)}</select></label>
-            <div><Submit className="btn btn-ghost btn-sm">Save</Submit></div>
+            <Submit className="btn btn-ghost btn-sm">Save</Submit>
           </ActionForm>
         </div>
       )}
       {chat === undefined ? <p className="admin-empty">The bot is not reachable from here yet (it needs the bot deployed and the BOT binding).</p>
         : !chat ? <p className="admin-empty">No WhatsApp conversation for this lead (it may have been deleted, or is older than 90 days).</p>
         : (
-          <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>When (UTC)</th><th>From</th><th>Message</th></tr></thead><tbody>
+          <div className="admin-table-wrap"><table className="admin-table is-stacked admin-chat"><thead><tr><th>When (UTC)</th><th>From</th><th>Message</th></tr></thead><tbody>
             {chat.lines.map((l, i) => (
-              <tr key={i}><td className="muted">{l.at.slice(0, 16).replace('T', ' ')}</td><td>{WHO[l.who]}</td><td className="msg">{l.body}</td></tr>
+              <tr key={i}><td className="muted">{l.at.slice(0, 16).replace('T', ' ')}</td><td><span className={`pill${l.who === 'client' ? ' is-on' : ''}`}>{WHO[l.who]}</span></td><td className="msg">{l.body}</td></tr>
             ))}
           </tbody></table></div>
         )}

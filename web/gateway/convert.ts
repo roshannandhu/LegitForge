@@ -131,3 +131,7 @@ export function toBaileys(payload: Record<string, any>): Out[] {
   }
   return [];
 }
+
+/** The address a Cloudflare quick tunnel prints when it starts (`cloudflared tunnel --url …`, the
+ *  laptop backup), never the API it asks for one (api.trycloudflare.com, in its error lines). */
+export const tunnelUrl = (line: string) => /https:\/\/(?!api\.)[a-z0-9-]+\.trycloudflare\.com/i.exec(line)?.[0] ?? null;

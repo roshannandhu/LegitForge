@@ -1,35 +1,74 @@
-/* Admin (PLAN §7.8): the site's tokens and 4 px scale, plain and dense. Tables scroll
-   inside their own box on phones; every control is a 44 px target. */
-.admin { padding-top: 112px; padding-bottom: 96px; }
-@media (max-width: 767px) { .admin { padding-top: 88px; } }
-.admin-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 24px; margin-bottom: 32px; padding-bottom: 16px; border-bottom: 1px solid var(--line); }
-.admin-nav { display: flex; flex-wrap: wrap; gap: 4px; margin: 0; padding: 0; list-style: none; }
-.admin-nav a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 14px; border-radius: 10px; color: var(--text); font-weight: 600; text-decoration: none; }
-.admin-nav a:hover { background: var(--surface); }
-.admin-nav a[aria-current="page"] { background: var(--surface); box-shadow: inset 0 -2px 0 var(--accent); }
-.admin-leads-filter a[aria-current="page"] { border-color: var(--accent); color: var(--accent); }
-.admin-who { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 0; font-size: 14px; color: var(--text-muted); overflow-wrap: anywhere; }
-.admin h1 { margin: 0 0 8px; }
-.admin-lead { max-width: 65ch; margin: 0 0 32px; color: var(--text-muted); }
+/* Admin (PLAN §7.8): the site's tokens and 4 px scale, plain and dense. Its own bar (no public
+   header or footer); tables scroll inside their own box on phones; every control is a 44 px target. */
+.admin { min-height: 100vh; padding-bottom: 96px; }
+.admin.wrap { padding-top: 48px; }                       /* signed out: the sign-in card alone */
+.admin-top { position: sticky; top: 0; z-index: 20; background: var(--bg); border-bottom: 1px solid var(--line); }
+.admin-top-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 64px; }
+.admin-brand { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; color: var(--text); font-weight: 800; font-size: 18px; text-decoration: none; }
+.admin-brand-mark { width: 32px; height: 32px; flex: none; }
+.admin-badge { padding: 2px 8px; border: 1px solid var(--line); border-radius: 999px; color: var(--text-muted); font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+.admin-who { display: flex; align-items: center; gap: 8px; min-width: 0; margin: 0; }
+.admin-email { min-width: 0; max-width: 32ch; overflow: hidden; color: var(--text-muted); font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 767px) {
+  .admin-email, .admin-brand > span:not(.admin-badge) { display: none; }
+}
+/* one row of sections; on a phone it scrolls sideways (the current one is scrolled into view) */
+.admin-nav { display: flex; gap: 4px; margin: 0; padding: 0 0 8px; overflow-x: auto; list-style: none; scrollbar-width: none; }
+.admin-nav::-webkit-scrollbar { display: none; }
+.admin-nav li { flex: none; }
+.admin-nav a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 10px; color: var(--text-muted); font-weight: 600; text-decoration: none; white-space: nowrap; }
+.admin-nav a:hover { background: var(--surface); color: var(--text); }
+.admin-nav a[aria-current="page"] { background: var(--surface); color: var(--text); box-shadow: inset 0 -2px 0 var(--accent); }
+@media (max-width: 1023px) { .admin-nav { mask-image: linear-gradient(to right, black calc(100% - 32px), transparent); } }
+.admin-main { padding-top: 32px; }
+@media (max-width: 767px) { .admin-main { padding-top: 24px; } }
+.admin-leads-filter a[aria-current="page"] { background: var(--surface-2); border-color: var(--accent); color: var(--text); box-shadow: inset 0 -2px 0 var(--accent); }
+/* a work screen: titles 28–40 px, not the site's 60 px hero size (the draft preview keeps its own) */
+.admin-main > h1, .admin-head > h1, .admin.wrap h1 { margin: 0 0 8px; font-size: clamp(1.75rem, 1.4rem + 1.2vw, 2.5rem); line-height: 1.15; overflow-wrap: anywhere; }
+.admin-lead { max-width: 65ch; margin: 0 0 24px; color: var(--text-muted); font-size: 16px; }
 .admin-section { margin-top: 48px; }
 .admin-section > h2 { margin: 0 0 16px; }
+.admin-section > .admin-lead, .admin-intro { max-width: 65ch; margin: 0 0 16px; color: var(--text-muted); font-size: 15px; }
+.admin-note { max-width: 65ch; margin: 0 0 16px; padding: 12px 16px; border: 1px solid color-mix(in oklab, var(--forge-hot) 55%, var(--line)); border-radius: 12px; background: var(--surface); font-size: 15px; }
+.admin-stack { display: grid; justify-items: start; gap: 16px; }
+/* links look like links (in tables they were plain text) */
+.admin .text-link { color: var(--text); font-weight: 600; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 4px; }
+.admin .text-link:hover { text-decoration-thickness: 2px; }
 
-.admin-cards { display: grid; gap: 16px; margin: 0; padding: 0; list-style: none; }
-@media (min-width: 768px) { .admin-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-.admin-card { display: grid; gap: 4px; padding: 24px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); color: inherit; text-decoration: none; }
-.admin-card:hover { border-color: var(--heat-color); }
-.admin-card .num { font-size: 40px; font-weight: 800; }
-.admin-card span:last-child { color: var(--text-muted); font-size: 15px; }
+.admin-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 0; padding: 0; list-style: none; }
+@media (min-width: 768px) { .admin-cards { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; } }
+.admin-cards > li { display: grid; }
+.admin-card { display: grid; align-content: start; gap: 4px; padding: 16px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); color: inherit; text-decoration: none; }
+@media (min-width: 768px) { .admin-card { padding: 20px 24px; } }
+a.admin-card:hover { border-color: var(--accent); }
+.admin-card .num { font-size: 28px; font-weight: 800; line-height: 1.1; overflow-wrap: anywhere; }
+@media (min-width: 768px) { .admin-card .num { font-size: 36px; } }
+.admin-card > span:last-child { color: var(--text-muted); font-size: 14px; }
+/* one card per row (Access, testimonials) */
+.admin-cards.admin-list { grid-template-columns: minmax(0, 1fr); max-width: 880px; }
+.admin-list .admin-card { gap: 12px; }
 
 /* tables */
 .admin-table-wrap { position: relative; overflow-x: auto;   /* position: contains the sr-only labels, or they widen a phone */
    border: 1px solid var(--line); border-radius: 16px; background: var(--surface); }
 .admin-table { width: 100%; min-width: 640px; border-collapse: collapse; font-size: 15px; }
-.admin-table th, .admin-table td { padding: 10px 16px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: middle; }
-.admin-table th { font-size: 14px; font-weight: 600; color: var(--text-muted); background: var(--surface-2); }
+.admin-table th, .admin-table td { padding: 12px 16px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+.admin-table th { color: var(--text-muted); background: var(--surface-2); font-size: 14px; font-weight: 600; white-space: nowrap; vertical-align: middle; }
 .admin-table tr:last-child td { border-bottom: 0; }
 .admin-table .muted { color: var(--text-muted); font-size: 14px; }
-.admin-table .msg { max-width: 36ch; white-space: pre-wrap; }
+.admin-table .msg { min-width: 240px; max-width: 48ch; white-space: pre-wrap; }
+.admin-cell { display: grid; justify-items: start; gap: 4px; }
+/* opt-in: under 768 px each row becomes a card, every cell labelled by its data-label */
+@media (max-width: 767px) {
+  .admin-table-wrap:has(> .is-stacked) { overflow: visible; border: 0; background: none; }
+  .admin-table.is-stacked, .admin-table.is-stacked tbody { display: block; min-width: 0; }
+  .admin-table.is-stacked thead { display: none; }
+  .admin-table.is-stacked tr { display: grid; gap: 10px; margin-bottom: 12px; padding: 16px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); }
+  .admin-table.is-stacked td { display: grid; gap: 2px; padding: 0; border: 0; }
+  .admin-table.is-stacked td[data-label]::before { content: attr(data-label); color: var(--text-muted); font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+  .admin-table.is-stacked td:empty { display: none; }
+  .admin-table.is-stacked .msg { min-width: 0; max-width: none; }
+}
 .admin-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .admin-inline { display: inline-flex; align-items: center; gap: 8px; margin: 0; }
 .admin-empty { padding: 24px; border: 1px dashed var(--line); border-radius: 16px; color: var(--text-muted); }
@@ -38,21 +77,39 @@
 
 /* forms */
 .admin-form { display: grid; gap: 20px; max-width: 880px; }
-.admin-grid { display: grid; gap: 20px; }
-@media (min-width: 768px) { .admin-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.admin-form.is-row { grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 12px; max-width: 720px; }
+.admin-form.is-row > .admin-msg { grid-column: 1 / -1; }
+@media (max-width: 479px) { .admin-form.is-row { grid-template-columns: minmax(0, 1fr); } }
+.admin-grid { display: grid; align-items: end; gap: 20px; }
+@media (min-width: 768px) { .admin-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .admin-grid.admin-grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 .field { display: grid; gap: 6px; }
 .field > span { font-size: 14px; font-weight: 600; }
-.field small { font-size: 14px; color: var(--text-muted); }
+.field small { font-size: 14px; font-weight: 400; color: var(--text-muted); }
+/* fields stand out from the page in both themes (they were black on black / grey on grey) */
 .field input, .field select, .field textarea {
-  width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px;
-  background: var(--bg); color: var(--text); font: inherit; font-size: 16px;
+  width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid color-mix(in oklab, var(--text-muted) 45%, var(--line)); border-radius: 10px;
+  background: var(--surface); color: var(--text); font: inherit; font-size: 16px;
 }
-.field textarea { min-height: 112px; resize: vertical; }
+.admin-card .field :is(input, select, textarea), .admin-fieldset .field :is(input, select, textarea) { background: var(--bg); }
+.field :is(input, select, textarea):disabled, .field input[readonly] { background: var(--surface-2); color: var(--text-muted); }
+.field textarea { min-height: 112px; max-height: 480px; resize: vertical; field-sizing: content; }
+.field textarea[rows="2"] { min-height: 72px; }
+.field input[type="file"] { width: auto; min-height: 0; padding: 0; border: 0; background: none; font-size: 15px; cursor: pointer; }
+.field input[type="file"]::file-selector-button, .drop input[type="file"]::file-selector-button {
+  min-height: 44px; margin-right: 12px; padding: 0 16px; border: 1px solid var(--line); border-radius: 10px;
+  background: var(--surface-2); color: var(--text); font: inherit; font-weight: 600; cursor: pointer;
+}
 .field input:focus-visible, .field select:focus-visible, .field textarea:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
-.check { display: flex; align-items: center; gap: 10px; min-height: 44px; font-weight: 600; }
-.check input { width: 20px; height: 20px; accent-color: var(--accent); }
+.check, .admin-check { display: flex; flex-wrap: wrap; align-items: center; column-gap: 10px; min-height: 44px; font-size: 15px; font-weight: 500; }
+.check input, .admin-check input { flex: none; width: 20px; height: 20px; accent-color: var(--accent); }
+.check small, .admin-check small { flex-basis: 100%; padding-left: 30px; color: var(--text-muted); font-size: 14px; }
+.admin-checks { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0 16px; }
 .admin-fieldset { display: grid; gap: 12px; margin: 0; padding: 16px 20px; border: 1px solid var(--line); border-radius: 12px; }
 .admin-fieldset legend { padding: 0 6px; font-size: 14px; font-weight: 600; }
+@media (max-width: 767px) {   /* on a phone the boxes inside the page gutter squeezed every input */
+  .admin-fieldset { padding: 16px 0 0; border-width: 1px 0 0; border-radius: 0; }
+  .admin-fieldset legend { padding: 0 8px 0 0; }
+}
 .team-row { display: grid; gap: 8px; align-items: center; }
 @media (min-width: 768px) { .team-row { grid-template-columns: 220px minmax(0, 1fr); } }
 .admin-msg { margin: 0; font-size: 15px; font-weight: 600; }
@@ -64,7 +121,7 @@
 
 /* images */
 .drop {
-  display: grid; gap: 12px; padding: 24px; border: 2px dashed var(--line); border-radius: 16px; background: var(--surface);
+  display: grid; gap: 12px; max-width: 880px; padding: 24px; border: 2px dashed var(--line); border-radius: 16px; background: var(--surface);
 }
 .drop[data-active] { border-color: var(--heat-color); }
 .drop-preview { display: grid; gap: 16px; }
@@ -81,7 +138,6 @@
 .admin-preview .page-head { padding-top: 16px; }
 .admin .muted { color: var(--text-muted); font-size: 14px; }
 .admin details summary { cursor: pointer; }
-.admin-check { display: flex; align-items: center; gap: 8px; min-height: 44px; }
 .gh-add .admin-form { margin-top: 16px; }
 .admin-subhead { margin: 48px 0 16px; }
 .admin-empty > form, .admin-empty > p + form { margin-top: 16px; }
@@ -95,15 +151,163 @@
 .admin-signin-seal svg { display: block; width: 100%; height: 100%; }
 .admin-google { display: flex; justify-content: center; min-width: 280px; min-height: 44px; }
 .admin-access { grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px 16px; }
-.admin-access strong { overflow-wrap: anywhere; }
+.admin-access strong { font-size: 16px; font-weight: 600; overflow-wrap: anywhere; }
 .admin-access .muted { grid-column: 1; }
 .admin-access form { grid-column: 2; grid-row: 1 / span 2; }
-.admin-access .pill.is-on { color: var(--success); }   /* beats .admin-card span:last-child */
-.admin-signins { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; overflow-wrap: anywhere; }
+@media (max-width: 479px) { .admin-access { grid-template-columns: minmax(0, 1fr); } .admin-access form { grid-column: 1; grid-row: auto; } }
+.admin-signins { display: grid; max-width: 880px; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); list-style: none; overflow-wrap: anywhere; }
+.admin-signins li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 16px; padding: 12px 16px; border-bottom: 1px solid var(--line); font-size: 15px; }
+.admin-signins li:last-child { border-bottom: 0; }
+.admin-signins strong { font-weight: 600; }
+.admin-signins .muted { white-space: nowrap; }
 .admin-lead-delete { display: flex; margin-top: 8px; }
-/* Admin → Company: a social link and its "Show" switch on one line */
+/* Admin → Company: a link or an email and its "Show" switch on one line (stacked on phones) */
 .social-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 12px; }
+@media (max-width: 767px) { .social-row { grid-template-columns: minmax(0, 1fr); gap: 0; } }
+/* a card's head: what it is on the left, its actions on the right */
+.admin-card-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
+.admin-card-head > .admin-actions { margin-left: auto; }
+.photo-row { display: grid; gap: 16px; max-width: 880px; }
+@media (min-width: 768px) { .photo-row { grid-template-columns: 200px minmax(0, 1fr); align-items: start; } }
+.thumb.is-portrait img { aspect-ratio: 3 / 4; }
+.admin-chat-bar { display: flex; flex-wrap: wrap; align-items: end; gap: 12px 24px; margin: 0 0 24px; }
+.admin-chat-bar .admin-form { grid-auto-flow: column; align-items: end; gap: 12px; }
+.admin-chat-bar .field select { width: auto; min-width: 160px; }
+.admin-inline .field select, .admin-inline select { width: auto; min-width: 128px; }
 .admin-fieldset > .muted { margin: 0; }
 /* the private-repos approval link: wraps on phones, Copy beside it */
 .gh-link { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 12px 0 0; }
 .gh-link a { overflow-wrap: anywhere; font-weight: 600; }
+
+/* Admin → WhatsApp: its tabs, and the Live page (the message's path, stage by stage) */
+.admin-tabs { margin: -8px 0 24px; padding: 0; border-bottom: 1px solid var(--line); }
+.admin-tabs a { border-radius: 10px 10px 0 0; }
+.admin-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-bottom: 8px; }
+.admin-head h1 { margin: 0; }
+.wa-status { display: inline-flex; align-items: center; gap: 8px; margin: 0; padding: 4px 12px; border: 1px solid var(--line); border-radius: 999px; font-size: 14px; font-weight: 700; }
+.wa-status::before, .wa-dot { content: ''; flex: none; width: 12px; height: 12px; border-radius: 50%; background: var(--text-muted); }
+.wa-status.is-ok::before, .is-ok > .wa-dot { background: var(--success); }
+.wa-status.is-warn::before, .is-warn > .wa-dot { background: var(--forge-hot); }
+.wa-status.is-bad::before, .is-bad > .wa-dot { background: var(--danger); }
+.wa-flow { display: grid; margin: 0; padding: 0; list-style: none; }
+.wa-stage { position: relative; display: grid; grid-template-columns: 12px minmax(0, 1fr); gap: 16px; padding-bottom: 12px; }
+.wa-stage > .wa-dot { position: relative; z-index: 1; margin-top: 18px; box-shadow: 0 0 0 4px var(--bg); }
+.wa-stage:not(:last-child)::before { content: ''; position: absolute; top: 30px; bottom: -18px; left: 5px; width: 2px; background: var(--line); }
+.wa-stage-body { display: grid; align-content: start; gap: 4px; padding: 12px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.wa-stage.is-warn .wa-stage-body { border-color: color-mix(in oklab, var(--forge-hot) 55%, var(--line)); }
+.wa-stage.is-bad .wa-stage-body { border-color: color-mix(in oklab, var(--danger) 55%, var(--line)); }
+.wa-stage-title { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0 8px; margin: 0; font-weight: 700; }
+.wa-state { color: var(--text-muted); font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.wa-stage-detail { margin: 0; color: var(--text-muted); font-size: 14px; overflow-wrap: anywhere; }
+.wa-stage-body > a { display: inline-flex; align-items: center; justify-self: start; min-height: 44px; margin: -8px 0 -12px; font-size: 14px; font-weight: 600; }
+@media (min-width: 1280px) {
+  .wa-flow { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 12px; }
+  .wa-stage { grid-template-columns: none; grid-template-rows: 12px auto; gap: 12px; padding: 0; }
+  .wa-stage > .wa-dot { margin: 0 0 0 16px; }
+  .wa-stage:not(:last-child)::before { top: 5px; bottom: auto; left: 32px; right: -28px; width: auto; height: 2px; }
+}
+.wa-qr { display: grid; gap: 16px; align-items: center; }
+.wa-qr img { width: 240px; max-width: 100%; height: auto; border: 1px solid var(--line); border-radius: 12px; }
+@media (min-width: 768px) { .wa-qr { grid-template-columns: 240px minmax(0, 1fr); gap: 24px; } }
+.wa-qr .admin-lead { margin: 0; }
+.wa-columns { display: grid; gap: 0 32px; }
+@media (min-width: 1024px) { .wa-columns { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); } }
+.wa-bars { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.wa-bars li { display: flex; justify-content: space-between; gap: 12px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px; font-size: 14px;
+  background: linear-gradient(to right, color-mix(in oklab, var(--accent) 22%, transparent) var(--w, 0%), transparent var(--w, 0%)); }
+.wa-feed { display: grid; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); list-style: none; }
+.wa-feed li { display: grid; gap: 2px; padding: 10px 16px; border-bottom: 1px solid var(--line); border-left: 3px solid transparent; }
+.wa-feed li:last-child { border-bottom: 0; }
+.wa-feed li.is-client { border-left-color: var(--accent); }
+.wa-feed li.is-team { border-left-color: var(--success); }
+.wa-feed-meta { margin: 0; color: var(--text-muted); font-size: 13px; }
+.wa-feed-meta a { font-weight: 600; }
+.wa-feed-body { display: -webkit-box; margin: 0; overflow: hidden; font-size: 15px; overflow-wrap: anywhere; white-space: pre-wrap; -webkit-box-orient: vertical; -webkit-line-clamp: 3; }
+.admin-mini-h { margin: 0; font-size: 16px; }
+.admin-kv { display: grid; margin: 0; padding: 0; list-style: none; }
+.admin-kv li { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+.admin-kv li:last-child { border-bottom: 0; }
+.admin-kv .num, .admin-table td.num, .wa-bars .num { font-variant-numeric: tabular-nums; font-weight: 700; text-align: right; }
+.admin-breakdowns { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+.admin-table.admin-table-fit { min-width: 0; }
+
+/* leads (page review) */
+/* Admin → Leads: the status filter's space below it, the pager, a hot lead */
+.admin-leads-filter { margin: 0 0 24px; }
+.admin-pager { margin-top: 16px; justify-content: center; }
+.pill.is-hot { border-color: var(--accent); color: var(--accent); }
+/* Admin → Leads → Chat: the back link as a 44 px target; on phones time + sender on one line, the message under them */
+@media (max-width: 767px) {
+  .admin-table.admin-chat.is-stacked tr { grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 4px 12px; }
+  .admin-table.admin-chat.is-stacked .msg { grid-column: 1 / -1; }
+}
+
+/* team (page review) */
+/* Admin → Team: the People table (max width like the forms, 44 px name links, unavailable arrows look unavailable) */
+.team-table { max-width: 880px; }
+.team-table .text-link { display: inline-flex; align-items: center; min-height: 44px; }
+.team-table .btn[disabled] { opacity: .3; cursor: not-allowed; }
+@media (max-width: 767px) {   /* phone card: person, then card / photo / status in a row, then order and actions */
+  .team-table .is-stacked tr { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .team-table .is-stacked td { grid-column: 1 / -1; }
+  .team-table .is-stacked td:is(:nth-child(2), :nth-child(4), :nth-child(5)) { grid-column: auto; text-align: left; }
+  .team-table .is-stacked td:nth-child(3) { order: -1; }
+  .team-table .is-stacked td:is(:nth-child(1), :nth-child(6)) { order: 1; }
+}
+/* Admin → Team → person: the back link */
+.admin .admin-back { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; margin-bottom: 8px; font-size: 14px; }
+/* Admin → Team → WhatsApp alerts: the commands disclosure and the "Add a number" heading */
+.bot-alerts details { max-width: 65ch; margin: 0 0 24px; font-size: 15px; }
+.bot-alerts summary { padding: 10px 0; color: var(--text-muted); font-weight: 600; }
+.bot-alerts details > p { margin: 0 0 8px; }
+.bot-alerts > h3 { margin: 32px 0 16px; font-size: 18px; font-weight: 700; }
+
+/* projects (page review) */
+/* Admin → Projects */
+.admin .drop p { margin: 0; }
+.admin .drop > p { font-size: 15px; }
+.admin-projects-capture { margin: 16px 0; overflow-wrap: anywhere; }
+@media (max-width: 767px) {
+  /* each project card: title, then Order · Home · Status on one row, then the actions */
+  .admin-table.is-stacked.admin-projects-table tr { display: flex; flex-wrap: wrap; align-items: end; gap: 12px 16px; }
+  .admin-table.is-stacked.admin-projects-table td:first-child,
+  .admin-table.is-stacked.admin-projects-table td:last-child { flex-basis: 100%; }
+}
+
+/* testimonials-company (page review) */
+/* Admin → Testimonials */
+.admin-lead + .admin-t-add { margin-top: 0; }
+.admin-t-list summary { padding: 12px 0; font-size: 16px; font-weight: 500; }
+.admin-t-list .admin-inline { flex-wrap: wrap; }
+/* Admin → Company */
+.admin-form.admin-co { gap: 24px; }
+.admin-co .admin-fieldset, .admin-co .admin-grid { gap: 16px; }
+.admin-co .admin-fieldset legend { font-size: 18px; font-weight: 700; }
+.admin-co .admin-fieldset > .admin-co-hint { max-width: 65ch; margin: -8px 0 0; }
+.admin-co .admin-fieldset:disabled .check { color: var(--text-muted); }
+
+/* overview-access-github (page review) */
+/* Access: 'Sign out everywhere' sits 16 px under the list it acts on */
+.admin .admin-after { margin-top: 16px; }
+/* Access: the 'Owner' pill keeps its own width when the card stacks under 480 px (a grid item would stretch it) */
+.admin-access > .pill { justify-self: start; }
+/* light theme: no blueprint grid behind the admin's dense work screens */
+html:not(.dark) body:has(.admin)::before { display: none; }
+
+/* whatsapp-subpages (page review) */
+/* Admin → WhatsApp sub-pages (Connection, Questions, Answers, Settings) */
+.wa-block > :is(.admin-leads-filter, .admin-cards, .admin-table-wrap, .admin-empty) { margin-bottom: 16px; }
+.admin .field.is-short :is(input, select) { max-width: 320px; }
+.admin-card > .msg { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.wa-edit > summary { list-style: none; }
+.wa-edit > summary::-webkit-details-marker { display: none; }
+.wa-edit[open] > summary { margin-bottom: 16px; }
+.admin .pill.is-wait { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); }
+.wa-qr-wait { display: grid; place-items: center; width: 240px; max-width: 100%; aspect-ratio: 1; margin: 0; text-align: center; }
+.wa-steps { display: grid; gap: 8px; margin: 0; padding-left: 20px; list-style: decimal; color: var(--text-muted); font-size: 16px; }
+/* numbers line up under their heading; breakdown boxes keep their rows together */
+.admin-table th.num { text-align: right; }
+.admin-breakdowns > .admin-fieldset, .admin-kv { align-content: start; }
+/* Overview: the bot's status in one line, linking to Live */
+.admin-bot-line { flex-wrap: wrap; gap: 4px 12px; margin: 0 0 16px; padding: 8px 16px; }
+.admin-bot-line a { font-size: 14px; }

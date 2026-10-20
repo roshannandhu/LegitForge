@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { addressOf, chosen, isPersonChat, jidOf, labels, pollVote, toBaileys, toCloudMessage, webhookBody, type InMsg } from '../gateway/convert';
+import { addressOf, chosen, isPersonChat, jidOf, labels, pollVote, toBaileys, toCloudMessage, tunnelUrl, webhookBody, type InMsg } from '../gateway/convert';
+import { rest, supabaseAuth, supabasePolls, type Kit } from '../gateway/store';
 import { inbound } from '../bot/worker';
 import { LANGS, LANG_PROMPT, SERVICES, TEXT } from '../bot/text';
 
@@ -78,4 +79,73 @@ test('a vote is the option it chose', () => {
   assert.deepEqual(chosen(options, [{ name: '1. Website', voters: [] }, { name: '2. Web app', voters: ['919847012345@s.whatsapp.net'] }]), options[1]);
   assert.equal(chosen(options, [{ name: '1. Website', voters: [] }]), null, 'a vote taken back');
   assert.deepEqual(chosen([{ id: 'skip:refs', title: 'Skip' }], [{ name: 'Skip', voters: ['x'] }]), { id: 'skip:refs', title: 'Skip' });
+});
+
+test('the laptop backup: the quick tunnel address is read from cloudflared, never its API host', () => {
+  assert.equal(tunnelUrl('2026-10-18T09:00:00Z INF |  https://brave-lion-cat-dog.trycloudflare.com                    |'), 'https://brave-lion-cat-dog.trycloudflare.com');
+  assert.equal(tunnelUrl('ERR failed to request quick Tunnel: Post "https://api.trycloudflare.com/tunnel": dial tcp'), null);
+  assert.equal(tunnelUrl('INF Requesting new quick Tunnel on trycloudflare.com...'), null);
+});
+
+/** Baileys' BufferJSON, restated (the site's tests run without installing Baileys). */
+const BufferJSON: Kit['BufferJSON'] = {
+  replacer: (_k, v) => (Buffer.isBuffer(v) || v instanceof Uint8Array || (v as { type?: string })?.type === 'Buffer'
+    ? { type: 'Buffer', data: Buffer.from(((v as { data?: number[] }).data ?? v) as Uint8Array).toString('base64') } : v),
+  reviver: (_k, v) => ((v as { type?: string; data?: unknown })?.type === 'Buffer' && typeof (v as { data?: unknown }).data === 'string' ? Buffer.from((v as { data: string }).data, 'base64') : v),
+};
+
+test('the gateway keeps its WhatsApp Web login and polls in Supabase: a restart or a move to the laptop keeps the link', async () => {
+  type R = { key: string; value: unknown; updated_at: string };
+  const rows = new Map<string, R>();
+  const keys: string[] = [];
+  const fake = (async (input: RequestInfo | URL, init: RequestInit = {}) => {
+    const url = new URL(String(input));
+    assert.equal(url.pathname, '/rest/v1/wa_auth');
+    keys.push((init.headers as Record<string, string>).apikey);
+    const p = url.searchParams, method = init.method ?? 'GET';
+    const match = (r: R) => [...p].every(([k, v]) => {
+      if (['select', 'order', 'limit', 'on_conflict'].includes(k)) return true;
+      const col = String(r[k as keyof R]);
+      if (v.startsWith('in.(')) return v.slice(4, -1).split(',').map((s) => s.replace(/^"|"$/g, '')).includes(col);
+      if (v.startsWith('like.')) return col.startsWith(v.slice(5).replace(/\*$/, ''));
+      if (v.startsWith('lt.')) return col < v.slice(3);
+      throw new Error(`fake: ${k}=${v}`);
+    });
+    if (method === 'GET') {
+      const out = [...rows.values()].filter(match).sort((a, b) => b.updated_at.localeCompare(a.updated_at));
+      return Response.json(out.slice(0, Number(p.get('limit') ?? 1e9)).map((r) => ({ key: r.key, value: r.value })));
+    }
+    if (method === 'POST') { for (const r of JSON.parse(String(init.body)) as R[]) rows.set(r.key, r); return new Response(null, { status: 201 }); }
+    if (method === 'DELETE') { for (const r of [...rows.values()].filter(match)) rows.delete(r.key); return new Response(null, { status: 204 }); }
+    return new Response('?', { status: 405 });
+  }) as typeof fetch;
+  const db = rest('https://sb.test/', 'sb-key', fake);
+  const kit: Kit = { BufferJSON, initAuthCreds: () => ({ noiseKey: { private: Buffer.from([1, 2]) }, registered: false }), syncKey: (v) => ({ synced: v }) };
+
+  const first = await supabaseAuth(db, kit);
+  const creds = first.state.creds as { noiseKey: { private: Buffer }; registered: boolean };
+  assert.equal(creds.registered, false, 'a new login');
+  creds.registered = true;
+  await first.saveCreds();
+  await first.state.keys.set({ 'pre-key': { 1: { public: Buffer.from([9]) }, 2: { public: Buffer.from([8]) } }, session: { 'x:1': Buffer.from('s') } });
+
+  const again = await supabaseAuth(db, kit);                       // a restart (Render's disk is gone), or the laptop
+  const back = again.state.creds as typeof creds;
+  assert.equal(back.registered, true, 'still linked: no new QR');
+  assert.ok(Buffer.isBuffer(back.noiseKey.private) && back.noiseKey.private.equals(Buffer.from([1, 2])), 'bytes survive the jsonb round trip');
+  const got = await again.state.keys.get('pre-key', ['1', '2', '3']) as Record<string, { public: Buffer }>;
+  assert.deepEqual(Object.keys(got).sort(), ['1', '2'], 'a missing key is left out');
+  assert.ok(got['1'].public.equals(Buffer.from([9])));
+  await again.state.keys.set({ 'pre-key': { 1: null } });
+  assert.deepEqual(await again.state.keys.get('pre-key', ['1']), {}, 'a deleted key is gone');
+  await again.state.keys.set({ 'app-state-sync-key': { k: { keyData: Buffer.from([7]) } } });
+  assert.ok(((await again.state.keys.get('app-state-sync-key', ['k'])).k as { synced: unknown }).synced, 'sync keys go back through proto');
+
+  const polls = supabasePolls(db, kit);
+  await polls.save('P1', { options: [{ id: 'svc:website', title: 'Website' }], message: { key: { id: 'P1' }, secret: Buffer.from([5]) }, at: 1 });
+  const loaded = await polls.load() as Record<string, { message: { secret: Buffer } }>;
+  assert.ok(loaded.P1.message.secret.equals(Buffer.from([5])), 'a vote can still be read after a restart');
+  await again.clear();
+  assert.deepEqual([...rows.keys()], ['poll:P1'], 'logging out forgets the login only');
+  assert.ok(keys.every((k) => k === 'sb-key'), 'every request carries the secret key');
 });

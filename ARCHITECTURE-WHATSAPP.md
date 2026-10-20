@@ -298,6 +298,44 @@ flowchart TB
 The bot never applies D1 migrations; the site's deploy does, before the bot is deployed. The bot
 is deployed before the site because the site's `BOT` binding needs it.
 
+### Where the WhatsApp Web gateway runs (owner, 18 October 2026)
+
+```mermaid
+flowchart LR
+  WA[WhatsApp] <-->|WhatsApp Web| GWR[gateway on Render free<br/>web/gateway, main]
+  WA <-.->|backup: one at a time| GWL[gateway on the laptop<br/>start.cmd + cloudflared quick tunnel]
+  GWR -->|POST /gateway, signed: its address| BOT[legitforge-bot]
+  GWL -.->|POST /gateway, signed| BOT
+  GWR -->|signed webhooks| BOT
+  BOT -->|/send, /status, /media, signed| GWR
+  BOT -->|GET /health every 2 min:<br/>keeps Render awake| GWR
+  GWR <-->|login + open polls: wa_auth| SB[(Supabase)]
+  GWL <-.-> SB
+```
+
+- The gateway registers its own address (Render's `RENDER_EXTERNAL_URL`, or the tunnel address it reads
+  from cloudflared) every 10 minutes. The bot keeps it in D1 `bot_settings` (`gateway_url`,
+  `gateway_seen`) and reads it once a minute (`io.ts gatewayBase`); a `BAILEYS_URL` secret overrides it.
+- The login (Baileys' creds and signal keys) and the open polls are rows in Supabase `wa_auth`
+  (`gateway/store.ts`), so a restart (Render loses its disk) or a move to the laptop keeps the link.
+- Not possible: GitHub Actions/Codespaces (6-hour jobs, a small free allowance, the terms). Free
+  Render sleeps after 15 minutes without a request; the bot's ping prevents that.
+
+### Monitoring: Admin → WhatsApp → Live
+
+`BotAdmin.monitor()` checks each stage, and the page shows it green, gold or red with the reason
+(refreshes every 15 seconds):
+1. client message (last one, today's count)
+2. WhatsApp Web (linked number and where the gateway runs, or the QR, or why it is unreachable)
+3. bot Worker (`WA_APP_SECRET` set, last signed webhook, a refused signature, the cron)
+4. Supabase (stores, messages waiting over 5 minutes)
+5. AI (keys, today's use and the cap)
+6. team alerts (`TEAM_WHATSAPP`)
+7. leads
+
+Then come where clients are in the brief (30 days) and the latest 20 messages. Keys are reported
+only as set or not set. The heartbeats are D1 `bot_limits` rows `beat:cron|hook|badsig|sbfail|gw|gwdown`.
+
 ## 10. Failures and recovery
 
 | Failure | What happens |
@@ -313,6 +351,8 @@ is deployed before the site because the site's `BOT` binding needs it.
 | Client's window closed | `project_update` template (WhatsApp), the human-agent tag up to 7 days (Messenger/Instagram); otherwise the team is told to reach them directly |
 | Calendar or Razorpay unavailable | The team arranges it; the client is told a person will contact them |
 | Nobody on the team reachable | The bot carries on (and the away message when paused) |
+| WhatsApp Web gateway down (Render restarting, the laptop off) | Messages wait on WhatsApp and arrive when it reconnects; the bot's sends fail and are logged; Live shows it red with when it last answered |
+| Gateway and bot secrets differ | The bot refuses its webhooks (401) and Live says "WA_APP_SECRET differs" |
 
 ## 11. Cost and quota protection
 

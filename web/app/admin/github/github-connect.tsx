@@ -31,8 +31,16 @@ export function GithubConnect({ code, state }: { code: string; state: string }) 
 
   return error ? (
     <>
-      <p className="admin-msg is-error" role="alert">{error}</p>
-      <p><a className="btn btn-ghost" href="/admin/projects#gh-private-h">Back to Projects</a></p>
+      <h1 className="type-h2">GitHub is not connected</h1>
+      <div className="admin-empty admin-stack">
+        <p className="admin-msg is-error" role="alert">{error}</p>
+        <a className="btn btn-ghost btn-sm" href="/admin/projects#gh-private-h">Back to Projects</a>
+      </div>
     </>
-  ) : <p className="muted">Finishing with GitHub…</p>;
+  ) : (
+    <>
+      <h1 className="type-h2">Connecting GitHub</h1>
+      <p className="admin-lead">Finishing with GitHub…</p>
+    </>
+  );
 }

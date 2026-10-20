@@ -7,7 +7,7 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
 ## Active Working Directives
 - **Working Directory**: Always work in the `web/` directory. All application code, tests, and configuration live in `web/`.
 - **Target Branch**: Always branch from and target `main-exh9xw`.
-- **Verification**: Run `npm run test:backend` (147 tests, including the WhatsApp bot's) and `npm run build` inside `web/`; review page markup directly or inspect generated static files since browser checks (`check.mjs`) require an active dev server.
+- **Verification**: Run `npm run test:backend` (151 tests, including the WhatsApp bot's) and `npm run build` inside `web/`; review page markup directly or inspect generated static files since browser checks (`check.mjs`) require an active dev server.
 
 ## Current owner decisions (7 October 2026)
 - WhatsApp enquiry bot (16 Oct 2026, owner's decisions; supersedes SETUP.md Part 2 §3–§9): a separate
@@ -223,7 +223,7 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
   Messenger visitor typed is never used to erase WhatsApp leads (it is not verified). Admin → WhatsApp → Questions answers open questions (BotAdmin.answerQuestion: relayed
   like a member's reply, a pending draft for Answers); the dashboard shows the bot's health; the
   chat viewer takes a chat over / hands it back and sets the reply language.
-- WhatsApp Web (Baileys) instead of the Cloud API (WA_TRANSPORT=baileys, BAILEYS_URL; SETUP.md
+- WhatsApp Web (Baileys) instead of the Cloud API (WA_TRANSPORT=baileys, on now; SETUP.md
   step 13): web/gateway (its own package and tsconfig, excluded from the site's tsc and bundles;
   Node 24 runs index.ts directly) holds the WhatsApp Web login and passes each message to the
   bot's /webhook as a Meta-shaped, WA_APP_SECRET-signed webhook; the bot's sends, read receipts,
@@ -232,6 +232,23 @@ PLAN §1.6 (clean-UI rules) and §4.8 (three-viewport contract) are mandatory re
   with numbered options (gateway/convert.ts toBaileys; a vote comes back as a list tap); no
   templates and no 24-hour window (canText, openWindows). tests/gateway.test.ts tests the
   conversions; bot tests run whole chats through a fake gateway (gw.test).
+  Where it runs (owner, 18 Oct): Render's free web service, the laptop as the backup
+  (gateway/start.cmd + a cloudflared quick tunnel it starts itself). It registers its own address
+  (POST /gateway on the bot: signed, ≤5 min old, https; D1 bot_settings gateway_url, read by io.ts
+  gatewayBase, the BAILEYS_URL secret overrides it); the */2 cron pings its /health (keeps Render
+  awake). With SUPABASE_URL + SUPABASE_SECRET_KEY the login and open polls are Supabase rows
+  (gateway/store.ts, table wa_auth from bot/supabase/009_gateway.sql; Baileys' helpers are passed in
+  so the site's tests need no Baileys install), so a restart or a move keeps the link. Never run
+  two gateways for one number.
+- Admin → WhatsApp → Live (app/admin/whatsapp/page.tsx, refreshes every 15 s): every stage a
+  message passes, each green/gold/red with its reason, from BotAdmin.monitor() (keys reported as
+  set or not, never values; D1 heartbeats `beat:cron|hook|badsig|sbfail|gw|gwdown` written by
+  worker.ts beat()), the QR inline while not linked (owners), where clients are in the brief and the
+  latest messages. The WhatsApp section has tabs (app/admin/whatsapp/layout.tsx).
+- The admin has its own bar (app/admin/layout.tsx); the public header, footer, embers and smooth
+  scrolling never render under /admin (components/layout/public-only.tsx, like ChatBubble and
+  Analytics). Shared admin styles live in app/admin/admin.css: `.admin-table.is-stacked` + td
+  data-label turns a table into cards under 768 px; titles are 28–40 px; no inline styles.
 - When the AI cannot tell what a message means (extract kind "unclear"), the bot asks once, in
   their style (TEXT.unclear); a second time the team gets it as a question, and learning follows.
 - Fixed text in bot/text.ts must stay within WhatsApp limits (tests check them): list rows ≤ 10,

@@ -2,22 +2,26 @@
  *  only brain (bot/worker.ts). A client's message is passed to the bot's /webhook signed like
  *  Meta's (X-Hub-Signature-256, WA_APP_SECRET), so the bot reads it unchanged; the bot's replies
  *  come back to POST /send (signed the same way) and go out through WhatsApp Web, lists and
- *  buttons as polls (convert.ts). Runs on any always-on machine with Node 24 (SETUP.md step 13).
+ *  buttons as polls (convert.ts). Runs on Render's free plan, or the laptop as the backup (SETUP.md
+ *  step 13): with SUPABASE_URL + SUPABASE_SECRET_KEY the login and the open polls live in Supabase
+ *  (store.ts), so a restart or a move keeps the link; without them, in data/. It tells the bot
+ *  where it is by itself (Render's address, or a Cloudflare quick tunnel it starts on the laptop).
  *
- *  ponytail: one process, one WhatsApp number, polls kept in a JSON file; a database store when
- *  more than one machine has to share the session. */
+ *  ponytail: one process, one WhatsApp number: never run Render and the laptop at the same time. */
 
 import makeWASocket, {
-  Browsers, BufferJSON, DisconnectReason, downloadMediaMessage, getAggregateVotesInPollMessage, isLidUser, useMultiFileAuthState,
-  type WAMessage, type WASocket,
+  Browsers, BufferJSON, DisconnectReason, downloadMediaMessage, getAggregateVotesInPollMessage, initAuthCreds, isLidUser, proto,
+  useMultiFileAuthState, type AuthenticationState, type WAMessage, type WASocket,
 } from '@whiskeysockets/baileys';
+import { spawn } from 'node:child_process';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import pino from 'pino';
 import QRCode from 'qrcode';
 import qrcode from 'qrcode-terminal';
-import { addressOf, chosen, isPersonChat, jidOf, labels, pollVote, toBaileys, toCloudMessage, webhookBody, type Option } from './convert.ts';
+import { addressOf, chosen, isPersonChat, jidOf, labels, pollVote, toBaileys, toCloudMessage, tunnelUrl, webhookBody, type Option } from './convert.ts';
+import { rest, supabaseAuth, supabasePolls, type Kit } from './store.ts';
 
 const env = process.env;
 const BOT = env.BOT_WEBHOOK_URL ?? '';                      // https://legitforge-bot.<subdomain>.workers.dev/webhook
@@ -27,6 +31,11 @@ const PORT = Number(env.PORT || 8790);
 const DATA = env.DATA_DIR || 'data';                        // the login (keep it private, back it up) and the open polls
 const PAIR = (env.PAIR_PHONE ?? '').replace(/\D/g, '');      // optional: a pairing code for this number instead of a QR code
 if (!BOT || SECRET.length < 16) { console.error('Set BOT_WEBHOOK_URL and WA_APP_SECRET (16+ characters, the bot Worker\'s too).'); process.exit(1); }
+const kit: Kit = { BufferJSON, initAuthCreds, syncKey: (v) => proto.Message.AppStateSyncKeyData.fromObject(v as object) };
+const db = env.SUPABASE_URL && env.SUPABASE_SECRET_KEY ? rest(env.SUPABASE_URL, env.SUPABASE_SECRET_KEY) : null;
+const pollStore = db ? supabasePolls(db, kit) : null;
+// Its public address: Render's own, one set by hand (PUBLIC_URL), else a quick tunnel (the laptop).
+const FIXED = (env.PUBLIC_URL || env.RENDER_EXTERNAL_URL || '').replace(/\/+$/, '');
 
 const log = pino({ level: env.LOG_LEVEL || 'warn' });
 const sign = (body: string) => `sha256=${createHmac('sha256', SECRET).update(body).digest('hex')}`;
@@ -47,15 +56,15 @@ const keep = (map: Map<string, WAMessage>, m: WAMessage, max = 500) => {
   while (map.size > max) map.delete(map.keys().next().value!);
 };
 // The bot's polls, by poll message id: the options (with the bot's ids) and the poll message itself
-// (needed to read a vote). On disk, so a vote still works after a restart.
+// (needed to read a vote). Kept (Supabase, or data/), so a vote still works after a restart.
 type Poll = { options: Option[]; message: WAMessage; at: number };
 let polls: Record<string, Poll> = {};
 const pollFile = `${DATA}/polls.json`;
-const savePolls = async () => {
-  const recent = Object.entries(polls).sort((a, b) => b[1].at - a[1].at).slice(0, 300);
-  polls = Object.fromEntries(recent);
+const savePoll = async (id: string) => {
+  polls = Object.fromEntries(Object.entries(polls).sort((a, b) => b[1].at - a[1].at).slice(0, 300));
   // (BufferJSON: a poll's secret is bytes, needed to read a vote)
-  await writeFile(pollFile, JSON.stringify(polls, BufferJSON.replacer)).catch((e) => log.error({ e }, 'polls not saved'));
+  await (pollStore ? pollStore.save(id, polls[id]) : writeFile(pollFile, JSON.stringify(polls, BufferJSON.replacer)))
+    .catch((e) => log.error({ e: String(e) }, 'poll not saved'));
 };
 
 /* ------------------------------------------------------------------ to the bot */
@@ -106,7 +115,7 @@ async function send(sock: WASocket, payload: Record<string, any>): Promise<strin
         : await sock.sendMessage(jid, { poll: { name: out.name, values: labels(out.options), selectableCount: 1 } });
       if (!m?.key.id) return null;
       keep(sent, m);
-      if (out.kind === 'poll') { polls[m.key.id] = { options: out.options, message: m, at: Date.now() }; await savePolls(); }
+      if (out.kind === 'poll') { polls[m.key.id] = { options: out.options, message: m, at: Date.now() }; await savePoll(m.key.id); }
       return m.key.id;
     });
   }
@@ -121,7 +130,10 @@ let sock: WASocket | null = null, open = false, backoff = 2000;
 let qrNow: string | null = null, since = 0;
 
 async function connect() {
-  const { state, saveCreds } = await useMultiFileAuthState(`${DATA}/auth`);
+  const store = db ? await supabaseAuth(db, kit) : null;
+  const { state, saveCreds } = store
+    ? { state: store.state as unknown as AuthenticationState, saveCreds: store.saveCreds }
+    : await useMultiFileAuthState(`${DATA}/auth`);
   const s = makeWASocket({
     auth: state, logger: log, browser: Browsers.ubuntu('Legit Forge'), markOnlineOnConnect: false, syncFullHistory: false,
     getMessage: async (key) => (key.id && (sent.get(key.id) ?? polls[key.id]?.message)?.message) || undefined,
@@ -139,7 +151,7 @@ async function connect() {
       if (code === DisconnectReason.loggedOut) {
         // unlinked (from the phone, or Admin → WhatsApp → Connection → Log out): forget the login, show a new QR
         console.error('Logged out from WhatsApp: link the number again (a new QR follows).');
-        await rm(`${DATA}/auth`, { recursive: true, force: true });
+        await (store ? store.clear() : rm(`${DATA}/auth`, { recursive: true, force: true })).catch((e) => log.error({ e: String(e) }, 'login not cleared'));
         backoff = 2000;
       }
       if (code === DisconnectReason.connectionReplaced) console.error('Another WhatsApp Web session took over: run only one gateway for this number.');
@@ -237,6 +249,33 @@ createServer(async (req, res) => {
   } catch (e) { log.warn({ e: String(e) }, 'send failed'); return reply(res, 502, { error: 'send' }); }
 }).listen(PORT, () => console.log(`Gateway listening on :${PORT} (POST /send, POST /admin, GET /status, GET /media/<id>, GET /health).`));
 
-await mkdir(DATA, { recursive: true });
-polls = JSON.parse(await readFile(pollFile, 'utf8').catch(() => '{}'), BufferJSON.reviver);
+/* ------------------------------------------------------------------ telling the bot where it is */
+
+let address = FIXED;
+/** POST /gateway on the bot, signed like the webhooks; again every 10 minutes (and after a new tunnel). */
+async function register() {
+  if (!address) return;
+  const raw = JSON.stringify({ url: address, at: Date.now() });
+  const r = await fetch(new URL('/gateway', BOT), { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub-signature-256': sign(raw) }, body: raw, signal: AbortSignal.timeout(15_000) })
+    .catch((e) => { log.warn({ e: String(e) }, 'the bot is not reachable'); return null; });
+  if (r && !r.ok) console.error(`The bot refused this gateway's address (${r.status}): is WA_APP_SECRET the same on both?`);
+}
+/** The laptop: a Cloudflare quick tunnel (a new https://….trycloudflare.com each start), kept running. */
+function tunnel() {
+  const child = spawn('cloudflared', ['tunnel', '--no-autoupdate', '--url', `http://localhost:${PORT}`], { stdio: ['ignore', 'pipe', 'pipe'] });
+  const read = (chunk: Buffer) => {
+    const url = tunnelUrl(chunk.toString());
+    if (url && url !== address) { address = url; console.log(`Public address: ${url}`); register(); }
+  };
+  child.stdout.on('data', read); child.stderr.on('data', read);
+  child.on('error', () => console.error('No public address: install cloudflared (winget install --id Cloudflare.cloudflared -e) or set PUBLIC_URL.'));
+  child.on('exit', (code) => { if (code !== null) { console.error('The tunnel stopped; starting it again.'); setTimeout(tunnel, 5000); } });
+}
+if (address) register(); else if (env.TUNNEL !== '0') tunnel();
+setInterval(register, 10 * 60_000);
+
+if (!db) await mkdir(DATA, { recursive: true });
+polls = pollStore ? await pollStore.load().catch(() => ({})) as Record<string, Poll>
+  : JSON.parse(await readFile(pollFile, 'utf8').catch(() => '{}'), BufferJSON.reviver);
+pollStore?.prune().catch(() => undefined);
 await connect();

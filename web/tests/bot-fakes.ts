@@ -254,6 +254,7 @@ export function installFakes(sb: ReturnType<typeof fakeSupabase>) {
         const f = state.media[decodeURIComponent(url.pathname.slice(7))];
         return f ? new Response(f.bytes as unknown as BodyInit, { headers: { 'content-type': f.type, 'content-length': String(f.size ?? f.bytes.byteLength) } }) : new Response('{}', { status: 404 });
       }
+      if (url.pathname === '/health') return Response.json({ connected: state.gateway.connected }, { status: state.gateway.connected ? 200 : 503 });
       if (url.pathname === '/status') {
         if (!String((init.headers as Record<string, string>)?.['x-signature']).startsWith('sha256=')) return new Response('{}', { status: 401 });
         const g = state.gateway;

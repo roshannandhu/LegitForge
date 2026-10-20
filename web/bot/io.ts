@@ -80,8 +80,25 @@ const TIMEOUT = 8000;
 const graph = (env: Env) => `https://graph.facebook.com/${env.GRAPH_VERSION || 'v25.0'}`;
 
 /** WhatsApp through the WhatsApp Web (Baileys) gateway instead of Meta's Cloud API (web/gateway). */
-export const viaGateway = (env: Env) => env.WA_TRANSPORT === 'baileys' && !!env.BAILEYS_URL;
-const gatewayUrl = (env: Env, path: string) => `${(env.BAILEYS_URL ?? '').replace(/\/+$/, '')}${path}`;
+export const viaGateway = (env: Env) => env.WA_TRANSPORT === 'baileys';
+/** Where the gateway is: the BAILEYS_URL secret, else the address it registered itself (POST
+ *  /gateway, worker.ts hello: on Render, or the laptop's fresh tunnel), re-read once a minute. */
+let registered: { url: string | null; at: number } | null = null;
+export async function gatewayBase(env: Env): Promise<string | null> {
+  if (env.BAILEYS_URL) return env.BAILEYS_URL.replace(/\/+$/, '');
+  if (!registered || clock.now() - registered.at > 60_000) {
+    const row = await env.DB?.prepare("SELECT value FROM bot_settings WHERE key = 'gateway_url'").first<{ value: string }>().catch(() => null);
+    registered = { url: row?.value || null, at: clock.now() };
+  }
+  return registered.url;
+}
+/** After the gateway registers a new address (and between tests). */
+export const forgetGateway = () => { registered = null; };
+async function gatewayUrl(env: Env, path: string) {
+  const base = await gatewayBase(env);
+  if (!base) throw new Error('the gateway has not registered its address yet');
+  return `${base}${path}`;
+}
 /** `sha256=<hex>`, the gateway checks it as the bot checks Meta's (same secret both ways). */
 async function hmac(secret: string, data: string) {
   const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
@@ -93,7 +110,7 @@ async function hmac(secret: string, data: string) {
 export async function gatewayCall(env: Env, method: 'GET' | 'POST', path: string, body?: unknown): Promise<{ status: number; data: Record<string, unknown> }> {
   const raw = body === undefined ? undefined : JSON.stringify(body);
   const sig = await hmac(env.WA_APP_SECRET, raw ?? path);
-  const r = await fetch(gatewayUrl(env, path), { method, body: raw, signal: AbortSignal.timeout(TIMEOUT),
+  const r = await fetch(await gatewayUrl(env, path), { method, body: raw, signal: AbortSignal.timeout(TIMEOUT),
     headers: raw ? { 'content-type': 'application/json', 'x-hub-signature-256': sig } : { 'x-signature': sig } });
   return { status: r.status, data: await r.json().catch(() => ({})) as Record<string, unknown> };
 }
@@ -101,7 +118,7 @@ export async function gatewayCall(env: Env, method: 'GET' | 'POST', path: string
 /** A WhatsApp send (or read receipt): the Cloud API, or the gateway with the same body, signed. */
 async function waPost(env: Env, body: string) {
   return viaGateway(env)
-    ? fetch(gatewayUrl(env, '/send'), { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub-signature-256': await hmac(env.WA_APP_SECRET, body) }, body, signal: AbortSignal.timeout(TIMEOUT) })
+    ? fetch(await gatewayUrl(env, '/send'), { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub-signature-256': await hmac(env.WA_APP_SECRET, body) }, body, signal: AbortSignal.timeout(TIMEOUT) })
     : fetch(`${graph(env)}/${env.WA_PHONE_NUMBER_ID}/messages`, { method: 'POST', headers: { authorization: `Bearer ${env.WA_ACCESS_TOKEN}`, 'content-type': 'application/json' }, body, signal: AbortSignal.timeout(TIMEOUT) });
 }
 export const clip = (s: string, n: number) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
@@ -321,7 +338,7 @@ export async function media(env: Env, id: string, max: number): Promise<{ bytes:
     try {
       count(env);
       const path = `/media/${encodeURIComponent(id)}`;
-      const r = await fetch(gatewayUrl(env, path), { headers: { 'x-signature': await hmac(env.WA_APP_SECRET, path) }, signal: AbortSignal.timeout(20_000) });
+      const r = await fetch(await gatewayUrl(env, path), { headers: { 'x-signature': await hmac(env.WA_APP_SECRET, path) }, signal: AbortSignal.timeout(20_000) });
       if (!r.ok) return passing(r.status) ? 'retry' : null;
       if (Number(r.headers.get('content-length') ?? 0) > max) return 'big';
       const bytes = await r.arrayBuffer();

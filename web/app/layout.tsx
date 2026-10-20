@@ -14,6 +14,7 @@ import { Analytics } from '@/components/analytics';
 import { getCompany } from '@/lib/company';
 import { CompanyProvider } from '@/components/company-context';
 import { ChatBubble } from '@/components/chat/chat-bubble';
+import { PublicOnly } from '@/components/layout/public-only';
 import './globals.css';
 import '@/components/layout/layout.css';
 
@@ -95,11 +96,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <MotionProvider>
             <CompanyProvider value={{ whatsapp: company.whatsapp, whatsappText: company.whatsappText, contactEmail: shownEmail(company) }}>
               <Analytics />
-              <SmoothScroll />
-              <ForgeCanvas />
-              <Header />
+              <PublicOnly><SmoothScroll /><ForgeCanvas /><Header /></PublicOnly>
               <main id="main">{children}</main>
-              <Footer company={company} />
+              <PublicOnly><Footer company={company} /></PublicOnly>
               <ChatBubble />
               <div className="vt-seam" aria-hidden="true" />
             </CompanyProvider>

@@ -33,7 +33,7 @@ import {
   type Field, type Lang, type ServiceKey, type Step,
 } from './text';
 import {
-  chat, clip, clock, count, embed, flushAi, markRead, media, q, redact, room, sb, sbCount, sendButtons, sendHumanText, sendList, sendTemplate, sendText, transcribe,
+  chat, clip, clock, count, embed, flushAi, forgetGateway, gatewayBase, markRead, media, q, redact, room, sb, sbCount, sendButtons, sendHumanText, sendList, sendTemplate, sendText, transcribe,
   validSignature, vec, viaGateway,
   type Env, type Provider,
 } from './io';
@@ -236,6 +236,7 @@ type Ctx = Pick<ExecutionContext, 'waitUntil'>;
 export default {
   async fetch(req: Request, env: Env, ctx: Ctx): Promise<Response> {
     const url = new URL(req.url);
+    if (url.pathname === '/gateway') return req.method === 'POST' ? hello(req, env) : new Response('Method not allowed', { status: 405 });
     if (url.pathname !== '/webhook') return new Response('Not found', { status: 404 });
     if (req.method === 'GET') {
       const p = url.searchParams;
@@ -245,8 +246,10 @@ export default {
     if (req.method !== 'POST') return new Response('Method not allowed', { status: 405 });
     const raw = await req.arrayBuffer();
     if (!env.WA_APP_SECRET || !(await validSignature(env.WA_APP_SECRET, raw, req.headers.get('x-hub-signature-256')))) {
+      ctx.waitUntil(beat(env, 'badsig'));                     // Admin → WhatsApp shows it: WA_APP_SECRET differs
       return new Response('Bad signature', { status: 401 });
     }
+    ctx.waitUntil(beat(env, 'hook'));
     let body: unknown;
     try { body = JSON.parse(new TextDecoder().decode(raw)); } catch { return new Response('Bad JSON', { status: 400 }); }
     const rows = [...inbound(body, env), ...metaInbound(body, env, clock.now()).map((r): Msg => ({
@@ -259,6 +262,7 @@ export default {
       fresh = await sb<Msg>(e, 'POST', 'messages?on_conflict=wamid', rows, 'resolution=ignore-duplicates,return=representation');
     } catch (err) {
       console.error('[bot] could not store inbound messages; Meta will retry', String(err));
+      ctx.waitUntil(beat(env, 'sbfail'));
       return new Response('Retry later', { status: 500 });
     }
     if (fresh.length) ctx.waitUntil(processFresh(e, fresh).catch((err) => console.error('[bot] turn failed', String(err))).finally(() => flushOut(e, clock.now())));
@@ -268,6 +272,27 @@ export default {
     ctx.waitUntil(tick(env, controller.scheduledTime || clock.now()).catch((e) => console.error('[bot] tick failed', String(e))));
   },
 };
+
+/** The WhatsApp Web gateway says where it is (on Render, or the laptop behind a fresh tunnel
+ *  address), so nobody edits BAILEYS_URL: signed with WA_APP_SECRET like its webhooks, at most 5
+ *  minutes old, https only. Kept in D1 bot_settings; io.ts gatewayBase reads it. */
+async function hello(req: Request, env: Env): Promise<Response> {
+  const raw = await req.arrayBuffer();
+  if (raw.byteLength > 2000 || !env.WA_APP_SECRET || !(await validSignature(env.WA_APP_SECRET, raw, req.headers.get('x-hub-signature-256')))) {
+    return new Response('Bad signature', { status: 401 });
+  }
+  let v: { url?: unknown; at?: unknown };
+  try { v = JSON.parse(new TextDecoder().decode(raw)); } catch { return new Response('Bad JSON', { status: 400 }); }
+  const now = clock.now();
+  if (typeof v.at !== 'number' || Math.abs(now - v.at) > 5 * MIN) return new Response('Stale', { status: 401 });
+  const address = typeof v.url === 'string' ? v.url.replace(/\/+$/, '') : '';
+  if (address.length > 200 || !/^https:\/\/[a-z0-9.-]+(:\d{2,5})?(\/[\w./-]*)?$/i.test(address)) return new Response('Bad address', { status: 400 });
+  const put = env.DB.prepare(`INSERT INTO bot_settings (key, value, updated_at) VALUES (?, ?, datetime('now'))
+    ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`);
+  await env.DB.batch([put.bind('gateway_url', address), put.bind('gateway_seen', new Date(now).toISOString())]);
+  forgetGateway();
+  return Response.json({ ok: true });
+}
 
 /** Meta's payload → message rows (only for our number; statuses and reactions are ignored). */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1801,7 +1826,28 @@ async function saveEdit(env: Env, now: number, member: string, id: number, text:
  *  reply" message (once per client per run), then stuck messages, all within one call budget. */
 export async function tick(env0: Env, now: number) {
   const env = withRun(env0);
+  await beat(env, 'cron', now);
+  await pingGateway(env, now);
   try { await cron(env, now); } finally { await flushOut(env, now); }
+}
+
+/** Every 2 minutes: is the WhatsApp Web gateway there? (It also keeps a free Render service awake,
+ *  which sleeps after 15 minutes without a request.) Admin → WhatsApp → Live shows the answer. */
+async function pingGateway(env: Env, now: number) {
+  if (!viaGateway(env)) return;
+  const base = await gatewayBase(env);
+  if (!base) return;
+  count(env);
+  const r = await fetch(`${base}/health`, { signal: AbortSignal.timeout(8000) }).catch(() => null);
+  if (r) await beat(env, r.ok ? 'gw' : 'gwdown', now);         // 503: running, WhatsApp not linked
+}
+
+/** When something last happened, for Admin → WhatsApp's live view (D1 bot_limits `beat:<what>`,
+ *  n = how many times since the row was made): the cron, a signed webhook, a refused signature,
+ *  Supabase refusing to store. Never fails the caller. */
+export async function beat(env: Env, what: 'cron' | 'hook' | 'badsig' | 'sbfail' | 'gw' | 'gwdown', now = clock.now()) {
+  await env.DB?.prepare('INSERT INTO bot_limits (key, n, at) VALUES (?, 1, ?) ON CONFLICT(key) DO UPDATE SET n = n + 1, at = excluded.at')
+    .bind(`beat:${what}`, now).run().catch(() => {});
 }
 
 async function cron(env: Env, now: number) {

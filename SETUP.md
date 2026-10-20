@@ -233,34 +233,39 @@ change, and is recommended before real client traffic.
    d. Only then subscribe the Page and Instagram webhooks (messages) to the same callback URL
       and verify token. The bot logs a missing token or a message for another id.
 13. WhatsApp Web instead of Meta's Cloud API (Baileys; the owner's choice for now). The bot stays
-   on Cloudflare; a small gateway (web/gateway) holds the WhatsApp Web login on a computer that is
-   always on. Unofficial: WhatsApp may ban a number that sends a lot of automated messages, so use
-   the bot's own SIM, never a personal number, and no bulk messages. Menus show as WhatsApp polls
-   (tap an option, or type its number): WhatsApp does not show buttons or lists from WhatsApp Web.
-   a. A computer that stays on (an old laptop, a mini PC, or a free cloud VM such as Oracle Cloud
-      Always Free) with Node.js 24 (nodejs.org). Copy the `web/gateway` folder there, then in it:
-      `npm install`
-   b. Pick a long random secret (32+ characters, e.g. from a password manager) and use the SAME
-      one in both places: the gateway's `WA_APP_SECRET`, and the bot's
-      `npx wrangler secret put WA_APP_SECRET -c bot/wrangler.jsonc`.
-   c. Give the gateway a public HTTPS address without opening ports: Cloudflare Zero Trust →
-      Networks → Tunnels → Create a tunnel (free) → install `cloudflared` on that computer with the
-      command it shows → Public hostname e.g. `wa-gateway.<your domain>` → Service
-      `http://localhost:8790`. (No domain yet: `cloudflared tunnel --url http://localhost:8790`
-      prints a temporary trycloudflare.com address for a first test.)
-   d. Copy `.env.example` to `.env` in the gateway folder and put the secret from b in it (never
-      commit `.env`; `.gitignore` keeps it and `data/` out). Start it and keep it running (e.g.
-      `pm2 start npm --name wa-gateway -- start`, or a Windows scheduled task): `npm start`.
-      It keeps the login in `data/`: back that folder up and never share it.
-   e. bot/wrangler.jsonc already has `WA_TRANSPORT` and `WA_PHONE_NUMBER_ID` set to `baileys`. Put
-      the tunnel address in the bot's secret `BAILEYS_URL` (Cloudflare → Workers & Pages →
-      legitforge-bot → Settings → Variables and Secrets → Add → Secret). A secret survives
-      deploys, so a new tunnel address needs no deploy. Back to the Cloud API: empty `WA_TRANSPORT`
-      and Meta's phone number id in `WA_PHONE_NUMBER_ID`.
-   f. Link the number: Admin → WhatsApp → Connection shows the QR (owners only). On the bot's
-      phone: WhatsApp → Settings → Linked devices → Link a device → scan it. On that same phone
-      instead: "Or link with a code". The page says "Linked ✅" with the number.
-   g. Test from the spare phone: "Hi" → the welcome and a service poll; tap or type 1–9.
+   on Cloudflare; a small gateway (web/gateway) holds the WhatsApp Web login: on **Render's free
+   plan** (main), with **this laptop as the backup**. Unofficial: WhatsApp may ban a number that
+   sends a lot of automated messages (Render is a shared datacenter address, a little riskier than
+   home), so use the bot's own SIM, never a personal number, and no bulk messages. Menus show as
+   WhatsApp polls (tap an option, or type its number): WhatsApp shows no buttons or lists to WhatsApp Web.
+   The gateway tells the bot its own address (POST /gateway, signed), so there is no address to
+   copy; the login lives in Supabase, so Render and the laptop share one link (one at a time).
+   a. The shared secret: run once (it writes `web/gateway/.env` and copies the secret to the clipboard):
+      `node -e "const c=require('crypto'),fs=require('fs'),cp=require('child_process');const d='E:/IMP PROJECT 2/legit forge/web/gateway/';const s=c.randomBytes(24).toString('hex');fs.writeFileSync(d+'.env',fs.readFileSync(d+'.env.example','utf8').replace(/^WA_APP_SECRET=.*/m,'WA_APP_SECRET='+s));cp.execSync('clip',{input:s});console.log('Saved')"`
+      Paste it as the bot's secret `WA_APP_SECRET` (Cloudflare → Workers & Pages → legitforge-bot →
+      Settings → Variables and Secrets → Add → Secret). Also add `SUPABASE_SECRET_KEY`,
+      `TEAM_WHATSAPP` and, recommended, `GROQ_API_KEY` and `GEMINI_API_KEY` there.
+   b. Supabase → SQL editor: run `bot/supabase/009_gateway.sql` (the login's table).
+   c. Render (free): sign up with GitHub → New → Web Service → `roshannandhu/LegitForge`, branch
+      `main-exh9xw`, Root Directory `web/gateway`, Build `npm install`, Start `npm start`, Instance
+      Free, Region Singapore. Environment: `BOT_WEBHOOK_URL`
+      (https://legitforge-bot.roshannandhu1100.workers.dev/webhook), `WA_APP_SECRET` (the same),
+      `WA_PHONE_NUMBER_ID` = `baileys`, `SUPABASE_URL`, `SUPABASE_SECRET_KEY`. Render gives it a
+      fixed https://….onrender.com address and the gateway registers it; the bot pings it every 2
+      minutes, which keeps a free service awake (750 free hours a month cover one all month).
+   d. Link the number: Admin → WhatsApp → Live (or Connection & QR) shows the QR (owners only). On
+      the bot's phone: WhatsApp → Settings → Linked devices → Link a device → scan it. On that same
+      phone instead: "Link with a code". Live then shows "Linked as +91…, on Render".
+   e. Test from the spare phone: "Hi" → the welcome and a service poll; tap or type 1–9. Live shows
+      every stage and the message under Latest messages.
+   f. The laptop backup (Render down, or to avoid it): suspend the Render service first, install
+      `cloudflared` once (`winget install --id Cloudflare.cloudflared -e`), then double-click
+      `web/gateway/start.cmd` (it reads the same `.env`, with `SUPABASE_SECRET_KEY` filled in). It
+      opens a free tunnel and registers itself: no new QR. Keep it running (a shortcut in
+      `shell:startup`; the laptop must not sleep). Back to Render: close it and resume Render.
+   g. Back to the Cloud API: empty `WA_TRANSPORT` and Meta's phone number id in
+      `WA_PHONE_NUMBER_ID` (bot/wrangler.jsonc). An optional secret `BAILEYS_URL` overrides the
+      registered address.
 8. Test from the spare phone (team phones always count as team). Then add the new SIM
    (Production setup), get the display name approved, switch the app to Live, change
    `WA_PHONE_NUMBER_ID` in `web/bot/wrangler.jsonc`, and put the new number in Admin → Company.

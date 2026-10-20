@@ -40,8 +40,8 @@
     "FB_PAGE_ID": "",                            // Messenger: the Facebook Page id (FB_PAGE_TOKEN secret)
     "IG_ACCOUNT_ID": "",                         // Instagram: the professional account id
     // "baileys": WhatsApp Web through web/gateway (SETUP.md step 13; the owner's choice for now, with
-    // WA_PHONE_NUMBER_ID "baileys"); empty: Meta's Cloud API. The gateway's address is the secret
-    // BAILEYS_URL (Cloudflare dashboard), so a new tunnel address needs no deploy.
+    // WA_PHONE_NUMBER_ID "baileys"); empty: Meta's Cloud API. The gateway tells the bot its address
+    // itself (POST /gateway: Render's, or the laptop's tunnel); an optional secret BAILEYS_URL overrides it.
     "WA_TRANSPORT": "baileys",
     "AI_DAILY_CAP": "1500",                      // AI requests a day in all; past it, fixed text and the team (never a paid fallback)
     "REVIVE_TEMPLATE": "",                       // an approved MARKETING template for leads quiet 30 days (costs per message; empty = off)

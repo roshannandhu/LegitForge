@@ -5,6 +5,7 @@ import { Miniflare, convertV4MiniflareOptions } from 'miniflare';
 import worker, { BotAdmin, clock, leadScore, pageFrom, tick, type Env } from '../bot/worker';
 import { DETAILS, LANGS, TEXT, fill } from '../bot/text';
 import { parts } from '../bot/channels';
+import { forgetGateway } from '../bot/io';
 import { fakeEmbedding, fakeSupabase, installFakes, type Responder, type Sent } from './bot-fakes';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -53,6 +54,7 @@ test('WhatsApp bot (fake Meta, Supabase, Groq and Gemini; real Miniflare D1)', a
     sb.state.down = false;
     now = OPEN;
     await db.exec('DELETE FROM leads');
+    forgetGateway();
   };
   const hex = async (raw: string) => {
     const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(SECRET), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
@@ -2515,7 +2517,7 @@ ${TEXT.en.contact}`, 'asked once more, with Skip');
     Object.assign(env, { WA_TRANSPORT: 'baileys' });
     try {
       const unset = await admin.whatsapp();
-      assert.ok(unset.mode === 'baileys' && !unset.reachable && /BAILEYS_URL/.test(unset.error), 'WhatsApp Web without the address says so (not "Cloud API")');
+      assert.ok(unset.mode === 'baileys' && !unset.reachable && /not connected yet/.test(unset.error), 'WhatsApp Web before the gateway registers says so (not "Cloud API")');
       assert.ok('error' in (await admin.whatsappAdmin('pair', '919847012345')));
       Object.assign(env, { BAILEYS_URL: 'https://gw.test' });
       fx.state.gateway.connected = false;
@@ -2532,5 +2534,62 @@ ${TEXT.en.contact}`, 'asked once more, with Skip');
       const down = await admin.whatsapp();
       assert.ok(down.mode === 'baileys' && !down.reachable, 'an unreachable gateway is said so');
     } finally { delete (env as Partial<Env>).WA_TRANSPORT; delete (env as Partial<Env>).BAILEYS_URL; }
+  });
+  await t.test('baileys: the gateway registers its own address (signed, fresh, https only); the bot then sends there and pings it', async () => {
+    await reset();
+    Object.assign(env, { WA_TRANSPORT: 'baileys' });
+    const hello = async (v: Row, sig?: string) => {
+      const raw = JSON.stringify(v);
+      return run(new Request('https://bot.test/gateway', { method: 'POST', headers: { 'x-hub-signature-256': sig ?? `sha256=${await hex(raw)}` }, body: raw }));
+    };
+    const stored = async () => (await db.prepare("SELECT value FROM bot_settings WHERE key = 'gateway_url'").first<{ value: string }>())?.value;
+    try {
+      assert.equal((await hello({ url: 'https://evil.test', at: now }, `sha256=${'0'.repeat(64)}`)).status, 401, 'a wrong signature');
+      assert.equal((await hello({ url: 'https://gw.test', at: now - 10 * MIN })).status, 401, 'too old to be fresh');
+      assert.equal((await hello({ url: 'http://gw.test', at: now })).status, 400, 'https only');
+      assert.equal((await hello({ url: 'https://gw.test/x?y=1', at: now })).status, 400, 'no query strings');
+      assert.equal(await stored(), undefined, 'nothing stored yet');
+      assert.equal((await run(new Request('https://bot.test/gateway'))).status, 405);
+      assert.equal((await hello({ url: 'https://gw.test/', at: now })).status, 200);
+      assert.equal(await stored(), 'https://gw.test');
+      await post([text(CLIENT, 'Hi')]);
+      assert.ok(fx.sent.some((m) => m.to === CLIENT && m.id.startsWith('gw.out.')), 'the menu goes out through the registered gateway');
+      fx.state.gateway.connected = true;
+      await tick(env, now);
+      const gw = await db.prepare("SELECT n FROM bot_limits WHERE key = 'beat:gw'").first<{ n: number }>();
+      assert.equal(gw?.n, 1, 'the cron pinged the gateway (it keeps a free Render service awake)');
+      const m = await new BotAdmin({} as never, env).monitor();
+      assert.equal(m.transport, 'baileys');
+      assert.deepEqual(m.gateway.where, 'other');
+      assert.ok(m.gateway.seen && m.link.mode === 'baileys' && m.link.reachable);
+    } finally { delete (env as Partial<Env>).WA_TRANSPORT; fx.state.gateway.connected = false; forgetGateway(); }
+  });
+  await t.test('Admin → WhatsApp → Live: keys set or not (never values), heartbeats, where clients are, the latest messages', async () => {
+    await reset();
+    const admin = new BotAdmin({} as never, env);
+    await post([text(CLIENT, 'Hi')]);
+    await tick(env, now);
+    const body = payload([text(CLIENT, 'forged')]);
+    await run(new Request('https://bot.test/webhook', { method: 'POST', headers: { 'x-hub-signature-256': `sha256=${'0'.repeat(64)}` }, body }));
+    const m = await admin.monitor();
+    assert.equal(m.transport, 'cloud');
+    assert.deepEqual(m.keys, { supabase: true, secret: true, groq: true, gemini: true, metaToken: true });
+    assert.ok(!JSON.stringify(m).includes(SECRET) && !JSON.stringify(m).includes('sb-key'), 'no key value leaves the bot');
+    assert.equal(m.team, 2);
+    assert.ok(m.beats.cron && m.beats.hook && m.beats.badsig, 'the cron, a signed webhook and a refused signature are all seen');
+    assert.ok(m.store.ok);
+    if (!m.store.ok) return;
+    assert.equal(m.store.steps[contact().step], 1, 'the client is counted at their step');
+    assert.equal(m.store.inToday, 1);
+    const mine = m.store.recent.find((x) => x.who === 'client')!;
+    assert.equal(mine.code, contact().code);
+    assert.equal(mine.leadId, contact().lead_id);
+    assert.equal(mine.body, 'Hi');
+    assert.ok(m.store.recent.some((x) => x.who === 'bot'), 'the bot’s reply is in the feed');
+    const noKey = await new BotAdmin({} as never, { ...env, SUPABASE_SECRET_KEY: '' }).monitor();
+    assert.ok(!noKey.store.ok && /SUPABASE_SECRET_KEY/.test(noKey.store.error));
+    sb.state.down = true;
+    const down = await admin.monitor();
+    assert.ok(!down.store.ok && /did not answer/.test(down.store.error), 'Supabase down is said so');
   });
 });
