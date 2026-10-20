@@ -149,13 +149,17 @@ export const COMPLAINT_NO_CONTACT_ASK = /\b(contact cheythilla|call cheythilla|n
 /** Standalone greetings in all dialects */
 export const GREETING_ASK = /^(hi+|hello+|hey+|hai+|namaskaram|namaste|vanakkam|namaskara|good (morning|afternoon|evening)|kya haal|enthokkeyundu|sugamano|hegidira|eppadi irukkinga)[\s!.]*$/i;
 
+/** Substantive requirement additions for completed enquiries */
+export const SUBSTANTIVE_REQUIREMENT = /\b(add|also need|need|want|feature|page|colour|color|logo|payment|gateway|login|auth|dashboard|change|update|instead of|venam|vendum|chahiye|beku|koodi|cherkkanam|maatanam)\b/i;
+
 export type TextKey = 'welcome' | 'menu' | 'lang' | 'name' | 'business' | 'need' | 'timeline' | 'done' | 'noted'
   | 'checking' | 'teamSoon' | 'teamLater' | 'person' | 'offTopic' | 'pleaseType' | 'stopped'
   | 'price' | 'callSoon' | 'keepGoing' | 'deleteAsk' | 'deleted' | 'kept' | 'welcomeBack' | 'sameProject'
   | 'refs' | 'skip' | 'fileSaved' | 'fileBig' | 'nudge' | 'work' | 'update'
   | 'howAsk' | 'slotAsk' | 'slotBtn' | 'otherTime' | 'booked' | 'howWa' | 'howPhone' | 'howMeet' | 'meetLater' | 'slotTaken' | 'reminder'
   | 'quote' | 'pay' | 'payUpi' | 'review' | 'referral' | 'contact' | 'contactBad' | 'deletedInbox' | 'langSet' | 'cancelled' | 'unclear'
-  | 'wait' | 'statusDone' | 'newEnquiry' | 'complaint' | 'greetBack';
+  | 'wait' | 'statusDone' | 'newEnquiry' | 'complaint' | 'greetBack'
+  | 'statusMidBrief' | 'statusHuman' | 'statusQuoted' | 'statusWon' | 'complaintQueued';
 type Pair = [string, string];
 
 export const TEXT: Record<Lang, Record<TextKey, string> & { tl: [string, string, string]; callBtn: Pair; delBtn: Pair; retBtn: Pair; howBtn: [string, string, string] }> = {
@@ -219,10 +223,15 @@ export const TEXT: Record<Lang, Record<TextKey, string> & { tl: [string, string,
     cancelled: "Okay, I have stopped this enquiry. Send hi whenever you want to start again.",
     unclear: "Sorry, I didn't quite understand that. Could you say it another way?",
     wait: "Sure, take your time! Just reply whenever you are ready.",
-    statusDone: "Your project brief is with our development team and is currently under active review. We will contact you shortly. If this is urgent, I can flag this for priority attention.",
+    statusDone: "Your project brief is with our development team and is currently under active review. We will contact you shortly.",
     newEnquiry: "Great! Tell me about the new project — is it a website, WhatsApp bot, mobile app, or something else?",
     complaint: "I sincerely apologize for the delay! I have alerted our team with high priority right now so someone reaches out to you immediately.",
     greetBack: "Hello! 👋 How can I help you today? Are you checking in on your project, or do you have a new question?",
+    statusMidBrief: "We are still collecting your project requirements. Let's finish that first so our team has the full picture.",
+    statusHuman: "Your project is currently with our team member for direct assistance. They will message you here shortly.",
+    statusQuoted: "Your project quotation has been sent. Our team is awaiting your review and confirmation.",
+    statusWon: "Your project is confirmed and currently active with our development team.",
+    complaintQueued: "I sincerely apologize for the delay! Your message has been logged in our team's urgent priority queue, and someone will reach out as soon as possible.",
   },
   ml: {
     welcome: 'നമസ്കാരം! 👋 ഇത് Legit Forge-ന്റെ ഓട്ടോമേറ്റഡ് അസിസ്റ്റന്റ് ആണ്. എന്ത് സഹായമാണ് വേണ്ടത്? താഴെ നിന്ന് തിരഞ്ഞെടുക്കൂ.',
@@ -284,10 +293,15 @@ export const TEXT: Record<Lang, Record<TextKey, string> & { tl: [string, string,
     cancelled: "ശരി, ഈ അന്വേഷണം നിർത്തി. വീണ്ടും തുടങ്ങാൻ എപ്പോൾ വേണമെങ്കിലും hi അയയ്ക്കൂ.",
     unclear: "ക്ഷമിക്കണം, എനിക്ക് അത് ശരിക്ക് മനസ്സിലായില്ല. മറ്റൊരു രീതിയിൽ പറയാമോ?",
     wait: "തീർച്ചയായും, സമയമെടുക്കൂ! തയ്യാറാകുമ്പോൾ ഇവിടെ മെസേജ് അയച്ചാൽ മതി.",
-    statusDone: "നിങ്ങളുടെ പ്രോജക്റ്റ് വിവരങ്ങൾ ഞങ്ങളുടെ ഡെവലപ്‌മെന്റ് ടീമിന്റെ കൈവശമുണ്ട്, അവർ അത് പരിശോധിക്കുകയാണ്. ഉടൻ തന്നെ ബന്ധപ്പെടും. അടിയന്തരമാണെങ്കിൽ ഞാൻ ടീമിനെ ഓർമ്മിപ്പിക്കാം.",
+    statusDone: "നിങ്ങളുടെ പ്രോജക്റ്റ് വിവരങ്ങൾ ഞങ്ങളുടെ ഡെവലപ്‌മെന്റ് ടീമിന്റെ കൈവശമുണ്ട്, അവർ അത് പരിശോധിക്കുകയാണ്. ഉടൻ തന്നെ ബന്ധപ്പെടും.",
     newEnquiry: "വളരെ സന്തോഷം! പുതിയ പ്രോജക്റ്റിനെക്കുറിച്ച് പറയൂ — ഇത് വെബ്‌സൈറ്റ്, വാട്ട്‌സ്ആപ്പ് ബോട്ട്, മൊബൈൽ ആപ്പ്, അതോ മറ്റെന്തെങ്കിലുമാണോ?",
     complaint: "വൈകിയതിൽ ആത്മാർത്ഥമായി ക്ഷമ ചോദിക്കുന്നു! നിങ്ങളെ ഉടൻ തന്നെ ബന്ധപ്പെടാൻ ഞാൻ ടീമിന് ഇപ്പോൾ തന്നെ അടിയന്തര അറിയിപ്പ് നൽകിയിട്ടുണ്ട്.",
     greetBack: "നമസ്കാരം! 👋 ഇന്ന് എന്ത് സഹായമാണ് വേണ്ടത്? നിങ്ങളുടെ പ്രോജക്റ്റിനെക്കുറിച്ചാണോ അതോ പുതിയ സംശയങ്ങളുണ്ടോ?",
+    statusMidBrief: "ഞങ്ങൾ നിങ്ങളുടെ പ്രോജക്റ്റ് വിവരങ്ങൾ ശേഖരിക്കുകയാണ്. ടീമിന് വിവരങ്ങൾ ലഭിക്കാൻ ഇത് ആദ്യം പൂർത്തിയാക്കാം.",
+    statusHuman: "നിങ്ങളെ നേരിട്ട് സഹായിക്കാൻ ഞങ്ങളുടെ ടീമിലെ ഒരാൾക്ക് ഈ ചാറ്റ് കൈമാറിയിട്ടുണ്ട്. അവർ ഉടൻ ഇവിടെ മെസേജ് ചെയ്യും.",
+    statusQuoted: "നിങ്ങളുടെ പ്രോജക്റ്റ് ക്വട്ടേഷൻ അയച്ചിട്ടുണ്ട്. നിങ്ങളുടെ പരിശോധനയ്ക്കായി കാത്തിരിക്കുകയാണ്.",
+    statusWon: "നിങ്ങളുടെ പ്രോജക്റ്റ് സ്ഥിരീകരിച്ചു, ഇപ്പോൾ ഡെവലപ്‌മെന്റ് ടീം ഇത് ചെയ്യുന്നുണ്ട്.",
+    complaintQueued: "വൈകിയതിൽ ആത്മാർത്ഥമായി ക്ഷമ ചോദിക്കുന്നു! നിങ്ങളുടെ സന്ദേശം ഞങ്ങളുടെ അടിയന്തര മുൻഗണനാ ലിസ്റ്റിൽ ചേർത്തിട്ടുണ്ട്, ഉടൻ തന്നെ ബന്ധപ്പെടും.",
   },
   mg: {
     welcome: 'Namaskaram! 👋 Ith Legit Forge-inte automated assistant aanu. Enthu sahayamaanu vendath? Thazhe ninnu choose cheyyoo.',
@@ -349,10 +363,15 @@ export const TEXT: Record<Lang, Record<TextKey, string> & { tl: [string, string,
     cancelled: "Sheri, ee enquiry nirthi. Veendum thudangaan eppo venelum hi ayakkoo.",
     unclear: "Sorry, enikku athu sheriyaayi manassilaayilla. Vere reethiyil parayaamo?",
     wait: "Sheri, take your time! Ningal ready aakumpol message ayacha mathi.",
-    statusDone: "Ningalude project brief development team-inte kayyil undu, team athu review cheythu varikayanu. Pettannu thanne ningale contact cheyyum. Urgent aanenkil njan team-ine alert cheyyaam.",
+    statusDone: "Ningalude project brief development team-inte kayyil undu, team athu review cheythu varikayanu. Pettannu thanne ningale contact cheyyum.",
     newEnquiry: "Kollam! Puthiya project-ine kurichu parayu — ithu website, WhatsApp bot, mobile app, atho vere enthenkilum aano?",
     complaint: "Athil valare kshamikkanam! Ningale udane thanne contact cheyyan njan team-inu urgent high-priority alert ayachittundu.",
     greetBack: "Namaskaram! 👋 Enthu sahayamaanu vendath? Ningalude project-inte update aano, atho puthiya chodyangal aano?",
+    statusMidBrief: "Njangal ningalude project details collect cheyyukayanu. Team-inu details kittan ithu aadyam complete cheyyam.",
+    statusHuman: "Ningalude project direct aayi nokkan team member-inu hand over cheythittund. Avar udan ivide message cheyyum.",
+    statusQuoted: "Ningalude project quotation ayachittund. Ningalude confirmation-inu vendi wait cheyyukayanu.",
+    statusWon: "Ningalude project confirm aayi, development team ithu cheythu thudangiyittund.",
+    complaintQueued: "Delay aayathil kshamachodikkunnu! Ningalude message urgent priority listil add cheythittund, aalukal udan reach cheyyum.",
   },
   hi: {
     welcome: 'नमस्ते! 👋 यह Legit Forge का ऑटोमेटेड असिस्टेंट है। आपको किस चीज़ में मदद चाहिए? नीचे से चुनें।',
@@ -418,6 +437,11 @@ export const TEXT: Record<Lang, Record<TextKey, string> & { tl: [string, string,
     newEnquiry: "बहुत बढ़िया! नए प्रोजेक्ट के बारे में बताइए — क्या यह वेबसाइट, व्हाट्सएप बॉट, मोबाइल ऐप या कुछ और है?",
     complaint: "देरी के लिए हम क्षमा चाहते हैं! मैंने तुरंत हमारी टीम को उच्च प्राथमिकता वाला अलर्ट भेज दिया है ताकि वे आपसे तुरंत संपर्क करें।",
     greetBack: "नमस्ते! 👋 आज मैं आपकी क्या मदद कर सकता हूँ? क्या आप अपने प्रोजेक्ट का स्टेटस जानना चाहते हैं या कोई नया सवाल है?",
+    statusMidBrief: "हम अभी आपकी प्रोजेक्ट की जानकारी इकट्ठा कर रहे हैं। आइए पहले इसे पूरा कर लें ताकि टीम को पूरी जानकारी मिल सके।",
+    statusHuman: "आपकी पूछताछ हमारी टीम के सदस्य को सौंप दी गई है। वे जल्द ही आपको यहाँ मैसेज करेंगे।",
+    statusQuoted: "आपके प्रोजेक्ट का कोटेशन भेज दिया गया है। हमारी टीम आपके जवाब का इंतज़ार कर रही है।",
+    statusWon: "आपका प्रोजेक्ट कन्फर्म हो चुका है और हमारी डेवलपमेंट टीम इस पर काम कर रही है।",
+    complaintQueued: "देरी के लिए हम क्षमा चाहते हैं! आपका संदेश हमारी टीम की प्राथमिकता सूची में जोड़ दिया गया है, जल्द ही कोई आपसे संपर्क करेगा।",
   },
   kn: {
     welcome: 'ನಮಸ್ಕಾರ! 👋 ಇದು Legit Forge ನ ಸ್ವಯಂಚಾಲಿತ ಸಹಾಯಕ. ನಿಮಗೆ ಯಾವುದರಲ್ಲಿ ಸಹಾಯ ಬೇಕು? ಕೆಳಗಿನಿಂದ ಆಯ್ಕೆಮಾಡಿ.',
@@ -483,6 +507,11 @@ export const TEXT: Record<Lang, Record<TextKey, string> & { tl: [string, string,
     newEnquiry: "ತುಂಬಾ ಒಳ್ಳೆಯದು! ಹೊಸ ಪ್ರಾಜೆಕ್ಟ್ ಬಗ್ಗೆ ತಿಳಿಸಿ — ಇದು ವೆಬ್‌ಸೈಟ್, ವಾಟ್ಸಾಪ್ ಬಾಟ್, ಮೊಬೈಲ್ ಆಪ್ ಅಥವಾ ಇನ್ನೇನಾದರೂ ಆಗಿದೆಯೇ?",
     complaint: "ತಡವಾಗಿದ್ದಕ್ಕೆ ಕ್ಷಮೆಯಿರಲಿ! ತಕ್ಷಣ ನಿಮ್ಮನ್ನು ಸಂಪರ್ಕಿಸಲು ನಾನು ತಂಡಕ್ಕೆ ತುರ್ತು ಸಂದೇಶ ಕಳುಹಿಸಿದ್ದೇನೆ.",
     greetBack: "ನಮಸ್ಕಾರ! 👋 ಇಂದು ನಾನು ನಿಮಗೆ ಹೇಗೆ ಸಹಾಯ ಮಾಡಲಿ? ನಿಮ್ಮ ಪ್ರಾಜೆಕ್ಟ್ ಬಗ್ಗೆಯಾ ಅಥವಾ ಹೊಸ ಪ್ರಶ್ನೆಯಿದೆಯೇ?",
+    statusMidBrief: "ನಾವು ಇನ್ನೂ ನಿಮ್ಮ ಪ್ರಾಜೆಕ್ಟ್ ವಿವರಗಳನ್ನು ಸಂಗ್ರಹಿಸುತ್ತಿದ್ದೇವೆ. ತಂಡಕ್ಕೆ ಪೂರ್ಣ ಮಾಹಿತಿ ಸಿಗಲು ಇದನ್ನು ಮೊದಲು ಪೂರ್ಣಗೊಳಿಸೋಣ.",
+    statusHuman: "ನಿಮ್ಮ ವಿಚಾರಣೆಯನ್ನು ನೇರ ಸಹಾಯಕ್ಕಾಗಿ ನಮ್ಮ ತಂಡದ ಸದಸ್ಯರಿಗೆ ನೀಡಲಾಗಿದೆ. ಅವರು ಶೀಘ್ರದಲ್ಲೇ ಸಂದೇಶ ಕಳುಹಿಸುತ್ತಾರೆ.",
+    statusQuoted: "ನಿಮ್ಮ ಪ್ರಾಜೆಕ್ಟ್ ಕೊಟೇಶನ್ ಕಳುಹಿಸಲಾಗಿದೆ. ನಿಮ್ಮ ಪರಿಶೀಲನೆಗಾಗಿ ಕಾಯುತ್ತಿದ್ದೇವೆ.",
+    statusWon: "ನಿಮ್ಮ ಪ್ರಾಜೆಕ್ಟ್ ದೃಢಪಟ್ಟಿದೆ ಮತ್ತು ನಮ್ಮ ಡೆವಲಪ್‌ಮೆಂಟ್ ತಂಡ ಕೆಲಸ ಮಾಡುತ್ತಿದೆ.",
+    complaintQueued: "ವಿಳಂಬಕ್ಕೆ ಕ್ಷಮೆಯಿರಲಿ! ನಿಮ್ಮ ಸಂದೇಶವನ್ನು ನಮ್ಮ ತುರ್ತು ಆದ್ಯತೆಯ ಪಟ್ಟಿಗೆ ಸೇರಿಸಲಾಗಿದೆ, ಶೀಘ್ರದಲ್ಲೇ ಸಂಪರ್ಕಿಸಲಾಗುವುದು.",
   },
   hg: {
     welcome: "Hi! 👋 Yeh Legit Forge ka assistant hai (automated). Aapko kis cheez mein help chahiye? Neeche se choose karein.",
@@ -548,6 +577,11 @@ export const TEXT: Record<Lang, Record<TextKey, string> & { tl: [string, string,
     newEnquiry: "Badiya! Naye project ke baare mein batayein — kya ye website, WhatsApp bot, mobile app ya kuch aur hai?",
     complaint: "Hui deri ke liye sorry! Maine team ko urgent high-priority alert bhej diya hai taaki wo turant aapse contact karein.",
     greetBack: "Namaste! 👋 Aaj main aapki kya help kar sakta hoon? Project status jaan na hai ya koi naya sawaal hai?",
+    statusMidBrief: "Hum abhi aapki project details collect kar rahe hain. Pehle ise complete kar lete hain taaki team ke paas details ho.",
+    statusHuman: "Aapki enquiry team member ko hand over kar di gayi hai. Woh jaldi hi yahan message karenge.",
+    statusQuoted: "Aapke project ka quotation bhej diya gaya hai. Hum aapke confirmation ka wait kar rahe hain.",
+    statusWon: "Aapka project confirm ho gaya hai aur development team is par kaam kar rahi hai.",
+    complaintQueued: "Delay ke liye sorry! Aapka message urgent priority list mein add kar diya gaya hai, jaldi hi koi aapse contact karega.",
   },
   kg: {
     welcome: "Hi! 👋 Idu Legit Forge assistant (automated). Nimage yaava vishayadalli help beku? Kelage choose maadi.",
@@ -613,6 +647,11 @@ export const TEXT: Record<Lang, Record<TextKey, string> & { tl: [string, string,
     newEnquiry: "BahaLa olledhu! Hosa project bagge thilisi — idhu website, WhatsApp bot, mobile app athva bere enadhruna?",
     complaint: "Delay aagiddakke sorry! Thanna thakshana contact maado thara team ge urgent alert kalsiddini.",
     greetBack: "Namaskara! 👋 Ivattu hege help maadli? Project bagge check maadbeka athva hosa question idhya?",
+    statusMidBrief: "Naavu innu nimma project details collect maadthidivi. Teamge details sigbeku andre idanna modalu complete maadona.",
+    statusHuman: "Nimma enquiry team memberge assign aagide. Avaru bega illi message maadthare.",
+    statusQuoted: "Nimma project quotation kalisidivi. Nimma confirmation kaaytha idivi.",
+    statusWon: "Nimma project confirm aagide, development team kelsa maadtha idare.",
+    complaintQueued: "Delay aagiddakke thumba sorry! Nimma message urgent priority listge add aagide, bega reach aagthare.",
   },
   ta: {
     welcome: "வணக்கம்! 👋 இது Legit Forge உதவியாளர் (தானியங்கி). உங்களுக்கு எதில் உதவி வேண்டும்? கீழே தேர்ந்தெடுக்கவும்.",
@@ -678,6 +717,11 @@ export const TEXT: Record<Lang, Record<TextKey, string> & { tl: [string, string,
     newEnquiry: "மிக்க மகிழ்ச்சி! புதிய திட்டத்தைப் பற்றிச் சொல்லுங்கள் — இது வலைத்தளமா, வாட்ஸ்அப் பாட்டா, மொபைல் செயலியா அல்லது வேறொன்றா?",
     complaint: "தாமதத்திற்கு மன்னிக்கவும்! உடனடியாக உங்களைத் தொடர்புகொள்ள எங்கள் குழுவிற்கு அவசர எச்சரிக்கை அனுப்பியுள்ளேன்.",
     greetBack: "வணக்கம்! 👋 இன்று நான் உங்களுக்கு எவ்வாறு உதவ முடியும்? உங்கள் திட்டம் பற்றிய தகவலா அல்லது ஏதேனும் கேள்விகள் உள்ளதா?",
+    statusMidBrief: "நாங்கள் இன்னும் உங்கள் திட்ட விவரங்களை சேகரித்து வருகிறோம். எங்கள் குழுவிற்கு விவரம் கிடைக்க இதை முதலில் முடிப்போம்.",
+    statusHuman: "உங்களுக்கு உதவ எங்கள் குழு உறுப்பினரிடம் இந்த உரையாடல் ஒப்படைக்கப்பட்டுள்ளது. விரைவில் தொடர்பு கொள்வார்கள்.",
+    statusQuoted: "உங்கள் திட்டத்திற்கான விலை மதிப்பீடு அனுப்பப்பட்டுள்ளது. உங்கள் பதிலுக்காக காத்திருக்கிறோம்.",
+    statusWon: "உங்கள் திட்டம் உறுதி செய்யப்பட்டு, எங்கள் டெவலப்மென்ட் குழுவால் உருவாக்கப்பட்டு வருகிறது.",
+    complaintQueued: "தாமதத்திற்கு மன்னிக்கவும்! உங்கள் செய்தி அவசர முன்னுரிமைப் பட்டியலில் சேர்க்கப்பட்டுள்ளது, விரைவில் தொடர்பு கொள்வோம்.",
   },
   tg: {
     welcome: "Hi! 👋 Idhu Legit Forge assistant (automated). Ungalukku edhula help venum? Keezha choose pannunga.",
@@ -743,6 +787,11 @@ export const TEXT: Record<Lang, Record<TextKey, string> & { tl: [string, string,
     newEnquiry: "Super! Pudhiya project pathi sollunga — idhu website, WhatsApp bot, mobile app illa vera edhavadha?",
     complaint: "Delay aagradhukku romba sorry! Immediate-ah ungalai contact panna team-kku urgent alert anupirukken.",
     greetBack: "Vanakkam! 👋 Enna help venum? Project update check panreengala illa pudhu kelvi irukka?",
+    statusMidBrief: "Naanga innum unga project details collect panrom. Team-ku details kedaikka idhai modhalla mudikalam.",
+    statusHuman: "Unga enquiry team member-kitta assign panniyachu. Seekiram ungalukku message pannuvanga.",
+    statusQuoted: "Unga project quotation anupiyachu. Unga confirmation-kaga wait panrom.",
+    statusWon: "Unga project confirm aayidichu, development team vela paathuttu irukkanga.",
+    complaintQueued: "Delay-ku sorry! Unga message urgent priority list-la add panniyachu, seekiram contact pannuvanga.",
   },
 };
 export const t = (lang: string | null | undefined, key: TextKey) => (TEXT[(lang as Lang)] ?? TEXT.en)[key];

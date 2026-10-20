@@ -27,7 +27,7 @@ import { CHANNEL_LABEL, channelOf, metaInbound, type Option } from './channels';
 import { inr, paymentLink, rupees } from './pay';
 import {
   ANSWER_SCHEMA, BACK_ASK, BRIEF_PROMPT, CANCEL_ASK, clearService, COMPLAINT_NO_CONTACT_ASK, DETAILS, LANG_ASK, LOCALE, MENU_ASK, PERSON_ASK, PRICE_ASK, fill, EXTRACT_SCHEMA, FACTS, FIELDS, GREETING_ASK, guessLang,
-  LANG_PROMPT, LANGS, MONEY, NEW_ENQUIRY_ASK, QA_SCHEMA, SERVICES, STATUS_ASK, TEXT, TEXT_SCHEMA, TIMELINES,
+  LANG_PROMPT, LANGS, MONEY, NEW_ENQUIRY_ASK, QA_SCHEMA, SERVICES, STATUS_ASK, SUBSTANTIVE_REQUIREMENT, TEXT, TEXT_SCHEMA, TIMELINES,
   TRANSLATED, TRANSLATIONS_SCHEMA, WAIT_ASK, answerPrompt, extractPrompt, generalisePrompt, langFromText, langName, prefilledService,
   scriptLang, serviceByKey, serviceFromText, t, tonePrompt, translatePrompt, translationsPrompt,
   type Field, type Lang, type ServiceKey, type Step,
@@ -226,6 +226,7 @@ export function leadScore(c: Pick<Contact, 'fields' | 'service'>): 'hot' | 'warm
   if ((f.need ?? '').length > 40) n++;
   if (shown(f.details)) n++;
   if (f.business) n++;
+  if (f.complaint_alert_at) return 'hot';
   if (f.call_at || f.person_at) n += 2;
   return n >= 5 ? 'hot' : n >= 3 ? 'warm' : 'cold';
 }
@@ -911,6 +912,34 @@ class Turn {
     await this.ask('', prefix || t(c.lang, 'newEnquiry'));
   }
 
+  /** Query real lead status from D1 / session rather than inventing progress or percentages */
+  private async reportRealStatus(): Promise<string> {
+    const c = this.c, lang = c.lang ?? 'en';
+    if (c.step !== 'done' && !c.alerted_at) {
+      return t(lang, 'statusMidBrief');
+    }
+    let leadStatus: string | undefined;
+    try {
+      const row = await this.env.DB.prepare(
+        'SELECT status FROM leads WHERE id = ?'
+      ).bind(c.lead_id).first<{ status: string }>();
+      leadStatus = row?.status;
+    } catch (e) {
+      console.error('[bot] status check D1 query failed', String(e));
+    }
+
+    if (c.mode === 'human' || c.taken_by || leadStatus === 'contacted') {
+      return t(lang, 'statusHuman');
+    }
+    if (c.quote_at || leadStatus === 'quoted') {
+      return t(lang, 'statusQuoted');
+    }
+    if (leadStatus === 'won') {
+      return t(lang, 'statusWon');
+    }
+    return t(lang, 'statusDone');
+  }
+
   /** Whatever the current step asks (with anything said first). `seen` picks the menu's language
    *  before the client has chosen one. */
   private async ask(seen = '', prefix = '') {
@@ -988,19 +1017,28 @@ class Turn {
     }
     if (COMPLAINT_NO_CONTACT_ASK.test(text)) {
       const lastAlert = c.fields.complaint_alert_at ? Date.parse(c.fields.complaint_alert_at) : 0;
+      let reached = 0;
       if (!lastAlert || this.now - lastAlert > 15 * MIN) {
         c.fields.complaint_alert_at = iso(this.now);
-        await this.alertTeam('urgent', `🚨 URGENT: Client waiting for contact! Message: "${clip(text, 300)}"`);
+        reached = await this.alertTeam('urgent', `🚨 URGENT: Client waiting for contact! Message: "${clip(text, 300)}"`);
+      } else {
+        reached = 1;
       }
-      await this.say(t(lang, 'complaint'));
+      if (reached > 0) {
+        await this.say(t(lang, 'complaint'));
+      } else {
+        await this.env.DB.prepare("UPDATE leads SET score = 'hot' WHERE id = ?").bind(c.lead_id).run().catch(() => {});
+        await this.say(t(lang, 'complaintQueued'));
+      }
       return;
     }
     if (STATUS_ASK.test(text)) {
+      const msg = await this.reportRealStatus();
       if (step === 'done' || c.alerted_at) {
-        await this.say(t(lang, 'statusDone'));
-        return;
+        await this.say(msg);
+      } else {
+        await this.ask('', msg);
       }
-      await this.ask('', t(lang, 'statusDone'));
       return;
     }
     if (GREETING_ASK.test(text)) {
@@ -1021,16 +1059,25 @@ class Turn {
       if (x.kind === 'new_enquiry') { await this.startNewEnquiry(); return; }
       if (x.kind === 'complaint') {
         const lastAlert = c.fields.complaint_alert_at ? Date.parse(c.fields.complaint_alert_at) : 0;
+        let reached = 0;
         if (!lastAlert || this.now - lastAlert > 15 * MIN) {
           c.fields.complaint_alert_at = iso(this.now);
-          await this.alertTeam('urgent', `🚨 URGENT: Client waiting for contact! Message: "${clip(text, 300)}"`);
+          reached = await this.alertTeam('urgent', `🚨 URGENT: Client waiting for contact! Message: "${clip(text, 300)}"`);
+        } else {
+          reached = 1;
         }
-        await this.say(t(lang, 'complaint'));
+        if (reached > 0) {
+          await this.say(t(lang, 'complaint'));
+        } else {
+          await this.env.DB.prepare("UPDATE leads SET score = 'hot' WHERE id = ?").bind(c.lead_id).run().catch(() => {});
+          await this.say(t(lang, 'complaintQueued'));
+        }
         return;
       }
       if (x.kind === 'status') {
-        if (step === 'done' || c.alerted_at) { await this.say(t(lang, 'statusDone')); return; }
-        await this.ask('', t(lang, 'statusDone'));
+        const msg = await this.reportRealStatus();
+        if (step === 'done' || c.alerted_at) { await this.say(msg); return; }
+        await this.ask('', msg);
         return;
       }
       if (x.kind === 'greeting') {
@@ -1073,7 +1120,8 @@ class Turn {
       else if (x.kind === 'person') { c.fields.person_at = iso(this.now); await this.alertTeam('person'); prefix = t(lang, 'person'); }
       else if (x.kind === 'off_topic') prefix = t(lang, 'offTopic');
     }
-    const plain = (!x || x.kind === 'answer' || x.kind === 'add_requirement') && !ACK.test(text) && !GREETING_ASK.test(text);
+    const isSubstantive = x?.kind === 'add_requirement' || (!x && SUBSTANTIVE_REQUIREMENT.test(text) && text.trim().length >= 10 && !WAIT_ASK.test(text) && !GREETING_ASK.test(text) && !ACK.test(text));
+    const plain = (!x || x.kind === 'answer') && !ACK.test(text) && !GREETING_ASK.test(text);
     const filled = JSON.stringify(FIELDS.map((f) => c.fields[f])) !== before;
     // With no AI (or when it found nothing), the message answers the question we asked.
     // ...also at the service question and websites, even when it filled something else too
@@ -1085,10 +1133,13 @@ class Turn {
         await sendButtons(this.env, c.wa_id, t(lang, 'price'), TEXT[lang].callBtn.map((title, i) => ({ id: `call:${i ? 'n' : 'y'}`, title })));
         return;
       }
-      if (plain) {
+      if (isSubstantive) {
         c.fields.notes = join(c.fields.notes, text);
         await this.saveLead();
         prefix ||= t(lang, 'noted');
+      } else if (!prefix && !ACK.test(text)) {
+        // AI failure or casual message after completed enquiry (not a simple ACK): do NOT invent notes!
+        prefix = t(lang, 'sameProject');
       }
       if (!c.alerted_at) await this.alertTeam('complete');                  // an earlier alert that didn't go out
       if (prefix) await this.say(prefix);

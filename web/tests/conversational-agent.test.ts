@@ -164,15 +164,35 @@ test('Conversational AI Agent: intelligent dialogue, memory, second enquiries, u
   await t.test('3. Status inquiry ("Ente website status entha?") reports real status truthfully without notes or hallucinations', async () => {
     await reset();
     await teamHi();
-    await completeEnquiry(CLIENT, 'mg');
 
+    // 3a. Mid-brief status inquiry: must NOT claim under review, but prompt to complete brief
+    await post([text('919833333333', 'Hi')]);
+    await post([tap('919833333333', 'svc:website')]);
+    await post([tap('919833333333', 'lang:en')]);
+    assert.equal(contact('919833333333').step, 'name');
+    await post([text('919833333333', 'what is the project status?')]);
+    assert.ok(to('919833333333').some((m) => m.body.includes(TEXT.en.statusMidBrief)), 'mid-brief client told details are still being collected');
+
+    // 3b. Completed brief: factual SLA review message
+    await completeEnquiry(CLIENT, 'mg');
     await post([text(CLIENT, 'Ente website status entha?')]);
-    const reply = last(CLIENT).body;
+    let reply = last(CLIENT).body;
     assert.equal(reply, TEXT.mg.statusDone, 'reports truthful lead review status');
     assert.ok(!reply.includes(TEXT.mg.noted), 'never says noted');
     assert.doesNotMatch((await lead(CLIENT))?.message ?? '', /status entha/, 'status inquiry was not saved as note');
 
-    // English status inquiry
+    // 3c. Quoted status: reflects sent quotation
+    const leadRow = await lead(CLIENT);
+    await db.prepare("UPDATE leads SET status = 'quoted' WHERE id = ?").bind(leadRow!.id).run();
+    await post([text(CLIENT, 'status entha?')]);
+    assert.equal(last(CLIENT).body, TEXT.mg.statusQuoted, 'reports quotation sent awaiting confirmation');
+
+    // 3d. Human takeover / contacted status
+    await db.prepare("UPDATE leads SET status = 'contacted' WHERE id = ?").bind(leadRow!.id).run();
+    await post([text(CLIENT, 'status?')]);
+    assert.equal(last(CLIENT).body, TEXT.mg.statusHuman, 'reports team member assigned');
+
+    // 3e. English completed inquiry
     await post([text(CLIENT2, 'Hi')]);
     await post([tap(CLIENT2, 'svc:app')]);
     await post([tap(CLIENT2, 'lang:en')]);
@@ -239,45 +259,62 @@ test('Conversational AI Agent: intelligent dialogue, memory, second enquiries, u
     assert.doesNotMatch((await lead(CLIENT))?.message ?? '', /Rate ethra/, 'price question was not saved as note');
   });
 
-  await t.test('6. Urgent complaint ("Team enne contact cheythilla") triggers immediate high-priority alert and deduplicates follow-ups', async () => {
+  await t.test('6. Urgent complaint verifies alert delivery: notifies team if reachable, queues and marks hot if unreachable', async () => {
     await reset();
     await teamHi();
     await completeEnquiry(CLIENT, 'mg');
 
-    // Clear sent log to track team alerts
+    // 6a. Reachable team: sends alert and acknowledges directly
     fx.sent.length = 0;
-
-    // Send complaint
     await post([text(CLIENT, 'Team enne contact cheythilla')]);
-    assert.equal(last(CLIENT).body, TEXT.mg.complaint, 'sincerely apologizes in customer dialect');
+    assert.equal(last(CLIENT).body, TEXT.mg.complaint, 'sincerely apologizes and confirms team alerted');
     assert.doesNotMatch((await lead(CLIENT))?.message ?? '', /contact cheythilla/);
 
-    // Verify urgent team alert reached team members
     const teamAlerts = fx.sent.filter((s) => TEAM.includes(s.to));
     assert.ok(teamAlerts.length >= 1, 'team was alerted');
     assert.ok(teamAlerts.some((a) => a.body.includes('URGENT') || a.body.includes('waiting for contact')), 'alert is high priority urgent');
     assert.ok(teamAlerts.some((a) => a.body.includes(CLIENT)), 'includes client contact number');
 
-    // Immediate follow-up within 2 minutes: should reassure client without duplicate team alert flood
+    // 6b. Deduplication within 15 min window
     const alertCountBefore = teamAlerts.length;
     now += 2 * MIN;
     await post([text(CLIENT, 'Nobody called me yet')]);
     assert.equal(last(CLIENT).body, TEXT.mg.complaint, 'reassures client again');
     const alertCountAfter = fx.sent.filter((s) => TEAM.includes(s.to)).length;
     assert.equal(alertCountAfter, alertCountBefore, 'deduplicated: team not spammed within 15-minute window');
+
+    // 6c. Unreachable team (e.g. no team configured / delivery fails): queues urgent alert and marks lead hot
+    await reset();
+    env.TEAM_WHATSAPP = ''; // No reachable team members
+    await completeEnquiry(CLIENT2, 'mg');
+    await post([text(CLIENT2, 'Nobody contacted me')]);
+    assert.equal(last(CLIENT2).body, TEXT.mg.complaintQueued, 'transparently tells client alert is in urgent priority queue');
+    const lead2 = await lead(CLIENT2);
+    assert.equal(lead2?.score, 'hot', 'lead score promoted to hot in D1');
+    env.TEAM_WHATSAPP = TEAM.join(','); // Restore
   });
 
-  await t.test('7. Substantive positive note additions ("Please add UPI payment gateway") are saved and confirmed', async () => {
+  await t.test('7. Completed-enquiry fallback: casual messages on AI failure do NOT save as notes, but substantive additions DO', async () => {
     await reset();
     await teamHi();
     await completeEnquiry(CLIENT, 'mg');
 
-    // Customer provides genuine project requirement update
+    // AI is down (500)
+    fx.state.ai = () => 500;
+
+    // 7a. Casual message on completed enquiry ("alright cool")
+    await post([text(CLIENT, 'alright cool')]);
+    assert.equal(last(CLIENT).body, TEXT.mg.sameProject, 'replies politely asking what they want to add or ask');
+    assert.doesNotMatch(last(CLIENT).body, new RegExp(TEXT.mg.noted), 'never says noted for casual message');
+    let row = await lead(CLIENT);
+    assert.doesNotMatch(row?.message ?? '', /alright cool/, 'casual text was NOT saved as project notes');
+
+    // 7b. Substantive requirement addition ("Website-il online UPI payment integration venam")
     await post([text(CLIENT, 'Website-il online UPI payment integration venam')]);
     assert.equal(last(CLIENT).body, TEXT.mg.noted, 'confirms addition for the team');
 
     // Verify requirement is properly recorded in D1 lead
-    const row = await lead(CLIENT);
+    row = await lead(CLIENT);
     assert.match(row?.message ?? '', /Notes:.*online UPI payment integration venam/, 'substantive requirement appended to lead notes in D1');
   });
 
