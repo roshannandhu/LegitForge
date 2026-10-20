@@ -16,7 +16,7 @@ import {
   updateAiKey,
 } from '@/lib/ai/vault';
 import { decryptApiKey } from '@/lib/ai/crypto';
-import { testAiKeyConnection } from '@/lib/ai/adapters';
+import { testAiKeyConnection, normalizeAiModel } from '@/lib/ai/adapters';
 
 const str = (f: FormData, k: string, max = 200) => String(f.get(k) ?? '').trim().slice(0, max);
 
@@ -26,7 +26,8 @@ export async function addAiKeyAction(_: FormState, f: FormData): Promise<FormSta
   const provider = str(f, 'provider') as AiProvider;
   const name = str(f, 'name', 80);
   const apiKey = str(f, 'api_key', 500);
-  const model = str(f, 'model', 100);
+  const rawModel = str(f, 'model', 100);
+  const model = normalizeAiModel(provider, rawModel);
   const baseUrl = str(f, 'base_url', 300);
   const sortOrder = Number(str(f, 'sort_order')) || 0;
 
@@ -99,6 +100,9 @@ export async function testAiKeyAction(id: string): Promise<{
   }
 
   const res = await testAiKeyConnection(record, secretKey);
+  if (res.ok && res.modelUsed && res.modelUsed !== record.model) {
+    await db.prepare('UPDATE ai_keys SET model = ? WHERE id = ?').bind(res.modelUsed, id).run();
+  }
   await recordKeyHealth(db, id, res.status, res.status === 'rate_limited' ? 60 : 0, res.error);
   revalidatePath('/admin/whatsapp/ai');
 

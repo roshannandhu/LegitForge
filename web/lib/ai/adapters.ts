@@ -23,6 +23,26 @@ export interface CompletionResult {
   error?: string;
   latencyMs: number;
   retryAfterSec?: number;
+  modelUsed?: string;
+}
+
+/** Normalizes model aliases, handling deprecated/retired model names gracefully across providers */
+export function normalizeAiModel(provider: string, model?: string): string {
+  if (!model) return '';
+  const clean = model.trim();
+  if (provider === 'gemini') {
+    // Legacy / retired Gemini models in 2026 -> map to current active production models
+    if (/^gemini-1\.5-flash(-8b|-latest)?$/i.test(clean) || /^gemini-2\.5-flash$/i.test(clean)) {
+      return 'gemini-3.5-flash';
+    }
+    if (/^gemini-1\.5-flash-lite$/i.test(clean) || /^gemini-2\.5-flash-lite$/i.test(clean)) {
+      return 'gemini-3.5-flash-lite';
+    }
+    if (/^gemini-1\.5-pro(-latest)?$/i.test(clean) || /^gemini-2\.5-pro$/i.test(clean)) {
+      return 'gemini-3.8-flash';
+    }
+  }
+  return clean;
 }
 
 /** Determines headers for provider */
@@ -30,13 +50,7 @@ export function getProviderHeaders(provider: string, secretKey: string): Record<
   const headers: Record<string, string> = {
     'content-type': 'application/json',
   };
-  if (provider === 'gemini') {
-    // Gemini OpenAI-compat endpoint supports Bearer token or x-goog-api-key
-    headers['authorization'] = `Bearer ${secretKey}`;
-    headers['x-goog-api-key'] = secretKey;
-  } else {
-    headers['authorization'] = `Bearer ${secretKey}`;
-  }
+  headers['authorization'] = `Bearer ${secretKey.trim()}`;
   return headers;
 }
 
@@ -75,7 +89,7 @@ export async function executeAiCompletion(
   const t0 = Date.now();
   const preset = PROVIDER_PRESETS[record.provider];
   const url = record.base_url || preset?.defaultBaseUrl;
-  const model = record.model || preset?.defaultModel;
+  let activeModel = normalizeAiModel(record.provider, record.model || preset?.defaultModel);
 
   if (!url) {
     return {
@@ -94,7 +108,7 @@ export async function executeAiCompletion(
 
   // Prepare body: attempt structured output or json_object
   const bodyPayload: Record<string, unknown> = {
-    model,
+    model: activeModel,
     messages,
   };
 
@@ -128,6 +142,38 @@ export async function executeAiCompletion(
         if (!isNaN(parsed) && parsed > 0) retryAfter = Math.min(parsed, 600);
       }
 
+      // If model not found or retired for new users, attempt automatic recovery with current production model
+      if (
+        (res.status === 404 || res.status === 400) &&
+        /not found for API version|no longer available|not supported for generateContent/i.test(errText) &&
+        record.provider === 'gemini' &&
+        activeModel !== 'gemini-3.5-flash'
+      ) {
+        try {
+          const fallbackModel = 'gemini-3.5-flash';
+          const retryPayload = { ...bodyPayload, model: fallbackModel };
+          const retryRes = await fetch(url, {
+            method: 'POST',
+            headers: getProviderHeaders(record.provider, secretKey),
+            body: JSON.stringify(retryPayload),
+            signal: AbortSignal.timeout(timeoutMs),
+          });
+          if (retryRes.ok) {
+            const data = (await retryRes.json()) as { choices?: { message?: { content?: string } }[] };
+            const content = data.choices?.[0]?.message?.content || null;
+            return {
+              ok: true,
+              content,
+              status: 'healthy',
+              latencyMs: Date.now() - t0,
+              modelUsed: fallbackModel,
+            };
+          }
+        } catch {
+          // ignore fallback error and continue to standard handling
+        }
+      }
+
       const classified = classifyAiHttpStatus(res.status, errText);
 
       if (res.status === 429) {
@@ -139,6 +185,7 @@ export async function executeAiCompletion(
           error: `Rate limit reached (429): ${errText.slice(0, 150)}`,
           latencyMs,
           retryAfterSec: retryAfter,
+          modelUsed: activeModel,
         };
       }
 
@@ -150,6 +197,7 @@ export async function executeAiCompletion(
           httpStatus: res.status,
           error: `Invalid credentials or unauthorized (${res.status}): ${errText.slice(0, 150)}`,
           latencyMs,
+          modelUsed: activeModel,
         };
       }
 
@@ -157,7 +205,7 @@ export async function executeAiCompletion(
       if (res.status === 400 && req.schema && /json_schema|response_format/i.test(errText)) {
         try {
           const fallbackBody = {
-            model,
+            model: activeModel,
             messages: [
               {
                 role: 'system',
@@ -181,6 +229,7 @@ export async function executeAiCompletion(
               content,
               status: 'healthy',
               latencyMs: Date.now() - t0,
+              modelUsed: activeModel,
             };
           }
         } catch {
@@ -195,6 +244,7 @@ export async function executeAiCompletion(
         httpStatus: res.status,
         error: `Provider HTTP error ${res.status}: ${errText.slice(0, 150)}`,
         latencyMs,
+        modelUsed: activeModel,
       };
     }
 
@@ -206,6 +256,7 @@ export async function executeAiCompletion(
       content,
       status: 'healthy',
       latencyMs,
+      modelUsed: activeModel,
     };
   } catch (err: unknown) {
     const latencyMs = Date.now() - t0;
@@ -218,6 +269,7 @@ export async function executeAiCompletion(
       error: isTimeout ? `Request timed out after ${timeoutMs}ms` : `Connection failed: ${msg.slice(0, 150)}`,
       latencyMs,
       retryAfterSec: isTimeout ? 30 : 15,
+      modelUsed: activeModel,
     };
   }
 }
@@ -247,6 +299,6 @@ export async function testAiKeyConnection(
     latencyMs: res.latencyMs,
     status: res.status,
     error: res.error,
-    modelUsed: model,
+    modelUsed: res.modelUsed || model,
   };
 }

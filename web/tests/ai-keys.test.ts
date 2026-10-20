@@ -92,8 +92,19 @@ test('PROVIDER_PRESETS defaults cover all requested providers with verified mode
   assert.ok(providers.includes('custom'));
 
   assert.equal(PROVIDER_PRESETS.groq.defaultModel, 'llama-3.3-70b-versatile');
-  assert.equal(PROVIDER_PRESETS.gemini.defaultModel, 'gemini-2.5-flash');
+  assert.equal(PROVIDER_PRESETS.gemini.defaultModel, 'gemini-3.5-flash');
   assert.equal(PROVIDER_PRESETS.openrouter.defaultModel, 'meta-llama/llama-3.3-70b-instruct:free');
+});
+
+test('normalizeAiModel maps retired Gemini model identifiers to active production equivalents', () => {
+  const { normalizeAiModel } = require('../lib/ai/adapters');
+  assert.equal(normalizeAiModel('gemini', 'gemini-1.5-flash'), 'gemini-3.5-flash');
+  assert.equal(normalizeAiModel('gemini', 'gemini-2.5-flash'), 'gemini-3.5-flash');
+  assert.equal(normalizeAiModel('gemini', 'gemini-1.5-flash-lite'), 'gemini-3.5-flash-lite');
+  assert.equal(normalizeAiModel('gemini', 'gemini-2.5-flash-lite'), 'gemini-3.5-flash-lite');
+  assert.equal(normalizeAiModel('gemini', 'gemini-1.5-pro'), 'gemini-3.8-flash');
+  assert.equal(normalizeAiModel('gemini', 'gemini-3.5-flash'), 'gemini-3.5-flash');
+  assert.equal(normalizeAiModel('groq', 'llama-3.3-70b-versatile'), 'llama-3.3-70b-versatile');
 });
 
 test('classifyAiHttpStatus accurately maps HTTP error statuses to operational categories', () => {
