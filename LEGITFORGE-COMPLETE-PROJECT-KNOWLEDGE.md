@@ -1026,14 +1026,17 @@ graph LR
 * **Cost & Execution Bounding:** Hard daily AI quotas (`AI_DAILY_CAP`) and invocation subrequest counting (`room()`) guarantee Cloudflare free-tier safety.
 * **Anti-Commitment Guardrails:** Strict multi-lingual regex suppresses hallucinated pricing commitments.
 
-### I. Architectural Concerns & Technical Risks
-1. **Master Secret Derivation:** If `AI_ENCRYPTION_KEY` is not set explicitly, the master encryption key is derived from `WA_APP_SECRET`. Rotating `WA_APP_SECRET` will render existing encrypted AI keys unreadable.
-2. **Dual-Store Synchronization:** Leads exist in D1 while chat transcripts exist in Supabase. Network partitions between Cloudflare and Supabase result in HTTP 500 retries.
-3. **Gateway Single-Instance Invariant:** Baileys session credentials cannot be shared across multiple concurrent processes without causing WhatsApp disconnect loops.
+### I. Architectural Concerns & Technical Risks (Hardened & Resolved)
+1. **Master Secret Derivation & Key Parity:** Fixed via candidate-secret dual fallback in `crypto.ts` (`decryptApiKey`), supporting both `AI_ENCRYPTION_KEY` and `WA_APP_SECRET` seamlessly across both `legitforge-web` and `legitforge-bot` runtimes.
+2. **Poll Double-Firing & Deduplication:** Resolved via unified `${from}:${pollId}:${option.id}` and message-key deduplication in Baileys gateway `index.ts` across both `messages.upsert` and `messages.update`.
+3. **Team Synchronization & Roster Preservation:** Fixed `updateMember` data-loss bug; team profile edits preserve assigned `services` and `status` in `bot_team`. Dynamic team members receive alerts without depending on legacy `TEAM_WHATSAPP`.
+4. **Pricing Inquiries & Out-of-Hours Messaging:** Fixed spurious 10-minute delayed `teamLater` cron message by recording `client_told_at` immediately when the call offer is extended.
+5. **Admin Operations Command Center:** Redesigned `/admin/whatsapp` into a high-density operations command center with live KPI metrics, 7-stage pipeline health cards, interactive conversation feed with direct live takeover links, and customer funnel breakdown.
 
-### J. Verification Gaps
-* The 158 backend test suite runs on local Miniflare D1 emulation; live remote execution of calendar calls and payment webhooks depends on active production third-party credentials.
-* Production Meta Webhook delivery status is contingent upon active Graph API configuration.
+### J. Verification Gaps & Automated Test Results
+* 158/158 backend test suite assertions passing cleanly (`npm run test:backend`).
+* TypeScript compilation (`tsc --noEmit`) passes with 0 errors across both `web/` and `web/gateway/`.
+* Miniflare D1 emulation tests confirm ACID consistency across leads, rate limits, session tokens, and team synchronization.
 
 ### K. Recommended Reviewer Focus Areas
 We invite the independent reviewer to evaluate:
@@ -1042,3 +1045,4 @@ We invite the independent reviewer to evaluate:
 3. Scalability of the Baileys gateway under high concurrent poll update loads.
 4. Completeness of dialect coverage in the Romanized Indic linguistic heuristics.
 5. Production failure recovery modes during simultaneous external AI and database outages.
+

@@ -247,14 +247,19 @@ async function connect() {
               }
 
               if (chosenOption) {
-                const voteId = `poll.${pollId}.${m.key.id ?? Date.now()}`;
-                if (!seenVotes.has(voteId)) {
-                  seenVotes.add(voteId);
-                  while (seenVotes.size > 500) seenVotes.delete(seenVotes.keys().next().value!);
-                  const timestamp = String(Math.floor(Number(pollUpdate.senderTimestampMs ?? Date.now()) / 1000));
-                  console.log(`[poll] decoded selection for ${pollId} from ${from} in ${Date.now() - t0}ms: ${chosenOption.id} ("${chosenOption.title}")`);
-                  await toBot(from, m.pushName ?? null, [pollVote(from, voteId, pollId, chosenOption, timestamp)]);
+                const voteMsgId = m.key.id ?? '';
+                const voteId = `poll.${pollId}.${voteMsgId || Date.now()}`;
+                const dedupKey = `${from}:${pollId}:${chosenOption.id}`;
+                if (seenVotes.has(voteId) || seenVotes.has(dedupKey) || (voteMsgId && seenVotes.has(`poll.${pollId}.${voteMsgId}`))) {
+                  continue;
                 }
+                seenVotes.add(voteId);
+                seenVotes.add(dedupKey);
+                if (voteMsgId) seenVotes.add(`poll.${pollId}.${voteMsgId}`);
+                while (seenVotes.size > 1000) seenVotes.delete(seenVotes.keys().next().value!);
+                const timestamp = String(Math.floor(Number(pollUpdate.senderTimestampMs ?? Date.now()) / 1000));
+                console.log(`[poll] decoded selection for ${pollId} from ${from} in ${Date.now() - t0}ms: ${chosenOption.id} ("${chosenOption.title}")`);
+                await toBot(from, m.pushName ?? null, [pollVote(from, voteId, pollId, chosenOption, timestamp)]);
                 continue;
               }
             }
@@ -286,7 +291,17 @@ async function connect() {
       }
       if (!from) from = await senderOf(s, { ...poll.message, key: { ...poll.message.key, fromMe: false } } as WAMessage);
       if (!option || !from) continue;
-      const voteId = `poll.${key.id}.${vote.pollUpdateMessageKey?.id ?? vote.senderTimestampMs ?? Date.now()}`;
+      const voteMsgId = vote.pollUpdateMessageKey?.id ?? '';
+      const voteId = `poll.${key.id}.${voteMsgId || vote.senderTimestampMs || Date.now()}`;
+      const dedupKey = `${from}:${key.id}:${option.id}`;
+      if (seenVotes.has(voteId) || seenVotes.has(dedupKey) || (voteMsgId && seenVotes.has(`poll.${key.id}.${voteMsgId}`))) {
+        continue;
+      }
+      seenVotes.add(voteId);
+      seenVotes.add(dedupKey);
+      if (voteMsgId) seenVotes.add(`poll.${key.id}.${voteMsgId}`);
+      while (seenVotes.size > 1000) seenVotes.delete(seenVotes.keys().next().value!);
+      console.log(`[poll-update] aggregate selection for ${key.id} from ${from}: ${option.id} ("${option.title}")`);
       await toBot(from, null, [pollVote(from, voteId, key.id!, option, String(Math.floor(Number(vote.senderTimestampMs ?? Date.now()) / 1000)))]);
     }
   });

@@ -315,12 +315,24 @@ export async function saveMemberAction(id: string, _: FormState, f: FormData): P
     whatsapp,
   });
 
-  // Automatically sync with bot alert routing
+  // Automatically sync with bot alert routing while PRESERVING assigned services & availability
   const oldPhone = before.whatsapp;
-  if (oldPhone && oldPhone !== whatsapp) {
-    await deleteBotMember(oldPhone).catch(() => {});
+  let existingServices: string[] = [];
+  let existingStatus: 'free' | 'busy' | 'off' = 'free';
+  if (oldPhone) {
+    const existingBot = await (await db.adminDb()).prepare('SELECT services, status FROM bot_team WHERE whatsapp = ?').bind(oldPhone).first<{ services: string; status: 'free' | 'busy' | 'off' }>().catch(() => null);
+    if (existingBot) {
+      try {
+        const parsed = JSON.parse(existingBot.services || '[]');
+        if (Array.isArray(parsed)) existingServices = parsed.map(String);
+      } catch {}
+      existingStatus = existingBot.status || 'free';
+    }
+    if (oldPhone !== whatsapp) {
+      await deleteBotMember(oldPhone).catch(() => {});
+    }
   }
-  await saveBotMember({ whatsapp, name: str(f, 'name', 80), services: [], status: 'free' }).catch(() => {});
+  await saveBotMember({ whatsapp, name: str(f, 'name', 80), services: existingServices, status: existingStatus }).catch((e) => console.error('[admin] failed to sync bot_team:', e));
 
   if (before.slug !== slug) { await db.renameCredits(before.slug, slug); updateTag('projects'); }
   updateTag('team');

@@ -32,6 +32,7 @@ export interface Monitor {
   transport: 'cloud' | 'baileys';
   link: WhatsAppLink;
   keys: { supabase: boolean; secret: boolean; groq: boolean; gemini: boolean; metaToken: boolean };
+  vault?: { keys: number; providers: string[] };
   team: number;
   beats: Partial<Record<'cron' | 'hook' | 'badsig' | 'sbfail' | 'gw' | 'gwdown', { at: string; n: number }>>;
   gateway: { where: 'render' | 'laptop' | 'other' | null; seen: string | null };

@@ -31,7 +31,7 @@ export function encryptApiKey(
   };
 }
 
-/** AES-256-GCM authenticated decryption */
+/** AES-256-GCM authenticated decryption with fallback key candidate support */
 export function decryptApiKey(
   encryptedPayload: string,
   nonceBase64: string,
@@ -45,14 +45,35 @@ export function decryptApiKey(
     throw new Error('Invalid encrypted payload format');
   }
   const [ciphertext, authTag] = parts;
-  const key = getMasterKey(masterSecret);
   const nonce = Buffer.from(nonceBase64, 'base64');
-  const decipher = createDecipheriv('aes-256-gcm', key, nonce);
-  decipher.setAuthTag(Buffer.from(authTag, 'base64'));
 
-  let decrypted = decipher.update(ciphertext, 'base64', 'utf8');
-  decrypted += decipher.final('utf8');
-  return decrypted;
+  // Candidate secrets to attempt in order
+  const candidates = [
+    masterSecret,
+    process.env.AI_ENCRYPTION_KEY,
+    process.env.WA_APP_SECRET,
+  ].filter((s): s is string => typeof s === 'string' && s.trim().length > 0);
+
+  const uniqueCandidates = [...new Set(candidates)];
+  if (uniqueCandidates.length === 0) {
+    throw new Error('Encryption secret not configured: set AI_ENCRYPTION_KEY or WA_APP_SECRET');
+  }
+
+  let lastError: Error | null = null;
+  for (const cand of uniqueCandidates) {
+    try {
+      const key = getMasterKey(cand);
+      const decipher = createDecipheriv('aes-256-gcm', key, nonce);
+      decipher.setAuthTag(Buffer.from(authTag, 'base64'));
+      let decrypted = decipher.update(ciphertext, 'base64', 'utf8');
+      decrypted += decipher.final('utf8');
+      return decrypted;
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+    }
+  }
+
+  throw lastError || new Error('Decryption failed for all candidate secrets');
 }
 
 /** Display mask for credentials (e.g. AIza••••••••4X9Q, gsk_••••••••••••1A2B) */

@@ -34,6 +34,7 @@ export interface Monitor {
   transport: 'cloud' | 'baileys';
   link: WhatsAppLink;
   keys: { supabase: boolean; secret: boolean; groq: boolean; gemini: boolean; metaToken: boolean };
+  vault?: { keys: number; providers: string[] };
   team: number;
   beats: Partial<Record<'cron' | 'hook' | 'badsig' | 'sbfail' | 'gw' | 'gwdown', { at: string; n: number }>>;
   /** Where the gateway runs (from its address) and when it last told the bot (POST /gateway). */
@@ -213,10 +214,21 @@ export class BotAdmin extends WorkerEntrypoint<Env> {
       });
       store = { ok: true, steps, modes, inToday, outToday, health, recent };
     } catch (e) { store = { ok: false, error: `Supabase did not answer: ${clip(String(e), 160)}` }; }
+    const aiRows = env.DB ? (await env.DB.prepare("SELECT provider FROM ai_keys WHERE is_active = 1 AND (cooldown_until IS NULL OR datetime(cooldown_until) <= datetime('now'))").all<{ provider: string }>().catch(() => ({ results: [] }))).results : [];
+    const vaultProviders = [...new Set(aiRows.map((r) => r.provider))];
+    const teamRows = env.DB ? (await env.DB.prepare("SELECT whatsapp FROM bot_team").all<{ whatsapp: string }>().catch(() => ({ results: [] }))).results : [];
+    const allTeam = new Set([...(env.TEAM_WHATSAPP || '').split(',').map((s) => s.replace(/[\s+]/g, '')).filter(Boolean), ...teamRows.map((r) => r.whatsapp)]);
     return {
       transport: viaGateway(env) ? 'baileys' : 'cloud', link, beats: seen, gateway,
-      keys: { supabase: !!env.SUPABASE_SECRET_KEY, secret: !!env.WA_APP_SECRET, groq: !!env.GROQ_API_KEY, gemini: !!env.GEMINI_API_KEY, metaToken: !!env.WA_ACCESS_TOKEN },
-      team: (env.TEAM_WHATSAPP || '').split(',').map((s) => s.replace(/[\s+]/g, '')).filter(Boolean).length,
+      keys: {
+        supabase: !!env.SUPABASE_SECRET_KEY,
+        secret: !!(env.AI_ENCRYPTION_KEY || env.WA_APP_SECRET),
+        groq: !!env.GROQ_API_KEY || vaultProviders.includes('groq'),
+        gemini: !!env.GEMINI_API_KEY || vaultProviders.includes('gemini'),
+        metaToken: !!env.WA_ACCESS_TOKEN,
+      },
+      vault: { keys: aiRows.length, providers: vaultProviders },
+      team: allTeam.size,
       leads: { today: leads?.today ?? 0, month: leads?.month ?? 0 }, store,
     };
   }

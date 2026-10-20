@@ -15,6 +15,7 @@ export interface Env {
   MEDIA?: R2Bucket;
   WA_ACCESS_TOKEN: string;
   WA_APP_SECRET: string;
+  AI_ENCRYPTION_KEY?: string;
   WA_VERIFY_TOKEN: string;
   WA_PHONE_NUMBER_ID: string;
   /** Team members' WhatsApp numbers (digits, e.g. 919876543210), comma-separated. */
@@ -308,7 +309,7 @@ export async function chat<T>(env: Env, o: { system: string; user: string; schem
         for (const keyRecord of sortedKeys) {
           let secretKey: string;
           try {
-            secretKey = decryptApiKey(keyRecord.api_key_encrypted, keyRecord.key_nonce, env.WA_APP_SECRET);
+            secretKey = decryptApiKey(keyRecord.api_key_encrypted, keyRecord.key_nonce, env.AI_ENCRYPTION_KEY || env.WA_APP_SECRET);
           } catch (e) {
             console.warn(`[ai] failed to decrypt key ${keyRecord.name}`, e);
             continue;
@@ -391,7 +392,7 @@ export async function embed(env: Env, text: string, team = false): Promise<numbe
   if (!geminiKey && env.DB) {
     const k = await env.DB.prepare("SELECT api_key_encrypted, key_nonce FROM ai_keys WHERE provider = 'gemini' AND is_active = 1 AND (cooldown_until IS NULL OR datetime(cooldown_until) <= datetime('now')) ORDER BY sort_order ASC LIMIT 1").first<{ api_key_encrypted: string; key_nonce: string }>().catch(() => null);
     if (k) {
-      try { geminiKey = decryptApiKey(k.api_key_encrypted, k.key_nonce, env.WA_APP_SECRET); } catch {}
+      try { geminiKey = decryptApiKey(k.api_key_encrypted, k.key_nonce, env.AI_ENCRYPTION_KEY || env.WA_APP_SECRET); } catch {}
     }
   }
   if (!geminiKey || !(await aiAllowed(env, team))) return null;
@@ -452,7 +453,7 @@ export async function transcribe(env: Env, audio: ArrayBuffer, type: string, lan
   if (!groqKey && env.DB) {
     const k = await env.DB.prepare("SELECT api_key_encrypted, key_nonce FROM ai_keys WHERE provider = 'groq' AND is_active = 1 AND (cooldown_until IS NULL OR datetime(cooldown_until) <= datetime('now')) ORDER BY sort_order ASC LIMIT 1").first<{ api_key_encrypted: string; key_nonce: string }>().catch(() => null);
     if (k) {
-      try { groqKey = decryptApiKey(k.api_key_encrypted, k.key_nonce, env.WA_APP_SECRET); } catch {}
+      try { groqKey = decryptApiKey(k.api_key_encrypted, k.key_nonce, env.AI_ENCRYPTION_KEY || env.WA_APP_SECRET); } catch {}
     }
   }
   if (!groqKey || !(await aiAllowed(env))) return null;

@@ -37,12 +37,23 @@ export function stages(m: Monitor, now: number): Stage[] {
   const store: Stage = !s ? { title: 'Supabase', state: 'bad', detail: m.store.ok ? '' : m.store.error }
     : h && h.unhandled ? { title: 'Supabase', state: 'warn', detail: `${h.unhandled} message${h.unhandled === 1 ? '' : 's'} waiting over 5 minutes${h.oldestUnhandled ? ` (oldest ${ago(h.oldestUnhandled, now)})` : ''}.` }
     : { title: 'Supabase', state: fresh(b.sbfail) ? 'warn' : 'ok', detail: fresh(b.sbfail) ? `Supabase refused a message ${ago(b.sbfail!.at, now)} (it is retried).` : 'Every chat is stored first, then answered.' };
-  const keys = [m.keys.groq && 'Groq', m.keys.gemini && 'Gemini'].filter(Boolean).join(' + ');
-  const ai: Stage = !keys ? { title: 'AI', state: 'warn', detail: 'No AI keys: menus and fixed questions work; free text goes to the team.' }
-    : h && h.aiToday >= h.aiCap ? { title: 'AI', state: 'warn', detail: `Today’s cap is reached (${h.aiToday}/${h.aiCap}): fixed text until tomorrow.` }
-    : { title: 'AI', state: m.keys.groq && m.keys.gemini ? 'ok' : 'warn', detail: `${keys}${m.keys.groq && m.keys.gemini ? '' : ' only'} · ${h ? `${h.aiToday}/${h.aiCap} requests today` : 'usage unknown'}.` };
-  const team: Stage = m.team ? { title: 'Team alerts', state: 'ok', detail: `${m.team} number${m.team === 1 ? '' : 's'} get alerts${h ? ` · ${h.openQuestions} open question${h.openQuestions === 1 ? '' : 's'}` : ''}.`, href: '/admin/whatsapp/questions', action: 'Questions' }
-    : { title: 'Team alerts', state: 'bad', detail: 'TEAM_WHATSAPP is not set: nobody gets the alerts.' };
+  const vaultKeys = m.vault?.keys ?? 0;
+  const vaultProviders = (m.vault?.providers ?? []).map((p) => p === 'gemini' ? 'Gemini' : p === 'groq' ? 'Groq' : p === 'openrouter' ? 'OpenRouter' : p === 'deepseek' ? 'DeepSeek' : p);
+  const activeProviders = [...new Set([...(m.keys.groq ? ['Groq'] : []), ...(m.keys.gemini ? ['Gemini'] : []), ...vaultProviders])].join(' + ');
+  const ai: Stage = (!activeProviders && vaultKeys === 0)
+    ? { title: 'AI', state: 'warn', detail: 'No AI keys: menus and fixed questions work; free text goes to the team.', href: '/admin/whatsapp/ai', action: 'Add AI Key' }
+    : h && h.aiToday >= h.aiCap
+      ? { title: 'AI', state: 'warn', detail: `Today’s cap is reached (${h.aiToday}/${h.aiCap}): fixed text until tomorrow.`, href: '/admin/whatsapp/ai', action: 'AI Vault' }
+      : {
+          title: 'AI',
+          state: 'ok',
+          detail: `${activeProviders || 'Active Vault'} (${vaultKeys > 0 ? `${vaultKeys} active key${vaultKeys === 1 ? '' : 's'}` : 'Env keys'}${h ? ` · ${h.aiToday}/${h.aiCap} today` : ''}).`,
+          href: '/admin/whatsapp/ai',
+          action: 'AI Vault',
+        };
+  const team: Stage = m.team > 0
+    ? { title: 'Team alerts', state: 'ok', detail: `${m.team} team member${m.team === 1 ? '' : 's'} on alert roster${h ? ` · ${h.openQuestions} open question${h.openQuestions === 1 ? '' : 's'}` : ''}.`, href: '/admin/team', action: 'Team' }
+    : { title: 'Team alerts', state: 'bad', detail: 'No team members configured on the alert roster.', href: '/admin/team', action: 'Add Team Phone' };
   return [
     { title: 'Client writes', state: h?.lastIn ? 'ok' : 'idle', detail: h?.lastIn ? `Last client message ${ago(h.lastIn, now)} · ${s!.inToday} in, ${s!.outToday} replies today.` : 'No client message yet.' },
     wa, worker, store, ai, team,

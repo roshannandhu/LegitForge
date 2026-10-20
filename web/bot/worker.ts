@@ -594,7 +594,7 @@ class Turn {
     if (c.mode === 'human' || paused) {
       // With a person on the chat (or the bot paused) the bot stays quiet and forwards: to whoever
       // took it, or to the whole team while nobody has (an upset or urgent client waiting for anyone).
-      const team = teamIds(this.env);
+      const team = new Set((await roster(this.env, this.now)).map((m) => m.id));
       if (c.taken_by && !team.has(c.taken_by)) c.taken_by = null;           // that person left the team
       const to = c.taken_by ? [c.taken_by] : (await route(this.env, this.now, c.service)).all;   // nobody who is off
       const what = value === 'voice' ? 'a voice note' : 'a file';
@@ -1050,6 +1050,7 @@ class Turn {
     let [question] = await sb<Question>(this.env, 'POST', 'questions?on_conflict=wamid', {
       wa_id: c.wa_id, wamid: this.wamid || null, question: original, question_en: questionEn, status: 'pending', kind: o.kind,
       draft: o.draft ?? null, draft_en: o.draft_en ?? null, knowledge_id: o.knowledge_id ?? null,
+      client_told_at: o.kind === 'price' ? iso(this.now) : null,
     }, 'resolution=ignore-duplicates,return=representation');
     if (!question) [question] = await sb<Question>(this.env, 'GET', `questions?wamid=eq.${q(this.wamid)}`);
     await this.saveLead();
@@ -1284,6 +1285,7 @@ class Turn {
       `Need: ${clip(f.need || '-', 400)}`,
       ...(shown(f.details) ? [`Details: ${clip(f.details!, 200)}`] : []), ...(shown(f.refs) ? [`Websites they like: ${clip(f.refs!, 200)}`] : []),
       ...(f.notes ? [`Notes: ${clip(f.notes, 300)}`] : []),
+      `Full Record: https://${host(this.env)}/admin/leads`,
       '', urgent
         ? `The bot has stopped. Reply to this message to talk to them; "#${c.code} bot" hands back to the bot.`
         : 'Reply to this message to write to the client.',
@@ -1331,10 +1333,12 @@ class Turn {
  *  Each copy is stored so a swipe-reply to it finds the client / question / answer it is about.
  *  Returns how many members it reached. */
 async function toTeam(env: Env, now: number, text: string, link: { wa_id?: string; question_id?: number; knowledge_id?: number },
-  members = [...teamIds(env)], buttons?: { id: string; title: string }[]) {
+  members?: string[], buttons?: { id: string; title: string }[]) {
+  const rst = await roster(env, now);
+  const targetMembers = members ?? rst.map((m) => m.id);
   let sent = 0;
-  const windows = members.length ? await openWindows(env, now) : new Set<string>();
-  for (const member of members) {
+  const windows = targetMembers.length ? await openWindows(env, now, targetMembers) : new Set<string>();
+  for (const member of targetMembers) {
     const open = windows.has(member);
     const code = /^#([A-Z0-9]{5})/.exec(text)?.[1] ?? '-';
     // Outside the 24-hour window only the template goes out (no buttons): a text reply still works.
@@ -1347,9 +1351,9 @@ async function toTeam(env: Env, now: number, text: string, link: { wa_id?: strin
 
 /** Team members who wrote to the bot in the last 23 hours (free-form messages reach them): one
  *  query per run. */
-async function openWindows(env: Env, now: number) {
+async function openWindows(env: Env, now: number, rosterList?: string[]) {
   if (env.run?.open) return env.run.open;
-  const team = [...teamIds(env)];
+  const team = rosterList ?? (await roster(env, now)).map((m) => m.id);
   if (viaGateway(env)) return new Set(team);                // WhatsApp Web has no 24-hour window: always a plain message
   const rows = team.length ? await sb<{ team: string }>(env, 'GET', `messages?team=in.${q(`(${team.map((m) => `"${m}"`).join(',')})`)}`
     + `&dir=eq.in&at=gt.${iso(now - 23 * HOUR)}&select=team&order=at.desc&limit=500`) : [];
@@ -1416,7 +1420,8 @@ async function alertTurns(env: Env, now: number, about: { wa_id?: string; lead_i
 async function passOn(env: Env, now: number) {
   const due = await sb<Pass>(env, 'GET', `alerts?next_at=lt.${iso(now)}&order=next_at.asc&limit=5`);
   if (!due.length) return;
-  const off = new Set((await roster(env, now)).filter((m) => m.status === 'off').map((m) => m.id)), team = teamIds(env);
+  const rst = await roster(env, now);
+  const off = new Set(rst.filter((m) => m.status === 'off').map((m) => m.id)), team = new Set(rst.map((m) => m.id));
   for (const a of due) {
     if (!room(env, 3 * a.later.length + 6)) return;
     const [mine] = await sb(env, 'DELETE', `alerts?id=eq.${a.id}`);            // claimed by deleting: once, and nothing kept

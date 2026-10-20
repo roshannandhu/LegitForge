@@ -231,6 +231,25 @@ a.admin-card:hover { border-color: var(--accent); }
 .admin-breakdowns { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
 .admin-table.admin-table-fit { min-width: 0; }
 
+/* WhatsApp Operations Command Center */
+.wa-ops-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 24px; padding: 16px 20px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+.wa-ops-title { display: flex; align-items: center; gap: 12px; }
+.wa-ops-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.wa-kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin: 24px 0; }
+.wa-kpi-card { padding: 16px 20px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); display: flex; flex-direction: column; gap: 4px; }
+.wa-kpi-num { font-size: 26px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.wa-kpi-label { font-size: 13px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+.wa-feed-item { display: grid; gap: 6px; padding: 14px 18px; border-bottom: 1px solid var(--line); transition: background 0.15s ease; }
+.wa-feed-item:hover { background: color-mix(in oklab, var(--surface) 60%, var(--surface-2)); }
+.wa-feed-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--text-muted); }
+.wa-pill { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+.wa-pill-client { background: color-mix(in oklab, var(--accent) 15%, transparent); color: var(--accent); border: 1px solid color-mix(in oklab, var(--accent) 30%, transparent); }
+.wa-pill-bot { background: color-mix(in oklab, #9333ea 15%, transparent); color: #a855f7; border: 1px solid color-mix(in oklab, #9333ea 30%, transparent); }
+.wa-pill-team { background: color-mix(in oklab, var(--success) 15%, transparent); color: var(--success); border: 1px solid color-mix(in oklab, var(--success) 30%, transparent); }
+.wa-pill-alert { background: color-mix(in oklab, var(--forge-hot) 15%, transparent); color: var(--forge-hot); border: 1px solid color-mix(in oklab, var(--forge-hot) 30%, transparent); }
+.wa-feed-text { margin: 0; font-size: 14px; line-height: 1.5; color: var(--text); overflow-wrap: anywhere; white-space: pre-wrap; }
+.wa-feed-actions { display: flex; align-items: center; justify-content: flex-end; margin-top: 4px; }
+
 /* leads (page review) */
 /* Admin → Leads: the status filter's space below it, the pager, a hot lead */
 .admin-leads-filter { margin: 0 0 24px; }
